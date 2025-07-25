@@ -1,83 +1,57 @@
-import ballerina/time;
-import ballerina/uuid;
+import icp_server.storage;
+import icp_server.types;
 
-service class RuntimeService {
-    private final RuntimeRepository runtimeRepo;
-    private final IntegrationRepository integrationRepo;
+import ballerina/http;
 
-    function init(RuntimeRepository runtimeRepo, IntegrationRepository integrationRepo) {
-        self.runtimeRepo = runtimeRepo;
-        self.integrationRepo = integrationRepo;
+// HTTP service configuration
+listener http:Listener httpListener = new (serverPort, config = {host: serverHost});
+
+// Runtime management service
+service /icp on httpListener {
+
+    // Register a new runtime
+    isolated resource function post register(types:Runtime runtime) returns types:RuntimeRegistrationResponse|error? {
+        do {
+            // Register runtime using the repository
+            types:Runtime savedRuntime = check storage:registerRuntime(runtime);
+
+            // Return success response
+            types:RuntimeRegistrationResponse successResponse = {
+                success: true,
+                message: string `Runtime ${savedRuntime.runtimeId} registered successfully`
+            };
+
+            return successResponse;
+
+        } on fail error e {
+            // Return error response
+            types:RuntimeRegistrationResponse errorResponse = {
+                success: false,
+                message: "Failed to register runtime",
+                errors: [e.message()]
+            };
+
+            return errorResponse;
+        }
     }
 
-    public isolated function register(RuntimeRegistration payload) returns Runtime|error {
-        // Create runtime record
-        Runtime runtime = {
-            id: uuid:createType1AsString(),
-            runtimeId: payload.runtimeId,
-            runtimeType: payload.runtimeType,
-            version: payload.version,
-            environment: payload.environment,
-            hostname: payload.hostname,
-            region: payload.region,
-            zone: payload.zone,
-            enabled: true,
-            lastHeartbeat: time:utcNow()
-        };
+    // Process heartbeat from runtime
+    isolated resource function post heartbeat(types:Heartbeat heartbeat) returns types:HeartbeatResponse|error? {
+        do {
+            // Process heartbeat using the repository
+            types:HeartbeatResponse heartbeatResponse = check storage:processHeartbeat(heartbeat);
 
-        // Save to database
-        Runtime|error dbRuntime = self.runtimeRepo.create(runtime);
-        if dbRuntime is error {
-            return error("Failed to register runtime", dbRuntime);
+            return heartbeatResponse;
+
+        } on fail error e {
+            // Return error response
+            types:HeartbeatResponse errorResponse = {
+                acknowledged: false,
+                commands: []
+            };
+
+            return errorResponse;
         }
-
-        // Register integrations
-        foreach IntegrationMetadata integration in payload.integrations {
-            Integration|error result = self.integrationRepo.create({
-                id: uuid:createType1AsString(),
-                name: integration.name,
-                version: integration.version,
-                runtimeId: runtime.id,
-                status: "RUNNING",
-                logsEnabled: integration.logsEnabled,
-                metricsEnabled: integration.metricsEnabled,
-                lastUpdated: time:utcNow()
-            });
-            if result is error {
-                return error("Failed to register integration", result);
-            }
-        }
-
-        return runtime;
     }
 
-    public isolated function processHeartbeat(Heartbeat payload) returns boolean|error {
-        // Update runtime heartbeat
-        boolean|error heartbeatResult = self.runtimeRepo.updateHeartbeat(
-            payload.runtimeId,
-            time:utcNow()
-        );
-        if heartbeatResult is error {
-            return error("Failed to update heartbeat", heartbeatResult);
-        }
-
-        // Update integration statuses
-        foreach IntegrationStatus integration in payload.integrations {
-            boolean|error statusUpdateResult = self.integrationRepo.updateStatus(
-                payload.runtimeId,
-                integration.name,
-                integration.status,
-                time:utcNow()
-            );
-            if statusUpdateResult is error {
-                return error("Failed to update integration status", statusUpdateResult);
-            }
-        }
-
-        return true;
-    }
-
-    public function getAllRuntimes() returns Runtime[]|error {
-        return self.runtimeRepo.findAll();
-    }
 }

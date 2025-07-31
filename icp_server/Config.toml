@@ -1,0 +1,60 @@
+# ICP Server Configuration File
+# This file contains all configurable parameters for the Integration Control Plane server
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+[icp_server]
+# HTTP server settings
+serverPort = 9264
+serverHost = "0.0.0.0"
+
+# =============================================================================
+# AUTHENTICATION & SECURITY CONFIGURATION
+# =============================================================================
+# JWT Authentication settings
+jwtSecret = "your-super-secret-jwt-key-change-this-in-production-environment"
+jwtIssuer = "icp-server"
+jwtAudience = "icp-users"
+jwtExpiryHours = 24
+
+# =============================================================================
+# OPERATIONAL CONFIGURATION
+# =============================================================================
+# Runtime management settings
+heartbeatTimeoutSeconds = 300  # 5 minutes
+schedulerIntervalSeconds = 60  # 1 minute
+maxPendingCommands = 100
+
+# Connection and retry settings
+httpTimeoutSeconds = 30
+maxRetryAttempts = 3
+dbConnectionTimeoutSeconds = 30
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+# Logging and monitoring settings
+logLevel = "INFO"  # Options: DEBUG, INFO, WARN, ERROR
+enableAuditLogging = true
+enableMetrics = true
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+[icp_server.storage]
+# Primary database connection settings
+dbHost = "localhost"
+dbPort = 3306
+dbName = "icp_database"
+dbUser = "root"
+dbPassword = "my-secret-pw"
+dbType = "mysql"  # Options: mysql, postgresql
+
+# Connection pool settings
+dbMaxPoolSize = 10
+maxOpenConnections = 10
+minIdleConnections = 5
+maxConnectionLifeTime = 1800.0  # 30 minutes in seconds
+
+

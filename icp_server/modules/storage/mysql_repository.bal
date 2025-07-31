@@ -7,7 +7,7 @@ import ballerina/time;
 final DatabaseConnectionManager dbManager = check new ("mysql");
 final sql:Client dbClient = dbManager.getClient();
 
-public isolated function registerRuntime(types:Runtime runtime) returns types:Runtime|error {
+public isolated function registerRuntime(types:BallerinaRuntime runtime) returns types:BallerinaRuntime|error {
     // Validate runtime data before starting transaction
     error? validationResult = validateRuntimeData(runtime);
     if validationResult is error {
@@ -40,17 +40,12 @@ public isolated function registerRuntime(types:Runtime runtime) returns types:Ru
                     version = ${runtime.version},
                     platform_name = ${runtime.nodeInfo.platformName},
                     platform_version = ${runtime.nodeInfo.platformVersion},
-                    platform_home = ${runtime.nodeInfo.platformHome},
+                    platform_home = ${runtime.nodeInfo.ballerinaHome},
                     os_name = ${runtime.nodeInfo.osName},
                     os_version = ${runtime.nodeInfo.osVersion},
                     last_heartbeat = ${currentTime}
                 WHERE runtime_id = ${runtime.runtimeId}
             `);
-
-            // if updateResult.affectedRowCount == 0 {
-            //     rollback;
-            //     return error(string `Failed to update runtime ${runtime.runtimeId}`);
-            // }
 
             log:printInfo(string `Updated existing runtime: ${runtime.runtimeId}`);
         } else {
@@ -66,16 +61,11 @@ public isolated function registerRuntime(types:Runtime runtime) returns types:Ru
                     ${runtime.status}, ${runtime.environment}, 
                     ${runtime.deploymentType}, ${runtime.version},
                     ${runtime.nodeInfo.platformName}, ${runtime.nodeInfo.platformVersion},
-                    ${runtime.nodeInfo.platformHome}, ${runtime.nodeInfo.osName},
+                    ${runtime.nodeInfo.ballerinaHome}, ${runtime.nodeInfo.osName},
                     ${runtime.nodeInfo.osVersion}, ${currentTime},
                     ${currentTime}
                 )
             `);
-
-            // if insertResult.affectedRowCount == 0 {
-            //     rollback;
-            //     return error(string `Failed to register runtime ${runtime.runtimeId}`);
-            // }
 
             log:printInfo(string `Registered new runtime: ${runtime.runtimeId}`);
         }
@@ -100,10 +90,6 @@ public isolated function registerRuntime(types:Runtime runtime) returns types:Ru
                     ${serviceDetail.state}
                 )
             `);
-
-            // if serviceInsertResult.affectedRowCount == 0 {
-            //     return error(string `Failed to register service ${serviceDetail.name} for runtime ${runtime.runtimeId}`);
-            // }
 
             // Insert resources for each service
             foreach types:Resource resourceDetail in serviceDetail.resources {
@@ -131,9 +117,6 @@ public isolated function registerRuntime(types:Runtime runtime) returns types:Ru
                 )
             `);
 
-            // if listenerInsertResult.affectedRowCount == 0 {
-            //     return error(string `Failed to register listener ${listenerDetail.name} for runtime ${runtime.runtimeId}`);
-            // }
         }
 
         // Create audit log entry
@@ -158,7 +141,7 @@ public isolated function registerRuntime(types:Runtime runtime) returns types:Ru
     }
 
     // Return the runtime with updated timestamps
-    types:Runtime updatedRuntime = {
+    types:BallerinaRuntime updatedRuntime = {
         runtimeId: runtime.runtimeId,
         runtimeType: runtime.runtimeType,
         status: runtime.status,
@@ -175,7 +158,7 @@ public isolated function registerRuntime(types:Runtime runtime) returns types:Ru
 }
 
 // Validation function for runtime data
-isolated function validateRuntimeData(types:Runtime runtime) returns error? {
+isolated function validateRuntimeData(types:BallerinaRuntime runtime) returns error? {
     // Validate required fields
     if runtime.runtimeId.trim().length() == 0 {
         return error("Runtime ID cannot be empty");
@@ -185,41 +168,9 @@ isolated function validateRuntimeData(types:Runtime runtime) returns error? {
         return error("Runtime ID cannot exceed 100 characters");
     }
 
-    // Validate runtime type
-    if runtime.runtimeType != types:MI && runtime.runtimeType != types:BI {
-        return error("Invalid runtime type. Must be MI or BI");
-    }
-
-    // Validate runtime status
-    if runtime.status != types:RUNNING &&
-        runtime.status != types:FAILED &&
-        runtime.status != types:DISABLED &&
-        runtime.status != types:OFFLINE {
-        return error("Invalid runtime status");
-    }
-
     // Validate node info
     if runtime.nodeInfo.platformName.trim().length() == 0 {
         return error("Platform name cannot be empty");
-    }
-
-    // Validate artifacts
-    foreach types:ServiceDetail serviceDetail in runtime.artifacts.services {
-        if serviceDetail.name.trim().length() == 0 {
-            return error("Service name cannot be empty");
-        }
-        if serviceDetail.package.trim().length() == 0 {
-            return error("Service package cannot be empty");
-        }
-    }
-
-    foreach types:ListenerDetail listenerDetail in runtime.artifacts.listeners {
-        if listenerDetail.name.trim().length() == 0 {
-            return error("Listener name cannot be empty");
-        }
-        if listenerDetail.package.trim().length() == 0 {
-            return error("Listener package cannot be empty");
-        }
     }
 
     return ();

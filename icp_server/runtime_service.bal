@@ -2,6 +2,7 @@ import icp_server.storage;
 import icp_server.types;
 
 import ballerina/http;
+import ballerina/log;
 
 // HTTP service configuration
 listener http:Listener httpListener = new (serverPort, config = {host: serverHost});
@@ -10,10 +11,11 @@ listener http:Listener httpListener = new (serverPort, config = {host: serverHos
 service /icp on httpListener {
 
     // Register a new runtime
-    isolated resource function post register(types:Runtime runtime) returns types:RuntimeRegistrationResponse|error? {
+    isolated resource function post register(types:BallerinaRuntime runtime) returns types:RuntimeRegistrationResponse|error? {
         do {
             // Register runtime using the repository
-            types:Runtime savedRuntime = check storage:registerRuntime(runtime);
+
+            types:BallerinaRuntime savedRuntime = check storage:registerRuntime(runtime);
 
             // Return success response
             types:RuntimeRegistrationResponse successResponse = {
@@ -25,6 +27,7 @@ service /icp on httpListener {
 
         } on fail error e {
             // Return error response
+            log:printError("Failed to register runtime", e);
             types:RuntimeRegistrationResponse errorResponse = {
                 success: false,
                 message: "Failed to register runtime",
@@ -45,6 +48,7 @@ service /icp on httpListener {
 
         } on fail error e {
             // Return error response
+            log:printError("Failed to process heartbeat", e);
             types:HeartbeatResponse errorResponse = {
                 acknowledged: false,
                 commands: []

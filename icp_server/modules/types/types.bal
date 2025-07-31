@@ -22,22 +22,22 @@ public enum ArtifactState {
 }
 
 // Core domain types
-public type Node record {
+public type BallerinaNode record {
     string platformName = "ballerina";
     string platformVersion?;
-    string platformHome?;
+    string ballerinaHome?;
     string osName?;
     string osVersion?;
 };
 
-public type Runtime record {
+public type BallerinaRuntime record {
     string runtimeId;
     RuntimeType runtimeType;
     RuntimeStatus status;
     string environment?;
     string deploymentType?;
     string version?;
-    Node nodeInfo;
+    BallerinaNode nodeInfo;
     Artifacts artifacts;
     time:Utc registrationTime?;
     time:Utc lastHeartbeat?;
@@ -49,7 +49,6 @@ public type Heartbeat record {
     Artifacts artifacts;
     time:Utc timestamp;
 };
-
 
 public type Artifacts record {
     ListenerDetail[] listeners;

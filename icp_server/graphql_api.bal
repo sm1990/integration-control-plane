@@ -22,7 +22,14 @@ import ballerina/sql;
 import ballerina/time;
 
 // GraphQL listener configuration
-listener graphql:Listener graphqlListener = new (9090);
+listener graphql:Listener graphqlListener = new (graphqlPort,
+    secureSocket = {
+        key: {
+            path: keystorePath,
+            password: keystorePassword
+        }
+    }
+);
 
 // GraphQL service for runtime details
 service /graphql on graphqlListener {
@@ -217,7 +224,7 @@ isolated function mapToService(types:ServiceRecord serviceRecord, string runtime
     stream<types:ResourceRecord, sql:Error?> resourceStream = dbClient->query(`
         SELECT resource_url, methods 
         FROM service_resources 
-        WHERE runtime_id = ${runtimeId} AND service_name = ${serviceRecord.service_name}
+        WHERE runtime_id = ${runtimeId} AND service_name = ${serviceRecord.name}
     `);
 
     check from types:ResourceRecord resourceRecord in resourceStream
@@ -234,9 +241,9 @@ isolated function mapToService(types:ServiceRecord serviceRecord, string runtime
         };
 
     return {
-        name: serviceRecord.service_name,
-        package: serviceRecord.service_package,
-        basePath: serviceRecord.base_path,
+        name: serviceRecord.name,
+        package: serviceRecord.package,
+        basePath: serviceRecord.basePath,
         state: serviceRecord.state,
         resources: resourceList
     };

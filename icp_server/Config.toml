@@ -6,8 +6,9 @@
 # =============================================================================
 [icp_server]
 # HTTP server settings
-serverPort = 9264
+serverPort = 9445
 serverHost = "0.0.0.0"
+graphqlPort = 9090
 
 # =============================================================================
 # AUTHENTICATION & SECURITY CONFIGURATION

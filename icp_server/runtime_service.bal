@@ -21,7 +21,17 @@ import ballerina/http;
 import ballerina/log;
 
 // HTTP service configuration
-listener http:Listener httpListener = new (serverPort, config = {host: serverHost});
+listener http:Listener httpListener = new (serverPort,
+    config = {
+        host: serverHost,
+        secureSocket: {
+            key: {
+                path: keystorePath,
+                password: keystorePassword
+            }
+        }
+    }
+);
 
 // Runtime management service
 service /icp on httpListener {
@@ -31,6 +41,7 @@ service /icp on httpListener {
         do {
             // Process heartbeat using the repository (handles both registration and updates)
             types:HeartbeatResponse heartbeatResponse = check storage:processHeartbeat(heartbeat);
+            log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtimeId}`);
             return heartbeatResponse;
 
         } on fail error e {
@@ -40,7 +51,6 @@ service /icp on httpListener {
                 acknowledged: false,
                 commands: []
             };
-
             return errorResponse;
         }
     }
@@ -50,6 +60,7 @@ service /icp on httpListener {
         do {
             // Process delta heartbeat using the repository
             types:HeartbeatResponse heartbeatResponse = check storage:processDeltaHeartbeat(deltaHeartbeat);
+            log:printInfo(string `Delta heartbeat processed successfully for ${deltaHeartbeat.runtimeId}`);
             return heartbeatResponse;
 
         } on fail error e {
@@ -60,7 +71,6 @@ service /icp on httpListener {
                 fullHeartbeatRequired: true,
                 commands: []
             };
-
             return errorResponse;
         }
     }

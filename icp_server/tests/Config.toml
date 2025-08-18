@@ -1,0 +1,10 @@
+# Test configuration for GraphQL API tests
+
+[icp_server.storage]
+# Primary database connection settings
+dbHost = "localhost"
+dbPort = 3306
+dbName = "icp_database"
+dbUser = "root"
+dbPassword = "my-secret-pw"
+dbType = "mysql"  # Options: mysql, postgresql

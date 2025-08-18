@@ -13,11 +13,16 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+import ballerina/file;
+import ballerina/os;
 
 // Server configuration
-configurable int serverPort = 8080;
+configurable int serverPort = 9445;
 configurable string serverHost = "0.0.0.0";
 configurable string organization = "WSO2 Inc.";
+configurable int graphqlPort = 9090;
+configurable string keystorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaKeystore.p12");
+configurable string keystorePassword = "ballerina";
 
 // Authentication configuration
 configurable string jwtSecret = "your-secret-key-change-in-production";

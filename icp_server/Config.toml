@@ -4,20 +4,11 @@
 # =============================================================================
 # SERVER CONFIGURATION
 # =============================================================================
-[icp_server]
+
 # HTTP server settings
 serverPort = 9445
 serverHost = "0.0.0.0"
 graphqlPort = 9090
-
-# =============================================================================
-# AUTHENTICATION & SECURITY CONFIGURATION
-# =============================================================================
-# JWT Authentication settings
-jwtSecret = "your-super-secret-jwt-key-change-this-in-production-environment"
-jwtIssuer = "icp-server"
-jwtAudience = "icp-users"
-jwtExpiryHours = 24
 
 # =============================================================================
 # OPERATIONAL CONFIGURATION
@@ -25,8 +16,6 @@ jwtExpiryHours = 24
 # Runtime management settings
 heartbeatTimeoutSeconds = 300  # 5 minutes
 schedulerIntervalSeconds = 60  # 1 minute
-maxPendingCommands = 100
-
 
 # =============================================================================
 # LOGGING CONFIGURATION

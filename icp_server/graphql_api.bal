@@ -105,13 +105,13 @@ service /graphql on graphqlListener {
         sql:Client dbClient = storage:dbClient;
         types:Service[] serviceList = [];
 
-        stream<types:ServiceRecord, sql:Error?> serviceStream = dbClient->query(`
+        stream<types:ServiceRecordInDB, sql:Error?> serviceStream = dbClient->query(`
             SELECT service_name, service_package, base_path, state 
             FROM runtime_services 
             WHERE runtime_id = ${runtimeId}
         `);
 
-        check from types:ServiceRecord serviceRecord in serviceStream
+        check from types:ServiceRecordInDB serviceRecord in serviceStream
             do {
                 types:Service serviceItem = check mapToService(serviceRecord, runtimeId);
                 serviceList.push(serviceItem);
@@ -125,13 +125,13 @@ service /graphql on graphqlListener {
         sql:Client dbClient = storage:dbClient;
         types:Listener[] listenerList = [];
 
-        stream<types:ListenerRecord, sql:Error?> listenerStream = dbClient->query(`
+        stream<types:ListenerRecordInDB, sql:Error?> listenerStream = dbClient->query(`
             SELECT listener_name, listener_package, protocol, state 
             FROM runtime_listeners 
             WHERE runtime_id = ${runtimeId}
         `);
 
-        check from types:ListenerRecord listenerRecord in listenerStream
+        check from types:ListenerRecordInDB listenerRecord in listenerStream
             do {
                 types:Listener listenerItem = {
                     name: listenerRecord.listener_name,
@@ -152,13 +152,13 @@ isolated function mapToRuntime(types:RuntimeRecord runtimeRecord) returns types:
 
     // Get services for this runtime
     types:Service[] serviceList = [];
-    stream<types:ServiceRecord, sql:Error?> serviceStream = dbClient->query(`
+    stream<types:ServiceRecordInDB, sql:Error?> serviceStream = dbClient->query(`
         SELECT service_name, service_package, base_path, state 
         FROM runtime_services 
         WHERE runtime_id = ${runtimeRecord.runtime_id}
     `);
 
-    check from types:ServiceRecord serviceRecord in serviceStream
+    check from types:ServiceRecordInDB serviceRecord in serviceStream
         do {
             types:Service serviceItem = check mapToService(serviceRecord, runtimeRecord.runtime_id);
             serviceList.push(serviceItem);
@@ -166,13 +166,13 @@ isolated function mapToRuntime(types:RuntimeRecord runtimeRecord) returns types:
 
     // Get listeners for this runtime
     types:Listener[] listenerList = [];
-    stream<types:ListenerRecord, sql:Error?> listenerStream = dbClient->query(`
+    stream<types:ListenerRecordInDB, sql:Error?> listenerStream = dbClient->query(`
         SELECT listener_name, listener_package, protocol, state 
         FROM runtime_listeners 
         WHERE runtime_id = ${runtimeRecord.runtime_id}
     `);
 
-    check from types:ListenerRecord listenerRecord in listenerStream
+    check from types:ListenerRecordInDB listenerRecord in listenerStream
         do {
             types:Listener listenerItem = {
                 name: listenerRecord.listener_name,
@@ -216,7 +216,7 @@ isolated function mapToRuntime(types:RuntimeRecord runtimeRecord) returns types:
 }
 
 // Helper function to map service record and get resources
-isolated function mapToService(types:ServiceRecord serviceRecord, string runtimeId) returns types:Service|error {
+isolated function mapToService(types:ServiceRecordInDB serviceRecord, string runtimeId) returns types:Service|error {
     sql:Client dbClient = storage:dbClient;
 
     // Get resources for this service
@@ -224,7 +224,7 @@ isolated function mapToService(types:ServiceRecord serviceRecord, string runtime
     stream<types:ResourceRecord, sql:Error?> resourceStream = dbClient->query(`
         SELECT resource_url, methods 
         FROM service_resources 
-        WHERE runtime_id = ${runtimeId} AND service_name = ${serviceRecord.name}
+        WHERE runtime_id = ${runtimeId} AND service_name = ${serviceRecord.service_name}
     `);
 
     check from types:ResourceRecord resourceRecord in resourceStream
@@ -239,12 +239,10 @@ isolated function mapToService(types:ServiceRecord serviceRecord, string runtime
             };
             resourceList.push(resourceItem);
         };
-
     return {
-        name: serviceRecord.name,
-        package: serviceRecord.package,
-        basePath: serviceRecord.basePath,
-        state: serviceRecord.state,
+        name: serviceRecord.service_name,
+        package: serviceRecord.service_package,
+        basePath: serviceRecord.base_path,
         resources: resourceList
     };
 }

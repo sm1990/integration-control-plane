@@ -39,16 +39,16 @@ function createMockRuntimeRecord() returns types:RuntimeRecord {
     };
 }
 
-function createMockServiceRecord() returns types:ServiceRecord {
+function createMockServiceRecord() returns types:ServiceRecordInDB {
     return {
-        name: "MockService",
-        package: "com.example.mock",
-        basePath: "/api/v1/mock",
+        service_name: "MockService",
+        service_package: "com.example.mock",
+        base_path: "/api/v1/mock",
         state: "ENABLED"
     };
 }
 
-function createMockListenerRecord() returns types:ListenerRecord {
+function createMockListenerRecord() returns types:ListenerRecordInDB {
     return {
         listener_name: "MockHTTPListener",
         listener_package: "com.example.http",
@@ -89,7 +89,6 @@ function createMockService() returns types:Service {
         name: "MockAPIService",
         package: "com.example.api",
         basePath: "/api",
-        state: "ENABLED",
         resources: [createMockResource()]
     };
 }
@@ -119,10 +118,10 @@ function testMockDataCreation() returns error? {
     test:assertEquals(runtimeRecord.runtime_id, "mock-runtime-123", "Mock runtime ID should match");
     test:assertEquals(runtimeRecord.runtime_type, "MI", "Mock runtime type should match");
 
-    types:ServiceRecord serviceRecord = createMockServiceRecord();
-    test:assertEquals(serviceRecord.name, "MockService", "Mock service name should match");
+    types:ServiceRecordInDB serviceRecord = createMockServiceRecord();
+    test:assertEquals(serviceRecord.service_name, "MockService", "Mock service name should match");
 
-    types:ListenerRecord listenerRecord = createMockListenerRecord();
+    types:ListenerRecordInDB listenerRecord = createMockListenerRecord();
     test:assertEquals(listenerRecord.listener_name, "MockHTTPListener", "Mock listener name should match");
 
     types:ResourceRecord resourceRecord = createMockResourceRecord();
@@ -345,16 +344,16 @@ function testMethodsJSONParsing() returns error? {
 
     foreach string methodsStr in testMethodsJson {
         json methodsJson = check methodsStr.fromJsonString();
-        string[] methods = check methodsJson.cloneWithType();
+        string[]|error methods = methodsJson.cloneWithType();
 
         test:assertTrue(methods is string[], "Methods should be string array");
 
         types:Resource resourceWithMethods = {
             url: "/test/resource",
-            methods: methods
+            methods: check methods
         };
 
-        test:assertEquals(resourceWithMethods.methods, methods, "Resource methods should match parsed methods");
+        test:assertEquals(resourceWithMethods.methods, check methods, "Resource methods should match parsed methods");
     }
 }
 

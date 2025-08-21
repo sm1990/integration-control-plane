@@ -39,7 +39,7 @@ function testGraphQLEndpointHealth() returns error? {
     http:Response response = check testClient->post("/", query);
     test:assertEquals(response.statusCode, 200, "GraphQL endpoint should be accessible");
 
-    json payload = check response.getJsonPayload();
+    json|error payload = response.getJsonPayload();
     test:assertTrue(payload is json, "Response should be valid JSON");
 }
 

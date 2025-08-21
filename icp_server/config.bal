@@ -23,17 +23,17 @@ configurable string organization = "WSO2 Inc.";
 configurable int graphqlPort = 9090;
 configurable string keystorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaKeystore.p12");
 configurable string keystorePassword = "ballerina";
+configurable string truststorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaTruststore.p12");
+configurable string truststorePassword = "ballerina";
+
+configurable int heartbeatTimeoutSeconds = 300;
+configurable int schedulerIntervalSeconds = 60;
 
 // Authentication configuration
-configurable string jwtSecret = "your-secret-key-change-in-production";
-configurable string jwtIssuer = "icp-server";
-configurable string jwtAudience = "icp-users";
-configurable int jwtExpiryHours = 24;
-
-// Operational configuration
-configurable int heartbeatTimeoutSeconds = 300; // 5 minutes
-configurable int schedulerIntervalSeconds = 60; // 1 minute
-configurable int maxPendingCommands = 100;
+configurable string jwtIssuer = "icp-jwt-issuer";
+configurable string|string[] jwtAudience = "icp-server";
+configurable string publicCertFile = "./resources/keys/public.cert";
+configurable decimal jwtClockSkewSeconds = 10;
 
 // Logging configuration
 configurable string logLevel = "INFO"; // DEBUG, INFO, WARN, ERROR

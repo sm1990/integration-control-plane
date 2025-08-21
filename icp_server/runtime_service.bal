@@ -34,9 +34,35 @@ listener http:Listener httpListener = new (serverPort,
 );
 
 // Runtime management service
+// JWT configuration
+@http:ServiceConfig {
+    auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: jwtIssuer,
+                audience: jwtAudience,
+                // signatureConfig: {
+                //     trustStoreConfig: {
+                //         trustStore: {
+                //             path: publicCertFile,
+                //             password: "ballerina"
+                //         },
+                //         certAlias: "ballerina"
+                //     }
+                // },
+                clockSkew: jwtClockSkewSeconds
+            }
+        }
+    ]
+}
 service /icp on httpListener {
 
     // Process heartbeat from runtime
+    @http:ResourceConfig {
+        auth: {
+            scopes: ["runtime_agent"]
+        }
+    }
     isolated resource function post heartbeat(types:Heartbeat heartbeat) returns types:HeartbeatResponse|error? {
         do {
             // Process heartbeat using the repository (handles both registration and updates)
@@ -56,6 +82,11 @@ service /icp on httpListener {
     }
 
     // Process delta heartbeat from runtime
+    @http:ResourceConfig {
+        auth: {
+            scopes: ["runtime_agent"]
+        }
+    }
     isolated resource function post deltaHeartbeat(types:DeltaHeartbeat deltaHeartbeat) returns types:HeartbeatResponse|error? {
         do {
             // Process delta heartbeat using the repository

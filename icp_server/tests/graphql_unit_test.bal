@@ -51,42 +51,6 @@ function testRuntimeRecordCreation() returns error? {
 @test:Config {
     groups: ["unit", "types"]
 }
-function testServiceRecordCreation() returns error? {
-    // Test ServiceRecord type creation
-    types:ServiceRecord serviceRecord = {
-        name: "TestService",
-        package: "com.example.test",
-        basePath: "/api/v1",
-        state: "ENABLED"
-    };
-
-    test:assertEquals(serviceRecord.name, "TestService", "Service name should match");
-    test:assertEquals(serviceRecord.package, "com.example.test", "Service package should match");
-    test:assertEquals(serviceRecord.basePath, "/api/v1", "Base path should match");
-    test:assertEquals(serviceRecord.state, "ENABLED", "State should match");
-}
-
-@test:Config {
-    groups: ["unit", "types"]
-}
-function testListenerRecordCreation() returns error? {
-    // Test ListenerRecord type creation
-    types:ListenerRecord listenerRecord = {
-        listener_name: "HttpListener",
-        listener_package: "com.example.listener",
-        protocol: "HTTP",
-        state: "ENABLED"
-    };
-
-    test:assertEquals(listenerRecord.listener_name, "HttpListener", "Listener name should match");
-    test:assertEquals(listenerRecord.listener_package, "com.example.listener", "Listener package should match");
-    test:assertEquals(listenerRecord.protocol, "HTTP", "Protocol should match");
-    test:assertEquals(listenerRecord.state, "ENABLED", "State should match");
-}
-
-@test:Config {
-    groups: ["unit", "types"]
-}
 function testResourceRecordCreation() returns error? {
     // Test ResourceRecord type creation
     types:ResourceRecord resourceRecord = {
@@ -148,7 +112,6 @@ function testServiceTypeWithResources() returns error? {
         name: "UserService",
         package: "com.example.user",
         basePath: "/api",
-        state: "ENABLED",
         resources: resources
     };
 
@@ -176,35 +139,6 @@ function testListenerType() returns error? {
     test:assertEquals(listenerType.package, "com.example.https", "Listener package should match");
     test:assertEquals(listenerType.protocol, "HTTPS", "Protocol should match");
     test:assertEquals(listenerType.state, "ENABLED", "State should match");
-}
-
-@test:Config {
-    groups: ["unit", "validation"]
-}
-function testRuntimeTypeValidation() returns error? {
-    // Test runtime type validation
-    types:Runtime runtime = {
-        runtimeId: "test-runtime-validation",
-        runtimeType: "MI", // Valid runtime type
-        status: "RUNNING", // Valid status
-        deploymentType: "standalone",
-        environment: "test",
-        lastHeartbeat: "2024-01-01T12:00:00Z",
-        osName: "Test OS",
-        osVersion: "1.0",
-        platformHome: "/test/home",
-        platformName: "Test Platform",
-        platformVersion: "1.0.0",
-        registrationTime: "2024-01-01T10:00:00Z",
-        version: "1.0.0",
-        services: [],
-        listeners: []
-    };
-
-    test:assertTrue(runtime.runtimeType == "MI" || runtime.runtimeType == "BI",
-            "Runtime type should be MI or BI");
-    test:assertTrue(runtime.status is string, "Status should be a string");
-    test:assertTrue(runtime.runtimeId.length() > 0, "Runtime ID should not be empty");
 }
 
 @test:Config {
@@ -348,7 +282,6 @@ function testLargeDataSets() returns error? {
             name: "Service" + i.toString(),
             package: "com.example.service" + i.toString(),
             basePath: "/api/v" + i.toString(),
-            state: "ENABLED",
             resources: []
         };
         services.push(serviceType);

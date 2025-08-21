@@ -392,9 +392,6 @@ dependencies = [
 	{org = "ballerina", name = "lang.int"},
 	{org = "ballerina", name = "time"}
 ]
-modules = [
-	{org = "ballerina", packageName = "uuid", moduleName = "uuid"}
-]
 
 [[package]]
 org = "ballerina"
@@ -520,7 +517,6 @@ dependencies = [
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
-	{org = "ballerina", name = "uuid"},
 	{org = "ballerinai", name = "transaction"},
 	{org = "ballerinax", name = "mysql"},
 	{org = "ballerinax", name = "mysql.driver"},

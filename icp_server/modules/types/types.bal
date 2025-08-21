@@ -15,7 +15,6 @@
 // under the License.
 
 import ballerina/time;
-import ballerina/uuid;
 
 // === Enums ===
 
@@ -86,19 +85,6 @@ public type Node record {
     string ballerinaHome?;
     string osName?;
     string osVersion?;
-};
-
-public type BallerinaRuntime record {
-    string runtimeId;
-    RuntimeType runtimeType;
-    RuntimeStatus status;
-    string environment?;
-    string deploymentType?;
-    string version?;
-    Node nodeInfo;
-    Artifacts artifacts;
-    time:Utc registrationTime?;
-    time:Utc lastHeartbeat?;
 };
 
 // === Runtime Communication Types ===
@@ -174,17 +160,6 @@ public type IcpConfig record {|
     Observability observability;
 |};
 
-public type DashBoard record {
-    string url;
-    int heartbeatInterval = 10;
-    decimal waitTimeForServicesInSeconds = 5;
-    string groupId;
-    string nodeId = uuid:createType4AsString();
-    string mgtApiUrl;
-    string serviceAccount = "bal_admin";
-    string serviceAccountPassword = "bal_secret";
-};
-
 public type RequestLimit record {
     int maxUriLength;
     int maxHeaderSize;
@@ -202,14 +177,6 @@ public type RuntimeSummary record {
     int totalListeners;
     time:Utc lastHeartbeat?;
     boolean isOnline;
-};
-
-public type IntegrationSummary record {
-    string runtimeId;
-    string artifactName;
-    string artifactType; // service or listener
-    ArtifactState state;
-    string package;
 };
 
 public type ChangeNotification record {
@@ -254,18 +221,18 @@ public type RuntimeRecord record {
     time:Utc last_heartbeat?;
 };
 
-public type ServiceRecord record {
-    string name;
-    string package;
-    string basePath?;
-    string state;
+public type ServiceRecordInDB record {
+    string service_name;
+    string service_package;
+    string base_path;
+    ArtifactState state;
 };
 
-public type ListenerRecord record {
+public type ListenerRecordInDB record {
     string listener_name;
     string listener_package;
     string protocol;
-    string state;
+    ArtifactState state;
 };
 
 public type ResourceRecord record {
@@ -293,7 +260,10 @@ public type Runtime record {
 };
 
 public type Service record {
-    *ServiceRecord;
+    string name;
+    string package;
+    string basePath;
+    ArtifactState state = ENABLED;
     Resource[] resources;
 };
 
@@ -301,6 +271,6 @@ public type Listener record {
     string name;
     string package;
     string protocol;
-    string state;
+    ArtifactState state = ENABLED;
 };
 

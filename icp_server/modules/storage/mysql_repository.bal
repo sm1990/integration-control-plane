@@ -42,14 +42,14 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
     } else if environment is string {
         whereConditions = sql:queryConcat(whereConditions, ` AND environment = ${environment} `);
     }
-    sql:ParameterizedQuery selectClause = ` SELECT runtime_id, runtime_type, status, environment, deployment_type, version, 
+    sql:ParameterizedQuery selectClause = ` SELECT runtime_id, runtime_type, status, environment, version, 
                  platform_name, platform_version, platform_home, os_name, os_version, 
                  registration_time, last_heartbeat FROM runtimes `;
     sql:ParameterizedQuery orderByClause = ` ORDER BY registration_time DESC `;
     sql:ParameterizedQuery query = sql:queryConcat(selectClause, whereClause, whereConditions, orderByClause);
-    stream<types:RuntimeRecord, sql:Error?> runtimeStream = dbClient->query(query);
+    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(query);
 
-    check from types:RuntimeRecord runtimeRecord in runtimeStream
+    check from types:RuntimeDBRecord runtimeRecord in runtimeStream
         do {
             types:Runtime runtime = check mapToRuntime(runtimeRecord);
             runtimeList.push(runtime);
@@ -60,15 +60,15 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
 
 // Get a specific runtime by ID
 public isolated function getRuntimeById(string runtimeId) returns types:Runtime?|error {
-    stream<types:RuntimeRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id, runtime_type, status, environment, deployment_type, version, 
+    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
+        SELECT runtime_id, runtime_type, status, environment, version, 
                platform_name, platform_version, platform_home, os_name, os_version, 
                registration_time, last_heartbeat 
         FROM runtimes 
         WHERE runtime_id = ${runtimeId}
     `);
 
-    types:RuntimeRecord[] runtimeRecords = check from types:RuntimeRecord runtimeRecord in runtimeStream
+    types:RuntimeDBRecord[] runtimeRecords = check from types:RuntimeDBRecord runtimeRecord in runtimeStream
         select runtimeRecord;
 
     if runtimeRecords.length() == 0 {
@@ -120,7 +120,7 @@ public isolated function getListenersForRuntime(string runtimeId) returns types:
 }
 
 // Helper function to map database record to Runtime type
-public isolated function mapToRuntime(types:RuntimeRecord runtimeRecord) returns types:Runtime|error {
+public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) returns types:Runtime|error {
     // Get services for this runtime
     types:Service[] serviceList = check getServicesForRuntime(runtimeRecord.runtime_id);
 
@@ -145,7 +145,6 @@ public isolated function mapToRuntime(types:RuntimeRecord runtimeRecord) returns
         runtimeType: runtimeRecord.runtime_type,
         status: runtimeRecord.status,
         environment: runtimeRecord.environment,
-        deploymentType: runtimeRecord.deployment_type,
         version: runtimeRecord.version,
         platformName: runtimeRecord.platform_name,
         platformVersion: runtimeRecord.platform_version,
@@ -344,14 +343,13 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
             // Register new runtime
             sql:ExecutionResult _ = check dbClient->execute(`
                 INSERT INTO runtimes (
-                    runtime_id, runtime_type, status, environment,
-                    deployment_type, version, platform_name, 
+                    runtime_id, runtime_type, status, environment, version, platform_name, 
                     platform_version, platform_home, os_name,
                     os_version, registration_time, last_heartbeat
                 ) VALUES (
                     ${heartbeat.runtimeId}, ${heartbeat.runtimeType}, 
                     ${heartbeat.status}, ${heartbeat.environment}, 
-                    ${heartbeat.deploymentType}, ${heartbeat.version},
+                    ${heartbeat.version},
                     ${heartbeat.nodeInfo.platformName}, ${heartbeat.nodeInfo.platformVersion},
                     ${heartbeat.nodeInfo.ballerinaHome}, ${heartbeat.nodeInfo.osName},
                     ${heartbeat.nodeInfo.osVersion}, ${currentTimeStr},
@@ -373,7 +371,6 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
                 SET status = ${heartbeat.status}, 
                     runtime_type = ${heartbeat.runtimeType},
                     environment = ${heartbeat.environment},
-                    deployment_type = ${heartbeat.deploymentType},
                     version = ${heartbeat.version},
                     platform_name = ${heartbeat.nodeInfo.platformName},
                     platform_version = ${heartbeat.nodeInfo.platformVersion},

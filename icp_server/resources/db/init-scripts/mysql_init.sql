@@ -19,6 +19,8 @@ USE icp_database;
 -- Environments table - stores core environment information
 CREATE TABLE IF NOT EXISTS environments (
     name VARCHAR(200) NOT NULL PRIMARY KEY
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Main runtimes table - stores core runtime information
@@ -27,7 +29,6 @@ CREATE TABLE IF NOT EXISTS runtimes (
     runtime_type ENUM('MI', 'BI') NOT NULL,
     status ENUM('RUNNING', 'FAILED', 'DISABLED', 'OFFLINE') NOT NULL DEFAULT 'OFFLINE',
     environment VARCHAR(200) NOT NULL,
-    deployment_type VARCHAR(50) NULL,
     version VARCHAR(20) NULL,
     
     -- Node information

@@ -18,7 +18,6 @@ import icp_server.storage;
 import icp_server.types;
 
 import ballerina/graphql;
-import ballerinax/trigger.github;
 
 // GraphQL listener configuration
 listener graphql:Listener graphqlListener = new (graphqlPort,
@@ -29,9 +28,6 @@ listener graphql:Listener graphqlListener = new (graphqlPort,
         }
     }
 );
-
-string webhookSecret = "<webhook_secret>";
-listener github:Listener github = new ({webhookSecret}, 8080);
 
 // GraphQL service for runtime details
 service /graphql on graphqlListener {
@@ -59,10 +55,7 @@ service /graphql on graphqlListener {
     // Mutation: Add environments to DB
     isolated remote function addEnvironments(string[] environments) returns boolean|error {
         // Call storage layer to insert environments
-        var result = storage:insertEnvironmentsToDB(environments);
-        if result is error {
-            return result;
-        }
+        check storage:insertEnvironmentsToDB(environments);
         return true;
     }
 }

@@ -23,6 +23,11 @@ public enum RuntimeType {
     BI
 }
 
+public enum DeploymentType {
+    VM,
+    K8S
+}
+
 public enum RuntimeStatus {
     RUNNING,
     FAILED,
@@ -87,13 +92,17 @@ public type Node record {
     string osVersion?;
 };
 
+public type Component record {
+    string name;
+    time:Utc createdDate;
+};
+
 // Heartbeat that includes all runtime information for registration/updates
 public type Heartbeat record {|
     string runtimeId;
     RuntimeType runtimeType;
     RuntimeStatus status;
     string environment;
-    string deploymentType?;
     string version?;
     Node nodeInfo;
     Artifacts artifacts;
@@ -162,7 +171,7 @@ public type RuntimeSummary record {
     string runtimeId;
     RuntimeType runtimeType;
     RuntimeStatus status;
-    string environment?;
+    string environment;
     int totalServices;
     int totalListeners;
     time:Utc lastHeartbeat?;
@@ -195,12 +204,11 @@ public type AccessTokenResponse record {|
 |};
 
 // Database record types for mapping query results
-public type RuntimeRecord record {
+public type RuntimeDBRecord record {
     string runtime_id;
     string runtime_type;
     string status;
-    string environment?;
-    string deployment_type?;
+    string environment;
     string version?;
     string platform_name?;
     string platform_version?;
@@ -235,8 +243,7 @@ public type Runtime record {
     string runtimeId;
     string runtimeType;
     string status;
-    string environment?;
-    string deploymentType?;
+    string environment;
     string version?;
     string platformName?;
     string platformVersion?;

@@ -5,7 +5,7 @@
 
 [ballerina]
 dependencies-toml-version = "2"
-distribution-version = "2201.12.7"
+distribution-version = "2201.12.8"
 
 [[package]]
 org = "ballerina"
@@ -195,15 +195,6 @@ dependencies = [
 
 [[package]]
 org = "ballerina"
-name = "lang.error"
-version = "0.0.0"
-scope = "testOnly"
-dependencies = [
-	{org = "ballerina", name = "jballerina.java"}
-]
-
-[[package]]
-org = "ballerina"
 name = "lang.int"
 version = "0.0.0"
 dependencies = [
@@ -350,20 +341,6 @@ dependencies = [
 	{org = "ballerina", name = "jballerina.java"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerina", name = "uuid"}
-]
-
-[[package]]
-org = "ballerina"
-name = "test"
-version = "0.0.0"
-scope = "testOnly"
-dependencies = [
-	{org = "ballerina", name = "jballerina.java"},
-	{org = "ballerina", name = "lang.array"},
-	{org = "ballerina", name = "lang.error"}
-]
-modules = [
-	{org = "ballerina", packageName = "test", moduleName = "test"}
 ]
 
 [[package]]
@@ -519,7 +496,6 @@ dependencies = [
 	{org = "ballerina", name = "log"},
 	{org = "ballerina", name = "os"},
 	{org = "ballerina", name = "sql"},
-	{org = "ballerina", name = "test"},
 	{org = "ballerina", name = "time"},
 	{org = "ballerinai", name = "transaction"},
 	{org = "ballerinax", name = "mysql"},

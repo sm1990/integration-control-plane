@@ -13,6 +13,9 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
+
+import icp_server.types;
+
 import ballerina/file;
 import ballerina/os;
 
@@ -26,7 +29,7 @@ configurable string keystorePassword = "ballerina";
 configurable string truststorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaTruststore.p12");
 configurable string truststorePassword = "ballerina";
 configurable string[] environments = ["dev", "test", "prod"];
-configurable string deploymentType = "VM";
+configurable types:DeploymentType deploymentType = "VM";
 
 configurable int heartbeatTimeoutSeconds = 300;
 configurable int schedulerIntervalSeconds = 300;

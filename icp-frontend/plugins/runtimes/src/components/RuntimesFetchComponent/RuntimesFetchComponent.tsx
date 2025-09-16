@@ -13,7 +13,14 @@ import {
   Select,
   MenuItem,
   Box,
-
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Typography,
+  Chip,
+  Grid,
+  Divider,
 } from '@material-ui/core';
 import { useApi } from '@backstage/core-plugin-api';
 import useAsync from 'react-use/lib/useAsync';
@@ -77,6 +84,10 @@ export const RuntimesFetchComponent = () => {
     componentId: initialComponentId,
   });
   const [refreshIndex, setRefreshIndex] = useState(0);
+
+  // State for dialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedRuntime, setSelectedRuntime] = useState<Runtime | null>(null);
 
   // State for dropdown data
   const [projects, setProjects] = useState<Project[]>([]);
@@ -186,6 +197,19 @@ export const RuntimesFetchComponent = () => {
     setComponents([]); // Clear components when clearing filters
   }, []);
 
+  // Dialog handlers
+  const handleRowClick = useCallback((_event?: React.MouseEvent, rowData?: any) => {
+    if (rowData) {
+      setSelectedRuntime(rowData);
+      setDialogOpen(true);
+    }
+  }, []);
+
+  const handleDialogClose = useCallback(() => {
+    setDialogOpen(false);
+    setSelectedRuntime(null);
+  }, []);
+
   // Loading and error states
   if (loading) {
     return <Progress />;
@@ -204,7 +228,28 @@ export const RuntimesFetchComponent = () => {
   const columns: TableColumn[] = [
     { title: 'Runtime ID', field: 'runtimeId' },
     { title: 'Type', field: 'runtimeType' },
-    { title: 'Status', field: 'status' },
+    {
+      title: 'Status',
+      field: 'status',
+      render: (data) => {
+        const row = data as Runtime;
+        return (
+          <Chip
+            label={row.status}
+            size="small"
+            color={
+              row.status === 'ACTIVE' ? 'primary' :
+                row.status === 'OFFLINE' ? 'secondary' :
+                  'default'
+            }
+            style={{
+              backgroundColor: row.status === 'OFFLINE' ? '#f44336' : undefined,
+              color: row.status === 'OFFLINE' ? 'white' : undefined,
+            }}
+          />
+        );
+      },
+    },
     { title: 'Platform', field: 'platformName' },
     { title: 'Platform Version', field: 'platformVersion' },
     { title: 'OS', field: 'osName' },
@@ -365,7 +410,238 @@ export const RuntimesFetchComponent = () => {
           ...runtime,
           id: runtime.runtimeId,
         }))}
+        onRowClick={handleRowClick}
       />
+
+      {/* Runtime Details Dialog */}
+      <Dialog
+        open={dialogOpen}
+        onClose={handleDialogClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Runtime Details: {selectedRuntime?.runtimeId}</DialogTitle>
+        <DialogContent>
+          {selectedRuntime && (
+            <Grid container spacing={2}>
+              {/* Basic Information */}
+              <Grid item xs={12}>
+                <Typography variant="h6" gutterBottom>
+                  Basic Information
+                </Typography>
+                <Divider />
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Runtime ID:</Typography>
+                <Typography variant="body1">{selectedRuntime.runtimeId}</Typography>
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Type:</Typography>
+                <Chip
+                  label={selectedRuntime.runtimeType}
+                  size="small"
+                  color="primary"
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Status:</Typography>
+                <Chip
+                  label={selectedRuntime.status}
+                  size="small"
+                  color={
+                    selectedRuntime.status === 'ACTIVE' ? 'primary' :
+                      selectedRuntime.status === 'OFFLINE' ? 'secondary' :
+                        'default'
+                  }
+                  style={{
+                    backgroundColor: selectedRuntime.status === 'OFFLINE' ? '#f44336' : undefined,
+                    color: selectedRuntime.status === 'OFFLINE' ? 'white' : undefined,
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Version:</Typography>
+                <Typography variant="body1">{selectedRuntime.version}</Typography>
+              </Grid>
+
+              {/* Platform Information */}
+              <Grid item xs={12} style={{ marginTop: 16 }}>
+                <Typography variant="h6" gutterBottom>
+                  Platform Information
+                </Typography>
+                <Divider />
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Platform:</Typography>
+                <Typography variant="body1">{selectedRuntime.platformName}</Typography>
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Platform Version:</Typography>
+                <Typography variant="body1">{selectedRuntime.platformVersion}</Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="body2" color="textSecondary">Platform Home:</Typography>
+                <Typography variant="body1" style={{ wordBreak: 'break-all' }}>
+                  {selectedRuntime.platformHome}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">OS:</Typography>
+                <Typography variant="body1">{selectedRuntime.osName}</Typography>
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">OS Version:</Typography>
+                <Typography variant="body1">{selectedRuntime.osVersion}</Typography>
+              </Grid>
+
+              {/* Environment & Component */}
+              <Grid item xs={12} style={{ marginTop: 16 }}>
+                <Typography variant="h6" gutterBottom>
+                  Environment & Component
+                </Typography>
+                <Divider />
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Environment:</Typography>
+                <Typography variant="body1">{selectedRuntime.environment.name}</Typography>
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Component:</Typography>
+                <Typography variant="body1">{selectedRuntime.component.name}</Typography>
+              </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="body2" color="textSecondary">Project:</Typography>
+                <Typography variant="body1">{selectedRuntime.component.project.name}</Typography>
+              </Grid>
+
+              {/* Timing Information */}
+              <Grid item xs={12} style={{ marginTop: 16 }}>
+                <Typography variant="h6" gutterBottom>
+                  Timing Information
+                </Typography>
+                <Divider />
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Registration Time:</Typography>
+                <Typography variant="body1">
+                  {selectedRuntime.registrationTime ? new Date(selectedRuntime.registrationTime).toLocaleString() : 'N/A'}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={6}>
+                <Typography variant="body2" color="textSecondary">Last Heartbeat:</Typography>
+                <Typography variant="body1">
+                  {selectedRuntime.lastHeartbeat ? new Date(selectedRuntime.lastHeartbeat).toLocaleString() : 'N/A'}
+                </Typography>
+              </Grid>
+
+              {/* Services */}
+              {selectedRuntime.artifacts?.services && selectedRuntime.artifacts.services.length > 0 && (
+                <>
+                  <Grid item xs={12} style={{ marginTop: 16 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Services ({selectedRuntime.artifacts.services.length})
+                    </Typography>
+                    <Divider />
+                  </Grid>
+
+                  {selectedRuntime.artifacts.services.map((service, index) => (
+                    <Grid item xs={12} key={index} style={{ marginBottom: 8 }}>
+                      <Box border={1} borderColor="grey.300" borderRadius={4} p={2}>
+                        <Grid container spacing={1}>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">Name:</Typography>
+                            <Typography variant="body1">{service.name}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">Package:</Typography>
+                            <Typography variant="body1">{service.package}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">Base Path:</Typography>
+                            <Typography variant="body1">{service.basePath}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">State:</Typography>
+                            <Chip label={service.state} size="small" />
+                          </Grid>
+                          {service.resources && service.resources.length > 0 && (
+                            <Grid item xs={12}>
+                              <Typography variant="body2" color="textSecondary">Resources:</Typography>
+                              {service.resources.map((resource, resourceIndex) => (
+                                <Box key={resourceIndex} ml={2}>
+                                  <Typography variant="caption">
+                                    {resource.methods} - {resource.url}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Grid>
+                          )}
+                        </Grid>
+                      </Box>
+                    </Grid>
+                  ))}
+                </>
+              )}
+
+              {/* Listeners */}
+              {selectedRuntime.artifacts?.listeners && selectedRuntime.artifacts.listeners.length > 0 && (
+                <>
+                  <Grid item xs={12} style={{ marginTop: 16 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Listeners ({selectedRuntime.artifacts.listeners.length})
+                    </Typography>
+                    <Divider />
+                  </Grid>
+
+                  {selectedRuntime.artifacts.listeners.map((listener, index) => (
+                    <Grid item xs={12} key={index} style={{ marginBottom: 8 }}>
+                      <Box border={1} borderColor="grey.300" borderRadius={4} p={2}>
+                        <Grid container spacing={1}>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">Name:</Typography>
+                            <Typography variant="body1">{listener.name}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">Package:</Typography>
+                            <Typography variant="body1">{listener.package}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">Protocol:</Typography>
+                            <Typography variant="body1">{listener.protocol}</Typography>
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" color="textSecondary">State:</Typography>
+                            <Chip label={listener.state} size="small" />
+                          </Grid>
+                        </Grid>
+                      </Box>
+                    </Grid>
+                  ))}
+                </>
+              )}
+            </Grid>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDialogClose} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

@@ -64,168 +64,65 @@ export class ComponentsApiService implements ComponentsApi {
     ) { }
 
 
-    private async request<T>(query: string, variables?: Record<string, any>): Promise<T> {
-        let proxyUrl = '';
-        let response: Response;
-        let lastError: Error;
+    private async restRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        const backendUrl = this.configApi.getOptionalString('backend.baseUrl') || '';
+        const url = `${backendUrl}/api/icpbackend${endpoint}`;
 
-        try {
-            const baseUrl = 'http://localhost:9446'
-            proxyUrl = `${baseUrl}/graphql`;
+        const response = await this.fetchApi.fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+            ...options,
+        });
 
-            response = await this.fetchApi.fetch(proxyUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    query,
-                    variables,
-                }),
-            });
-
-            if (response.ok) {
-                const json = await response.json();
-                if (json.errors) {
-                    throw new Error(`GraphQL Error: ${json.errors[0].message}`);
-                }
-                return json.data;
-            } else {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-        } catch (proxyError) {
-            lastError = proxyError as Error;
-            console.warn('Proxy endpoint failed, trying direct connection:', proxyError);
-            throw new Error(`Proxy connection failed: ${lastError.message} (URL: ${proxyUrl || 'unknown'})`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
+
+        // Handle empty responses (e.g., from DELETE operations)
+        if (response.status === 204) {
+            return undefined as T;
+        }
+
+        return response.json();
     }
 
     async getProjects(): Promise<Project[]> {
-        const query = `
-            query GetProjects {
-                projects {
-                    projectId
-                    name
-                    description
-                    createdBy
-                    createdAt
-                    updatedAt
-                    updatedBy
-                }
-            }
-        `;
-
-        const data = await this.request<{ projects: Project[] }>(query);
-        return data.projects || [];
+        return this.restRequest<Project[]>('/projects');
     }
 
     async getComponents(projectId: string): Promise<Component[]> {
-        const query = `
-            query GetComponents($projectId: String!) {
-                components(projectId: $projectId) {
-                    componentId
-                    name
-                    description
-                    createdBy
-                    createdAt
-                    updatedAt
-                    updatedBy
-                    project {
-                        projectId
-                        name
-                        description
-                        createdBy
-                        createdAt
-                        updatedAt
-                        updatedBy
-                    }
-                }
-            }
-        `;
-
-        const data = await this.request<{ components: Component[] }>(
-            query,
-            { projectId }
-        );
-        return data.components || [];
+        const endpoint = projectId ? `/components?projectId=${encodeURIComponent(projectId)}` : '/components';
+        return this.restRequest<Component[]>(endpoint);
     }
 
     async createComponent(request: CreateComponentRequest): Promise<Component> {
-        const query = `
-            mutation CreateComponent($projectId: String!, $name: String!, $description: String!) {
-                createComponent(component: { projectId: $projectId, name: $name, description: $description }) {
-                    componentId
-                    name
-                    description
-                    createdBy
-                    createdAt
-                    updatedAt
-                    updatedBy
-                    project {
-                        projectId
-                        name
-                        description
-                        createdBy
-                        createdAt
-                        updatedAt
-                        updatedBy
-                    }
-                }
-            }
-        `;
-
-        const data = await this.request<{ createComponent: Component }>(
-            query,
-            {
+        return this.restRequest<Component>('/components', {
+            method: 'POST',
+            body: JSON.stringify({
                 projectId: request.projectId,
                 name: request.name,
                 description: request.description
-            }
-        );
-        return data.createComponent;
+            })
+        });
     }
 
     async updateComponent(request: UpdateComponentRequest): Promise<Component> {
-        const query = `
-            mutation UpdateComponent($componentId: String!, $name: String!, $description: String!) {
-                updateComponent(componentId: $componentId, name: $name, description: $description) {
-                    componentId
-                    name
-                    description
-                    createdBy
-                    createdAt
-                    updatedAt
-                    updatedBy
-                    project {
-                        projectId
-                        name
-                        description
-                        createdBy
-                        createdAt
-                        updatedAt
-                        updatedBy
-                    }
-                }
-            }
-        `;
-
-        const data = await this.request<{ updateComponent: Component }>(
-            query,
-            request
-        );
-        return data.updateComponent;
+        return this.restRequest<Component>(`/components/${encodeURIComponent(request.componentId)}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                componentId: request.componentId,
+                name: request.name,
+                description: request.description
+            })
+        });
     }
 
     async deleteComponent(componentId: string): Promise<void> {
-        const query = `
-            mutation DeleteComponent($componentId: String!) {
-                deleteComponent(componentId: $componentId)
-            }
-        `;
-
-        await this.request<{ deleteComponent: boolean }>(
-            query,
-            { componentId }
-        );
+        await this.restRequest<void>(`/components/${encodeURIComponent(componentId)}`, {
+            method: 'DELETE'
+        });
     }
 }

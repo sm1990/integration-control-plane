@@ -319,7 +319,10 @@ export const IComponentFetchComponent = ({ projectId }: IComponentFetchComponent
         return (
           <div>
             <IconButton
-              onClick={() => handleEditOpen(row)}
+              onClick={(event) => {
+                event.stopPropagation(); // Prevent row click event
+                handleEditOpen(row);
+              }}
               size="small"
               title="Edit component"
               disabled={isUpdating}
@@ -327,7 +330,10 @@ export const IComponentFetchComponent = ({ projectId }: IComponentFetchComponent
               <EditIcon />
             </IconButton>
             <IconButton
-              onClick={() => handleDeleteOpen(row)}
+              onClick={(event) => {
+                event.stopPropagation(); // Prevent row click event
+                handleDeleteOpen(row);
+              }}
               size="small"
               title="Delete component"
               disabled={isDeleting}

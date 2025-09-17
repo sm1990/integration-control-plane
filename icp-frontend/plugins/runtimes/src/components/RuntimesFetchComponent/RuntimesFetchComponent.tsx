@@ -238,12 +238,12 @@ export const RuntimesFetchComponent = () => {
             label={row.status}
             size="small"
             color={
-              row.status === 'ACTIVE' ? 'primary' :
+              row.status === 'RUNNING' ? 'primary' :
                 row.status === 'OFFLINE' ? 'secondary' :
                   'default'
             }
             style={{
-              backgroundColor: row.status === 'OFFLINE' ? '#f44336' : undefined,
+              backgroundColor: row.status === 'OFFLINE' ? '#f44336' : '#36f475ff',
               color: row.status === 'OFFLINE' ? 'white' : undefined,
             }}
           />
@@ -358,7 +358,7 @@ export const RuntimesFetchComponent = () => {
               label="Status"
             >
               <MenuItem value="">All</MenuItem>
-              <MenuItem value="ACTIVE">Active</MenuItem>
+              <MenuItem value="RUNNING">Running</MenuItem>
               <MenuItem value="OFFLINE">Offline</MenuItem>
               <MenuItem value="STOPPED">Stopped</MenuItem>
             </Select>
@@ -404,6 +404,7 @@ export const RuntimesFetchComponent = () => {
           paging: true,
           pageSize: 10,
           emptyRowsWhenPaging: false,
+          tableLayout: 'fixed',
         }}
         columns={columns}
         data={(runtimes || []).map(runtime => ({
@@ -452,12 +453,12 @@ export const RuntimesFetchComponent = () => {
                   label={selectedRuntime.status}
                   size="small"
                   color={
-                    selectedRuntime.status === 'ACTIVE' ? 'primary' :
+                    selectedRuntime.status === 'RUNNING' ? 'primary' :
                       selectedRuntime.status === 'OFFLINE' ? 'secondary' :
                         'default'
                   }
                   style={{
-                    backgroundColor: selectedRuntime.status === 'OFFLINE' ? '#f44336' : undefined,
+                    backgroundColor: selectedRuntime.status === 'OFFLINE' ? '#f44336' : '#36f43fff',
                     color: selectedRuntime.status === 'OFFLINE' ? 'white' : undefined,
                   }}
                 />

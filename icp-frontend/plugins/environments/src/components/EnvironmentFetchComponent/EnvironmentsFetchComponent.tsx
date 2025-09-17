@@ -4,7 +4,6 @@ import {
   TableColumn,
   Progress,
   ResponseErrorPanel,
-  InfoCard,
 } from '@backstage/core-components';
 import {
   Button,

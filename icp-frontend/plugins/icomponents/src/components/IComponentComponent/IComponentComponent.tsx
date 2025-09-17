@@ -1,10 +1,8 @@
 import { Typography, Grid } from '@material-ui/core';
 import {
-  InfoCard,
   Header,
   Page,
   Content,
-  ContentHeader,
   HeaderLabel,
   SupportButton,
 } from '@backstage/core-components';

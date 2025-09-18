@@ -40,8 +40,8 @@ listener graphql:Listener graphqlListener = new (graphqlPort
 service /graphql on graphqlListener {
     // ----------- Runtime Resources
     // Get all runtimes with optional filtering
-    isolated resource function get runtimes(string? status, string? runtimeType, string? environment, string? projectId, string? componentId) returns types:Runtime[]|error {
-        return check storage:getRuntimes(status, runtimeType, environment, projectId, componentId);
+    isolated resource function get runtimes(string? status, string? runtimeType, string? environmentId, string? projectId, string? componentId) returns types:Runtime[]|error {
+        return check storage:getRuntimes(status, runtimeType, environmentId, projectId, componentId);
     }
 
     // Get a specific runtime by ID

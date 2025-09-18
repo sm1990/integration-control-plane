@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Grid, FormControl, InputLabel, Select, MenuItem, Box } from '@material-ui/core';
+import { Typography, Grid, FormControl, InputLabel, Select, MenuItem, Box, Button } from '@material-ui/core';
 import { makeStyles } from '@material-ui/core/styles';
+import RefreshIcon from '@material-ui/icons/Refresh';
 import {
   Header,
   Page,
@@ -24,6 +25,15 @@ const useStyles = makeStyles((theme) => ({
   environmentSelector: {
     minWidth: 200,
     marginBottom: theme.spacing(2),
+  },
+  refreshButton: {
+    marginLeft: theme.spacing(1),
+    minWidth: 'auto',
+  },
+  selectorContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
   },
   visualizationContainer: {
     height: 600,
@@ -95,6 +105,27 @@ export const RuntimeOverviewComponent = () => {
     setSelectedEnvironment(event.target.value as string);
   };
 
+  const handleRefresh = async () => {
+    if (!selectedEnvironment) return;
+
+    setLoading(true);
+    try {
+      const runtimesData = await runtimesApi.getRuntimes(
+        undefined, // status
+        undefined, // runtimeType
+        selectedEnvironment, // environmentId
+        undefined, // projectId
+        undefined  // componentId
+      );
+      setRuntimes(runtimesData);
+      setError(null);
+    } catch (err) {
+      setError(err as Error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading && environments.length === 0) {
     return <Progress />;
   }
@@ -113,24 +144,37 @@ export const RuntimeOverviewComponent = () => {
         <Grid container spacing={3} direction="column">
           <Grid item>
             <Box>
-              <FormControl className={classes.environmentSelector}>
-                <InputLabel id="environment-select-label">Environment </InputLabel>
-                <Select
-                  labelId="environment-select-label"
-                  value={selectedEnvironment}
-                  onChange={handleEnvironmentChange}
-                  displayEmpty
-                >
-                  <MenuItem value=" ">
-                    Select an environment
-                  </MenuItem>
-                  {environments.map((env) => (
-                    <MenuItem key={env.environmentId} value={env.environmentId}>
-                      {env.name}
+              <div className={classes.selectorContainer}>
+                <FormControl className={classes.environmentSelector}>
+                  <InputLabel id="environment-select-label">Environment </InputLabel>
+                  <Select
+                    labelId="environment-select-label"
+                    value={selectedEnvironment}
+                    onChange={handleEnvironmentChange}
+                    displayEmpty
+                  >
+                    <MenuItem value=" ">
+                      Select an environment
                     </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                    {environments.map((env) => (
+                      <MenuItem key={env.environmentId} value={env.environmentId}>
+                        {env.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                {selectedEnvironment && (
+                  <Button
+                    variant="outlined"
+                    className={classes.refreshButton}
+                    onClick={handleRefresh}
+                    disabled={loading}
+                    startIcon={<RefreshIcon />}
+                  >
+                    Refresh
+                  </Button>
+                )}
+              </div>
               {selectedEnvironment && (
                 <Box mt={1}>
                   <Typography variant="body2" color="textSecondary">

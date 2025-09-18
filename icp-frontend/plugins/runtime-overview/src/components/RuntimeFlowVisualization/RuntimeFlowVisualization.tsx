@@ -5,13 +5,14 @@ import ReactFlow, {
     addEdge,
     Background,
     Controls,
-    MiniMap,
     MarkerType,
     OnNodesChange,
     OnEdgesChange,
     OnConnect,
     applyNodeChanges,
     applyEdgeChanges,
+    Handle,
+    Position,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { makeStyles } from '@material-ui/core/styles';
@@ -54,18 +55,13 @@ const useStyles = makeStyles((theme) => ({
         border: '2px solid #333',
         fontWeight: 700,
         color: 'white',
-    },
-    runtimeActive: {
-        background: '#4caf50',
-    },
-    runtimeInactive: {
-        background: '#f44336',
+        textAlign: 'left' as const,
     },
     runtimeRunning: {
-        background: '#2196f3',
+        background: '#4caf50',
     },
-    runtimeStopped: {
-        background: '#ff9800',
+    runtimeOffline: {
+        background: '#f44336',
     },
     runtimeError: {
         background: '#f44336',
@@ -82,15 +78,11 @@ const RuntimeNode = ({ data }: { data: any }) => {
     const getNodeClass = () => {
         const baseClass = `${classes.nodeLabel} ${classes.runtimeNode}`;
         switch (data.state) {
-            case 'active':
-                return `${baseClass} ${classes.runtimeActive}`;
-            case 'inactive':
-                return `${baseClass} ${classes.runtimeInactive}`;
-            case 'running':
+            case 'RUNNING':
                 return `${baseClass} ${classes.runtimeRunning}`;
-            case 'stopped':
-                return `${baseClass} ${classes.runtimeStopped}`;
-            case 'error':
+            case 'OFFLINE':
+                return `${baseClass} ${classes.runtimeOffline}`;
+            case 'ERROR':
                 return `${baseClass} ${classes.runtimeError}`;
             default:
                 return `${baseClass} ${classes.runtimeUnknown}`;
@@ -98,19 +90,27 @@ const RuntimeNode = ({ data }: { data: any }) => {
     };
 
     return (
-        <Paper className={getNodeClass()}>
-            <Typography variant="body2" style={{ color: 'inherit' }}>
-                {data.label}
-            </Typography>
-            <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }}>
-                {data.state}
-            </Typography>
-            {data.services && (
-                <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }} display="block">
-                    Services: {data.services}
+        <>
+            <Handle type="target" position={Position.Top} isConnectable={false} />
+            <Paper className={getNodeClass()}>
+                <Typography variant="body2" style={{ color: 'inherit' }}>
+                    {data.label}
                 </Typography>
-            )}
-        </Paper>
+                <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }}>
+                    {data.state}
+                </Typography>
+                {data.services && (
+                    <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }} display="block">
+                        Services: {data.services}
+                    </Typography>
+                )}
+                {data.listeners && (
+                    <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }} display="block">
+                        Listeners: {data.listeners}
+                    </Typography>
+                )}
+            </Paper>
+        </>
     );
 };
 
@@ -119,14 +119,17 @@ const ProjectNode = ({ data }: { data: any }) => {
     const classes = useStyles();
 
     return (
-        <Paper className={`${classes.nodeLabel} ${classes.projectNode}`}>
-            <Typography variant="body1">
-                📁 {data.label}
-            </Typography>
-            <Typography variant="caption">
-                Project
-            </Typography>
-        </Paper>
+        <>
+            <Handle type="source" position={Position.Right} isConnectable={false} />
+            <Paper className={`${classes.nodeLabel} ${classes.projectNode}`}>
+                <Typography variant="body1">
+                    📁 {data.label}
+                </Typography>
+                <Typography variant="caption">
+                    Project
+                </Typography>
+            </Paper>
+        </>
     );
 };
 
@@ -135,14 +138,18 @@ const ComponentNode = ({ data }: { data: any }) => {
     const classes = useStyles();
 
     return (
-        <Paper className={`${classes.nodeLabel} ${classes.componentNode}`}>
-            <Typography variant="body2">
-                🔧 {data.label}
-            </Typography>
-            <Typography variant="caption">
-                Component
-            </Typography>
-        </Paper>
+        <>
+            <Handle type="target" position={Position.Left} isConnectable={false} />
+            <Handle type="source" position={Position.Bottom} isConnectable={false} />
+            <Paper className={`${classes.nodeLabel} ${classes.componentNode}`}>
+                <Typography variant="body2">
+                    🔧 {data.label}
+                </Typography>
+                <Typography variant="caption">
+                    Component
+                </Typography>
+            </Paper>
+        </>
     );
 };
 
@@ -154,8 +161,6 @@ const nodeTypes = {
 
 export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> = ({
     runtimes,
-    // width = 560,
-    // height = 560,
 }) => {
     const classes = useStyles();
 
@@ -204,7 +209,7 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
                 },
             });
 
-            let componentXOffset = 200;
+            let componentXOffset = 300;
 
             componentMap.forEach((componentRuntimes, componentName) => {
                 const componentId = `component-${nodeIndex++}`;
@@ -225,7 +230,7 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
                     id: `${projectId}-${componentId}`,
                     source: projectId,
                     target: componentId,
-                    type: 'smoothstep',
+                    type: 'default',
                     markerEnd: {
                         type: MarkerType.ArrowClosed,
                     },
@@ -235,7 +240,6 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
 
                 // Add runtime nodes
                 componentRuntimes.forEach((runtime, index) => {
-                    console.log('Adding runtime node for:', runtime.runtimeId);
                     const runtimeId = `runtime-${nodeIndex++}`;
 
                     nodes.push({
@@ -257,7 +261,7 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
                         id: `${componentId}-${runtimeId}`,
                         source: componentId,
                         target: runtimeId,
-                        type: 'smoothstep',
+                        type: 'default',
                         markerEnd: {
                             type: MarkerType.ArrowClosed,
                         },
@@ -276,6 +280,7 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
     const [nodes, setNodes] = useState<Node[]>(initialNodes);
     const [edges, setEdges] = useState<Edge[]>(initialEdges);
 
+    // Since the diagram is now draggable, we need proper change handlers
     const onNodesChange: OnNodesChange = useCallback(
         (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
         [],
@@ -308,7 +313,7 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
     }
 
     return (
-        <div className={classes.container} >
+        <div className={classes.container} style={{ width: '100%', height: '600px' }}>
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -318,21 +323,24 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
                 nodeTypes={nodeTypes}
                 fitView
                 attributionPosition="top-right"
+                defaultEdgeOptions={{
+                    markerEnd: {
+                        type: MarkerType.ArrowClosed,
+                    },
+                }}
+                nodesDraggable={true}
+                nodesConnectable={false}
+                elementsSelectable={false}
+                edgesFocusable={false}
+                nodesFocusable={false}
+                draggable={true}
+                panOnDrag={true}
+                zoomOnScroll={true}
+                zoomOnPinch={true}
+                preventScrolling={false}
             >
                 <Background />
-                <Controls />
-                <MiniMap
-                    nodeStrokeColor={(n) => {
-                        if (n.type === 'project') return '#1976d2';
-                        if (n.type === 'component') return '#4caf50';
-                        return '#333';
-                    }}
-                    nodeColor={(n) => {
-                        if (n.type === 'project') return '#e3f2fd';
-                        if (n.type === 'component') return '#e8f5e8';
-                        return '#ffff';
-                    }}
-                />
+                <Controls showInteractive={true} />
             </ReactFlow>
         </div>
     );

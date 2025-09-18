@@ -166,7 +166,7 @@ public isolated function deleteEnvironment(string environmentId) returns error? 
 }
 
 // Get all runtimes with optional filtering
-public isolated function getRuntimes(string? status, string? runtimeType, string? environment, string? projectId, string? componentId) returns types:Runtime[]|error {
+public isolated function getRuntimes(string? status, string? runtimeType, string? environmentId, string? projectId, string? componentId) returns types:Runtime[]|error {
     types:Runtime[] runtimeList = [];
     sql:ParameterizedQuery whereClause = ` WHERE 1=1 `;
     sql:ParameterizedQuery whereConditions = ` `;
@@ -176,8 +176,7 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
     if runtimeType is string {
         whereConditions = sql:queryConcat(whereConditions, ` AND runtime_type = ${runtimeType} `);
     }
-    if environment is string {
-        string environmentId = <string>check getEnvironmentIdByName(environment);
+    if environmentId is string {
         whereConditions = sql:queryConcat(whereConditions, ` AND environment_id = ${environmentId} `);
     }
     if projectId is string {

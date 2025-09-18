@@ -16,8 +16,21 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { makeStyles } from '@material-ui/core/styles';
-import { Typography, Paper } from '@material-ui/core';
-
+import {
+    Typography,
+    Paper,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    IconButton,
+    Grid,
+    Chip,
+    Box,
+    Divider
+} from '@material-ui/core';
+import VisibilityIcon from '@material-ui/icons/Visibility';
 import { Runtime } from '../../api/RuntimesApiService';
 
 interface RuntimeFlowVisualizationProps {
@@ -44,12 +57,14 @@ const useStyles = makeStyles((theme) => ({
         border: '2px solid #1976d2',
         color: '#1976d2',
         fontWeight: 700,
+        textAlign: 'left' as const,
     },
     componentNode: {
         background: '#e8f5e8',
         border: '2px solid #4caf50',
         color: '#2e7d32',
         fontWeight: 600,
+        textAlign: 'left' as const,
     },
     runtimeNode: {
         border: '2px solid #333',
@@ -75,6 +90,13 @@ const useStyles = makeStyles((theme) => ({
 const RuntimeNode = ({ data }: { data: any }) => {
     const classes = useStyles();
 
+    const handleVisibilityClick = (event: React.MouseEvent) => {
+        event.stopPropagation(); // Prevent node drag/selection
+        if (data.onRuntimeClick && data.runtime) {
+            data.onRuntimeClick(data.runtime);
+        }
+    };
+
     const getNodeClass = () => {
         const baseClass = `${classes.nodeLabel} ${classes.runtimeNode}`;
         switch (data.state) {
@@ -93,22 +115,35 @@ const RuntimeNode = ({ data }: { data: any }) => {
         <>
             <Handle type="target" position={Position.Top} isConnectable={false} />
             <Paper className={getNodeClass()}>
+
                 <Typography variant="body2" style={{ color: 'inherit' }}>
                     {data.label}
                 </Typography>
                 <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }}>
                     {data.state}
                 </Typography>
-                {data.services && (
+                {data.services > 0 && (
                     <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }} display="block">
                         Services: {data.services}
                     </Typography>
                 )}
-                {data.listeners && (
+                {data.listeners > 0 && (
                     <Typography variant="caption" style={{ color: 'inherit', opacity: 0.8 }} display="block">
                         Listeners: {data.listeners}
                     </Typography>
                 )}
+                <Typography variant="caption">
+                    [Runtime]
+                </Typography>
+                <Typography variant='caption' style={{ float: 'right', color: 'inherit', opacity: 0.8 }}>
+                    <IconButton
+                        size="small"
+                        onClick={handleVisibilityClick}
+                        style={{ color: 'inherit', padding: 2 }}
+                    >
+                        <VisibilityIcon fontSize="small" />
+                    </IconButton>
+                </Typography>
             </Paper>
         </>
     );
@@ -126,7 +161,7 @@ const ProjectNode = ({ data }: { data: any }) => {
                     📁 {data.label}
                 </Typography>
                 <Typography variant="caption">
-                    Project
+                    [Project]
                 </Typography>
             </Paper>
         </>
@@ -146,7 +181,7 @@ const ComponentNode = ({ data }: { data: any }) => {
                     🔧 {data.label}
                 </Typography>
                 <Typography variant="caption">
-                    Component
+                    [Component]
                 </Typography>
             </Paper>
         </>
@@ -163,6 +198,21 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
     runtimes,
 }) => {
     const classes = useStyles();
+
+    // Dialog state for runtime details
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [selectedRuntime, setSelectedRuntime] = useState<Runtime | null>(null);
+
+    // Handlers for runtime dialog
+    const handleOpenRuntimeDialog = useCallback((runtime: Runtime) => {
+        setSelectedRuntime(runtime);
+        setDialogOpen(true);
+    }, []);
+
+    const handleCloseRuntimeDialog = useCallback(() => {
+        setDialogOpen(false);
+        setSelectedRuntime(null);
+    }, []);
 
     const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
         if (!runtimes || !Array.isArray(runtimes) || runtimes.length === 0) {
@@ -252,7 +302,8 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
                             services: runtime.artifacts?.services?.length || 0,
                             listeners: runtime.artifacts?.listeners?.length || 0,
                             type: 'runtime',
-                            runtime: runtime
+                            runtime: runtime,
+                            onRuntimeClick: handleOpenRuntimeDialog
                         },
                     });
 
@@ -342,6 +393,236 @@ export const RuntimeFlowVisualization: React.FC<RuntimeFlowVisualizationProps> =
                 <Background />
                 <Controls showInteractive={true} />
             </ReactFlow>
+
+            {/* Runtime Details Dialog */}
+            <Dialog
+                open={dialogOpen}
+                onClose={handleCloseRuntimeDialog}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Runtime Details: {selectedRuntime?.runtimeId}</DialogTitle>
+                <DialogContent>
+                    {selectedRuntime && (
+                        <Grid container spacing={2}>
+                            {/* Basic Information */}
+                            <Grid item xs={12}>
+                                <Typography variant="h6" gutterBottom>
+                                    Basic Information
+                                </Typography>
+                                <Divider />
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Runtime ID:</Typography>
+                                <Typography variant="body1">{selectedRuntime.runtimeId}</Typography>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Type:</Typography>
+                                <Chip
+                                    label={selectedRuntime.runtimeType}
+                                    size="small"
+                                    color="primary"
+                                />
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Status:</Typography>
+                                <Chip
+                                    label={selectedRuntime.status}
+                                    size="small"
+                                    color={
+                                        selectedRuntime.status === 'RUNNING' ? 'primary' :
+                                            selectedRuntime.status === 'OFFLINE' ? 'secondary' :
+                                                'default'
+                                    }
+                                    style={{
+                                        backgroundColor: selectedRuntime.status === 'OFFLINE' ? '#f44336' : '#4caf50',
+                                        color: selectedRuntime.status === 'OFFLINE' ? 'white' : undefined,
+                                    }}
+                                />
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Version:</Typography>
+                                <Typography variant="body1">{selectedRuntime.version}</Typography>
+                            </Grid>
+
+                            {/* Platform Information */}
+                            <Grid item xs={12} style={{ marginTop: 16 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    Platform Information
+                                </Typography>
+                                <Divider />
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Platform:</Typography>
+                                <Typography variant="body1">{selectedRuntime.platformName}</Typography>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Platform Version:</Typography>
+                                <Typography variant="body1">{selectedRuntime.platformVersion}</Typography>
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <Typography variant="body2" color="textSecondary">Platform Home:</Typography>
+                                <Typography variant="body1" style={{ wordBreak: 'break-all' }}>
+                                    {selectedRuntime.platformHome}
+                                </Typography>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">OS:</Typography>
+                                <Typography variant="body1">{selectedRuntime.osName}</Typography>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">OS Version:</Typography>
+                                <Typography variant="body1">{selectedRuntime.osVersion}</Typography>
+                            </Grid>
+
+                            {/* Environment & Component */}
+                            <Grid item xs={12} style={{ marginTop: 16 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    Environment & Component
+                                </Typography>
+                                <Divider />
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Environment:</Typography>
+                                <Typography variant="body1">{selectedRuntime.environment.name}</Typography>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Component:</Typography>
+                                <Typography variant="body1">{selectedRuntime.component.name}</Typography>
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <Typography variant="body2" color="textSecondary">Project:</Typography>
+                                <Typography variant="body1">{selectedRuntime.component.project.name}</Typography>
+                            </Grid>
+
+                            {/* Timing Information */}
+                            <Grid item xs={12} style={{ marginTop: 16 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    Timing Information
+                                </Typography>
+                                <Divider />
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Registration Time:</Typography>
+                                <Typography variant="body1">
+                                    {selectedRuntime.registrationTime ? new Date(selectedRuntime.registrationTime).toLocaleString() : 'N/A'}
+                                </Typography>
+                            </Grid>
+
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="textSecondary">Last Heartbeat:</Typography>
+                                <Typography variant="body1">
+                                    {selectedRuntime.lastHeartbeat ? new Date(selectedRuntime.lastHeartbeat).toLocaleString() : 'N/A'}
+                                </Typography>
+                            </Grid>
+
+                            {/* Services */}
+                            {selectedRuntime.artifacts?.services && selectedRuntime.artifacts.services.length > 0 && (
+                                <>
+                                    <Grid item xs={12} style={{ marginTop: 16 }}>
+                                        <Typography variant="h6" gutterBottom>
+                                            Services ({selectedRuntime.artifacts.services.length})
+                                        </Typography>
+                                        <Divider />
+                                    </Grid>
+
+                                    {selectedRuntime.artifacts.services.map((service, index) => (
+                                        <Grid item xs={12} key={index} style={{ marginBottom: 8 }}>
+                                            <Box border={1} borderColor="grey.300" borderRadius={4} p={2}>
+                                                <Grid container spacing={1}>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">Name:</Typography>
+                                                        <Typography variant="body1">{service.name}</Typography>
+                                                    </Grid>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">Package:</Typography>
+                                                        <Typography variant="body1">{service.package}</Typography>
+                                                    </Grid>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">Base Path:</Typography>
+                                                        <Typography variant="body1">{service.basePath}</Typography>
+                                                    </Grid>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">State:</Typography>
+                                                        <Chip label={service.state} size="small" />
+                                                    </Grid>
+                                                    {service.resources && service.resources.length > 0 && (
+                                                        <Grid item xs={12}>
+                                                            <Typography variant="body2" color="textSecondary">Resources:</Typography>
+                                                            {service.resources.map((resource, resourceIndex) => (
+                                                                <Box key={resourceIndex} ml={2}>
+                                                                    <Typography variant="caption">
+                                                                        {resource.methods} - {resource.url}
+                                                                    </Typography>
+                                                                </Box>
+                                                            ))}
+                                                        </Grid>
+                                                    )}
+                                                </Grid>
+                                            </Box>
+                                        </Grid>
+                                    ))}
+                                </>
+                            )}
+
+                            {/* Listeners */}
+                            {selectedRuntime.artifacts?.listeners && selectedRuntime.artifacts.listeners.length > 0 && (
+                                <>
+                                    <Grid item xs={12} style={{ marginTop: 16 }}>
+                                        <Typography variant="h6" gutterBottom>
+                                            Listeners ({selectedRuntime.artifacts.listeners.length})
+                                        </Typography>
+                                        <Divider />
+                                    </Grid>
+
+                                    {selectedRuntime.artifacts.listeners.map((listener, index) => (
+                                        <Grid item xs={12} key={index} style={{ marginBottom: 8 }}>
+                                            <Box border={1} borderColor="grey.300" borderRadius={4} p={2}>
+                                                <Grid container spacing={1}>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">Name:</Typography>
+                                                        <Typography variant="body1">{listener.name}</Typography>
+                                                    </Grid>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">Package:</Typography>
+                                                        <Typography variant="body1">{listener.package}</Typography>
+                                                    </Grid>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">Protocol:</Typography>
+                                                        <Typography variant="body1">{listener.protocol}</Typography>
+                                                    </Grid>
+                                                    <Grid item xs={6}>
+                                                        <Typography variant="body2" color="textSecondary">State:</Typography>
+                                                        <Chip label={listener.state} size="small" />
+                                                    </Grid>
+                                                </Grid>
+                                            </Box>
+                                        </Grid>
+                                    ))}
+                                </>
+                            )}
+                        </Grid>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseRuntimeDialog} color="primary">
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </div>
     );
 };

@@ -243,7 +243,7 @@ export const RuntimesFetchComponent = () => {
                   'default'
             }
             style={{
-              backgroundColor: row.status === 'OFFLINE' ? '#f44336' : '#36f475ff',
+              backgroundColor: row.status === 'OFFLINE' ? '#f44336' : '#2e7d32',
               color: row.status === 'OFFLINE' ? 'white' : undefined,
             }}
           />
@@ -458,7 +458,7 @@ export const RuntimesFetchComponent = () => {
                         'default'
                   }
                   style={{
-                    backgroundColor: selectedRuntime.status === 'OFFLINE' ? '#f44336' : '#36f43fff',
+                    backgroundColor: selectedRuntime.status === 'OFFLINE' ? '#f44336' : '#2e7d32',
                     color: selectedRuntime.status === 'OFFLINE' ? 'white' : undefined,
                   }}
                 />

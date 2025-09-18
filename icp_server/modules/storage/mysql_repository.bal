@@ -382,7 +382,7 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
         transaction {
             sql:ExecutionResult _ = check dbClient->execute(`
                 UPDATE runtimes 
-                SET last_heartbeat = ${currentTimeStr}
+                SET last_heartbeat = ${currentTimeStr}, status = 'RUNNING'
                 WHERE runtime_id = ${deltaHeartbeat.runtimeId}
             `);
 
@@ -404,7 +404,7 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
         // Update only the heartbeat timestamp
         sql:ExecutionResult _ = check dbClient->execute(`
             UPDATE runtimes 
-            SET last_heartbeat = ${currentTimeStr}
+            SET last_heartbeat = ${currentTimeStr}, status = 'RUNNING'
             WHERE runtime_id = ${deltaHeartbeat.runtimeId}
         `);
 

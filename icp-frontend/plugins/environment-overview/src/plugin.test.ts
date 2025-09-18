@@ -1,7 +1,7 @@
-import { runtimeOverviewPlugin } from './plugin';
+import { environmentOverviewPlugin } from './plugin';
 
-describe('runtime-overview', () => {
+describe('environment-overview', () => {
   it('should export plugin', () => {
-    expect(runtimeOverviewPlugin).toBeDefined();
+    expect(environmentOverviewPlugin).toBeDefined();
   });
 });

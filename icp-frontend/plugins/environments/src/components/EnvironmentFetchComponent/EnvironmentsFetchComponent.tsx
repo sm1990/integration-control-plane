@@ -267,6 +267,7 @@ export const EnvironmentFetchComponent = () => {
               onClick={() => handleDeleteOpen(row)}
               size="small"
               title="Delete environment"
+              color="secondary"
               disabled={isDeleting}
             >
               <DeleteIcon />

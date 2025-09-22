@@ -330,6 +330,7 @@ export const IComponentFetchComponent = ({ projectId }: IComponentFetchComponent
               <EditIcon />
             </IconButton>
             <IconButton
+              color="secondary"
               onClick={(event) => {
                 event.stopPropagation(); // Prevent row click event
                 handleDeleteOpen(row);

@@ -341,8 +341,13 @@ public isolated function mapToService(types:Service serviceRecord, string runtim
 // Helper function to convert time:Utc to MySQL datetime format
 isolated function utcToMySQLDateTime(time:Utc utcTime) returns string|error {
     time:Civil civilTime = time:utcToCivil(utcTime);
+    // Ensure seconds is between 0-59 by truncating instead of rounding
+    int seconds = <int>civilTime.second;
+    if seconds > 59 {
+        seconds = 59;
+    }
     // Format: YYYY-MM-DD HH:MM:SS
-    string formattedTime = string `${civilTime.year}-${civilTime.month.toString().padStart(2, "0")}-${civilTime.day.toString().padStart(2, "0")} ${civilTime.hour.toString().padStart(2, "0")}:${civilTime.minute.toString().padStart(2, "0")}:${(<int>civilTime.second).toString().padStart(2, "0")}`;
+    string formattedTime = string `${civilTime.year}-${civilTime.month.toString().padStart(2, "0")}-${civilTime.day.toString().padStart(2, "0")} ${civilTime.hour.toString().padStart(2, "0")}:${civilTime.minute.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
     return formattedTime;
 }
 

@@ -235,7 +235,7 @@ export const ProjectsFetchComponent = () => {
                         }}>
                             <EditIcon />
                         </IconButton>
-                        <IconButton onClick={(e) => {
+                        <IconButton color="secondary" onClick={(e) => {
                             e.stopPropagation();
                             handleDeleteOpen(row);
                         }}>

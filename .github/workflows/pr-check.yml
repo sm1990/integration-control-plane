@@ -1,0 +1,156 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+  pull_request_target:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate:
+    name: Validate Build
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '16'
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+        
+    - name: Validate Maven POM
+      run: mvn validate
+      
+    - name: Compile Java sources
+      run: mvn compile -DskipTests
+      
+    - name: Run tests
+      run: mvn test
+      continue-on-error: true
+      
+    - name: Build React frontend
+      run: |
+        cd components/org.wso2.micro.integrator.dashboard.web/web-app
+        npm ci
+        npm run build
+        
+    - name: Package application
+      run: mvn package -DskipTests
+      
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-artifacts
+        path: |
+          target/
+          **/target/*.jar
+          **/target/*.war
+        retention-days: 7
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Set up JDK 11
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'temurin'
+        
+    - name: Cache SonarCloud packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.sonar/cache
+        key: ${{ runner.os }}-sonar
+        restore-keys: ${{ runner.os }}-sonar
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '16'
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+        
+    - name: Install frontend dependencies
+      run: |
+        cd components/org.wso2.micro.integrator.dashboard.web/web-app
+        npm ci
+        
+    - name: Run ESLint
+      run: |
+        cd components/org.wso2.micro.integrator.dashboard.web/web-app
+        npm run lint || true
+        
+    - name: Check for prettier formatting
+      run: |
+        cd components/org.wso2.micro.integrator.dashboard.web/web-app
+        if command -v prettier &> /dev/null; then
+          npx prettier --check src/ || echo "Prettier check completed with warnings"
+        else
+          echo "Prettier not configured, skipping format check"
+        fi

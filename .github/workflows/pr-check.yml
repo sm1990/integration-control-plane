@@ -48,23 +48,11 @@ jobs:
       
     - name: Build React frontend
       run: |
-        cd components/org.wso2.micro.integrator.dashboard.web/web-app
-        npm ci
-        npm run build
+        cd components/org.wso2.micro.integrator.dashboard.web
+        mvn clean install
         
     - name: Package application
       run: mvn package -DskipTests
-      
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      if: always()
-      with:
-        name: build-artifacts
-        path: |
-          target/
-          **/target/*.jar
-          **/target/*.war
-        retention-days: 7
 
   security-scan:
     name: Security Scan
@@ -82,12 +70,6 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
         
-    - name: Upload Trivy scan results
-      uses: github/codeql-action/upload-sarif@v2
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
-
   code-quality:
     name: Code Quality Check
     runs-on: ubuntu-latest

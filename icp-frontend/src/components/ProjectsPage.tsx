@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Box,
     Button,
@@ -36,6 +37,8 @@ import {
 } from '../types';
 
 const ProjectsPage: React.FC = () => {
+    const navigate = useNavigate();
+
     // Data hooks
     const { loading, error, value: projects, retry } = useProjects();
 
@@ -241,6 +244,11 @@ const ProjectsPage: React.FC = () => {
         }
     };
 
+    const handleRowClick = (project: Project) => {
+        // Navigate to components page with the project filter
+        navigate(`/components?projectId=${project.projectId}`);
+    };
+
     // Material React Table configuration
     const tableConfig = {
         columns,
@@ -285,6 +293,15 @@ const ProjectsPage: React.FC = () => {
                 </Button>
             </Box>
         ),
+        muiTableBodyRowProps: ({ row }: { row: MRT_Row<Project> }) => ({
+            onClick: () => handleRowClick(row.original),
+            sx: {
+                cursor: 'pointer',
+                '&:hover': {
+                    backgroundColor: 'action.hover'
+                }
+            },
+        }),
         state: {
             isLoading: loading,
         },

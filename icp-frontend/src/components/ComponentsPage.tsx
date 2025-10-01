@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
     Box,
     Button,
@@ -15,6 +16,7 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    Paper,
 } from '@mui/material';
 import { Alert } from '@mui/lab';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -42,6 +44,8 @@ import {
 } from '../types';
 
 const ComponentsPage: React.FC = () => {
+    const [searchParams] = useSearchParams();
+
     // Data hooks
     const { loading, error, value: components, retry } = useComponents();
     const { loading: projectsLoading, value: projects } = useProjects();
@@ -52,6 +56,7 @@ const ComponentsPage: React.FC = () => {
     const { deleteComponent, loading: deleting } = useDeleteComponent();
 
     // State
+    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -76,6 +81,31 @@ const ComponentsPage: React.FC = () => {
         description: '',
         projectId: '',
     });
+
+    // Filter components based on selected project
+    const filteredComponents = useMemo(() => {
+        if (!selectedProjectId) {
+            return components;
+        }
+        return components.filter(component => component.project.projectId === selectedProjectId);
+    }, [components, selectedProjectId]);
+
+    // Get selected project for display
+    const selectedProject = useMemo(() => {
+        return projects.find(project => project.projectId === selectedProjectId);
+    }, [projects, selectedProjectId]);
+
+    // Effect to handle URL parameters for automatic project selection
+    useEffect(() => {
+        const projectIdFromUrl = searchParams.get('projectId');
+        if (projectIdFromUrl && projects.length > 0) {
+            // Check if the project exists in the loaded projects
+            const projectExists = projects.some(project => project.projectId === projectIdFromUrl);
+            if (projectExists) {
+                setSelectedProjectId(projectIdFromUrl);
+            }
+        }
+    }, [searchParams, projects]);
 
     // Material React Table columns configuration
     const columns = useMemo<MRT_ColumnDef<Component>[]>(
@@ -185,7 +215,7 @@ const ComponentsPage: React.FC = () => {
         try {
             await createComponent(newComponent);
             setCreateDialogOpen(false);
-            setNewComponent({ name: '', description: '', projectId: '' });
+            setNewComponent({ name: '', description: '', projectId: selectedProjectId || '' });
             setSnackbar({
                 open: true,
                 message: 'Component created successfully',
@@ -262,7 +292,7 @@ const ComponentsPage: React.FC = () => {
     // Material React Table configuration
     const tableConfig = {
         columns,
-        data: components,
+        data: filteredComponents,
         enableColumnFilters: true,
         enableGlobalFilter: true,
         enableSorting: true,
@@ -289,7 +319,14 @@ const ComponentsPage: React.FC = () => {
                 <Button
                     variant="contained"
                     startIcon={<AddIcon />}
-                    onClick={() => setCreateDialogOpen(true)}
+                    onClick={() => {
+                        setNewComponent({
+                            name: '',
+                            description: '',
+                            projectId: selectedProjectId || ''
+                        });
+                        setCreateDialogOpen(true);
+                    }}
                 >
                     Add Component
                 </Button>
@@ -331,8 +368,44 @@ const ComponentsPage: React.FC = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Typography variant="h4" gutterBottom>
-                Components ({components.length})
+                Components ({filteredComponents.length})
             </Typography>
+
+            {/* Project Selection */}
+            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <FormControl sx={{ minWidth: 300 }}>
+                        <InputLabel>Filter by Project</InputLabel>
+                        <Select
+                            value={selectedProjectId}
+                            onChange={(e) => setSelectedProjectId(e.target.value)}
+                            label="Filter by Project"
+                            disabled={projectsLoading}
+                        >
+                            <MenuItem value="">
+                                <em>All Projects</em>
+                            </MenuItem>
+                            {projects.map((project) => (
+                                <MenuItem key={project.projectId} value={project.projectId}>
+                                    {project.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    {selectedProject && (
+                        <Box>
+                            <Typography variant="h6">
+                                {selectedProject.name}
+                            </Typography>
+                            {selectedProject.description && (
+                                <Typography variant="body2" color="text.secondary">
+                                    {selectedProject.description}
+                                </Typography>
+                            )}
+                        </Box>
+                    )}
+                </Box>
+            </Paper>
 
             <MaterialReactTable {...tableConfig} />
 

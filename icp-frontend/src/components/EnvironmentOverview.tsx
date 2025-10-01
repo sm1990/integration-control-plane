@@ -19,10 +19,20 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    Grid,
+    CardHeader,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    List,
+    ListItem,
+    ListItemText,
+    Divider,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CloseIcon from '@mui/icons-material/Close';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import BallerinaIcon from './BallerinaIcon';
 import ReactFlow, {
     Node,
@@ -106,10 +116,10 @@ const EnvironmentOverview: React.FC = () => {
         const nodes: Node[] = [];
         const edges: Edge[] = [];
 
-        let yOffset = 0;
-        const projectSpacing = 300;
-        const componentSpacing = 200;
-        const runtimeSpacing = 150;
+        let xOffset = 0;
+        const projectSpacing = 250;
+        const componentSpacing = 150;
+        const runtimeSpacing = 200;
 
         Object.entries(projectGroups).forEach(([projectName, components], projectIndex) => {
             // Create project node
@@ -117,15 +127,15 @@ const EnvironmentOverview: React.FC = () => {
             nodes.push({
                 id: projectNodeId,
                 type: 'default',
-                position: { x: 50, y: yOffset },
+                position: { x: xOffset, y: 50 },
                 data: {
                     label: (
-                        <Box sx={{ textAlign: 'center', p: 1 }}>
+                        <Box sx={{ textAlign: 'center' }}>
                             <Typography variant="h6" fontWeight="bold">
                                 📁 {projectName}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                Project
+                                [Project]
                             </Typography>
                         </Box>
                     )
@@ -137,42 +147,42 @@ const EnvironmentOverview: React.FC = () => {
                     width: 180,
                     height: 80,
                 },
-                sourcePosition: Position.Right,
-                targetPosition: Position.Left,
+                sourcePosition: Position.Bottom,
+                targetPosition: Position.Top,
             });
 
-            let componentYOffset = yOffset;
+            let componentXOffset = xOffset;
 
             Object.entries(components).forEach(([componentName, runtimes], componentIndex) => {
                 // Create component node
                 const componentNodeId = `component-${projectIndex}-${componentIndex}`;
-                const componentX = 300;
+                const componentY = 200;
 
                 nodes.push({
                     id: componentNodeId,
                     type: 'default',
-                    position: { x: componentX, y: componentYOffset },
+                    position: { x: componentXOffset, y: componentY },
                     data: {
                         label: (
-                            <Box sx={{ textAlign: 'center', p: 1 }}>
+                            <Box sx={{ textAlign: 'center' }}>
                                 <Typography variant="subtitle1" fontWeight="medium">
                                     🧩 {componentName}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                    Component
+                                    [Component]
                                 </Typography>
                             </Box>
                         )
                     },
                     style: {
-                        background: '#f3e5f5',
-                        border: '2px solid #9c27b0',
+                        background: '#e5edf5ff',
+                        border: '2px solid #2742b0ff',
                         borderRadius: '8px',
                         width: 160,
                         height: 70,
                     },
-                    sourcePosition: Position.Right,
-                    targetPosition: Position.Left,
+                    sourcePosition: Position.Bottom,
+                    targetPosition: Position.Top,
                 });
 
                 // Create edge from project to component
@@ -187,8 +197,8 @@ const EnvironmentOverview: React.FC = () => {
                 // Create runtime nodes
                 runtimes.forEach((runtime, runtimeIndex) => {
                     const runtimeNodeId = `runtime-${projectIndex}-${componentIndex}-${runtimeIndex}`;
-                    const runtimeX = 550;
-                    const runtimeY = componentYOffset + (runtimeIndex * 120) - (runtimes.length - 1) * 60;
+                    const runtimeY = 350;
+                    const runtimeX = componentXOffset + (runtimeIndex * 180) - (runtimes.length - 1) * 90;
 
                     const getStatusColor = (status: string) => {
                         switch (status?.toLowerCase()) {
@@ -196,10 +206,9 @@ const EnvironmentOverview: React.FC = () => {
                             case 'ready':
                             case 'running':
                                 return { bg: '#e8f5e8', border: '#4caf50' };
-                            case 'offline':
                             case 'creating':
                                 return { bg: '#fff3e0', border: '#ff9800' };
-                            case 'error':
+                            case 'offline':
                             case 'failed':
                                 return { bg: '#ffebee', border: '#f44336' };
                             default:
@@ -238,7 +247,7 @@ const EnvironmentOverview: React.FC = () => {
                                         sx={{
                                             position: 'absolute',
                                             bottom: 2,
-                                            right: 2,
+                                            right: 1,
                                             width: 20,
                                             height: 20,
                                             backgroundColor: 'rgba(255, 255, 255, 0.8)',
@@ -259,7 +268,7 @@ const EnvironmentOverview: React.FC = () => {
                             width: 140,
                             height: 80,
                         },
-                        targetPosition: Position.Left,
+                        targetPosition: Position.Top,
                     });
 
                     // Create edge from component to runtime
@@ -267,15 +276,15 @@ const EnvironmentOverview: React.FC = () => {
                         id: `edge-${componentNodeId}-${runtimeNodeId}`,
                         source: componentNodeId,
                         target: runtimeNodeId,
-                        style: { stroke: '#9c27b0', strokeWidth: 2 },
+                        style: { stroke: '#2777b0ff', strokeWidth: 2 },
                         type: 'smoothstep',
                     });
                 });
 
-                componentYOffset += Math.max(runtimes.length * 120, 120) + 40;
+                componentXOffset += Math.max(runtimes.length * 180, 180) + 40;
             });
 
-            yOffset = componentYOffset + projectSpacing;
+            xOffset = componentXOffset + projectSpacing;
         });
 
         return { nodes, edges };
@@ -461,159 +470,299 @@ const EnvironmentOverview: React.FC = () => {
             <Dialog
                 open={dialogOpen}
                 onClose={handleCloseDialog}
-                maxWidth="md"
+                maxWidth="lg"
                 fullWidth
+                PaperProps={{
+                    sx: { minHeight: '60vh' }
+                }}
             >
                 <DialogTitle>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="h6">Runtime Details</Typography>
-                        <IconButton onClick={handleCloseDialog} size="small">
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="h5">Runtime Details</Typography>
+                        {selectedRuntime && (
+                            <Chip
+                                label={selectedRuntime.status}
+                                size="small"
+                                sx={{
+                                    backgroundColor: selectedRuntime.status?.toLowerCase() === 'active' ? '#4caf50' :
+                                        selectedRuntime.status?.toLowerCase() === 'offline' ? '#ff9800' :
+                                            selectedRuntime.status?.toLowerCase() === 'error' ? '#f44336' : '#9e9e9e',
+                                    color: 'white',
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
+                        <IconButton onClick={handleCloseDialog} size="small" sx={{ ml: 'auto' }}>
                             <CloseIcon />
                         </IconButton>
                     </Box>
                 </DialogTitle>
                 <DialogContent>
                     {selectedRuntime && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <Box>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-                                    Basic Information
-                                </Typography>
-                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">Runtime ID</Typography>
-                                        <Typography variant="body1">{selectedRuntime.runtimeId}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">Runtime Type</Typography>
-                                        <Typography variant="body1">{selectedRuntime.runtimeType}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">Status</Typography>
-                                        <Chip
-                                            label={selectedRuntime.status}
-                                            size="small"
-                                            color={
-                                                selectedRuntime.status?.toLowerCase() === 'active' ? 'success' :
-                                                    selectedRuntime.status?.toLowerCase() === 'error' ? 'error' : 'default'
-                                            }
-                                        />
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">Component</Typography>
-                                        <Typography variant="body1">{selectedRuntime.component?.name || 'N/A'}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">Environment</Typography>
-                                        <Typography variant="body1">{selectedRuntime.environment?.name || 'N/A'}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="body2" color="text.secondary">Last Heartbeat</Typography>
-                                        <Typography variant="body1">
-                                            {selectedRuntime.lastHeartbeat
-                                                ? new Date(selectedRuntime.lastHeartbeat).toLocaleString()
-                                                : 'Never'
-                                            }
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                            </Box>
+                        <Box sx={{ py: 2 }}>
+                            {/* Basic Information */}
+                            <Grid container spacing={3}>
+                                <Grid item xs={12} md={6}>
+                                    <Card elevation={2}>
+                                        <CardHeader title="Basic Information" />
+                                        <CardContent>
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={12}>
+                                                    <Typography variant="body2" color="text.secondary">Runtime ID</Typography>
+                                                    <Typography variant="body1" fontWeight="medium" sx={{ mb: 2 }}>
+                                                        {selectedRuntime.runtimeId}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">Type</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.runtimeType}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">Version</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.version || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">Registration Time</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.registrationTime ?
+                                                            new Date(selectedRuntime.registrationTime).toLocaleString() : 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">Last Heartbeat</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.lastHeartbeat ?
+                                                            new Date(selectedRuntime.lastHeartbeat).toLocaleString() : 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                            </Grid>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
 
-                            {selectedRuntime.version && (
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                        Version Information
-                                    </Typography>
-                                    <Typography variant="body1">{selectedRuntime.version}</Typography>
-                                </Box>
-                            )}
-
-                            {selectedRuntime.artifacts && selectedRuntime.artifacts.listeners && selectedRuntime.artifacts.listeners.length > 0 && (
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-                                        Listeners
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                        {selectedRuntime.artifacts.listeners.map((listener, index) => (
-                                            <Card key={index} variant="outlined" sx={{ p: 2 }}>
-                                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">Name</Typography>
-                                                        <Typography variant="body2">{listener.name}</Typography>
-                                                    </Box>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">Protocol</Typography>
-                                                        <Typography variant="body2">{listener.protocol}</Typography>
-                                                    </Box>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">State</Typography>
-                                                        <Chip label={listener.state} size="small" variant="outlined" />
-                                                    </Box>
-                                                </Box>
-                                            </Card>
-                                        ))}
-                                    </Box>
-                                </Box>
-                            )}
-
-                            {selectedRuntime.artifacts && selectedRuntime.artifacts.services && selectedRuntime.artifacts.services.length > 0 && (
-                                <Box>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 2 }}>
-                                        Services
-                                    </Typography>
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                        {selectedRuntime.artifacts.services.map((service, index) => (
-                                            <Card key={index} variant="outlined" sx={{ p: 2 }}>
-                                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2, mb: 2 }}>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">Name</Typography>
-                                                        <Typography variant="body2">{service.name}</Typography>
-                                                    </Box>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">Base Path</Typography>
-                                                        <Typography variant="body2">{service.basePath}</Typography>
-                                                    </Box>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">Package</Typography>
-                                                        <Typography variant="body2">{service.package}</Typography>
-                                                    </Box>
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary">State</Typography>
-                                                        <Chip label={service.state} size="small" variant="outlined" />
-                                                    </Box>
-                                                </Box>
-                                                {service.resources && service.resources.length > 0 && (
-                                                    <Box>
-                                                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                                                            Resources
+                                {/* Environment & Component Information */}
+                                <Grid item xs={12} md={6}>
+                                    <Card elevation={2}>
+                                        <CardHeader title="Environment & Component" />
+                                        <CardContent>
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={12}>
+                                                    <Typography variant="body2" color="text.secondary">Environment</Typography>
+                                                    <Typography variant="body1" fontWeight="medium" sx={{ mb: 1 }}>
+                                                        {selectedRuntime.environment?.name || 'N/A'}
+                                                    </Typography>
+                                                    {selectedRuntime.environment?.description && (
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                                            {selectedRuntime.environment.description}
                                                         </Typography>
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                                            {service.resources.map((resource, resourceIndex) => (
-                                                                <Box key={resourceIndex} sx={{ pl: 2, borderLeft: '2px solid #e0e0e0' }}>
-                                                                    <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                                                                        {resource.url}
-                                                                    </Typography>
-                                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                                                                        {resource.methods.map((method, methodIndex) => (
-                                                                            <Chip
-                                                                                key={methodIndex}
-                                                                                label={method}
-                                                                                size="small"
-                                                                                variant="outlined"
-                                                                                sx={{ fontSize: '0.7rem', height: 20 }}
+                                                    )}
+                                                </Grid>
+                                                <Grid item xs={12}>
+                                                    <Typography variant="body2" color="text.secondary">Component</Typography>
+                                                    <Typography variant="body1" fontWeight="medium" sx={{ mb: 1 }}>
+                                                        {selectedRuntime.component?.name || 'N/A'}
+                                                    </Typography>
+                                                    {selectedRuntime.component?.description && (
+                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                                            {selectedRuntime.component.description}
+                                                        </Typography>
+                                                    )}
+                                                </Grid>
+                                                <Grid item xs={12}>
+                                                    <Typography variant="body2" color="text.secondary">Project</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.component?.project?.name || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                            </Grid>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+
+                                {/* Platform Information */}
+                                <Grid item xs={12} md={6}>
+                                    <Card elevation={2}>
+                                        <CardHeader title="Platform Information" />
+                                        <CardContent>
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">Platform Name</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.platformName || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">Platform Version</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.platformVersion || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={12}>
+                                                    <Typography variant="body2" color="text.secondary">Platform Home</Typography>
+                                                    <Typography variant="body1" fontWeight="medium" sx={{ wordBreak: 'break-all' }}>
+                                                        {selectedRuntime.platformHome || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">OS Name</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.osName || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="body2" color="text.secondary">OS Version</Typography>
+                                                    <Typography variant="body1" fontWeight="medium">
+                                                        {selectedRuntime.osVersion || 'N/A'}
+                                                    </Typography>
+                                                </Grid>
+                                            </Grid>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+
+                                {/* Artifacts Section */}
+                                {selectedRuntime.artifacts && (
+                                    <Grid item xs={12} md={6}>
+                                        <Card elevation={2}>
+                                            <CardHeader title="Artifacts" />
+                                            <CardContent>
+                                                {/* Listeners */}
+                                                <Accordion defaultExpanded>
+                                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                                        <Typography variant="h6">
+                                                            Listeners ({selectedRuntime.artifacts.listeners?.length || 0})
+                                                        </Typography>
+                                                    </AccordionSummary>
+                                                    <AccordionDetails>
+                                                        {selectedRuntime.artifacts.listeners && selectedRuntime.artifacts.listeners.length > 0 ? (
+                                                            <List dense>
+                                                                {selectedRuntime.artifacts.listeners.map((listener, index) => (
+                                                                    <React.Fragment key={index}>
+                                                                        <ListItem>
+                                                                            <ListItemText
+                                                                                primary={listener.name}
+                                                                                secondary={
+                                                                                    <Box>
+                                                                                        <Typography variant="body2" component="span">
+                                                                                            <strong>Package:</strong> {listener.package}
+                                                                                        </Typography>
+                                                                                        <br />
+                                                                                        <Typography variant="body2" component="span">
+                                                                                            <strong>Protocol:</strong> {listener.protocol}
+                                                                                        </Typography>
+                                                                                        <br />
+                                                                                        <Chip
+                                                                                            label={listener.state}
+                                                                                            size="small"
+                                                                                            sx={{ mt: 1 }}
+                                                                                            color={
+                                                                                                listener.state === 'ENABLED' ? 'success' :
+                                                                                                    listener.state === 'DISABLED' ? 'default' :
+                                                                                                        listener.state === 'STARTING' ? 'warning' :
+                                                                                                            listener.state === 'STOPPING' ? 'warning' : 'error'
+                                                                                            }
+                                                                                        />
+                                                                                    </Box>
+                                                                                }
                                                                             />
-                                                                        ))}
-                                                                    </Box>
-                                                                </Box>
-                                                            ))}
-                                                        </Box>
-                                                    </Box>
-                                                )}
-                                            </Card>
-                                        ))}
-                                    </Box>
-                                </Box>
-                            )}
+                                                                        </ListItem>
+                                                                        {index < selectedRuntime.artifacts!.listeners!.length - 1 && <Divider />}
+                                                                    </React.Fragment>
+                                                                ))}
+                                                            </List>
+                                                        ) : (
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                No listeners available
+                                                            </Typography>
+                                                        )}
+                                                    </AccordionDetails>
+                                                </Accordion>
+
+                                                {/* Services */}
+                                                <Accordion defaultExpanded sx={{ mt: 2 }}>
+                                                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                                        <Typography variant="h6">
+                                                            Services ({selectedRuntime.artifacts.services?.length || 0})
+                                                        </Typography>
+                                                    </AccordionSummary>
+                                                    <AccordionDetails>
+                                                        {selectedRuntime.artifacts.services && selectedRuntime.artifacts.services.length > 0 ? (
+                                                            <List dense>
+                                                                {selectedRuntime.artifacts.services.map((service, index) => (
+                                                                    <React.Fragment key={index}>
+                                                                        <ListItem>
+                                                                            <ListItemText
+                                                                                primary={service.name}
+                                                                                secondary={
+                                                                                    <Box>
+                                                                                        <Typography variant="body2" component="span">
+                                                                                            <strong>Package:</strong> {service.package}
+                                                                                        </Typography>
+                                                                                        <br />
+                                                                                        <Typography variant="body2" component="span">
+                                                                                            <strong>Base Path:</strong> {service.basePath}
+                                                                                        </Typography>
+                                                                                        <br />
+                                                                                        <Chip
+                                                                                            label={service.state}
+                                                                                            size="small"
+                                                                                            sx={{ mt: 1, mr: 1 }}
+                                                                                            color={
+                                                                                                service.state === 'ENABLED' ? 'success' :
+                                                                                                    service.state === 'DISABLED' ? 'default' :
+                                                                                                        service.state === 'STARTING' ? 'warning' :
+                                                                                                            service.state === 'STOPPING' ? 'warning' : 'error'
+                                                                                            }
+                                                                                        />
+                                                                                        {service.resources && service.resources.length > 0 && (
+                                                                                            <Box sx={{ mt: 2 }}>
+                                                                                                <Typography variant="body2" fontWeight="medium">
+                                                                                                    Resources ({service.resources.length}):
+                                                                                                </Typography>
+                                                                                                {service.resources.map((resource, resIndex) => (
+                                                                                                    <Box key={resIndex} sx={{ ml: 2, mt: 1 }}>
+                                                                                                        <Typography variant="caption" display="block">
+                                                                                                            {resource.url}
+                                                                                                        </Typography>
+                                                                                                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                                                                                            {resource.methods.map((method, methodIndex) => (
+                                                                                                                <Chip
+                                                                                                                    key={methodIndex}
+                                                                                                                    label={method}
+                                                                                                                    size="small"
+                                                                                                                    variant="outlined"
+                                                                                                                    sx={{ fontSize: '0.7rem', height: 20 }}
+                                                                                                                />
+                                                                                                            ))}
+                                                                                                        </Box>
+                                                                                                    </Box>
+                                                                                                ))}
+                                                                                            </Box>
+                                                                                        )}
+                                                                                    </Box>
+                                                                                }
+                                                                            />
+                                                                        </ListItem>
+                                                                        {index < selectedRuntime.artifacts!.services!.length - 1 && <Divider />}
+                                                                    </React.Fragment>
+                                                                ))}
+                                                            </List>
+                                                        ) : (
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                No services available
+                                                            </Typography>
+                                                        )}
+                                                    </AccordionDetails>
+                                                </Accordion>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                )}
+                            </Grid>
                         </Box>
                     )}
                 </DialogContent>

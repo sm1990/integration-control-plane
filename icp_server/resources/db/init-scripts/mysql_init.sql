@@ -109,6 +109,7 @@ CREATE TABLE runtimes (
   project_id         CHAR(36) NOT NULL,
   component_id       CHAR(36) NOT NULL,
   environment_id     CHAR(36) NOT NULL,
+  runtime_name       VARCHAR(100) NOT NULL,
 
   runtime_type       ENUM('MI','BI') NOT NULL,
   status             ENUM('RUNNING','FAILED','DISABLED','OFFLINE') NOT NULL DEFAULT 'OFFLINE',

@@ -424,6 +424,8 @@ public type LoginResponse record {|
     boolean isNewUser = false;
     string token?;
     int expiresIn?;
+    string email?;
+    Role[] roles?;
 |};
 
 // Types for the /authenticate endpoint

@@ -44,7 +44,7 @@ final readonly & jwt:IssuerSignatureConfig jwtSignatureConfig = {
 }
 service /auth on httpListener {
 
-    isolated resource function post login(types:Credentials credentials) returns types:LoginResponse|http:Unauthorized|http:InternalServerError|error {
+    isolated resource function post login(types:Credentials credentials) returns http:Ok|http:Unauthorized|http:InternalServerError|error {
 
         // Call the authentication backend to verify credentials
         http:Response|error authResponse = authBackendClient->post("/authenticate", credentials, {
@@ -87,8 +87,10 @@ service /auth on httpListener {
         if userDetails is error {
             if userDetails is sql:NoRowsError {
                 // user is authenticated but not found in the database need to prompt sign up
-                return {
-                    isNewUser: true
+                return <http:Ok>{
+                    body: {
+                        isNewUser: true
+                    }
                 };
             } 
             log:printError("Error getting user details", userDetails);
@@ -118,9 +120,13 @@ service /auth on httpListener {
             return createInternalServerError("Error generating JWT token");
         }
 
-        return {
-            token: jwtToken,
-            expiresIn: defaultTokenExpiryTime
+        return <http:Ok>{
+            body: {
+                token: jwtToken,
+                expiresIn: defaultTokenExpiryTime,
+                email: credentials.email,
+                roles: userRoles
+            }
         };
     }
 }

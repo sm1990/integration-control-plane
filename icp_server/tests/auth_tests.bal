@@ -51,7 +51,7 @@ function testSuccessfulLogin() returns error? {
     http:Response response = check authClient->post("/auth/login", loginRequest);
 
     // Assert response status
-    test:assertEquals(response.statusCode, 201, "Expected status code 201 for successful login");
+    test:assertEquals(response.statusCode, 200, "Expected status code 200 for successful login");
 
     // Parse response body
     json responseBody = check response.getJsonPayload();
@@ -273,8 +273,8 @@ function testNewUserLogin() returns error? {
     // Send login request
     http:Response response = check authClient->post("/auth/login", loginRequest);
 
-    // Assert response status (should be 201 for successful authentication)
-    test:assertEquals(response.statusCode, 201, "Expected status code 201 for authenticated new user");
+    // Assert response status (should be 200 for successful authentication)
+    test:assertEquals(response.statusCode, 200, "Expected status code 200 for authenticated new user");
 
     // Parse response body
     json responseBody = check response.getJsonPayload();

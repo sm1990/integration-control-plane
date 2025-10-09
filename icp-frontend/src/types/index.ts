@@ -135,6 +135,8 @@ export interface LoginResponse {
   isNewUser: boolean;
   token: string;
   expiresIn: number;
+  email: string;
+  roles: Role[];
 }
 
 export interface AuthUser {

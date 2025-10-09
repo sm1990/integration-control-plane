@@ -31,20 +31,14 @@ const LoginPage: React.FC = () => {
         try {
             const response: LoginResponse = await icpApiClient.login(email, password);
             
-            // Decode JWT to extract user info (simple base64 decode, not validation)
-            const tokenParts = response.token.split('.');
-            if (tokenParts.length !== 3) {
-                throw new Error('Invalid token format');
-            }
-
-            const payload = JSON.parse(atob(tokenParts[1]));
-            
+            // Calculate token expiration time
             const expiresAt = Date.now() + (response.expiresIn * 1000);
             
+            // Use server-provided user information
             const authUser = {
-                email: payload.email || email,
+                email: response.email,
                 token: response.token,
-                roles: payload.roles || [],
+                roles: response.roles,
                 expiresAt,
             };
 

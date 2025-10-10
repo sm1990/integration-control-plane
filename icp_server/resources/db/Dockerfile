@@ -19,12 +19,6 @@ FROM mysql:latest
 ENV MYSQL_ROOT_PASSWORD=my-secret-pw
 ENV MYSQL_DATABASE=icp_database
 
-# Copy initialization script and entrypoint
-COPY ./init-scripts/mysql_init.sql /tmp/mysql_init.sql
-COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
-
-# Make entrypoint executable
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-# Use custom entrypoint
-CMD ["/usr/local/bin/entrypoint.sh"]
+# Copy initialization script to docker-entrypoint-initdb.d
+# MySQL will automatically execute .sql files in this directory
+COPY ./init-scripts/mysql_init.sql /docker-entrypoint-initdb.d/

@@ -25,6 +25,12 @@ services:
         environment:
             MYSQL_ROOT_PASSWORD: my-secret-pw
             MYSQL_DATABASE: icp_database
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+            interval: 5s
+            timeout: 5s
+            retries: 30
+            start_period: 40s
     icp-server-test:
         image: wso2/icp_server
         container_name: icp-server-test
@@ -32,6 +38,7 @@ services:
             context: .
             dockerfile: build.Dockerfile
         depends_on:
-            - mysql-db
+            mysql-db:
+                condition: service_healthy
         command: bal test
 

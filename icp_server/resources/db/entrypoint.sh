@@ -25,8 +25,14 @@ MYSQL_PID=$!
 echo "Waiting for MySQL to start..."
 for i in {1..30}; do
     if mysqladmin ping -h localhost -u root -p"$MYSQL_ROOT_PASSWORD" --silent 2>/dev/null; then
-        echo "MySQL is ready!"
-        break
+        echo "MySQL is up!"
+        # Additional wait to ensure MySQL is fully ready for connections
+        sleep 3
+        # Verify we can actually connect and run a query
+        if mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" >/dev/null 2>&1; then
+            echo "MySQL is ready for use!"
+            break
+        fi
     fi
     echo "Waiting... ($i/30)"
     sleep 2

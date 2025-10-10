@@ -47,11 +47,6 @@ const Navigation: React.FC<NavigationProps> = ({ open, onToggle }) => {
             icon: <EnvironmentsIcon />
         },
         {
-            label: 'Overview',
-            path: '/environment-overview',
-            icon: <OverviewIcon />
-        },
-        {
             label: 'Projects',
             path: '/projects',
             icon: <ProjectsIcon />
@@ -65,6 +60,11 @@ const Navigation: React.FC<NavigationProps> = ({ open, onToggle }) => {
             label: 'Runtimes',
             path: '/runtimes',
             icon: <RuntimesIcon />
+        },
+        {
+            label: 'Overview',
+            path: '/environment-overview',
+            icon: <OverviewIcon />
         },
     ];
 

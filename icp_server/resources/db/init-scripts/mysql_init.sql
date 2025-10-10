@@ -14,18 +14,21 @@ USE icp_database;
 
 CREATE TABLE users (
     user_id CHAR(36) NOT NULL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(200) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_email (email)
+    INDEX idx_username (username)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE user_credentials (
-    email VARCHAR(255) NOT NULL PRIMARY KEY,
+    user_id CHAR(36) NOT NULL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    display_name VARCHAR(200) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_username (username)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ============================================================================
@@ -441,23 +444,27 @@ ORDER BY cc.issued_at ASC;
 
 -- Insert a default admin user for testing
 INSERT INTO
-    users (user_id, email, display_name)
+    users (user_id, username, display_name)
 VALUES (
         '550e8400-e29b-41d4-a716-446655440000',
-        'admin@example.com',
+        'admin',
         'System Administrator'
     );
 
 -- Insert credentials for admin user
 -- Password: admin123 (Bcrypt hashed)
 INSERT INTO
-    user_credentials (email, password_hash)
+    user_credentials (user_id, username, display_name, password_hash)
 VALUES (
-        'admin@example.com',
+        '550e8400-e29b-41d4-a716-446655440000',
+        'admin',
+        'System Administrator',
         '$2a$12$KrkW4mKHgENeQHJDnMF5Ru2jZ62koqvW32cRwOG0Uhw/mHUFIB24AQ=='
     ),
     (
-        'newuser@example.com',
+        '660e8400-e29b-41d4-a716-446655440001',
+        'newuser',
+        'New Test User',
         '$2a$12$qJcaAGnurmpgmAPywgMocpUJQCDt3aPTknPZeItz3vEyca46bbg4Kw=='
     );
 

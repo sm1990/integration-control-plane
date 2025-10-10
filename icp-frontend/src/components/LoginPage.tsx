@@ -16,7 +16,7 @@ import { icpApiClient } from '../services/ICPApiClient';
 import { LoginResponse } from '../types';
 
 const LoginPage: React.FC = () => {
-    const [email, setEmail] = useState('');
+    const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -29,14 +29,14 @@ const LoginPage: React.FC = () => {
         setLoading(true);
 
         try {
-            const response: LoginResponse = await icpApiClient.login(email, password);
+            const response: LoginResponse = await icpApiClient.login(username, password);
             
             // Calculate token expiration time
             const expiresAt = Date.now() + (response.expiresIn * 1000);
             
             // Use server-provided user information
             const authUser = {
-                email: response.email,
+                username: response.username,
                 token: response.token,
                 roles: response.roles,
                 expiresAt,
@@ -113,13 +113,13 @@ const LoginPage: React.FC = () => {
                             margin="normal"
                             required
                             fullWidth
-                            id="email"
-                            label="Email Address"
-                            name="email"
-                            autoComplete="email"
+                            id="username"
+                            label="Username"
+                            name="username"
+                            autoComplete="username"
                             autoFocus
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
                             disabled={loading}
                         />
                         <TextField

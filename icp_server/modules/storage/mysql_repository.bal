@@ -1094,21 +1094,38 @@ public isolated function updateComponent(string componentId, string? name, strin
     return ();
 }
 
-// Get user details by email
-public isolated function getUserDetailsByEmail(string email) returns types:User|error {
-    log:printDebug(string `Fetching user details for email: ${email}`);
+// Get user details by user ID
+public isolated function getUserDetailsById(string userId) returns types:User|error {
+    log:printDebug(string `Fetching user details for userId: ${userId}`);
     types:User|sql:Error user = dbClient->queryRow(
-        `SELECT user_id as userId, email, display_name as displayName, created_at as createdAt, updated_at as updatedAt 
+        `SELECT user_id as userId, username, display_name as displayName, created_at as createdAt, updated_at as updatedAt 
          FROM users 
-         WHERE email = ${email}`
+         WHERE user_id = ${userId}`
     );
 
     if user is sql:Error {
-        log:printError(string `Failed to get user details for ${email}`, user);
+        log:printError(string `Failed to get user details for ${userId}`, user);
         return user;
     }
 
     return user;
+}
+
+// Create a new user
+public isolated function createUser(string userId, string username, string displayName) returns error? {
+    log:printDebug(string `Creating user: ${username} with userId: ${userId}`);
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `INSERT INTO users (user_id, username, display_name) 
+         VALUES (${userId}, ${username}, ${displayName})`
+    );
+
+    if result is sql:Error {
+        log:printError(string `Failed to create user ${username}`, result);
+        return result;
+    }
+
+    log:printInfo(string `Successfully created user ${username}`);
+    return ();
 }
 
 // Get user roles by user ID

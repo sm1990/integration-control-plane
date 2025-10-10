@@ -82,7 +82,7 @@ class ICPApiClient {
     }
 
     // Authentication methods
-    async login(email: string, password: string): Promise<any> {
+    async login(username: string, password: string): Promise<any> {
         try {
             const response = await fetch(`${this.authEndpoint}/login`, {
                 method: 'POST',
@@ -90,7 +90,7 @@ class ICPApiClient {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email,
+                    username,
                     password,
                 }),
             });

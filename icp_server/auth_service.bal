@@ -45,7 +45,7 @@ final readonly & jwt:IssuerSignatureConfig jwtSignatureConfig = {
 service /auth on httpListener {
 
     isolated resource function post login(types:Credentials credentials) returns http:Ok|http:Unauthorized|http:InternalServerError|error {
-        log:printInfo("Login attempt for user", email = credentials.email);
+        log:printInfo("Login attempt for user", username = credentials.username);
         // Call the authentication backend to verify credentials
         http:Response|error authResponse = authBackendClient->post("/authenticate", credentials, {
             "X-API-Key": authBackendApiKey
@@ -58,7 +58,7 @@ service /auth on httpListener {
 
         // Check status code before parsing response
         if authResponse.statusCode == http:STATUS_UNAUTHORIZED {
-            log:printError("Authentication failed for user", email = credentials.email);
+            log:printError("Authentication failed for user", username = credentials.username);
             return createUnauthorizedError("Invalid credentials");
         } else if authResponse.statusCode != http:STATUS_OK {
             log:printError("Unexpected status code from authentication backend", statusCode = authResponse.statusCode);
@@ -79,22 +79,42 @@ service /auth on httpListener {
         }
 
         if !authResult.authenticated {
-            log:printError("Authentication failed for user", email = credentials.email);
+            log:printError("Authentication failed for user", username = credentials.username);
             return createUnauthorizedError("Invalid credentials");
         }
 
-        types:User|error userDetails = storage:getUserDetailsByEmail(credentials.email);
+        // Validate that auth backend returned required user claims
+        if authResult.userId is () || authResult.displayName is () {
+            log:printError("Authentication backend did not return required user claims");
+            return createInternalServerError("Invalid response from authentication service");
+        }
+
+        string userId = <string>authResult.userId;
+        string displayName = <string>authResult.displayName;
+        // Use username from the original request credentials
+        string username = credentials.username;
+
+        types:User|error userDetails = storage:getUserDetailsById(userId);
         if userDetails is error {
             if userDetails is sql:NoRowsError {
-                // user is authenticated but not found in the database need to prompt sign up
-                return <http:Ok>{
-                    body: {
-                        isNewUser: true
-                    }
-                };
-            } 
-            log:printError("Error getting user details", userDetails);
-            return createInternalServerError("Error getting user details");
+                // New user
+                log:printInfo(string `User ${username} authenticated but not found in users table, creating user record`);
+                error? createResult = storage:createUser(userId, username, displayName);
+                if createResult is error {
+                    log:printError("Error creating user in database", createResult);
+                    return createInternalServerError("Error creating user record");
+                }
+
+                // Fetch the newly created user details
+                userDetails = storage:getUserDetailsById(userId);
+                if userDetails is error {
+                    log:printError("Error getting newly created user details", userDetails);
+                    return createInternalServerError("Error getting user details");
+                }
+            } else {
+                log:printError("Error getting user details", userDetails);
+                return createInternalServerError("Error getting user details");
+            }
         }
 
         types:Role[]|error userRoles = storage:getUserRoles(userDetails.userId);
@@ -112,7 +132,8 @@ service /auth on httpListener {
         };
 
         issuerConfig.customClaims["roles"] = userRoles.toJson();
-        issuerConfig.customClaims["email"] = credentials.email;
+        issuerConfig.customClaims["username"] = username;
+        issuerConfig.customClaims["displayName"] = displayName;
 
         string|jwt:Error jwtToken = jwt:issue(issuerConfig);
         if jwtToken is jwt:Error {
@@ -120,12 +141,12 @@ service /auth on httpListener {
             return createInternalServerError("Error generating JWT token");
         }
 
-        log:printInfo("Login successful for user", email = credentials.email);
+        log:printInfo("Login successful for user", username = username);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
-                email: credentials.email,
+                username: username,
                 roles: userRoles
             }
         };

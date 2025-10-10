@@ -20,11 +20,11 @@ import ballerina/test;
 
 // Test configuration
 const string AUTH_SERVICE_URL = "https://localhost:9445";
-const string TEST_EMAIL = "admin@example.com";
+const string TEST_USERNAME = "admin";
 const string TEST_PASSWORD = "admin123";
-const string INVALID_EMAIL = "nonexistent@example.com";
+const string INVALID_USERNAME = "nonexistent";
 const string INVALID_PASSWORD = "wrongpassword";
-const string NEW_USER_EMAIL = "newuser@example.com";
+const string NEW_USER_USERNAME = "newuser";
 const string NEW_USER_PASSWORD = "newuser123";
 
 // HTTP client for testing
@@ -43,7 +43,7 @@ final http:Client authClient = check new (AUTH_SERVICE_URL,
 function testSuccessfulLogin() returns error? {
     // Prepare login request
     json loginRequest = {
-        email: TEST_EMAIL,
+        username: TEST_USERNAME,
         password: TEST_PASSWORD
     };
 
@@ -74,22 +74,22 @@ function testSuccessfulLogin() returns error? {
     test:assertTrue(payload.aud is string, "Audience should be present in JWT");
 
     // Verify custom claims
-    test:assertTrue(payload["email"] is string, "Email should be present in JWT custom claims");
-    test:assertEquals(payload["email"], TEST_EMAIL, "Email should match the logged-in user");
+    test:assertTrue(payload["username"] is string, "Username should be present in JWT custom claims");
+    test:assertEquals(payload["username"], TEST_USERNAME, "Username should match the logged-in user");
     test:assertTrue(payload["roles"] is json[], "Roles should be present in JWT custom claims");
 
     json[] roles = check payload["roles"].ensureType();
     test:assertTrue(roles.length() > 0, "User should have at least one role");
 }
 
-// Test: Login failure with invalid email
+// Test: Login failure with invalid username
 @test:Config {
     groups: ["auth", "login", "negative"]
 }
-function testLoginWithInvalidEmail() returns error? {
-    // Prepare login request with invalid email
+function testLoginWithInvalidUsername() returns error? {
+    // Prepare login request with invalid username
     json loginRequest = {
-        email: INVALID_EMAIL,
+        username: INVALID_USERNAME,
         password: TEST_PASSWORD
     };
 
@@ -113,7 +113,7 @@ function testLoginWithInvalidEmail() returns error? {
 function testLoginWithInvalidPassword() returns error? {
     // Prepare login request with invalid password
     json loginRequest = {
-        email: TEST_EMAIL,
+        username: TEST_USERNAME,
         password: INVALID_PASSWORD
     };
 
@@ -137,7 +137,7 @@ function testLoginWithInvalidPassword() returns error? {
 function testLoginWithMissingCredentials() returns error? {
     // Prepare login request with missing password
     json loginRequest = {
-        email: TEST_EMAIL
+        username: TEST_USERNAME
     };
 
     // Send login request
@@ -157,7 +157,7 @@ function testLoginWithMissingCredentials() returns error? {
 function testJWTTokenExpiration() returns error? {
     // Prepare login request
     json loginRequest = {
-        email: TEST_EMAIL,
+        username: TEST_USERNAME,
         password: TEST_PASSWORD
     };
 
@@ -195,7 +195,7 @@ function testJWTTokenExpiration() returns error? {
 function testJWTContainsUserRoles() returns error? {
     // Prepare login request
     json loginRequest = {
-        email: TEST_EMAIL,
+        username: TEST_USERNAME,
         password: TEST_PASSWORD
     };
 
@@ -231,7 +231,7 @@ function testJWTContainsUserRoles() returns error? {
 function testJWTSignatureVerification() returns error? {
     // Prepare login request
     json loginRequest = {
-        email: TEST_EMAIL,
+        username: TEST_USERNAME,
         password: TEST_PASSWORD
     };
 
@@ -255,18 +255,18 @@ function testJWTSignatureVerification() returns error? {
 
     // Verify payload contains expected claims
     test:assertTrue(validatedPayload.sub is string, "Validated payload should contain subject");
-    test:assertTrue(validatedPayload["email"] is string, "Validated payload should contain email");
+    test:assertTrue(validatedPayload["username"] is string, "Validated payload should contain username");
     test:assertTrue(validatedPayload["roles"] is json[], "Validated payload should contain roles");
 }
 
-// Test: New user scenario - authenticated but not in database
+// Test: New user scenario - authenticated backend user gets auto-created in DB
 @test:Config {
     groups: ["auth", "login", "newuser"]
 }
-function testNewUserLogin() returns error? {
-    // Prepare login request for a new user (authenticated by backend but not in DB)
+function testNewUserAutoCreation() returns error? {
+    // Prepare login request for a new user (authenticated by backend but not initially in DB)
     json loginRequest = {
-        email: NEW_USER_EMAIL,
+        username: NEW_USER_USERNAME,
         password: NEW_USER_PASSWORD
     };
 
@@ -279,8 +279,13 @@ function testNewUserLogin() returns error? {
     // Parse response body
     json responseBody = check response.getJsonPayload();
 
-    // Assert that isNewUser flag is set to true
-    test:assertTrue(responseBody.isNewUser is boolean, "isNewUser field should be present in response");
-    test:assertEquals(responseBody.isNewUser, true, "isNewUser should be true for new users");
+    // Assert that user gets a token (auto-created successfully)
+    test:assertTrue(responseBody.token is string, "Token should be present for auto-created user");
+    test:assertTrue(responseBody.username is string, "Username should be present in response");
+    test:assertEquals(responseBody.username, NEW_USER_USERNAME, "Username should match");
+    
+    // Verify JWT token is valid
+    string token = check responseBody.token;
+    test:assertTrue(token.length() > 0, "Token should not be empty");
 }
 

@@ -117,7 +117,7 @@ export interface UpdateProjectRequest {
 
 // Authentication types
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -135,12 +135,12 @@ export interface LoginResponse {
   isNewUser: boolean;
   token: string;
   expiresIn: number;
-  email: string;
+  username: string;
   roles: Role[];
 }
 
 export interface AuthUser {
-  email: string;
+  username: string;
   token: string;
   roles: Role[];
   expiresAt: number;

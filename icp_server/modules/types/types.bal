@@ -416,7 +416,7 @@ public type ComponentInDB record {
 // === Auth Related Types ===
 
 public type Credentials record {
-    string email;
+    string username;
     string password;
 };
 
@@ -424,21 +424,22 @@ public type LoginResponse record {|
     boolean isNewUser = false;
     string token?;
     int expiresIn?;
-    string email?;
+    string username?;
     Role[] roles?;
 |};
 
 // Types for the /authenticate endpoint
 public type AuthenticateResponse record {
     boolean authenticated;
-    string? email;
+    string? userId;
+    string? displayName;
     string? timestamp;
 };
 
 // Database user record type
 public type User record {
     string userId;
-    string email;
+    string username;
     string displayName;
     string? createdAt?;
     string? updatedAt?;
@@ -446,7 +447,9 @@ public type User record {
 
 // Database user_credentials record type
 public type UserCredentials record {
-    string email;
+    string userId;
+    string username;
+    string displayName;
     string passwordHash;
     string? createdAt?;
     string? updatedAt?;

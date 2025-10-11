@@ -54,33 +54,35 @@ service / on defaultAuthServiceListener {
         }
 
         // Perform authentication against database
-        string|error userEmail = authenticateUser(request.email, request.password);
-        if userEmail is error {
-            log:printError("Error authenticating user", userEmail);
+        types:User|error user = authenticateUser(request.username, request.password);
+        if user is error {
+            log:printError("Error authenticating user", user);
             return createUnauthorizedError("Invalid credentials");
         }
 
         // Create response timestamp
         string responseTimestamp = time:utcToString(time:utcNow());
-        log:printInfo("User authenticated successfully: " + userEmail);
+        log:printInfo("User authenticated successfully: " + user.username);
         return <http:Ok>{
             body: {
                 authenticated: true,
-                email: userEmail,
+                userId: user.userId,
+                displayName: user.displayName,
                 timestamp: responseTimestamp
             }
         };
     }
 }
 
-isolated function authenticateUser(string email, string password) returns string|error {
+isolated function authenticateUser(string username, string password) returns types:User|error {
     sql:Client dbClient = storage:dbClient;
-
-    // Query user credentials from the user_credentials table
+    log:printDebug("Attempting to authenticate user: " + username);
+    // Query user credentials table only (auth backend is independent)
     types:UserCredentials|sql:Error credentials = dbClient->queryRow(
-        `SELECT email, password_hash as passwordHash 
+        `SELECT user_id as userId, username, display_name as displayName, 
+                password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
          FROM user_credentials 
-         WHERE email = ${email}`
+         WHERE username = ${username}`
     );
 
     if credentials is sql:Error {
@@ -94,10 +96,19 @@ isolated function authenticateUser(string email, string password) returns string
         log:printError("Unable to verify password", matches);
         return error("Invalid credentials");
     } else if matches is boolean && !matches {
-        log:printError("Invalid password", email = email);
+        log:printError("Invalid password", username = username);
         return error("Invalid credentials");
     }
 
-    return email;
+    // Return user details from credentials (converting UserCredentials to User type)
+    types:User user = {
+        userId: credentials.userId,
+        username: credentials.username,
+        displayName: credentials.displayName,
+        createdAt: credentials?.createdAt,
+        updatedAt: credentials?.updatedAt
+    };
+
+    return user;
 }
 

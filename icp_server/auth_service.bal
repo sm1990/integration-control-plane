@@ -219,7 +219,7 @@ service /auth on httpListener {
 
         log:printInfo("Successfully exchanged authorization code for tokens");
         
-        // Decode and validate ID token (p2-7, p2-8)
+        // Decode and validate ID token
         types:OIDCIdTokenClaims|http:Unauthorized|http:InternalServerError claims = 
             utils:decodeAndValidateIdToken(tokenResponse.id_token, ssoConfig);
         
@@ -227,14 +227,14 @@ service /auth on httpListener {
             return claims;
         }
         
-        // Extract user information (p2-9, p2-10)
+        // Extract user information
         types:ExtractedUserInfo|http:InternalServerError userInfo = utils:extractUserInfo(claims, ssoConfig);
         
         if userInfo is http:InternalServerError {
             return userInfo;
         }
         
-        // Check if user exists, create if new (p2-11)
+        // Check if user exists, create if new
         types:User|error userDetails = storage:getUserDetailsById(userInfo.userId);
         if userDetails is error {
             if userDetails is sql:NoRowsError {
@@ -264,14 +264,14 @@ service /auth on httpListener {
             }
         }
         
-        // Fetch user roles (p2-12)
+        // Fetch user roles
         types:Role[]|error userRoles = storage:getUserRoles(userDetails.userId);
         if userRoles is error {
             log:printError("Error getting user roles for OIDC user", userRoles);
             return utils:createInternalServerError("Error getting user roles");
         }
         
-        // Issue ICP JWT token (p2-13)
+        // Issue ICP JWT token
         jwt:IssuerConfig issuerConfig = {
             username: userDetails.userId,
             issuer: frontendJwtIssuer,
@@ -290,7 +290,7 @@ service /auth on httpListener {
             return utils:createInternalServerError("Error generating JWT token");
         }
         
-        // Return login response (p2-14)
+        // Return login response
         log:printInfo("OIDC login successful", username = userInfo.username);
         return <http:Ok>{
             body: {

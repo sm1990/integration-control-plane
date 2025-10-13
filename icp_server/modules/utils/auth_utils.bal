@@ -168,7 +168,7 @@ public isolated function decodeAndValidateIdToken(string idToken, types:SSOConfi
     
     log:printInfo("Successfully decoded ID token");
     
-    // Validate claims (p2-8)
+    // Validate claims
     error? validationError = validateIdTokenClaims(claims, config);
     if validationError is error {
         log:printError("ID token validation failed", validationError);
@@ -303,7 +303,7 @@ public isolated function extractUserInfo(types:OIDCIdTokenClaims claims, types:S
         return createInternalServerError(string `ID token missing required claim: ${config.usernameClaim}`);
     }
     
-    // Extract displayName with fallback logic (p2-10)
+    // Extract displayName with fallback logic
     string displayName = buildDisplayName(claims, username);
     
     log:printInfo("Successfully extracted user info", userId = userId, username = username, displayName = displayName);

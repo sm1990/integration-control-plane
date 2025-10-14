@@ -1,50 +1,60 @@
-<svg width="400" height="400" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
   <defs>
-    <radialGradient id="backgroundGradient" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" transform="translate(200 200) rotate(90) scale(200 200)">
-      <stop offset="0%" stop-color="#1976D2" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#0F4F8A" stop-opacity="1"/>
-    </radialGradient>
-
-    <linearGradient id="nodeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#64B5F6"/>
-      <stop offset="100%" stop-color="#42A5F5"/>
+    <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2196f3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1976d2;stop-opacity:1" />
     </linearGradient>
-
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur"/>
+    <linearGradient id="lightGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64b5f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#42a5f5;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
       <feMerge>
-        <feMergeNode in="blur"/>
+        <feMergeNode/>
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-
-    <g id="integration-network">
-      <polygon points="200,160 217.32,170 217.32,190 200,200 182.68,190 182.68,170" fill="white" filter="url(#glow)"/>
-
-      <polygon points="120,200 125,203 125,209 120,212 115,209 115,203" fill="white" filter="url(#glow)"/>
-      <polygon points="280,200 285,203 285,209 280,212 275,209 275,203" fill="white" filter="url(#glow)"/>
-      <polygon points="160,100 165,103 165,109 160,112 155,109 155,103" fill="white" filter="url(#glow)"/>
-      <polygon points="240,100 245,103 245,109 240,112 235,109 235,103" fill="white" filter="url(#glow)"/>
-      <polygon points="160,300 165,303 165,309 160,312 155,309 155,303" fill="white" filter="url(#glow)"/>
-      <polygon points="240,300 245,303 245,309 240,312 235,309 235,303" fill="white" filter="url(#glow)"/>
-
-      <path d="M200,180 Q150,150 120,206" stroke="url(#nodeGradient)" stroke-width="3" fill="none" opacity="0.8"/>
-      <path d="M200,180 Q250,150 280,206" stroke="url(#nodeGradient)" stroke-width="3" fill="none" opacity="0.8"/>
-      <path d="M200,180 Q220,130 240,106" stroke="url(#nodeGradient)" stroke-width="3" fill="none" opacity="0.8"/>
-      <path d="M200,180 Q180,130 160,106" stroke="url(#nodeGradient)" stroke-width="3" fill="none" opacity="0.8"/>
-      <path d="M200,180 Q150,250 160,306" stroke="url(#nodeGradient)" stroke-width="3" fill="none" opacity="0.8"/>
-      <path d="M200,180 Q250,250 240,306" stroke="url(#nodeGradient)" stroke-width="3" fill="none" opacity="0.8"/>
-
-    </g>
   </defs>
-
-  <circle cx="200" cy="200" r="190" fill="url(#backgroundGradient)"/>
-
-  <circle cx="200" cy="200" r="195" stroke="#1976D2" stroke-width="10" fill="none"/>
-
-  <use href="#integration-network" transform="translate(0, 20)"/>
-
-  <text x="200" y="340" font-family="Arial, sans-serif" font-size="28" fill="white" text-anchor="middle" font-weight="bold">WSO2</text>
-  <text x="200" y="365" font-family="Arial, sans-serif" font-size="20" fill="white" text-anchor="middle" opacity="0.7">ICP</text>
-
+  
+  <!-- Connection lines -->
+  <g opacity="0.6">
+    <line x1="100" y1="100" x2="50" y2="50" stroke="url(#blueGradient)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="100" y1="100" x2="150" y2="50" stroke="url(#blueGradient)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="100" y1="100" x2="170" y2="100" stroke="url(#blueGradient)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="100" y1="100" x2="150" y2="150" stroke="url(#blueGradient)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="100" y1="100" x2="50" y2="150" stroke="url(#blueGradient)" stroke-width="3" stroke-linecap="round"/>
+    <line x1="100" y1="100" x2="30" y2="100" stroke="url(#blueGradient)" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Outer nodes -->
+  <circle cx="50" cy="50" r="12" fill="url(#lightGradient)" filter="url(#shadow)"/>
+  <circle cx="150" cy="50" r="12" fill="url(#lightGradient)" filter="url(#shadow)"/>
+  <circle cx="170" cy="100" r="12" fill="url(#lightGradient)" filter="url(#shadow)"/>
+  <circle cx="150" cy="150" r="12" fill="url(#lightGradient)" filter="url(#shadow)"/>
+  <circle cx="50" cy="150" r="12" fill="url(#lightGradient)" filter="url(#shadow)"/>
+  <circle cx="30" cy="100" r="12" fill="url(#lightGradient)" filter="url(#shadow)"/>
+  
+  <!-- Central hub node -->
+  <circle cx="100" cy="100" r="22" fill="url(#blueGradient)" filter="url(#shadow)"/>
+  
+  <!-- Central hub icon - connection symbol -->
+  <g transform="translate(100, 100)">
+    <circle cx="0" cy="0" r="8" fill="none" stroke="white" stroke-width="2"/>
+    <circle cx="0" cy="-10" r="2" fill="white"/>
+    <circle cx="8.66" cy="5" r="2" fill="white"/>
+    <circle cx="-8.66" cy="5" r="2" fill="white"/>
+  </g>
+  
+  <!-- Small pulse circles on outer nodes -->
+  <circle cx="50" cy="50" r="5" fill="white" opacity="0.8"/>
+  <circle cx="150" cy="50" r="5" fill="white" opacity="0.8"/>
+  <circle cx="170" cy="100" r="5" fill="white" opacity="0.8"/>
+  <circle cx="150" cy="150" r="5" fill="white" opacity="0.8"/>
+  <circle cx="50" cy="150" r="5" fill="white" opacity="0.8"/>
+  <circle cx="30" cy="100" r="5" fill="white" opacity="0.8"/>
 </svg>

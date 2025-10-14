@@ -49,10 +49,12 @@ import 'reactflow/dist/style.css';
 import {
     useEnvironments,
     useRuntimes,
+    useProjects,
 } from '../services/hooks';
 import {
     Environment,
     Runtime,
+    Project,
 } from '../types';
 
 // Function to get the appropriate icon for runtime type
@@ -66,30 +68,96 @@ const getRuntimeIcon = (runtimeType: string) => {
 const EnvironmentOverview: React.FC = () => {
     const [searchParams] = useSearchParams();
     const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>('');
+    const [selectedProjectId, setSelectedProjectId] = useState<string>('');
     const [dialogOpen, setDialogOpen] = useState<boolean>(false);
     const [selectedRuntime, setSelectedRuntime] = useState<Runtime | null>(null);
 
     // Data hooks
     const { loading: environmentsLoading, value: environments, retry: retryEnvironments } = useEnvironments();
     const { loading: runtimesLoading, value: allRuntimes, retry: retryRuntimes } = useRuntimes();
+    const { loading: projectsLoading, value: projects, retry: retryProjects } = useProjects();
 
     // Effect to handle URL parameters for automatic environment selection
     useEffect(() => {
         const environmentIdFromUrl = searchParams.get('environmentId');
-        if (environmentIdFromUrl && environments.length > 0) {
-            // Check if the environment exists in the loaded environments
+        if (environmentIdFromUrl && environments.length > 0 && !selectedEnvironmentId) {
+            // Only set from URL if no environment is currently selected
             const environmentExists = environments.some(env => env.environmentId === environmentIdFromUrl);
             if (environmentExists) {
                 setSelectedEnvironmentId(environmentIdFromUrl);
             }
         }
-    }, [searchParams, environments]);
+    }, [searchParams, environments, selectedEnvironmentId]);
 
-    // Filter runtimes by selected environment
+    // Reset project selection when environment actually changes (not just during data refresh)
+    const prevEnvironmentId = React.useRef<string>('');
+    useEffect(() => {
+        if (prevEnvironmentId.current !== '' && prevEnvironmentId.current !== selectedEnvironmentId) {
+            // Only reset project when environment actually changes, not during initial load or refresh
+            setSelectedProjectId('');
+        }
+        prevEnvironmentId.current = selectedEnvironmentId;
+    }, [selectedEnvironmentId]);
+
+    // Filter runtimes by selected environment and project
     const filteredRuntimes = useMemo(() => {
         if (!selectedEnvironmentId) return [];
-        return allRuntimes.filter(runtime => runtime.environment?.environmentId === selectedEnvironmentId);
+
+        let runtimes = allRuntimes.filter(runtime =>
+            runtime.environment?.environmentId === selectedEnvironmentId
+        );
+
+        // Further filter by project if one is selected
+        if (selectedProjectId) {
+            runtimes = runtimes.filter(runtime =>
+                runtime.component?.project?.projectId === selectedProjectId
+            );
+        }
+
+        return runtimes;
+    }, [allRuntimes, selectedEnvironmentId, selectedProjectId]);
+
+    // Get available projects for the selected environment
+    const availableProjects = useMemo(() => {
+        if (!selectedEnvironmentId) return [];
+
+        const environmentRuntimes = allRuntimes.filter(runtime =>
+            runtime.environment?.environmentId === selectedEnvironmentId
+        );
+
+        const projectsSet = new Set<string>();
+        const projectsMap = new Map<string, Project>();
+
+        environmentRuntimes.forEach(runtime => {
+            const project = runtime.component?.project;
+            if (project && !projectsSet.has(project.projectId)) {
+                projectsSet.add(project.projectId);
+                projectsMap.set(project.projectId, project);
+            }
+        });
+
+        return Array.from(projectsMap.values()).sort((a, b) => a.name.localeCompare(b.name));
     }, [allRuntimes, selectedEnvironmentId]);
+
+    // Validation: Clear invalid selections after data loads
+    useEffect(() => {
+        if (!environmentsLoading && selectedEnvironmentId && environments.length > 0) {
+            const environmentExists = environments.some(env => env.environmentId === selectedEnvironmentId);
+            if (!environmentExists) {
+                setSelectedEnvironmentId('');
+                setSelectedProjectId(''); // Clear project too if environment is invalid
+            }
+        }
+    }, [environmentsLoading, selectedEnvironmentId, environments]);
+
+    useEffect(() => {
+        if (!runtimesLoading && selectedProjectId && availableProjects.length > 0) {
+            const projectExists = availableProjects.some(proj => proj.projectId === selectedProjectId);
+            if (!projectExists) {
+                setSelectedProjectId('');
+            }
+        }
+    }, [runtimesLoading, selectedProjectId, availableProjects]);
 
     // Create nodes and edges for React Flow
     const { nodes, edges } = useMemo(() => {
@@ -302,7 +370,8 @@ const EnvironmentOverview: React.FC = () => {
     const handleRefresh = useCallback(() => {
         retryEnvironments();
         retryRuntimes();
-    }, [retryEnvironments, retryRuntimes]);
+        retryProjects();
+    }, [retryEnvironments, retryRuntimes, retryProjects]);
 
     // Dialog handlers
     const handleViewRuntime = useCallback((runtime: Runtime) => {
@@ -325,8 +394,9 @@ const EnvironmentOverview: React.FC = () => {
     }, []);
 
     const selectedEnvironment = environments.find(env => env.environmentId === selectedEnvironmentId);
+    const selectedProject = projects.find(project => project.projectId === selectedProjectId);
 
-    const isLoading = environmentsLoading || runtimesLoading;
+    const isLoading = environmentsLoading || runtimesLoading || projectsLoading;
 
     return (
         <Box sx={{ p: 3, height: 'calc(100vh - 100px)' }}>
@@ -334,9 +404,9 @@ const EnvironmentOverview: React.FC = () => {
                 Environment Overview
             </Typography>
 
-            {/* Environment Selection */}
+            {/* Environment and Project Selection */}
             <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
                     <FormControl sx={{ minWidth: 300 }}>
                         <InputLabel>Select Environment</InputLabel>
                         <Select
@@ -344,7 +414,14 @@ const EnvironmentOverview: React.FC = () => {
                             onChange={(e) => setSelectedEnvironmentId(e.target.value)}
                             label="Select Environment"
                             disabled={environmentsLoading}
+                            displayEmpty
                         >
+                            {/* Show current selection even when data is loading */}
+                            {environmentsLoading && selectedEnvironmentId && !environments.some(env => env.environmentId === selectedEnvironmentId) && (
+                                <MenuItem value={selectedEnvironmentId} disabled>
+                                    Loading...
+                                </MenuItem>
+                            )}
                             {environments.map((environment) => (
                                 <MenuItem key={environment.environmentId} value={environment.environmentId}>
                                     {environment.name}
@@ -352,6 +429,36 @@ const EnvironmentOverview: React.FC = () => {
                             ))}
                         </Select>
                     </FormControl>
+
+                    {selectedEnvironmentId && (availableProjects.length > 0 || runtimesLoading) && (
+                        <FormControl sx={{ minWidth: 250 }}>
+                            <InputLabel shrink>Project Filter</InputLabel>
+                            <Select
+                                value={selectedProjectId}
+                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                label="Project Filter"
+                                disabled={isLoading}
+                                displayEmpty
+                                notched
+                            >
+                                <MenuItem value="">
+                                    <em>All Projects</em>
+                                </MenuItem>
+                                {/* Show current project selection even when data is loading */}
+                                {runtimesLoading && selectedProjectId && !availableProjects.some(proj => proj.projectId === selectedProjectId) && (
+                                    <MenuItem value={selectedProjectId} disabled>
+                                        Loading...
+                                    </MenuItem>
+                                )}
+                                {availableProjects.map((project) => (
+                                    <MenuItem key={project.projectId} value={project.projectId}>
+                                        📁 {project.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    )}
+
                     <Tooltip title="Refresh data">
                         <IconButton
                             onClick={handleRefresh}
@@ -374,7 +481,7 @@ const EnvironmentOverview: React.FC = () => {
 
                 {selectedEnvironment && (
                     <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
                             <Typography variant="h6">
                                 {selectedEnvironment.name}
                             </Typography>
@@ -384,15 +491,35 @@ const EnvironmentOverview: React.FC = () => {
                                 variant="outlined"
                                 size="small"
                             />
+                            {selectedProject && (
+                                <Chip
+                                    label={`Project: ${selectedProject.name}`}
+                                    color="secondary"
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            )}
                         </Box>
                         {selectedEnvironment.description && (
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                                 {selectedEnvironment.description}
                             </Typography>
                         )}
-                        <Typography variant="body2">
-                            <strong>Runtimes:</strong> {filteredRuntimes.length}
-                        </Typography>
+                        {selectedProject && selectedProject.description && (
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                <strong>Project:</strong> {selectedProject.description}
+                            </Typography>
+                        )}
+                        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                            <Typography variant="body2">
+                                <strong>Runtimes:</strong> {filteredRuntimes.length}
+                            </Typography>
+                            {selectedProjectId && availableProjects.length > 1 && (
+                                <Typography variant="body2">
+                                    <strong>Total Projects:</strong> {availableProjects.length}
+                                </Typography>
+                            )}
+                        </Box>
                     </Box>
                 )}
             </Paper>
@@ -419,10 +546,16 @@ const EnvironmentOverview: React.FC = () => {
                                 flexDirection: 'column'
                             }}>
                                 <Typography variant="h6" color="text.secondary">
-                                    No runtimes found in this environment
+                                    {selectedProjectId
+                                        ? `No runtimes found for project "${selectedProject?.name}" in this environment`
+                                        : 'No runtimes found in this environment'
+                                    }
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    Try selecting a different environment or check if runtimes are deployed.
+                                    {selectedProjectId
+                                        ? 'Try selecting a different project or environment.'
+                                        : 'Try selecting a different environment or check if runtimes are deployed.'
+                                    }
                                 </Typography>
                             </Box>
                         ) : (
@@ -466,8 +599,11 @@ const EnvironmentOverview: React.FC = () => {
                             <Typography variant="h6" color="text.secondary" gutterBottom>
                                 Select an environment to view runtime visualization
                             </Typography>
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
                                 Choose an environment from the dropdown above to see the runtime topology.
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                You can optionally filter by a specific project to focus on that project's diagram.
                             </Typography>
                         </Box>
                     </CardContent>

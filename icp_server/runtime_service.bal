@@ -48,6 +48,10 @@ listener http:Listener httpListener = new (serverPort,
 }
 service /icp on httpListener {
 
+    function init() {
+        log:printInfo("Runtime service started at " + serverHost + ":" + serverPort.toString());
+    }
+
     // Process heartbeat from runtime
     @http:ResourceConfig {
         auth: {

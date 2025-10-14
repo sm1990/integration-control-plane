@@ -18,6 +18,7 @@ import icp_server.storage;
 import icp_server.types;
 
 import ballerina/graphql;
+import ballerina/log;
 
 // GraphQL listener configuration
 listener graphql:Listener graphqlListener = new (graphqlPort
@@ -38,6 +39,11 @@ listener graphql:Listener graphqlListener = new (graphqlPort
     }
 }
 service /graphql on graphqlListener {
+
+    function init() {
+        log:printInfo("GraphQL service started at " + serverHost + ":" + graphqlPort.toString());
+    }
+
     // ----------- Runtime Resources
     // Get all runtimes with optional filtering
     isolated resource function get runtimes(string? status, string? runtimeType, string? environmentId, string? projectId, string? componentId) returns types:Runtime[]|error {

@@ -26,7 +26,7 @@ Your authentication backend must implement a single endpoint:
 ```json
 {
   "username": "admin",
-  "password": "admin123"
+  "password": "admin"
 }
 ```
 
@@ -323,7 +323,7 @@ Return appropriate HTTP status codes:
 curl -X POST https://localhost:9447/authenticate \
   -H "X-API-Key: your-secure-api-key" \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}' \
+  -d '{"username": "admin", "password": "admin"}' \
   -k
 ```
 

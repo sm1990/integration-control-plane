@@ -457,7 +457,7 @@ VALUES (
     );
 
 -- Insert credentials for admin user
--- Password: admin123 (Bcrypt hashed)
+-- Password: admin (Bcrypt hashed - Ballerina format)
 INSERT INTO
     user_credentials (
         user_id,
@@ -469,7 +469,7 @@ VALUES (
         '550e8400-e29b-41d4-a716-446655440000',
         'admin',
         'System Administrator',
-        '$2a$12$KrkW4mKHgENeQHJDnMF5Ru2jZ62koqvW32cRwOG0Uhw/mHUFIB24AQ=='
+        '$2a$12$ZbcSg6botbwvmQV3/wBAfEozQoOn+5V7F8s/5evMUNb7L6FgCmFaEQ=='
     ),
     (
         '660e8400-e29b-41d4-a716-446655440001',

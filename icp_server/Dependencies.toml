@@ -5,7 +5,7 @@
 
 [ballerina]
 dependencies-toml-version = "2"
-distribution-version = "2201.12.7"
+distribution-version = "2201.12.8"
 
 [[package]]
 org = "ballerina"
@@ -545,6 +545,7 @@ dependencies = [
 ]
 modules = [
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server"},
+	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.auth"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.storage"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.types"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.utils"}

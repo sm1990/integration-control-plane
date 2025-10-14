@@ -75,7 +75,7 @@ paths:
                 summary: Valid user credentials
                 value:
                   username: "admin"
-                  password: "admin123"
+                  password: "admin"
               invalidCredentials:
                 summary: Invalid credentials example
                 value:
@@ -157,7 +157,7 @@ components:
           type: string
           format: password
           description: The user's password
-          example: "admin123"
+          example: "admin"
           minLength: 1
       description: User credentials for authentication
 
@@ -208,7 +208,7 @@ components:
     AuthenticationRequestExample:
       value:
         username: "admin"
-        password: "admin123"
+        password: "admin"
     
     AuthenticationSuccessExample:
       value:

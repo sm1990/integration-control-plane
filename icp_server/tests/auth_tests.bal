@@ -21,7 +21,7 @@ import ballerina/test;
 // Test configuration
 const string AUTH_SERVICE_URL = "https://localhost:9445";
 const string TEST_USERNAME = "admin";
-const string TEST_PASSWORD = "admin123";
+const string TEST_PASSWORD = "admin";
 const string INVALID_USERNAME = "nonexistent";
 const string INVALID_PASSWORD = "wrongpassword";
 const string NEW_USER_USERNAME = "newuser";

@@ -23,6 +23,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
     MaterialReactTable,
     type MRT_ColumnDef,
@@ -60,7 +61,9 @@ const ComponentsPage: React.FC = () => {
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [configDialogOpen, setConfigDialogOpen] = useState(false);
     const [componentToDelete, setComponentToDelete] = useState<Component | null>(null);
+    const [selectedComponent, setSelectedComponent] = useState<Component | null>(null);
     const [deleteConfirmation, setDeleteConfirmation] = useState('');
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -175,11 +178,23 @@ const ComponentsPage: React.FC = () => {
                 id: 'actions',
                 header: 'Actions',
                 enableResizing: false,
-                size: 120,
+                size: 160,
                 enableSorting: false,
                 enableColumnFilter: false,
                 Cell: ({ row }) => (
                     <Box sx={{ display: 'flex', gap: '0.5rem' }}>
+                        <Tooltip title="Copy Runtime Config">
+                            <IconButton
+                                color="primary"
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConfigClick(row.original);
+                                }}
+                            >
+                                <ContentCopyIcon />
+                            </IconButton>
+                        </Tooltip>
                         <Tooltip title="Edit Component">
                             <IconButton
                                 color="primary"
@@ -250,6 +265,11 @@ const ComponentsPage: React.FC = () => {
         }
     };
 
+    const handleConfigClick = (component: Component) => {
+        setSelectedComponent(component);
+        setConfigDialogOpen(true);
+    };
+
     const handleEditClick = (component: Component) => {
         setEditComponent({
             componentId: component.componentId,
@@ -283,6 +303,36 @@ const ComponentsPage: React.FC = () => {
                 setSnackbar({
                     open: true,
                     message: 'Failed to delete component',
+                    severity: 'error'
+                });
+            }
+        }
+    };
+
+    const generateRuntimeConfig = (component: Component) => {
+        return `[ballerinax.wso2.icp]
+runtime= <change me>
+environment=<change me>
+component="${component.name}"
+project="${component.project.name}"
+heartbeatInterval=30`;
+    };
+
+    const handleCopyConfig = async () => {
+        if (selectedComponent) {
+            const config = generateRuntimeConfig(selectedComponent);
+            try {
+                await navigator.clipboard.writeText(config);
+                setSnackbar({
+                    open: true,
+                    message: 'Runtime configuration copied to clipboard',
+                    severity: 'success'
+                });
+                setConfigDialogOpen(false);
+            } catch (error) {
+                setSnackbar({
+                    open: true,
+                    message: 'Failed to copy to clipboard',
                     severity: 'error'
                 });
             }
@@ -591,6 +641,48 @@ const ComponentsPage: React.FC = () => {
                         }
                     >
                         {deleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Runtime Configuration Dialog */}
+            <Dialog
+                open={configDialogOpen}
+                onClose={() => setConfigDialogOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Runtime Configuration</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                        Add the following wso2.icp agent configuration to register the runtime for the component "{selectedComponent?.name}".
+                    </Typography>
+                    <Paper
+                        elevation={1}
+                        sx={{
+                            p: 2,
+                            mt: 2,
+                            backgroundColor: 'grey.50',
+                            fontFamily: 'monospace',
+                            fontSize: '0.875rem',
+                            whiteSpace: 'pre-wrap',
+                            border: '1px solid',
+                            borderColor: 'grey.300',
+                        }}
+                    >
+                        {selectedComponent ? generateRuntimeConfig(selectedComponent) : ''}
+                    </Paper>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfigDialogOpen(false)}>
+                        Close
+                    </Button>
+                    <Button
+                        onClick={handleCopyConfig}
+                        variant="contained"
+                        startIcon={<ContentCopyIcon />}
+                    >
+                        Copy to Clipboard
                     </Button>
                 </DialogActions>
             </Dialog>

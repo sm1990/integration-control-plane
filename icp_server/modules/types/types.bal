@@ -81,7 +81,7 @@ public type Node record {
 
 // Heartbeat that includes all runtime information for registration/updates
 public type Heartbeat record {|
-    string runtimeId;
+    string runtime;
     RuntimeType runtimeType;
     RuntimeStatus status;
     string environment;
@@ -96,7 +96,7 @@ public type Heartbeat record {|
 
 // Delta heartbeat with hash value
 public type DeltaHeartbeat record {|
-    string runtimeId;
+    string runtime;
     string runtimeHash;
     time:Utc timestamp;
 |};

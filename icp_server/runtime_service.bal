@@ -58,7 +58,7 @@ service /icp on httpListener {
         do {
             // Process heartbeat using the repository (handles both registration and updates)
             types:HeartbeatResponse heartbeatResponse = check storage:processHeartbeat(heartbeat);
-            log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtimeId}`);
+            log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtime}`);
             return heartbeatResponse;
 
         } on fail error e {
@@ -83,7 +83,7 @@ service /icp on httpListener {
         do {
             // Process delta heartbeat using the repository
             types:HeartbeatResponse heartbeatResponse = check storage:processDeltaHeartbeat(deltaHeartbeat);
-            log:printInfo(string `Delta heartbeat processed successfully for ${deltaHeartbeat.runtimeId}`);
+            log:printInfo(string `Delta heartbeat processed successfully for ${deltaHeartbeat.runtime}`);
             return heartbeatResponse;
 
         } on fail error e {

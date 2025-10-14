@@ -118,45 +118,40 @@ CREATE TABLE user_roles (
 -- RUNTIMES & ARTIFACTS
 -- ============================================================================
 
-
 CREATE TABLE runtimes (
-  runtime_id         CHAR(36) NOT NULL PRIMARY KEY,
-  project_id         CHAR(36) NOT NULL,
-  component_id       CHAR(36) NOT NULL,
-  environment_id     CHAR(36) NOT NULL,
-  runtime_name       VARCHAR(100) NULL,
-
-  runtime_type       ENUM('MI','BI') NOT NULL,
-  status             ENUM('RUNNING','FAILED','DISABLED','OFFLINE') NOT NULL DEFAULT 'OFFLINE',
-  version            VARCHAR(50) NULL,
-
--- Node information
-platform_name VARCHAR(50) NOT NULL DEFAULT 'ballerina',
-platform_version VARCHAR(50) NULL,
-platform_home VARCHAR(255) NULL,
-os_name VARCHAR(50) NULL,
-os_version VARCHAR(50) NULL,
-
--- Timestamps
-
-
-registration_time  TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  last_heartbeat     TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  created_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  CONSTRAINT fk_runtime_project    FOREIGN KEY (project_id)   REFERENCES projects(project_id)   ON DELETE CASCADE,
-  CONSTRAINT fk_runtime_component  FOREIGN KEY (component_id) REFERENCES components(component_id) ON DELETE CASCADE,
-  CONSTRAINT fk_runtime_env        FOREIGN KEY (environment_id) REFERENCES environments(environment_id) ON DELETE CASCADE,
-
-  INDEX idx_runtime_type (runtime_type),
-  INDEX idx_status (status),
-  INDEX idx_env (environment_id),
-  INDEX idx_component (component_id),
-  INDEX idx_project (project_id),
-  INDEX idx_last_heartbeat (last_heartbeat),
-  INDEX idx_registration_time (registration_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    runtime_id CHAR(36) NOT NULL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    project_id CHAR(36) NOT NULL,
+    component_id CHAR(36) NOT NULL,
+    environment_id CHAR(36) NOT NULL,
+    runtime_type ENUM('MI', 'BI') NOT NULL,
+    status ENUM(
+        'RUNNING',
+        'FAILED',
+        'DISABLED',
+        'OFFLINE'
+    ) NOT NULL DEFAULT 'OFFLINE',
+    version VARCHAR(50) NULL,
+    platform_name VARCHAR(50) NOT NULL DEFAULT 'ballerina',
+    platform_version VARCHAR(50) NULL,
+    platform_home VARCHAR(255) NULL,
+    os_name VARCHAR(50) NULL,
+    os_version VARCHAR(50) NULL,
+    registration_time TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    last_heartbeat TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_project FOREIGN KEY (project_id) REFERENCES projects (project_id) ON DELETE CASCADE,
+    CONSTRAINT fk_runtime_component FOREIGN KEY (component_id) REFERENCES components (component_id) ON DELETE CASCADE,
+    CONSTRAINT fk_runtime_env FOREIGN KEY (environment_id) REFERENCES environments (environment_id) ON DELETE CASCADE,
+    INDEX idx_runtime_type (runtime_type),
+    INDEX idx_status (status),
+    INDEX idx_env (environment_id),
+    INDEX idx_component (component_id),
+    INDEX idx_project (project_id),
+    INDEX idx_last_heartbeat (last_heartbeat),
+    INDEX idx_registration_time (registration_time)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Services deployed on a runtime
 CREATE TABLE runtime_services (

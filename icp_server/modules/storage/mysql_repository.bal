@@ -394,7 +394,7 @@ public isolated function markOfflineRuntimes() returns error? {
 // Process delta heartbeat with hash validation
 public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbeat) returns types:HeartbeatResponse|error {
     // Validate delta heartbeat data
-    if deltaHeartbeat.runtimeId.trim().length() == 0 {
+    if deltaHeartbeat.runtime.trim().length() == 0 {
         return error("Runtime ID cannot be empty");
     }
 
@@ -403,28 +403,28 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
     types:ControlCommand[] pendingCommands = [];
     boolean hashMatches = false;
 
-    if hashCache.hasKey(deltaHeartbeat.runtimeId) {
-        any|error cachedHash = hashCache.get(deltaHeartbeat.runtimeId);
+    if hashCache.hasKey(deltaHeartbeat.runtime) {
+        any|error cachedHash = hashCache.get(deltaHeartbeat.runtime);
         hashMatches = cachedHash is string && cachedHash == deltaHeartbeat.runtimeHash;
-        log:printInfo(string `Hash for runtime ${deltaHeartbeat.runtimeId} matches: ${hashMatches}`);
+        log:printInfo(string `Hash for runtime ${deltaHeartbeat.runtime} matches: ${hashMatches}`);
     }
 
     if !hashMatches {
         // Hash doesn't match or runtime not in cache, request full heartbeat
-        log:printInfo(string `Hash mismatch for runtime ${deltaHeartbeat.runtimeId}, requesting full heartbeat`);
+        log:printInfo(string `Hash mismatch for runtime ${deltaHeartbeat.runtime}, requesting full heartbeat`);
 
         // Still update the timestamp to show runtime is alive
         transaction {
             sql:ExecutionResult _ = check dbClient->execute(`
                 UPDATE runtimes 
                 SET last_heartbeat = ${currentTimeStr}, status = 'RUNNING'
-                WHERE runtime_id = ${deltaHeartbeat.runtimeId}
+                WHERE runtime_id = ${deltaHeartbeat.runtime}
             `);
 
             check commit;
         } on fail error e {
-            log:printError(string `Failed to update timestamp for runtime ${deltaHeartbeat.runtimeId}`, e);
-            return error(string `Failed to process delta heartbeat for runtime ${deltaHeartbeat.runtimeId}`, e);
+            log:printError(string `Failed to update timestamp for runtime ${deltaHeartbeat.runtime}`, e);
+            return error(string `Failed to process delta heartbeat for runtime ${deltaHeartbeat.runtime}`, e);
         }
 
         return {
@@ -440,14 +440,14 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
         sql:ExecutionResult _ = check dbClient->execute(`
             UPDATE runtimes 
             SET last_heartbeat = ${currentTimeStr}, status = 'RUNNING'
-            WHERE runtime_id = ${deltaHeartbeat.runtimeId}
+            WHERE runtime_id = ${deltaHeartbeat.runtime}
         `);
 
         // Retrieve pending control commands for this runtime
         stream<types:ControlCommand, sql:Error?> commandStream = dbClient->query(`
             SELECT command_id, runtime_id, target_artifact, action, issued_at, status
             FROM control_commands 
-            WHERE runtime_id = ${deltaHeartbeat.runtimeId} 
+            WHERE runtime_id = ${deltaHeartbeat.runtime} 
             AND status = 'pending'
             ORDER BY issued_at ASC
         `);
@@ -473,18 +473,18 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
             INSERT INTO audit_logs (
                 runtime_id, action, details, timestamp
             ) VALUES (
-                ${deltaHeartbeat.runtimeId}, 'DELTA_HEARTBEAT', 
+                ${deltaHeartbeat.runtime}, 'DELTA_HEARTBEAT', 
                 ${string `Delta heartbeat processed with hash ${deltaHeartbeat.runtimeHash}`},
                 ${currentTimeStr}
             )
         `);
 
         check commit;
-        log:printInfo(string `Successfully processed delta heartbeat for runtime ${deltaHeartbeat.runtimeId}`);
+        log:printInfo(string `Successfully processed delta heartbeat for runtime ${deltaHeartbeat.runtime}`);
 
     } on fail error e {
-        log:printError(string `Failed to process delta heartbeat for runtime ${deltaHeartbeat.runtimeId}`, e);
-        return error(string `Failed to process delta heartbeat for runtime ${deltaHeartbeat.runtimeId}`, e);
+        log:printError(string `Failed to process delta heartbeat for runtime ${deltaHeartbeat.runtime}`, e);
+        return error(string `Failed to process delta heartbeat for runtime ${deltaHeartbeat.runtime}`, e);
     }
 
     return {
@@ -497,11 +497,11 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
 // Validation function for heartbeat data
 isolated function validateHeartbeatData(types:Heartbeat heartbeat) returns error? {
     // Validate required fields
-    if heartbeat.runtimeId.trim().length() == 0 {
+    if heartbeat.runtime.trim().length() == 0 {
         return error("Runtime ID cannot be empty");
     }
 
-    if heartbeat.runtimeId.length() > 100 {
+    if heartbeat.runtime.length() > 100 {
         return error("Runtime ID cannot exceed 100 characters");
     }
     //validate component and project
@@ -708,7 +708,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
     transaction {
         // Check if runtime exists
         stream<record {|string runtime_id;|}, sql:Error?> existingRuntimeStream = dbClient->query(`
-            SELECT runtime_id FROM runtimes WHERE runtime_id = ${heartbeat.runtimeId}
+            SELECT runtime_id FROM runtimes WHERE runtime_id = ${heartbeat.runtime}
         `);
 
         record {|string runtime_id;|}[] existingRuntimes = check from record {|string runtime_id;|} existingRuntime in existingRuntimeStream
@@ -720,13 +720,13 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
             // Register new runtime
             sql:ExecutionResult _ = check dbClient->execute(`
                 INSERT INTO runtimes (
-                    runtime_id, runtime_type, status, version, 
+                    runtime_id, name, runtime_type, status, version, 
                     environment_id, project_id, component_id,
                     platform_name, platform_version, platform_home, 
                     os_name, os_version, 
                     registration_time, last_heartbeat
                 ) VALUES (
-                    ${heartbeat.runtimeId}, ${heartbeat.runtimeType}, ${heartbeat.status}, ${heartbeat.version},
+                    ${heartbeat.runtime}, ${heartbeat.runtime},${heartbeat.runtimeType}, ${heartbeat.status}, ${heartbeat.version},
                     ${heartbeat.environment}, ${heartbeat.project}, ${heartbeat.component},
                     ${heartbeat.nodeInfo.platformName},${heartbeat.nodeInfo.platformVersion},${heartbeat.nodeInfo.ballerinaHome},
                     ${heartbeat.nodeInfo.osName}, ${heartbeat.nodeInfo.osVersion}, 
@@ -740,7 +740,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
             //     return error(string `Failed to register runtime ${heartbeat.runtimeId}`);
             // }
 
-            log:printInfo(string `Registered new runtime via heartbeat: ${heartbeat.runtimeId}`);
+            log:printInfo(string `Registered new runtime via heartbeat: ${heartbeat.runtime}`);
         } else {
             // Update existing runtime
             sql:ExecutionResult _ = check dbClient->execute(`
@@ -755,7 +755,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
                     os_name = ${heartbeat.nodeInfo.osName},
                     os_version = ${heartbeat.nodeInfo.osVersion},
                     last_heartbeat = ${currentTimeStr}
-                WHERE runtime_id = ${heartbeat.runtimeId}
+                WHERE runtime_id = ${heartbeat.runtime}
             `);
 
             // TODO: Uncomment the following lines when https://github.com/ballerina-platform/ballerina-lang/issues/44219 fixed
@@ -763,21 +763,21 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
             //     rollback;
             //     return error(string `Failed to update runtime ${heartbeat.runtimeId}`);
             // }
-            log:printInfo(string `Updated runtime via heartbeat: ${heartbeat.runtimeId}`);
+            log:printInfo(string `Updated runtime via heartbeat: ${heartbeat.runtime}`);
         }
 
         // Update artifacts information (services and listeners)
         // First, delete existing artifacts for this runtime
         _ = check dbClient->execute(`
-            DELETE FROM runtime_services WHERE runtime_id = ${heartbeat.runtimeId}
+            DELETE FROM runtime_services WHERE runtime_id = ${heartbeat.runtime}
         `);
 
         _ = check dbClient->execute(`
-            DELETE FROM runtime_listeners WHERE runtime_id = ${heartbeat.runtimeId}
+            DELETE FROM runtime_listeners WHERE runtime_id = ${heartbeat.runtime}
         `);
 
         _ = check dbClient->execute(`
-            DELETE FROM service_resources WHERE runtime_id = ${heartbeat.runtimeId}
+            DELETE FROM service_resources WHERE runtime_id = ${heartbeat.runtime}
         `);
 
         // Insert updated services
@@ -786,7 +786,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
                 INSERT INTO runtime_services (
                     runtime_id, service_name, service_package, base_path, state
                 ) VALUES (
-                    ${heartbeat.runtimeId}, ${serviceDetail.name}, 
+                    ${heartbeat.runtime}, ${serviceDetail.name}, 
                     ${serviceDetail.package}, ${serviceDetail.basePath}, 
                     ${serviceDetail.state}
                 )
@@ -799,7 +799,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
                     INSERT INTO service_resources (
                         runtime_id, service_name, resource_url, methods
                     ) VALUES (
-                        ${heartbeat.runtimeId}, ${serviceDetail.name}, 
+                        ${heartbeat.runtime}, ${serviceDetail.name}, 
                         ${resourceDetail.url}, ${methodsJson}
                     )
                 `);
@@ -812,7 +812,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
                 INSERT INTO runtime_listeners (
                     runtime_id, listener_name, listener_package, protocol, state
                 ) VALUES (
-                    ${heartbeat.runtimeId}, ${listenerDetail.name}, 
+                    ${heartbeat.runtime}, ${listenerDetail.name}, 
                     ${listenerDetail.package}, ${listenerDetail.protocol}, 
                     ${listenerDetail.state}
                 )
@@ -823,7 +823,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
         if isNewRegistration {
             error? validationResult = validateComponentRuntimeConsistency(heartbeat.component, heartbeat.artifacts);
             if validationResult is error {
-                log:printWarn(string `Component consistency validation failed for runtime ${heartbeat.runtimeId}`, validationResult);
+                log:printWarn(string `Component consistency validation failed for runtime ${heartbeat.runtime}`, validationResult);
             }
         }
 
@@ -831,7 +831,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
         stream<types:ControlCommand, sql:Error?> commandStream = dbClient->query(`
             SELECT command_id, runtime_id, target_artifact, action, issued_at, status
             FROM control_commands 
-            WHERE runtime_id = ${heartbeat.runtimeId} 
+            WHERE runtime_id = ${heartbeat.runtime} 
             AND status = 'pending'
             ORDER BY issued_at ASC
         `);
@@ -858,26 +858,26 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
             INSERT INTO audit_logs (
                 runtime_id, action, details, timestamp
             ) VALUES (
-                ${heartbeat.runtimeId}, ${action}, 
+                ${heartbeat.runtime}, ${action}, 
                 ${string `Runtime ${action.toLowerAscii()} processed with ${heartbeat.artifacts.services.length()} services and ${heartbeat.artifacts.listeners.length()} listeners`},
                 ${currentTimeStr}
             )
         `);
         check commit;
-        log:printInfo(string `Successfully processed ${action.toLowerAscii()} for runtime ${heartbeat.runtimeId} with ${heartbeat.artifacts.services.length()} services and ${heartbeat.artifacts.listeners.length()} listeners`);
+        log:printInfo(string `Successfully processed ${action.toLowerAscii()} for runtime ${heartbeat.runtime} with ${heartbeat.artifacts.services.length()} services and ${heartbeat.artifacts.listeners.length()} listeners`);
 
     } on fail error e {
         // In case of error, the transaction block is rolled back automatically.
-        log:printError(string `Failed to process heartbeat for runtime ${heartbeat.runtimeId}`, e);
-        return error(string `Failed to process heartbeat for runtime ${heartbeat.runtimeId}`, e);
+        log:printError(string `Failed to process heartbeat for runtime ${heartbeat.runtime}`, e);
+        return error(string `Failed to process heartbeat for runtime ${heartbeat.runtime}`, e);
     }
 
     // Cache the runtime hash value after successful processing (outside transaction)
-    error? cacheResult = hashCache.put(heartbeat.runtimeId, heartbeat.runtimeHash);
+    error? cacheResult = hashCache.put(heartbeat.runtime, heartbeat.runtimeHash);
     if cacheResult is error {
-        log:printWarn(string `Failed to cache runtime hash for ${heartbeat.runtimeId}`, cacheResult);
+        log:printWarn(string `Failed to cache runtime hash for ${heartbeat.runtime}`, cacheResult);
     } else {
-        log:printDebug(string `Cached runtime hash for ${heartbeat.runtimeId}: ${heartbeat.runtimeHash}`);
+        log:printDebug(string `Cached runtime hash for ${heartbeat.runtime}: ${heartbeat.runtimeHash}`);
     }
 
     // Return heartbeat response with pending commands (outside transaction)

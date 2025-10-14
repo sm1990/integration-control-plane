@@ -140,7 +140,7 @@ const RuntimesPage: React.FC = () => {
                                 return '#4caf50';
                             case 'pending':
                             case 'offline':
-                                return '#ff9800';
+                                return '#f44336';
                             case 'error':
                             case 'failed':
                                 return '#f44336';
@@ -408,7 +408,7 @@ const RuntimesPage: React.FC = () => {
                                 size="small"
                                 sx={{
                                     backgroundColor: selectedRuntime.status?.toLowerCase() === 'active' ? '#4caf50' :
-                                        selectedRuntime.status?.toLowerCase() === 'offline' ? '#ff9800' :
+                                        selectedRuntime.status?.toLowerCase() === 'offline' ? '#f44336' :
                                             selectedRuntime.status?.toLowerCase() === 'error' ? '#f44336' : '#9e9e9e',
                                     color: 'white',
                                     fontWeight: 'bold',

@@ -37,8 +37,17 @@ class ICPApiClient {
                 'Content-Type': 'application/json',
             };
 
-            if (this.token) {
-                headers['Authorization'] = `Bearer ${this.token}`;
+            // Dynamically retrieve token from localStorage (where AuthContext stores it)
+            const storedUser = localStorage.getItem('icp_auth_user');
+            if (storedUser) {
+                try {
+                    const parsedUser = JSON.parse(storedUser);
+                    if (parsedUser.token) {
+                        headers['Authorization'] = `Bearer ${parsedUser.token}`;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse stored user for auth header', e);
+                }
             }
 
             const response = await fetch(this.endpoint, {

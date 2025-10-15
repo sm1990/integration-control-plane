@@ -165,13 +165,22 @@ const UsersPage: React.FC = () => {
     };
 
     const handleRoleChange = (projectId: string, environmentId: string, privilegeLevel: 'admin' | 'developer' | 'none') => {
-        setRoleAssignments(prev => 
-            prev.map(assignment => 
-                assignment.projectId === projectId && assignment.environmentId === environmentId
-                    ? { ...assignment, privilegeLevel }
-                    : assignment
-            )
-        );
+        setRoleAssignments(prev => {
+            // Check if this project-environment combination already exists
+            const existingIndex = prev.findIndex(
+                a => a.projectId === projectId && a.environmentId === environmentId
+            );
+            
+            if (existingIndex >= 0) {
+                // Update existing assignment
+                const updated = [...prev];
+                updated[existingIndex] = { ...updated[existingIndex], privilegeLevel };
+                return updated;
+            } else {
+                // Add new assignment
+                return [...prev, { projectId, environmentId, privilegeLevel }];
+            }
+        });
     };
 
     const handleSavePermissions = async () => {
@@ -237,21 +246,30 @@ const UsersPage: React.FC = () => {
                 <Typography variant="h4" component="h1">
                     Users
                 </Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<AddIcon />}
-                    onClick={handleAddUser}
-                >
-                    Add New User
-                </Button>
+                {/* Only super admins can create users */}
+                {currentUser?.isSuperAdmin && (
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AddIcon />}
+                        onClick={handleAddUser}
+                    >
+                        Add New User
+                    </Button>
+                )}
             </Box>
 
             {users.length === 0 ? (
                 <Paper sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography color="textSecondary">
-                        No users found. Click "Add New User" to create one.
-                    </Typography>
+                    {currentUser?.isSuperAdmin ? (
+                        <Typography color="textSecondary">
+                            No users found. Click "Add New User" to create one.
+                        </Typography>
+                    ) : (
+                        <Typography color="textSecondary">
+                            You do not have admin access to any projects. Only admins can view and manage users in their projects.
+                        </Typography>
+                    )}
                 </Paper>
             ) : (
                 users.map((user) => (
@@ -279,18 +297,21 @@ const UsersPage: React.FC = () => {
                                     >
                                         Edit Permissions
                                     </Button>
-                                    <IconButton
-                                        size="small"
-                                        color="error"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteClick(user);
-                                        }}
-                                        disabled={deleting}
-                                        title="Delete User"
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
+                                    {/* Only super admins can delete users */}
+                                    {currentUser?.isSuperAdmin && (
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteClick(user);
+                                            }}
+                                            disabled={deleting}
+                                            title="Delete User"
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    )}
                                 </Box>
                             </Box>
                         </AccordionSummary>
@@ -309,14 +330,27 @@ const UsersPage: React.FC = () => {
                                 )}
 
                                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-                                    Roles ({user.roles.length}):
+                                    Roles ({user.isSuperAdmin ? user.roles.length + 1 : user.roles.length}):
                                 </Typography>
-                                {user.roles.length === 0 ? (
+                                {!user.isSuperAdmin && user.roles.length === 0 ? (
                                     <Typography variant="body2" color="textSecondary">
                                         No roles assigned
                                     </Typography>
                                 ) : (
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                        {/* Show Super Admin badge if user is super admin */}
+                                        {user.isSuperAdmin && (
+                                            <Chip
+                                                label="Super Admin"
+                                                size="small"
+                                                color="error"
+                                                sx={{ 
+                                                    fontWeight: 'bold',
+                                                    borderWidth: 2
+                                                }}
+                                            />
+                                        )}
+                                        {/* Show regular project-environment roles */}
                                         {user.roles.map((role) => (
                                             <Chip
                                                 key={role.roleId}

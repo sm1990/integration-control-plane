@@ -146,6 +146,7 @@ service /auth on httpListener {
         issuerConfig.customClaims["roles"] = roleInfos.toJson();
         issuerConfig.customClaims["username"] = username;
         issuerConfig.customClaims["displayName"] = displayName;
+        issuerConfig.customClaims["isSuperAdmin"] = userDetails.isSuperAdmin;
 
         string|jwt:Error jwtToken = jwt:issue(issuerConfig);
         if jwtToken is jwt:Error {
@@ -153,298 +154,14 @@ service /auth on httpListener {
             return utils:createInternalServerError("Error generating JWT token");
         }
 
-        log:printInfo("Login successful for user", username = username);
+        log:printInfo("Login successful for user", username = username, isSuperAdmin = userDetails.isSuperAdmin);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
                 username: username,
-                roles: userRoles
-            }
-        };
-    }
-
-    // OIDC Authorization URL endpoint
-    isolated resource function get oidc/'authorize\-url() returns http:Ok|http:BadRequest|http:InternalServerError {
-        log:printInfo("OIDC authorization URL requested");
-
-        // Get SSO configuration
-        types:SSOConfig ssoConfig = getSSOConfig();
-
-        // Validate SSO configuration
-        error? validationError = validateSSOConfig(ssoConfig);
-        if validationError is error {
-            log:printError("SSO configuration validation failed", validationError);
-            return utils:createBadRequestError(validationError.message());
-        }
-
-        // Check if SSO is enabled
-        if !ssoConfig.enabled {
-            log:printWarn("OIDC authorization URL requested but SSO is not enabled");
-            return utils:createBadRequestError("SSO authentication is not enabled");
-        }
-
-        // Build authorization URL
-        string|error authorizationUrl = utils:buildAuthorizationUrl(ssoConfig);
-        if authorizationUrl is error {
-            log:printError("Error building authorization URL", authorizationUrl);
-            return utils:createInternalServerError("Failed to generate authorization URL");
-        }
-
-        log:printInfo("OIDC authorization URL generated successfully");
-        return <http:Ok>{
-            body: {
-                authorizationUrl: authorizationUrl
-            }
-        };
-    }
-
-    // Get all users with their roles (filtered by shared project access where caller is admin)
-    @http:ResourceConfig {
-        auth: [
-            {
-                jwtValidatorConfig: {
-                    issuer: frontendJwtIssuer,
-                    audience: frontendJwtAudience,
-                    signatureConfig: {
-                        secret: defaultJwtHMACSecret
-                    }
-                }
-            }
-        ]
-    }
-    isolated resource function get users(@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:Unauthorized|http:InternalServerError {
-        log:printInfo("Fetching users with RBAC filtering");
-
-        if authHeader is () {
-            log:printError("Authorization header missing in request");
-            return utils:createUnauthorizedError("Authorization header required");
-        }
-        
-        // Extract user context for RBAC
-        types:UserContext|error userContext = utils:extractUserContext(authHeader);
-        if userContext is error {
-            log:printError("Failed to extract user context", userContext);
-            return utils:createUnauthorizedError("Invalid authorization token");
-        }
-        
-        // Get projects where the user is an admin (using utility function)
-        string[] adminProjectIds = utils:getAdminProjectIds(userContext);
-        
-        // If user is not admin in any project, return empty list
-        if adminProjectIds.length() == 0 {
-            log:printInfo("User is not admin in any project, returning empty user list", userId = userContext.userId);
-            return <http:Ok>{
-                body: []
-            };
-        }
-        
-        // Fetch users who have roles in projects where the caller is admin
-        types:UserWithRoles[]|error users = storage:getUsersByProjectIds(adminProjectIds);
-        if users is error {
-            log:printError("Error fetching users", users);
-            return utils:createInternalServerError("Failed to fetch users");
-        }
-        
-        log:printInfo(string `Successfully fetched ${users.length()} users for admin projects`, 
-                      userId = userContext.userId, 
-                      adminProjectCount = adminProjectIds.length());
-        return <http:Ok>{
-            body: users
-        };
-    }
-    
-    // Create a new user with credentials
-    @http:ResourceConfig {
-        auth: [
-            {
-                jwtValidatorConfig: {
-                    issuer: frontendJwtIssuer,
-                    audience: frontendJwtAudience,
-                    signatureConfig: {
-                        secret: defaultJwtHMACSecret
-                    }
-                }
-            }
-        ]
-    }
-    isolated resource function post users(types:CreateUserInput request) returns http:Created|http:BadRequest|http:InternalServerError {
-        log:printInfo("Creating new user", username = request.username);
-        
-        // Validate input
-        if request.username.trim().length() == 0 {
-            return utils:createBadRequestError("Username is required");
-        }
-        if request.displayName.trim().length() == 0 {
-            return utils:createBadRequestError("Display name is required");
-        }
-        if request.password.trim().length() == 0 {
-            return utils:createBadRequestError("Password is required");
-        }
-        
-        // Hash the password using bcrypt
-        string|crypto:Error passwordHash = crypto:hashBcrypt(request.password);
-        if passwordHash is crypto:Error {
-            log:printError("Error hashing password", passwordHash);
-            return utils:createInternalServerError("Failed to process password");
-        }
-        
-        // Create user with hashed password
-        types:User|error user = storage:createUserWithCredentials(
-            request.username,
-            request.displayName,
-            passwordHash
-        );
-        
-        if user is error {
-            log:printError("Error creating user", user, username = request.username);
-            // Check if it's a duplicate username error
-            if user.toString().toLowerAscii().includes("duplicate") {
-                return utils:createBadRequestError("Username already exists");
-            }
-            return utils:createInternalServerError("Failed to create user");
-        }
-        
-        log:printInfo("User created successfully", username = request.username);
-        return <http:Created>{
-            body: user
-        };
-    }
-    
-    // Delete a user by ID
-    @http:ResourceConfig {
-        auth: [
-            {
-                jwtValidatorConfig: {
-                    issuer: frontendJwtIssuer,
-                    audience: frontendJwtAudience,
-                    signatureConfig: {
-                        secret: defaultJwtHMACSecret
-                    }
-                }
-            }
-        ]
-    }
-    isolated resource function delete users/[string userId]() returns http:Ok|http:NotFound|http:InternalServerError {
-        log:printInfo("Deleting user", userId = userId);
-        
-        // Check if user exists
-        types:User|error existingUser = storage:getUserDetailsById(userId);
-        if existingUser is error {
-            if existingUser is sql:NoRowsError {
-                log:printWarn("User not found for deletion", userId = userId);
-                return <http:NotFound>{
-                    body: {
-                        message: "User not found"
-                    }
-                };
-            }
-            log:printError("Error checking user existence", existingUser);
-            return utils:createInternalServerError("Error checking user");
-        }
-        
-        // Delete the user
-        error? deleteResult = storage:deleteUserById(userId);
-        if deleteResult is error {
-            log:printError("Error deleting user", deleteResult, userId = userId);
-            return utils:createInternalServerError("Failed to delete user");
-        }
-        
-        log:printInfo("User deleted successfully", userId = userId);
-        return <http:Ok>{
-            body: {
-                message: "User deleted successfully"
-            }
-        };
-    }
-    
-    // Update user roles
-    @http:ResourceConfig {
-        auth: [
-            {
-                jwtValidatorConfig: {
-                    issuer: frontendJwtIssuer,
-                    audience: frontendJwtAudience,
-                    signatureConfig: {
-                        secret: defaultJwtHMACSecret
-                    }
-                }
-            }
-        ]
-    }
-    isolated resource function put users/[string userId]/roles(@http:Header {name: http:AUTH_HEADER} string? authHeader, types:RoleAssignment[] roles) returns http:Ok|http:NotFound|http:BadRequest|http:Unauthorized|http:InternalServerError {
-        log:printInfo("Updating roles for user", userId = userId);
-        
-        // Extract user context for RBAC
-        if authHeader is () {
-            log:printError("Authorization header missing in request");
-            return utils:createUnauthorizedError("Authorization header required");
-        }
-        
-        types:UserContext|error userContext = utils:extractUserContext(authHeader);
-        if userContext is error {
-            log:printError("Failed to extract user context", userContext);
-            return utils:createUnauthorizedError("Invalid authorization token");
-        }
-        
-        // RBAC: Verify the calling user has admin access to ALL project-environment pairs being assigned
-        foreach types:RoleAssignment roleAssignment in roles {
-            if !utils:hasAdminAccess(userContext, roleAssignment.projectId, roleAssignment.environmentId) {
-                log:printWarn("User attempted to assign role without admin access", 
-                    callingUser = userContext.userId,
-                    targetUser = userId,
-                    projectId = roleAssignment.projectId,
-                    environmentId = roleAssignment.environmentId);
-                return utils:createUnauthorizedError(
-                    string `Access denied: You must be an admin in project ${roleAssignment.projectId} and environment ${roleAssignment.environmentId} to assign roles`
-                );
-            }
-        }
-        
-        log:printInfo("RBAC check passed for role assignment", 
-            callingUser = userContext.userId,
-            targetUser = userId,
-            roleCount = roles.length());
-        
-        // Check if user exists
-        types:User|error existingUser = storage:getUserDetailsById(userId);
-        if existingUser is error {
-            if existingUser is sql:NoRowsError {
-                log:printWarn("User not found for role update", userId = userId);
-                return <http:NotFound>{
-                    body: {
-                        message: "User not found"
-                    }
-                };
-            }
-            log:printError("Error checking user existence", existingUser);
-            return utils:createInternalServerError("Error checking user");
-        }
-        
-        // Validate role assignments
-        if roles.length() == 0 {
-            log:printDebug("Removing all roles for user", userId = userId);
-        }
-        
-        // Update roles
-        error? updateResult = storage:updateUserRoles(userId, roles);
-        if updateResult is error {
-            log:printError("Error updating user roles", updateResult, userId = userId);
-            return utils:createInternalServerError("Failed to update user roles");
-        }
-        
-        // Fetch updated user with roles
-        types:Role[]|error updatedRoles = storage:getUserRoles(userId);
-        if updatedRoles is error {
-            log:printError("Error fetching updated roles", updatedRoles);
-            return utils:createInternalServerError("Failed to fetch updated roles");
-        }
-        
-        log:printInfo("User roles updated successfully", userId = userId, callingUser = userContext.userId);
-        return <http:Ok>{
-            body: {
-                message: "User roles updated successfully",
-                roles: updatedRoles
+                roles: userRoles,
+                isSuperAdmin: userDetails.isSuperAdmin
             }
         };
     }
@@ -550,6 +267,7 @@ service /auth on httpListener {
         issuerConfig.customClaims["roles"] = roleInfos.toJson();
         issuerConfig.customClaims["username"] = userInfo.username;
         issuerConfig.customClaims["displayName"] = userInfo.displayName;
+        issuerConfig.customClaims["isSuperAdmin"] = userDetails.isSuperAdmin;
         
         string|jwt:Error jwtToken = jwt:issue(issuerConfig);
         if jwtToken is jwt:Error {
@@ -558,13 +276,361 @@ service /auth on httpListener {
         }
         
         // Return login response
-        log:printInfo("OIDC login successful", username = userInfo.username);
+        log:printInfo("OIDC login successful", username = userInfo.username, isSuperAdmin = userDetails.isSuperAdmin);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
                 username: userInfo.username,
-                roles: userRoles
+                roles: userRoles,
+                isSuperAdmin: userDetails.isSuperAdmin
+            }
+        };
+    }
+
+    // OIDC Authorization URL endpoint
+    isolated resource function get oidc/'authorize\-url() returns http:Ok|http:BadRequest|http:InternalServerError {
+        log:printInfo("OIDC authorization URL requested");
+
+        // Get SSO configuration
+        types:SSOConfig ssoConfig = getSSOConfig();
+
+        // Validate SSO configuration
+        error? validationError = validateSSOConfig(ssoConfig);
+        if validationError is error {
+            log:printError("SSO configuration validation failed", validationError);
+            return utils:createBadRequestError(validationError.message());
+        }
+
+        // Check if SSO is enabled
+        if !ssoConfig.enabled {
+            log:printWarn("OIDC authorization URL requested but SSO is not enabled");
+            return utils:createBadRequestError("SSO authentication is not enabled");
+        }
+
+        // Build authorization URL
+        string|error authorizationUrl = utils:buildAuthorizationUrl(ssoConfig);
+        if authorizationUrl is error {
+            log:printError("Error building authorization URL", authorizationUrl);
+            return utils:createInternalServerError("Failed to generate authorization URL");
+        }
+
+        log:printInfo("OIDC authorization URL generated successfully");
+        return <http:Ok>{
+            body: {
+                authorizationUrl: authorizationUrl
+            }
+        };
+    }
+
+    // Get all users with their roles (filtered by shared project access where caller is admin)
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function get users(@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching users with RBAC filtering");
+
+        if authHeader is () {
+            log:printError("Authorization header missing in request");
+            return utils:createUnauthorizedError("Authorization header required");
+        }
+        
+        // Extract user context for RBAC
+        types:UserContext|error userContext = utils:extractUserContext(authHeader);
+        if userContext is error {
+            log:printError("Failed to extract user context", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+        
+        types:UserWithRoles[]|error users;
+        
+        // Super admins can see ALL users (including those without any roles/projects)
+        if userContext.isSuperAdmin {
+            log:printInfo("Super admin fetching all users", userId = userContext.userId);
+            users = storage:getAllUsers();
+            if users is error {
+                log:printError("Error fetching all users for super admin", users);
+                return utils:createInternalServerError("Failed to fetch users");
+            }
+            
+            log:printInfo(string `Successfully fetched ${users.length()} users for super admin`, 
+                          userId = userContext.userId);
+            return <http:Ok>{
+                body: users
+            };
+        }
+        
+        // Get projects where the user is an admin (using utility function)
+        string[] adminProjectIds = utils:getAdminProjectIds(userContext);
+        
+        // If user is not admin in any project, return empty list
+        if adminProjectIds.length() == 0 {
+            log:printInfo("User is not admin in any project, returning empty user list", userId = userContext.userId);
+            return <http:Ok>{
+                body: []
+            };
+        }
+        
+        // Fetch users who have roles in projects where the caller is admin
+        users = storage:getUsersByProjectIds(adminProjectIds);
+        if users is error {
+            log:printError("Error fetching users", users);
+            return utils:createInternalServerError("Failed to fetch users");
+        }
+        
+        log:printInfo(string `Successfully fetched ${users.length()} users for admin projects`, 
+                      userId = userContext.userId, 
+                      adminProjectCount = adminProjectIds.length());
+        return <http:Ok>{
+            body: users
+        };
+    }
+    
+    // Create a new user with credentials
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post users(@http:Header {name: http:AUTH_HEADER} string? authHeader, types:CreateUserInput request) returns http:Created|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Creating new user", username = request.username);
+        
+        // Extract user context for RBAC
+        if authHeader is () {
+            log:printError("Authorization header missing in request");
+            return utils:createUnauthorizedError("Authorization header required");
+        }
+        
+        types:UserContext|error userContext = utils:extractUserContext(authHeader);
+        if userContext is error {
+            log:printError("Failed to extract user context", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+        
+        // Only super admins can create users
+        if !userContext.isSuperAdmin {
+            log:printWarn("Non-super-admin attempted to create user", 
+                callingUser = userContext.userId,
+                targetUsername = request.username);
+            return utils:createUnauthorizedError("Super admin access required to create users");
+        }
+        
+        // Validate input
+        if request.username.trim().length() == 0 {
+            return utils:createBadRequestError("Username is required");
+        }
+        if request.displayName.trim().length() == 0 {
+            return utils:createBadRequestError("Display name is required");
+        }
+        if request.password.trim().length() == 0 {
+            return utils:createBadRequestError("Password is required");
+        }
+        
+        // Hash the password using bcrypt
+        string|crypto:Error passwordHash = crypto:hashBcrypt(request.password);
+        if passwordHash is crypto:Error {
+            log:printError("Error hashing password", passwordHash);
+            return utils:createInternalServerError("Failed to process password");
+        }
+        
+        // Create user with hashed password
+        types:User|error user = storage:createUserWithCredentials(
+            request.username,
+            request.displayName,
+            passwordHash
+        );
+        
+        if user is error {
+            log:printError("Error creating user", user, username = request.username);
+            // Check if it's a duplicate username error
+            if user.toString().toLowerAscii().includes("duplicate") {
+                return utils:createBadRequestError("Username already exists");
+            }
+            return utils:createInternalServerError("Failed to create user");
+        }
+        
+        log:printInfo("User created successfully by super admin", 
+            username = request.username, 
+            createdBy = userContext.userId);
+        return <http:Created>{
+            body: user
+        };
+    }
+    
+    // Delete a user by ID
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function delete users/[string userId](@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Deleting user", userId = userId);
+        
+        // Extract user context for RBAC
+        if authHeader is () {
+            log:printError("Authorization header missing in request");
+            return utils:createUnauthorizedError("Authorization header required");
+        }
+        
+        types:UserContext|error userContext = utils:extractUserContext(authHeader);
+        if userContext is error {
+            log:printError("Failed to extract user context", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+        
+        // Only super admins can delete users
+        if !userContext.isSuperAdmin {
+            log:printWarn("Non-super-admin attempted to delete user", 
+                callingUser = userContext.userId,
+                targetUserId = userId);
+            return utils:createUnauthorizedError("Super admin access required to delete users");
+        }
+        
+        // Check if user exists
+        types:User|error existingUser = storage:getUserDetailsById(userId);
+        if existingUser is error {
+            if existingUser is sql:NoRowsError {
+                log:printWarn("User not found for deletion", userId = userId);
+                return <http:NotFound>{
+                    body: {
+                        message: "User not found"
+                    }
+                };
+            }
+            log:printError("Error checking user existence", existingUser);
+            return utils:createInternalServerError("Error checking user");
+        }
+        
+        // Delete the user
+        error? deleteResult = storage:deleteUserById(userId);
+        if deleteResult is error {
+            log:printError("Error deleting user", deleteResult, userId = userId);
+            return utils:createInternalServerError("Failed to delete user");
+        }
+        
+        log:printInfo("User deleted successfully by super admin", 
+            userId = userId, 
+            deletedBy = userContext.userId);
+        return <http:Ok>{
+            body: {
+                message: "User deleted successfully"
+            }
+        };
+    }
+    
+    // Update user roles
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function put users/[string userId]/roles(@http:Header {name: http:AUTH_HEADER} string? authHeader, types:RoleAssignment[] roles) returns http:Ok|http:NotFound|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Updating roles for user", userId = userId);
+        
+        // Extract user context for RBAC
+        if authHeader is () {
+            log:printError("Authorization header missing in request");
+            return utils:createUnauthorizedError("Authorization header required");
+        }
+        
+        types:UserContext|error userContext = utils:extractUserContext(authHeader);
+        if userContext is error {
+            log:printError("Failed to extract user context", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+        
+        // RBAC: Verify the calling user has admin access to ALL project-environment pairs being assigned
+        foreach types:RoleAssignment roleAssignment in roles {
+            if !utils:hasAdminAccess(userContext, roleAssignment.projectId, roleAssignment.environmentId) {
+                log:printWarn("User attempted to assign role without admin access", 
+                    callingUser = userContext.userId,
+                    targetUser = userId,
+                    projectId = roleAssignment.projectId,
+                    environmentId = roleAssignment.environmentId);
+                return utils:createUnauthorizedError(
+                    string `Access denied: You must be an admin in project ${roleAssignment.projectId} and environment ${roleAssignment.environmentId} to assign roles`
+                );
+            }
+        }
+        
+        log:printInfo("RBAC check passed for role assignment", 
+            callingUser = userContext.userId,
+            targetUser = userId,
+            roleCount = roles.length());
+        
+        // Check if user exists
+        types:User|error existingUser = storage:getUserDetailsById(userId);
+        if existingUser is error {
+            if existingUser is sql:NoRowsError {
+                log:printWarn("User not found for role update", userId = userId);
+                return <http:NotFound>{
+                    body: {
+                        message: "User not found"
+                    }
+                };
+            }
+            log:printError("Error checking user existence", existingUser);
+            return utils:createInternalServerError("Error checking user");
+        }
+        
+        // Validate role assignments
+        if roles.length() == 0 {
+            log:printDebug("Removing all roles for user", userId = userId);
+        }
+        
+        // Update roles
+        error? updateResult = storage:updateUserRoles(userId, roles);
+        if updateResult is error {
+            log:printError("Error updating user roles", updateResult, userId = userId);
+            return utils:createInternalServerError("Failed to update user roles");
+        }
+        
+        // Fetch updated user with roles
+        types:Role[]|error updatedRoles = storage:getUserRoles(userId);
+        if updatedRoles is error {
+            log:printError("Error fetching updated roles", updatedRoles);
+            return utils:createInternalServerError("Failed to fetch updated roles");
+        }
+        
+        log:printInfo("User roles updated successfully", userId = userId, callingUser = userContext.userId);
+        return <http:Ok>{
+            body: {
+                message: "User roles updated successfully",
+                roles: updatedRoles
             }
         };
     }

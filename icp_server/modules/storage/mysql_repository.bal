@@ -15,7 +15,6 @@
 // under the License.
 
 import icp_server.types as types;
-import icp_server.utils;
 
 import ballerina/cache;
 import ballerina/log;
@@ -1021,33 +1020,12 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
 }
 
 // Get all projects
-// Get all projects (filtered by user's accessible projects via RBAC)
-public isolated function getProjects(types:UserContext userContext) returns types:Project[]|error {
+public isolated function getProjects() returns types:Project[]|error {
     types:Project[] projects = [];
     
-    // Get list of project IDs the user has access to
-    string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
-    
-    // If user has no roles/access, return empty list
-    if accessibleProjectIds.length() == 0 {
-        log:printWarn("User has no accessible projects", userId = userContext.userId);
-        return projects;
-    }
-    
-    // Build WHERE clause to filter by accessible project IDs
     sql:ParameterizedQuery query = `SELECT project_id, name, description, owner_id, created_by, created_at, updated_at, updated_by 
-                                     FROM projects 
-                                     WHERE project_id IN (`;
-    
-    // Add project IDs to the IN clause
-    foreach int i in 0 ..< accessibleProjectIds.length() {
-        if i > 0 {
-            query = sql:queryConcat(query, `, `);
-        }
-        query = sql:queryConcat(query, `${accessibleProjectIds[i]}`);
-    }
-    
-    query = sql:queryConcat(query, `) ORDER BY name ASC`);
+                                   FROM projects 
+                                   ORDER BY name ASC`;
     
     stream<types:Project, sql:Error?> projectStream = dbClient->query(query);
 
@@ -1058,10 +1036,7 @@ public isolated function getProjects(types:UserContext userContext) returns type
             });
         };
     
-    log:printInfo("Retrieved projects for user", 
-        userId = userContext.userId, 
-        projectCount = projects.length(), 
-        accessibleProjectCount = accessibleProjectIds.length());
+    log:printInfo("Retrieved all projects", projectCount = projects.length());
     
     return projects;
 }
@@ -1367,7 +1342,7 @@ public isolated function updateComponent(string componentId, string? name, strin
 public isolated function getUserDetailsById(string userId) returns types:User|error {
     log:printDebug(string `Fetching user details for userId: ${userId}`);
     types:User|sql:Error user = dbClient->queryRow(
-        `SELECT user_id, username, display_name, created_at, updated_at 
+        `SELECT user_id, username, display_name, is_super_admin, created_at, updated_at 
          FROM users 
          WHERE user_id = ${userId}`
     );
@@ -1496,9 +1471,9 @@ public isolated function getAllUsers() returns types:UserWithRoles[]|error {
     log:printDebug("Fetching all users with roles");
     types:UserWithRoles[] users = [];
     
-    // Get all users
+    // Get all users (including is_super_admin flag)
     stream<types:User, sql:Error?> userStream = dbClient->query(
-        `SELECT user_id, username, display_name, created_at, updated_at
+        `SELECT user_id, username, display_name, is_super_admin, created_at, updated_at
          FROM users
          ORDER BY username ASC`
     );
@@ -1518,6 +1493,7 @@ public isolated function getAllUsers() returns types:UserWithRoles[]|error {
                 userId: user.userId,
                 username: user.username,
                 displayName: user.displayName,
+                isSuperAdmin: user.isSuperAdmin,
                 createdAt: user?.createdAt,
                 updatedAt: user?.updatedAt,
                 roles: userRoles
@@ -1541,7 +1517,7 @@ public isolated function getUsersByProjectIds(string[] projectIds) returns types
     
     // Build query to get distinct user IDs who have roles in the specified projects
     // Need to join through user_roles -> roles to get project_id
-    sql:ParameterizedQuery selectClause = `SELECT DISTINCT u.user_id, u.username, u.display_name, u.created_at, u.updated_at
+    sql:ParameterizedQuery selectClause = `SELECT DISTINCT u.user_id, u.username, u.display_name, u.is_super_admin, u.created_at, u.updated_at
          FROM users u
          INNER JOIN user_roles ur ON u.user_id = ur.user_id
          INNER JOIN roles r ON ur.role_id = r.role_id
@@ -1576,6 +1552,7 @@ public isolated function getUsersByProjectIds(string[] projectIds) returns types
                 userId: user.userId,
                 username: user.username,
                 displayName: user.displayName,
+                isSuperAdmin: user.isSuperAdmin,
                 createdAt: user?.createdAt,
                 updatedAt: user?.updatedAt,
                 roles: userRoles

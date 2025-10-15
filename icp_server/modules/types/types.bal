@@ -513,6 +513,10 @@ public type User record {
     }
     string displayName;
     @sql:Column {
+        name: "is_super_admin"
+    }
+    boolean isSuperAdmin = false;
+    @sql:Column {
         name: "created_at"
     }
     string? createdAt?;
@@ -554,6 +558,7 @@ public type UserContext record {
     string username;
     string displayName;
     RoleInfo[] roles;
+    boolean isSuperAdmin = false; // Global admin with access to all resources
 };
 
 // Database role record type

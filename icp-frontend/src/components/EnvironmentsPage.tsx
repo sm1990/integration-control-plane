@@ -38,9 +38,11 @@ import {
     CreateEnvironmentRequest,
     UpdateEnvironmentRequest,
 } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 const EnvironmentsPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
 
     // Data hooks
     const { loading, error, value: environments, retry } = useEnvironments();
@@ -160,30 +162,39 @@ const EnvironmentsPage: React.FC = () => {
                 enableColumnFilter: false,
                 Cell: ({ row }) => (
                     <Box sx={{ display: 'flex', gap: '0.5rem' }}>
-                        <Tooltip title="Edit Environment">
-                            <IconButton
-                                color="primary"
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditClick(row.original);
-                                }}
-                            >
-                                <EditIcon />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Environment">
-                            <IconButton
-                                color="error"
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClick(row.original);
-                                }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                        </Tooltip>
+                        {/* Only super admins can edit/delete environments */}
+                        {currentUser?.isSuperAdmin ? (
+                            <>
+                                <Tooltip title="Edit Environment">
+                                    <IconButton
+                                        color="primary"
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditClick(row.original);
+                                        }}
+                                    >
+                                        <EditIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete Environment">
+                                    <IconButton
+                                        color="error"
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteClick(row.original);
+                                        }}
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </>
+                        ) : (
+                            <Typography variant="caption" color="text.secondary">
+                                View Only
+                            </Typography>
+                        )}
                     </Box>
                 ),
             },
@@ -303,13 +314,16 @@ const EnvironmentsPage: React.FC = () => {
         },
         renderTopToolbarCustomActions: () => (
             <Box sx={{ display: 'flex', gap: '1rem', p: '0.5rem', alignItems: 'center' }}>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setCreateDialogOpen(true)}
-                >
-                    Create
-                </Button>
+                {/* Only super admins can create environments */}
+                {currentUser?.isSuperAdmin && (
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setCreateDialogOpen(true)}
+                    >
+                        Create
+                    </Button>
+                )}
                 <Button
                     variant="outlined"
                     startIcon={<RefreshIcon />}

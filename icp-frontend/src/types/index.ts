@@ -140,6 +140,7 @@ export interface LoginResponse {
     expiresIn: number;
     username: string;
     roles: Role[];
+    isSuperAdmin: boolean; // Super admin flag from backend
 }
 
 export interface AuthUser {
@@ -147,6 +148,7 @@ export interface AuthUser {
     token: string;
     roles: Role[];
     expiresAt: number;
+    isSuperAdmin?: boolean; // Super admin flag from JWT
 }
 
 // User management types
@@ -154,6 +156,7 @@ export interface User {
     userId: string;
     username: string;
     displayName: string;
+    isSuperAdmin?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }

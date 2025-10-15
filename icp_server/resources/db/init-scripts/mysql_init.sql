@@ -16,9 +16,11 @@ CREATE TABLE users (
     user_id CHAR(36) NOT NULL PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(200) NOT NULL,
+    is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_username (username)
+    INDEX idx_username (username),
+    INDEX idx_super_admin (is_super_admin)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE user_credentials (
@@ -444,12 +446,14 @@ INSERT INTO
     users (
         user_id,
         username,
-        display_name
+        display_name,
+        is_super_admin
     )
 VALUES (
         '550e8400-e29b-41d4-a716-446655440000',
         'admin',
-        'System Administrator'
+        'System Administrator',
+        TRUE
     );
 
 -- Insert credentials for admin user

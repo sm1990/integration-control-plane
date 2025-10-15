@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage;
 import icp_server.types;
 
 import ballerina/http;
@@ -379,17 +380,23 @@ public isolated function extractUserContext(string authorizationHeader) returns 
     json|error displayNameJson = displayNameData.ensureType();
     string displayName = displayNameJson is string ? displayNameJson : username;
     
+    // Extract super admin flag from custom claims
+    anydata superAdminData = payload["isSuperAdmin"];
+    json|error superAdminJson = superAdminData.ensureType();
+    boolean isSuperAdmin = superAdminJson is boolean ? superAdminJson : false;
+    
     // Extract roles from custom claims
     anydata rolesData = payload["roles"];
     json|error rolesJson = rolesData.ensureType();
     if rolesJson is error || rolesJson is () {
-        log:printWarn("JWT token missing 'roles' claim", userId = userId);
-        // Return user context with empty roles (no access)
+        log:printWarn("JWT token missing 'roles' claim", userId = userId, isSuperAdmin = isSuperAdmin);
+        // Return user context with empty roles (but super admin flag is set if applicable)
         return {
             userId: userId,
             username: username,
             displayName: displayName,
-            roles: []
+            roles: [],
+            isSuperAdmin: isSuperAdmin
         };
     }
     
@@ -400,13 +407,18 @@ public isolated function extractUserContext(string authorizationHeader) returns 
         return error("Invalid token: malformed roles claim");
     }
     
-    log:printInfo("Successfully extracted user context", userId = userId, username = username, roleCount = roles.length());
+    log:printInfo("Successfully extracted user context", 
+                  userId = userId, 
+                  username = username, 
+                  roleCount = roles.length(), 
+                  isSuperAdmin = isSuperAdmin);
     
     return {
         userId: userId,
         username: username,
         displayName: displayName,
-        roles: roles
+        roles: roles,
+        isSuperAdmin: isSuperAdmin
     };
 }
 
@@ -447,11 +459,19 @@ public isolated function extractAuthHeader(anydata context) returns string|error
 
 // Check if user has access to a specific project
 public isolated function hasAccessToProject(types:UserContext userContext, string projectId) returns boolean {
+    // Super admins have access to all projects
+    if userContext.isSuperAdmin {
+        return true;
+    }
     return userContext.roles.some(role => role.projectId == projectId);
 }
 
 // Check if user has access to a specific environment in a project
 public isolated function hasAccessToEnvironment(types:UserContext userContext, string projectId, string environmentId) returns boolean {
+    // Super admins have access to all environments
+    if userContext.isSuperAdmin {
+        return true;
+    }
     return userContext.roles.some(role => 
         role.projectId == projectId && role.environmentId == environmentId
     );
@@ -459,6 +479,10 @@ public isolated function hasAccessToEnvironment(types:UserContext userContext, s
 
 // Check if user has admin access to a specific project and environment
 public isolated function hasAdminAccess(types:UserContext userContext, string projectId, string environmentId) returns boolean {
+    // Super admins have admin access to all environments
+    if userContext.isSuperAdmin {
+        return true;
+    }
     return userContext.roles.some(role => 
         role.projectId == projectId && 
         role.environmentId == environmentId && 
@@ -468,6 +492,10 @@ public isolated function hasAdminAccess(types:UserContext userContext, string pr
 
 // Check if user is an admin in any environment of a specific project
 public isolated function isAdminInProject(types:UserContext userContext, string projectId) returns boolean {
+    // Super admins are admin in all projects
+    if userContext.isSuperAdmin {
+        return true;
+    }
     return userContext.roles.some(role => 
         role.projectId == projectId && 
         role.privilegeLevel == types:ADMIN
@@ -476,6 +504,16 @@ public isolated function isAdminInProject(types:UserContext userContext, string 
 
 // Get list of all project IDs the user has access to
 public isolated function getAccessibleProjectIds(types:UserContext userContext) returns string[] {
+    // Super admins have access to all projects
+    if userContext.isSuperAdmin {
+        types:Project[]|error allProjects = storage:getProjects();
+        if allProjects is error {
+            log:printError("Super admin failed to fetch all projects", allProjects);
+            return [];
+        }
+        return from types:Project project in allProjects select project.projectId;
+    }
+    
     string[] projectIds = [];
     foreach types:RoleInfo role in userContext.roles {
         // Add project ID if not already in list (avoid duplicates)
@@ -495,6 +533,16 @@ public isolated function getAccessibleProjectIds(types:UserContext userContext) 
 
 // Get list of all environment IDs the user has access to within a specific project
 public isolated function getAccessibleEnvironmentIds(types:UserContext userContext, string projectId) returns string[] {
+    // Super admins have access to all environments
+    if userContext.isSuperAdmin {
+        types:Environment[]|error allEnvironments = storage:getEnvironments();
+        if allEnvironments is error {
+            log:printError("Super admin failed to fetch all environments", allEnvironments);
+            return [];
+        }
+        return from types:Environment env in allEnvironments select env.environmentId;
+    }
+    
     string[] environmentIds = [];
     foreach types:RoleInfo role in userContext.roles {
         if role.projectId == projectId {
@@ -516,6 +564,16 @@ public isolated function getAccessibleEnvironmentIds(types:UserContext userConte
 
 // Get list of all project IDs where the user has admin access
 public isolated function getAdminProjectIds(types:UserContext userContext) returns string[] {
+    // Super admins have admin access to all projects - fetch from database
+    if userContext.isSuperAdmin {
+        types:Project[]|error allProjects = storage:getProjects();
+        if allProjects is error {
+            log:printError("Super admin failed to fetch all projects", allProjects);
+            return [];
+        }
+        return from types:Project project in allProjects select project.projectId;
+    }
+    
     string[] adminProjectIds = [];
     foreach types:RoleInfo role in userContext.roles {
         if role.privilegeLevel == types:ADMIN {
@@ -537,6 +595,16 @@ public isolated function getAdminProjectIds(types:UserContext userContext) retur
 
 // Get list of ALL environment IDs where the user has admin access (across all projects)
 public isolated function getAllAdminEnvironmentIds(types:UserContext userContext) returns string[] {
+    // Super admins have admin access to all environments - fetch from database
+    if userContext.isSuperAdmin {
+        types:Environment[]|error allEnvironments = storage:getEnvironments();
+        if allEnvironments is error {
+            log:printError("Super admin failed to fetch all environments", allEnvironments);
+            return [];
+        }
+        return from types:Environment env in allEnvironments select env.environmentId;
+    }
+    
     string[] adminEnvironmentIds = [];
     foreach types:RoleInfo role in userContext.roles {
         if role.privilegeLevel == types:ADMIN {

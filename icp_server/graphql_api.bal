@@ -212,8 +212,21 @@ service /graphql on graphqlListener {
     }
 
     // ----------- Environment Resources
-    // Create a new environment
-    isolated remote function createEnvironment(types:EnvironmentInput environment) returns types:Environment|error? {
+    // Create a new environment (super admin only)
+    isolated remote function createEnvironment(graphql:Context context, types:EnvironmentInput environment) returns types:Environment|error? {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+        
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        
+        // Only super admins can create environments
+        if !userContext.isSuperAdmin {
+            return error("Super admin access required to create environments");
+        }
+        
         // Call storage layer to insert environments
         return storage:createEnvironment(environment);
     }
@@ -245,20 +258,59 @@ service /graphql on graphqlListener {
         return check storage:getEnvironmentsByIds(adminEnvironmentIds);
     }
 
-    // Delete an environment
-    isolated remote function deleteEnvironment(string environmentId) returns boolean|error {
+    // Delete an environment (super admin only)
+    isolated remote function deleteEnvironment(graphql:Context context, string environmentId) returns boolean|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+        
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        
+        // Only super admins can delete environments
+        if !userContext.isSuperAdmin {
+            return error("Super admin access required to delete environments");
+        }
+        
         check storage:deleteEnvironment(environmentId);
         return true;
     }
 
-    // Update environment name and/or description
-    isolated remote function updateEnvironment(string environmentId, string? name, string? description) returns types:Environment?|error {
+    // Update environment name and/or description (super admin only)
+    isolated remote function updateEnvironment(graphql:Context context, string environmentId, string? name, string? description) returns types:Environment?|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+        
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        
+        // Only super admins can update environments
+        if !userContext.isSuperAdmin {
+            return error("Super admin access required to update environments");
+        }
+        
         check storage:updateEnvironment(environmentId, name, description);
         return check storage:getEnvironmentById(environmentId);
     }
 
-    // Update environment production status
-    isolated remote function updateEnvironmentProductionStatus(string environmentId, boolean isProduction) returns types:Environment?|error {
+    // Update environment production status (super admin only)
+    isolated remote function updateEnvironmentProductionStatus(graphql:Context context, string environmentId, boolean isProduction) returns types:Environment?|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+        
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        
+        // Only super admins can update environment production status
+        if !userContext.isSuperAdmin {
+            return error("Super admin access required to update environment production status");
+        }
+        
         check storage:updateEnvironmentProductionStatus(environmentId, isProduction);
         return check storage:getEnvironmentById(environmentId);
     }
@@ -287,9 +339,10 @@ service /graphql on graphqlListener {
         
         // Extract user context for RBAC
         types:UserContext userContext = check utils:extractUserContext(authHeader);
+        string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
         
         // Get projects filtered by user's access
-        return check storage:getProjects(userContext);
+        return check storage:getProjectsByIds(accessibleProjectIds);
     }
 
     // Get projects where user has admin access (for permission management)

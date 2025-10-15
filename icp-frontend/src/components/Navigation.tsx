@@ -24,6 +24,7 @@ import {
     ChevronRight as ChevronRightIcon,
     ExpandLess,
     ExpandMore,
+    People as PeopleIcon,
 } from '@mui/icons-material';
 
 interface NavigationProps {
@@ -54,6 +55,11 @@ const Navigation: React.FC<NavigationProps> = ({ open, onToggle }) => {
             label: 'Overview',
             path: '/environment-overview',
             icon: <OverviewIcon />
+        },
+        {
+            label: 'Users',
+            path: '/users',
+            icon: <PeopleIcon />
         },
     ];
 

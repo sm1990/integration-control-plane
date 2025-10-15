@@ -150,6 +150,93 @@ class ICPApiClient {
             throw error;
         }
     }
+
+    // User management methods
+    async getUsers(): Promise<any> {
+        try {
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+
+            if (this.token) {
+                headers['Authorization'] = `Bearer ${this.token}`;
+            }
+
+            const response = await fetch(`${this.authEndpoint}/users`, {
+                method: 'GET',
+                headers,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to fetch users with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Get Users Error:', error);
+            throw error;
+        }
+    }
+
+    async createUser(username: string, displayName: string, password: string): Promise<any> {
+        try {
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+
+            if (this.token) {
+                headers['Authorization'] = `Bearer ${this.token}`;
+            }
+
+            const response = await fetch(`${this.authEndpoint}/users`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    username,
+                    displayName,
+                    password,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to create user with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Create User Error:', error);
+            throw error;
+        }
+    }
+
+    async deleteUser(userId: string): Promise<void> {
+        try {
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+
+            if (this.token) {
+                headers['Authorization'] = `Bearer ${this.token}`;
+            }
+
+            const response = await fetch(`${this.authEndpoint}/users/${userId}`, {
+                method: 'DELETE',
+                headers,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Failed to delete user with status: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Delete User Error:', error);
+            throw error;
+        }
+    }
 }
 
 // Create a singleton instance

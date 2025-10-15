@@ -13,6 +13,7 @@ import EnvironmentsPage from './components/EnvironmentsPage';
 import EnvironmentOverview from './components/EnvironmentOverview';
 import ComponentsPage from './components/ComponentsPage';
 import ProjectsPage from './components/ProjectsPage';
+import UsersPage from './components/UsersPage';
 import LoginPage from './components/LoginPage';
 import OIDCCallbackPage from './components/OIDCCallbackPage';
 import Navigation, { DRAWER_WIDTH, DRAWER_WIDTH_COLLAPSED } from './components/Navigation';
@@ -162,6 +163,7 @@ function AppContent({ darkMode, onThemeToggle }: { darkMode: boolean; onThemeTog
                     <Route path="/environment-overview" element={<EnvironmentOverview />} />
                     <Route path="/components" element={<ComponentsPage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
+                    <Route path="/users" element={<UsersPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Box>

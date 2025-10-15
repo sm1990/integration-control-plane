@@ -149,6 +149,25 @@ export interface AuthUser {
     expiresAt: number;
 }
 
+// User management types
+export interface User {
+    userId: string;
+    username: string;
+    displayName: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface UserWithRoles extends User {
+    roles: Role[];
+}
+
+export interface CreateUserRequest {
+    username: string;
+    displayName: string;
+    password: string;
+}
+
 // OIDC types
 export interface OIDCAuthorizationUrlResponse {
   authorizationUrl: string;

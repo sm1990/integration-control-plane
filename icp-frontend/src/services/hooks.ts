@@ -27,6 +27,8 @@ import {
     UpdateComponentRequest,
     CreateProjectRequest,
     UpdateProjectRequest,
+    UserWithRoles,
+    CreateUserRequest,
 } from '../types';
 
 // Generic async hook for GraphQL operations
@@ -375,4 +377,80 @@ export function useDeleteProject() {
     }, []);
 
     return { deleteProject, loading, error };
+}
+
+// User management hooks
+export function useUsers() {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+    const [data, setData] = useState<UserWithRoles[]>([]);
+
+    const fetchUsers = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await icpApiClient.getUsers();
+            setData(result);
+        } catch (err) {
+            setError(err as Error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    return {
+        value: data,
+        loading,
+        error,
+        retry: fetchUsers,
+    };
+}
+
+export function useCreateUser() {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+
+    const createUser = useCallback(async (user: CreateUserRequest) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const result = await icpApiClient.createUser(
+                user.username,
+                user.displayName,
+                user.password
+            );
+            return result;
+        } catch (err) {
+            setError(err as Error);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    return { createUser, loading, error };
+}
+
+export function useDeleteUser() {
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<Error | null>(null);
+
+    const deleteUser = useCallback(async (userId: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            await icpApiClient.deleteUser(userId);
+        } catch (err) {
+            setError(err as Error);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    return { deleteUser, loading, error };
 }

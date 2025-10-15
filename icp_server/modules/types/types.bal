@@ -499,10 +499,22 @@ public type ExtractedUserInfo record {|
 
 // Database user record type
 public type User record {
+    @sql:Column {
+        name: "user_id"
+    }
     string userId;
     string username;
+    @sql:Column {
+        name: "display_name"
+    }
     string displayName;
+    @sql:Column {
+        name: "created_at"
+    }
     string? createdAt?;
+    @sql:Column {
+        name: "updated_at"
+    }
     string? updatedAt?;
 };
 
@@ -552,4 +564,30 @@ public type Role record {
         name: "updated_at"
     }
     string? updatedAt?;
+};
+
+// User with roles for API responses
+public type UserWithRoles record {
+    *User; // Type inclusion - includes all fields from User
+    Role[] roles;
+};
+
+// Input type for creating a new user
+public type CreateUserInput record {
+    string username;
+    string displayName;
+    string password;
+};
+
+// Input type for updating user roles
+public type UpdateUserRolesInput record {
+    string userId;
+    RoleAssignment[] roles;
+};
+
+// Role assignment for a specific project-environment combination
+public type RoleAssignment record {
+    string projectId;
+    string environmentId;
+    PrivilegeLevel privilegeLevel;
 };

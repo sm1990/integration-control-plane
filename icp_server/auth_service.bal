@@ -18,6 +18,7 @@ import icp_server.storage;
 import icp_server.types as types;
 import icp_server.utils;
 
+import ballerina/crypto;
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/log;
@@ -186,6 +187,147 @@ service /auth on httpListener {
         return <http:Ok>{
             body: {
                 authorizationUrl: authorizationUrl
+            }
+        };
+    }
+
+    // Get all users with their roles
+    isolated resource function get users() returns http:Ok|http:InternalServerError {
+        log:printInfo("Fetching all users");
+        
+        types:UserWithRoles[]|error users = storage:getAllUsers();
+        if users is error {
+            log:printError("Error fetching users", users);
+            return utils:createInternalServerError("Failed to fetch users");
+        }
+        
+        log:printInfo(string `Successfully fetched ${users.length()} users`);
+        return <http:Ok>{
+            body: users
+        };
+    }
+    
+    // Create a new user with credentials
+    isolated resource function post users(types:CreateUserInput request) returns http:Created|http:BadRequest|http:InternalServerError {
+        log:printInfo("Creating new user", username = request.username);
+        
+        // Validate input
+        if request.username.trim().length() == 0 {
+            return utils:createBadRequestError("Username is required");
+        }
+        if request.displayName.trim().length() == 0 {
+            return utils:createBadRequestError("Display name is required");
+        }
+        if request.password.trim().length() == 0 {
+            return utils:createBadRequestError("Password is required");
+        }
+        
+        // Hash the password using bcrypt
+        string|crypto:Error passwordHash = crypto:hashBcrypt(request.password);
+        if passwordHash is crypto:Error {
+            log:printError("Error hashing password", passwordHash);
+            return utils:createInternalServerError("Failed to process password");
+        }
+        
+        // Create user with hashed password
+        types:User|error user = storage:createUserWithCredentials(
+            request.username,
+            request.displayName,
+            passwordHash
+        );
+        
+        if user is error {
+            log:printError("Error creating user", user, username = request.username);
+            // Check if it's a duplicate username error
+            if user.toString().toLowerAscii().includes("duplicate") {
+                return utils:createBadRequestError("Username already exists");
+            }
+            return utils:createInternalServerError("Failed to create user");
+        }
+        
+        log:printInfo("User created successfully", username = request.username);
+        return <http:Created>{
+            body: user
+        };
+    }
+    
+    // Delete a user by ID
+    isolated resource function delete users/[string userId]() returns http:Ok|http:NotFound|http:InternalServerError {
+        log:printInfo("Deleting user", userId = userId);
+        
+        // Check if user exists
+        types:User|error existingUser = storage:getUserDetailsById(userId);
+        if existingUser is error {
+            if existingUser is sql:NoRowsError {
+                log:printWarn("User not found for deletion", userId = userId);
+                return <http:NotFound>{
+                    body: {
+                        message: "User not found"
+                    }
+                };
+            }
+            log:printError("Error checking user existence", existingUser);
+            return utils:createInternalServerError("Error checking user");
+        }
+        
+        // Delete the user
+        error? deleteResult = storage:deleteUserById(userId);
+        if deleteResult is error {
+            log:printError("Error deleting user", deleteResult, userId = userId);
+            return utils:createInternalServerError("Failed to delete user");
+        }
+        
+        log:printInfo("User deleted successfully", userId = userId);
+        return <http:Ok>{
+            body: {
+                message: "User deleted successfully"
+            }
+        };
+    }
+    
+    // Update user roles
+    isolated resource function put users/[string userId]/roles(types:RoleAssignment[] roles) returns http:Ok|http:NotFound|http:BadRequest|http:InternalServerError {
+        log:printInfo("Updating roles for user", userId = userId);
+        
+        // Check if user exists
+        types:User|error existingUser = storage:getUserDetailsById(userId);
+        if existingUser is error {
+            if existingUser is sql:NoRowsError {
+                log:printWarn("User not found for role update", userId = userId);
+                return <http:NotFound>{
+                    body: {
+                        message: "User not found"
+                    }
+                };
+            }
+            log:printError("Error checking user existence", existingUser);
+            return utils:createInternalServerError("Error checking user");
+        }
+        
+        // Validate role assignments
+        if roles.length() == 0 {
+            log:printDebug("Removing all roles for user", userId = userId);
+        }
+        
+        // Update roles
+        error? updateResult = storage:updateUserRoles(userId, roles);
+        if updateResult is error {
+            log:printError("Error updating user roles", updateResult, userId = userId);
+            return utils:createInternalServerError("Failed to update user roles");
+        }
+        
+        // Fetch updated user with roles
+        types:Role[]|error updatedRoles = storage:getUserRoles(userId);
+        if updatedRoles is error {
+            log:printError("Error fetching updated roles", updatedRoles);
+            return utils:createInternalServerError("Failed to fetch updated roles");
+        }
+        
+        log:printInfo("User roles updated successfully", userId = userId);
+        return <http:Ok>{
+            body: {
+                message: "User roles updated successfully",
+                roles: updatedRoles
             }
         };
     }

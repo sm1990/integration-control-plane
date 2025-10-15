@@ -1117,7 +1117,7 @@ public isolated function updateComponent(string componentId, string? name, strin
 public isolated function getUserDetailsById(string userId) returns types:User|error {
     log:printDebug(string `Fetching user details for userId: ${userId}`);
     types:User|sql:Error user = dbClient->queryRow(
-        `SELECT user_id as userId, username, display_name as displayName, created_at as createdAt, updated_at as updatedAt 
+        `SELECT user_id, username, display_name, created_at, updated_at 
          FROM users 
          WHERE user_id = ${userId}`
     );
@@ -1164,4 +1164,171 @@ public isolated function getUserRoles(string userId) returns types:Role[]|error 
         };
 
     return roles;
+}
+
+// Get or create a role for a specific project-environment-privilege combination
+isolated function getOrCreateRole(string projectId, string environmentId, types:PrivilegeLevel privilegeLevel) returns string|error {
+    // First try to get existing role
+    stream<record {|string role_id;|}, sql:Error?> roleStream = dbClient->query(
+        `SELECT role_id FROM roles 
+         WHERE project_id = ${projectId} 
+         AND environment_id = ${environmentId} 
+         AND privilege_level = ${privilegeLevel}`
+    );
+    
+    record {|string role_id;|}[] existingRoles = check from record {|string role_id;|} role in roleStream
+        select role;
+    
+    if existingRoles.length() > 0 {
+        return existingRoles[0].role_id;
+    }
+    
+    // Role doesn't exist, create it
+    string roleId = uuid:createRandomUuid();
+    
+    // Get project and environment names for role_name
+    types:Project project = check getProjectById(projectId);
+    types:Environment environment = check getEnvironmentById(environmentId);
+    
+    // Replace spaces with underscores in names
+    string projectName = re `\s+`.replaceAll(project.name, "_");
+    string environmentName = re `\s+`.replaceAll(environment.name, "_");
+    
+    string roleName = string `${projectName}:${environmentName}:${privilegeLevel}`;
+    
+    sql:ExecutionResult _ = check dbClient->execute(
+        `INSERT INTO roles (role_id, project_id, environment_id, privilege_level, role_name)
+         VALUES (${roleId}, ${projectId}, ${environmentId}, ${privilegeLevel}, ${roleName})`
+    );
+    
+    log:printInfo(string `Created new role: ${roleName}`);
+    return roleId;
+}
+
+// Update user roles - replaces all existing roles with the provided set
+public isolated function updateUserRoles(string userId, types:RoleAssignment[] roleAssignments) returns error? {
+    log:printDebug(string `Updating roles for user: ${userId}`);
+    
+    transaction {
+        // First, delete all existing user_roles for this user
+        sql:ExecutionResult _ = check dbClient->execute(
+            `DELETE FROM user_roles WHERE user_id = ${userId}`
+        );
+        
+        // Insert new role assignments
+        foreach types:RoleAssignment assignment in roleAssignments {
+            // Get or create the role
+            string roleId = check getOrCreateRole(
+                assignment.projectId,
+                assignment.environmentId,
+                assignment.privilegeLevel
+            );
+            
+            // Assign role to user
+            sql:ExecutionResult _ = check dbClient->execute(
+                `INSERT INTO user_roles (user_id, role_id)
+                 VALUES (${userId}, ${roleId})`
+            );
+        }
+        
+        check commit;
+        log:printInfo(string `Successfully updated roles for user ${userId} with ${roleAssignments.length()} assignments`);
+    } on fail error e {
+        log:printError(string `Transaction failed while updating roles for user ${userId}`, e);
+        return error(string `Failed to update user roles for ${userId}`, e);
+    }
+    
+    return ();
+}
+
+// Get all users with their roles
+public isolated function getAllUsers() returns types:UserWithRoles[]|error {
+    log:printDebug("Fetching all users with roles");
+    types:UserWithRoles[] users = [];
+    
+    // Get all users
+    stream<types:User, sql:Error?> userStream = dbClient->query(
+        `SELECT user_id, username, display_name, created_at, updated_at
+         FROM users
+         ORDER BY username ASC`
+    );
+
+    check from types:User user in userStream
+        do {
+            // Get roles for each user
+            types:Role[] userRoles = [];
+            types:Role[]|error rolesResult = getUserRoles(user.userId);
+            if rolesResult is error {
+                log:printError(string `Failed to get roles for user ${user.userId}`, rolesResult);
+            } else {
+                userRoles = rolesResult;
+            }
+            
+            types:UserWithRoles userWithRoles = {
+                userId: user.userId,
+                username: user.username,
+                displayName: user.displayName,
+                createdAt: user?.createdAt,
+                updatedAt: user?.updatedAt,
+                roles: userRoles
+            };
+            users.push(userWithRoles);
+        };
+
+    log:printInfo(string `Successfully fetched ${users.length()} users`);
+    return users;
+}
+
+// Create a new user with credentials (password will be hashed)
+public isolated function createUserWithCredentials(string username, string displayName, string passwordHash) returns types:User|error {
+    log:printDebug(string `Creating user with credentials: ${username}`);
+    string userId = uuid:createRandomUuid();
+    
+    transaction {
+        // Insert into users table
+        sql:ExecutionResult _ = check dbClient->execute(
+            `INSERT INTO users (user_id, username, display_name) 
+             VALUES (${userId}, ${username}, ${displayName})`
+        );
+        
+        // Insert into user_credentials table
+        sql:ExecutionResult _ = check dbClient->execute(
+            `INSERT INTO user_credentials (user_id, username, display_name, password_hash) 
+             VALUES (${userId}, ${username}, ${displayName}, ${passwordHash})`
+        );
+        
+        check commit;
+        log:printInfo(string `Successfully created user ${username} with userId ${userId}`);
+    } on fail error e {
+        log:printError(string `Transaction failed while creating user ${username}`, e);
+        return error(string `Failed to create user ${username}`, e);
+    }
+    
+    // Return the created user
+    return check getUserDetailsById(userId);
+}
+
+// Delete a user by ID
+public isolated function deleteUserById(string userId) returns error? {
+    log:printDebug(string `Deleting user: ${userId}`);
+    
+    transaction {
+        // Delete from user_credentials table (explicit delete, though FK might handle it)
+        sql:ExecutionResult _ = check dbClient->execute(
+            `DELETE FROM user_credentials WHERE user_id = ${userId}`
+        );
+        
+        // Delete from users table (will cascade to user_roles)
+        sql:ExecutionResult _ = check dbClient->execute(
+            `DELETE FROM users WHERE user_id = ${userId}`
+        );
+        
+        check commit;
+        log:printInfo(string `Successfully deleted user ${userId}`);
+    } on fail error e {
+        log:printError(string `Transaction failed while deleting user ${userId}`, e);
+        return error(string `Failed to delete user ${userId}`, e);
+    }
+    
+    return ();
 }

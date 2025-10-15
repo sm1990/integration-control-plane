@@ -326,6 +326,11 @@ service /graphql on graphqlListener {
         
         types:UserContext userContext = check utils:extractUserContext(authHeader);
         
+        // Check if user is super admin or project author
+        if !userContext.isSuperAdmin && !userContext.isProjectAuthor {
+            return error("Project author access required to create projects");
+        }
+        
         // Create project and auto-assign admin roles to creating user
         return check storage:createProject(project, userContext);
     }
@@ -386,13 +391,37 @@ service /graphql on graphqlListener {
     }
 
     // Delete a project
-    isolated remote function deleteProject(string projectId) returns boolean|error {
+    isolated remote function deleteProject(graphql:Context context, string projectId) returns boolean|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+        
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        
+        // Check if user is super admin or project author
+        if !userContext.isSuperAdmin && !userContext.isProjectAuthor {
+            return error("Project author access required to delete projects");
+        }
+        
         check storage:deleteProject(projectId);
         return true;
     }
 
     // Update project name and/or description
-    isolated remote function updateProject(string projectId, string? name, string? description) returns types:Project?|error {
+    isolated remote function updateProject(graphql:Context context, string projectId, string? name, string? description) returns types:Project?|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+        
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        
+        // Check if user is super admin or project author
+        if !userContext.isSuperAdmin && !userContext.isProjectAuthor {
+            return error("Project author access required to update projects");
+        }
+        
         check storage:updateProject(projectId, name, description);
         return check storage:getProjectById(projectId);
     }

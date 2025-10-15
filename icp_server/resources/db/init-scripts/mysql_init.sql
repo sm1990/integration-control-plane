@@ -17,10 +17,12 @@ CREATE TABLE users (
     username VARCHAR(255) NOT NULL UNIQUE,
     display_name VARCHAR(200) NOT NULL,
     is_super_admin BOOLEAN NOT NULL DEFAULT FALSE,
+    is_project_author BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username),
-    INDEX idx_super_admin (is_super_admin)
+    INDEX idx_super_admin (is_super_admin),
+    INDEX idx_project_author (is_project_author)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 CREATE TABLE user_credentials (

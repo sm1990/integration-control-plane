@@ -127,41 +127,30 @@ service /auth on httpListener {
             return utils:createInternalServerError("Error getting user roles");
         }
 
-        // Transform full Role objects to minimal RoleInfo for JWT (exclude roleId, roleName, timestamps)
-        types:RoleInfo[] roleInfos = from types:Role role in userRoles
-            select {
-                projectId: role.projectId,
-                environmentId: role.environmentId,
-                privilegeLevel: role.privilegeLevel
-            };
-
-        jwt:IssuerConfig issuerConfig = {
-            username: userDetails.userId,
-            issuer: frontendJwtIssuer,
-            expTime: <decimal>defaultTokenExpiryTime,
-            audience: frontendJwtAudience,
-            signatureConfig: jwtSignatureConfig
-        };
-
-        issuerConfig.customClaims["roles"] = roleInfos.toJson();
-        issuerConfig.customClaims["username"] = username;
-        issuerConfig.customClaims["displayName"] = displayName;
-        issuerConfig.customClaims["isSuperAdmin"] = userDetails.isSuperAdmin;
-
-        string|jwt:Error jwtToken = jwt:issue(issuerConfig);
-        if jwtToken is jwt:Error {
+        // Generate JWT token using utility function
+        string|error jwtToken = utils:generateJWTToken(
+            userDetails,
+            userRoles,
+            frontendJwtIssuer,
+            defaultTokenExpiryTime,
+            frontendJwtAudience,
+            jwtSignatureConfig
+        );
+        
+        if jwtToken is error {
             log:printError("Error generating JWT token", jwtToken);
             return utils:createInternalServerError("Error generating JWT token");
         }
 
-        log:printInfo("Login successful for user", username = username, isSuperAdmin = userDetails.isSuperAdmin);
+        log:printInfo("Login successful for user", username = username, isSuperAdmin = userDetails.isSuperAdmin, isProjectAuthor = userDetails.isProjectAuthor);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
                 username: username,
                 roles: userRoles,
-                isSuperAdmin: userDetails.isSuperAdmin
+                isSuperAdmin: userDetails.isSuperAdmin,
+                isProjectAuthor: userDetails.isProjectAuthor
             }
         };
     }
@@ -247,43 +236,101 @@ service /auth on httpListener {
             return utils:createInternalServerError("Error getting user roles");
         }
         
-        // Transform full Role objects to minimal RoleInfo for JWT (exclude roleId, roleName, timestamps)
-        types:RoleInfo[] roleInfos = from types:Role role in userRoles
-            select {
-                projectId: role.projectId,
-                environmentId: role.environmentId,
-                privilegeLevel: role.privilegeLevel
-            };
+        // Generate JWT token using utility function
+        string|error jwtToken = utils:generateJWTToken(
+            userDetails,
+            userRoles,
+            frontendJwtIssuer,
+            defaultTokenExpiryTime,
+            frontendJwtAudience,
+            jwtSignatureConfig
+        );
         
-        // Issue ICP JWT token
-        jwt:IssuerConfig issuerConfig = {
-            username: userDetails.userId,
-            issuer: frontendJwtIssuer,
-            expTime: <decimal>defaultTokenExpiryTime,
-            audience: frontendJwtAudience,
-            signatureConfig: jwtSignatureConfig
-        };
-        
-        issuerConfig.customClaims["roles"] = roleInfos.toJson();
-        issuerConfig.customClaims["username"] = userInfo.username;
-        issuerConfig.customClaims["displayName"] = userInfo.displayName;
-        issuerConfig.customClaims["isSuperAdmin"] = userDetails.isSuperAdmin;
-        
-        string|jwt:Error jwtToken = jwt:issue(issuerConfig);
-        if jwtToken is jwt:Error {
+        if jwtToken is error {
             log:printError("Error generating JWT token for OIDC user", jwtToken);
             return utils:createInternalServerError("Error generating JWT token");
         }
         
         // Return login response
-        log:printInfo("OIDC login successful", username = userInfo.username, isSuperAdmin = userDetails.isSuperAdmin);
+        log:printInfo("OIDC login successful", username = userInfo.username, isSuperAdmin = userDetails.isSuperAdmin, isProjectAuthor = userDetails.isProjectAuthor);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
                 username: userInfo.username,
                 roles: userRoles,
-                isSuperAdmin: userDetails.isSuperAdmin
+                isSuperAdmin: userDetails.isSuperAdmin,
+                isProjectAuthor: userDetails.isProjectAuthor
+            }
+        };
+    }
+
+    // Token refresh endpoint - regenerates JWT with current user roles
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post 'refresh\-token(@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Token refresh requested");
+        
+        if authHeader is () {
+            log:printError("Authorization header missing in refresh token request");
+            return utils:createUnauthorizedError("Authorization header required");
+        }
+        
+        // Extract user context from current token
+        types:UserContext|error userContext = utils:extractUserContext(authHeader);
+        if userContext is error {
+            log:printError("Failed to extract user context for token refresh", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+        
+        // Fetch latest user details and roles from database
+        types:User|error userDetails = storage:getUserDetailsById(userContext.userId);
+        if userDetails is error {
+            log:printError("Error fetching user details for token refresh", userDetails, userId = userContext.userId);
+            return utils:createInternalServerError("Failed to fetch user details");
+        }
+        
+        types:Role[]|error userRoles = storage:getUserRoles(userContext.userId);
+        if userRoles is error {
+            log:printError("Error fetching user roles for token refresh", userRoles, userId = userContext.userId);
+            return utils:createInternalServerError("Failed to fetch user roles");
+        }
+        
+        // Generate JWT token using utility function
+        string|error jwtToken = utils:generateJWTToken(
+            userDetails,
+            userRoles,
+            frontendJwtIssuer,
+            defaultTokenExpiryTime,
+            frontendJwtAudience,
+            jwtSignatureConfig
+        );
+        
+        if jwtToken is error {
+            log:printError("Error generating refreshed JWT token", jwtToken);
+            return utils:createInternalServerError("Error generating JWT token");
+        }
+        
+        log:printInfo("Token refreshed successfully", username = userDetails.username, roleCount = userRoles.length());
+        return <http:Ok>{
+            body: {
+                token: jwtToken,
+                expiresIn: defaultTokenExpiryTime,
+                username: userDetails.username,
+                roles: userRoles,
+                isSuperAdmin: userDetails.isSuperAdmin,
+                isProjectAuthor: userDetails.isProjectAuthor
             }
         };
     }
@@ -558,7 +605,7 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function put users/[string userId]/roles(@http:Header {name: http:AUTH_HEADER} string? authHeader, types:RoleAssignment[] roles) returns http:Ok|http:NotFound|http:BadRequest|http:Unauthorized|http:InternalServerError {
+    isolated resource function put users/[string userId]/roles(@http:Header {name: http:AUTH_HEADER} string? authHeader, types:UpdateUserRolesRequest request) returns http:Ok|http:NotFound|http:BadRequest|http:Unauthorized|http:InternalServerError|error? {
         log:printInfo("Updating roles for user", userId = userId);
         
         // Extract user context for RBAC
@@ -573,8 +620,31 @@ service /auth on httpListener {
             return utils:createUnauthorizedError("Invalid authorization token");
         }
         
+        // Check if target user exists and get their details
+        types:User|error targetUser = storage:getUserDetailsById(userId);
+        if targetUser is error {
+            if targetUser is sql:NoRowsError {
+                log:printWarn("Target user not found for role update", userId = userId);
+                return <http:NotFound>{
+                    body: {
+                        message: "User not found"
+                    }
+                };
+            }
+            log:printError("Error checking target user existence", targetUser);
+            return utils:createInternalServerError("Error checking user");
+        }
+        
+        // RBAC: Only super admins can edit super admin permissions
+        if targetUser.isSuperAdmin && !userContext.isSuperAdmin {
+            log:printWarn("Non-super-admin attempted to edit super admin permissions", 
+                callingUser = userContext.userId,
+                targetUser = userId);
+            return utils:createUnauthorizedError("Only super admins can edit super admin permissions");
+        }
+        
         // RBAC: Verify the calling user has admin access to ALL project-environment pairs being assigned
-        foreach types:RoleAssignment roleAssignment in roles {
+        foreach types:RoleAssignment roleAssignment in request.roles {
             if !utils:hasAdminAccess(userContext, roleAssignment.projectId, roleAssignment.environmentId) {
                 log:printWarn("User attempted to assign role without admin access", 
                     callingUser = userContext.userId,
@@ -587,33 +657,39 @@ service /auth on httpListener {
             }
         }
         
+        // RBAC: Only super admins can update isProjectAuthor flag
+        if request?.isProjectAuthor is boolean {
+            if !userContext.isSuperAdmin {
+                log:printWarn("Non-super-admin attempted to update project author flag", 
+                    callingUser = userContext.userId,
+                    targetUser = userId);
+                return utils:createUnauthorizedError("Only super admins can update project author permissions");
+            }
+        }
+        
         log:printInfo("RBAC check passed for role assignment", 
             callingUser = userContext.userId,
             targetUser = userId,
-            roleCount = roles.length());
-        
-        // Check if user exists
-        types:User|error existingUser = storage:getUserDetailsById(userId);
-        if existingUser is error {
-            if existingUser is sql:NoRowsError {
-                log:printWarn("User not found for role update", userId = userId);
-                return <http:NotFound>{
-                    body: {
-                        message: "User not found"
-                    }
-                };
-            }
-            log:printError("Error checking user existence", existingUser);
-            return utils:createInternalServerError("Error checking user");
-        }
+            roleCount = request.roles.length());
         
         // Validate role assignments
-        if roles.length() == 0 {
+        if request.roles.length() == 0 {
             log:printDebug("Removing all roles for user", userId = userId);
         }
         
+        // Update isProjectAuthor flag if provided (and super admin has approved)
+        if request?.isProjectAuthor is boolean {
+            boolean isProjectAuthor = check request?.isProjectAuthor.ensureType();
+            error? updateAuthorResult = storage:updateUserProjectAuthor(userId, isProjectAuthor);
+            if updateAuthorResult is error {
+                log:printError("Error updating user project author flag", updateAuthorResult, userId = userId);
+                return utils:createInternalServerError("Failed to update project author permission");
+            }
+            log:printInfo("Updated project author flag", userId = userId, isProjectAuthor = request?.isProjectAuthor);
+        }
+        
         // Update roles
-        error? updateResult = storage:updateUserRoles(userId, roles);
+        error? updateResult = storage:updateUserRoles(userId, request.roles);
         if updateResult is error {
             log:printError("Error updating user roles", updateResult, userId = userId);
             return utils:createInternalServerError("Failed to update user roles");

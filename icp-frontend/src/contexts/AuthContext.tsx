@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AuthUser } from '../types';
+import { icpApiClient } from '../services/ICPApiClient';
 
 interface AuthContextType {
   user: AuthUser | null;
   login: (user: AuthUser) => void;
   logout: () => void;
+  refreshAuth: () => Promise<void>;
   isAuthenticated: boolean;
 }
 
@@ -56,9 +58,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
+  const refreshAuth = async () => {
+    try {
+      const response = await icpApiClient.refreshToken();
+      
+      // Calculate token expiration time
+      const expiresAt = Date.now() + (response.expiresIn * 1000);
+      
+      const updatedUser: AuthUser = {
+        username: response.username,
+        token: response.token,
+        roles: response.roles,
+        expiresAt,
+        isSuperAdmin: response.isSuperAdmin,
+        isProjectAuthor: response.isProjectAuthor,
+      };
+      
+      // Update user state and localStorage
+      setUser(updatedUser);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedUser));
+      
+      console.log('Auth token refreshed successfully');
+    } catch (error) {
+      console.error('Failed to refresh auth token:', error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, login, logout, isAuthenticated: !!user }}
+      value={{ user, login, logout, refreshAuth, isAuthenticated: !!user }}
     >
       {children}
     </AuthContext.Provider>

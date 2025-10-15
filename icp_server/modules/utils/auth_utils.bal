@@ -385,18 +385,24 @@ public isolated function extractUserContext(string authorizationHeader) returns 
     json|error superAdminJson = superAdminData.ensureType();
     boolean isSuperAdmin = superAdminJson is boolean ? superAdminJson : false;
     
+    // Extract project author flag from custom claims
+    anydata projectAuthorData = payload["isProjectAuthor"];
+    json|error projectAuthorJson = projectAuthorData.ensureType();
+    boolean isProjectAuthor = projectAuthorJson is boolean ? projectAuthorJson : false;
+    
     // Extract roles from custom claims
     anydata rolesData = payload["roles"];
     json|error rolesJson = rolesData.ensureType();
     if rolesJson is error || rolesJson is () {
-        log:printWarn("JWT token missing 'roles' claim", userId = userId, isSuperAdmin = isSuperAdmin);
-        // Return user context with empty roles (but super admin flag is set if applicable)
+        log:printWarn("JWT token missing 'roles' claim", userId = userId, isSuperAdmin = isSuperAdmin, isProjectAuthor = isProjectAuthor);
+        // Return user context with empty roles (but global flags are set if applicable)
         return {
             userId: userId,
             username: username,
             displayName: displayName,
             roles: [],
-            isSuperAdmin: isSuperAdmin
+            isSuperAdmin: isSuperAdmin,
+            isProjectAuthor: isProjectAuthor
         };
     }
     
@@ -411,14 +417,16 @@ public isolated function extractUserContext(string authorizationHeader) returns 
                   userId = userId, 
                   username = username, 
                   roleCount = roles.length(), 
-                  isSuperAdmin = isSuperAdmin);
+                  isSuperAdmin = isSuperAdmin,
+                  isProjectAuthor = isProjectAuthor);
     
     return {
         userId: userId,
         username: username,
         displayName: displayName,
         roles: roles,
-        isSuperAdmin: isSuperAdmin
+        isSuperAdmin: isSuperAdmin,
+        isProjectAuthor: isProjectAuthor
     };
 }
 
@@ -622,5 +630,50 @@ public isolated function getAllAdminEnvironmentIds(types:UserContext userContext
         }
     }
     return adminEnvironmentIds;
+}
+
+// Generate JWT token with user details and roles
+public isolated function generateJWTToken(
+    types:User userDetails,
+    types:Role[] userRoles,
+    string jwtIssuer,
+    int tokenExpiryTime,
+    string jwtAudience,
+    jwt:IssuerSignatureConfig signatureConfig
+) returns string|error {
+    log:printDebug("Generating JWT token", username = userDetails.username, roleCount = userRoles.length());
+    
+    // Convert roles to RoleInfo format for JWT
+    types:RoleInfo[] roleInfos = from types:Role role in userRoles
+        select {
+            projectId: role.projectId,
+            environmentId: role.environmentId,
+            privilegeLevel: role.privilegeLevel
+        };
+    
+    // Generate JWT token with updated roles
+    // Note: IssuerConfig.username sets the 'sub' claim, which should be the userId (UUID)
+    jwt:IssuerConfig issuerConfig = {
+        username: userDetails.userId,
+        issuer: jwtIssuer,
+        expTime: <decimal>tokenExpiryTime,
+        audience: jwtAudience,
+        signatureConfig: signatureConfig
+    };
+    
+    issuerConfig.customClaims["roles"] = roleInfos.toJson();
+    issuerConfig.customClaims["username"] = userDetails.username;
+    issuerConfig.customClaims["displayName"] = userDetails.displayName;
+    issuerConfig.customClaims["isSuperAdmin"] = userDetails.isSuperAdmin;
+    issuerConfig.customClaims["isProjectAuthor"] = userDetails.isProjectAuthor;
+    
+    string|jwt:Error jwtToken = jwt:issue(issuerConfig);
+    if jwtToken is jwt:Error {
+        log:printError("Error generating JWT token", jwtToken, username = userDetails.username);
+        return error("Failed to generate JWT token", jwtToken);
+    }
+    
+    log:printInfo("JWT token generated successfully", username = userDetails.username, roleCount = userRoles.length());
+    return jwtToken;
 }
 

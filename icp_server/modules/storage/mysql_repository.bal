@@ -1342,7 +1342,7 @@ public isolated function updateComponent(string componentId, string? name, strin
 public isolated function getUserDetailsById(string userId) returns types:User|error {
     log:printDebug(string `Fetching user details for userId: ${userId}`);
     types:User|sql:Error user = dbClient->queryRow(
-        `SELECT user_id, username, display_name, is_super_admin, created_at, updated_at 
+        `SELECT user_id, username, display_name, is_super_admin, is_project_author, created_at, updated_at 
          FROM users 
          WHERE user_id = ${userId}`
     );
@@ -1466,6 +1466,24 @@ public isolated function updateUserRoles(string userId, types:RoleAssignment[] r
     return ();
 }
 
+// Update user's project author flag (super admin only)
+public isolated function updateUserProjectAuthor(string userId, boolean isProjectAuthor) returns error? {
+    log:printDebug(string `Updating project author flag for user: ${userId} to ${isProjectAuthor}`);
+    
+    sql:ExecutionResult result = check dbClient->execute(
+        `UPDATE users 
+         SET is_project_author = ${isProjectAuthor}
+         WHERE user_id = ${userId}`
+    );
+    
+    if result.affectedRowCount == 0 {
+        return error(string `User not found: ${userId}`);
+    }
+    
+    log:printInfo(string `Successfully updated project author flag for user ${userId} to ${isProjectAuthor}`);
+    return ();
+}
+
 // Get all users with their roles
 public isolated function getAllUsers() returns types:UserWithRoles[]|error {
     log:printDebug("Fetching all users with roles");
@@ -1473,7 +1491,7 @@ public isolated function getAllUsers() returns types:UserWithRoles[]|error {
     
     // Get all users (including is_super_admin flag)
     stream<types:User, sql:Error?> userStream = dbClient->query(
-        `SELECT user_id, username, display_name, is_super_admin, created_at, updated_at
+        `SELECT user_id, username, display_name, is_super_admin, is_project_author, created_at, updated_at
          FROM users
          ORDER BY username ASC`
     );
@@ -1494,6 +1512,7 @@ public isolated function getAllUsers() returns types:UserWithRoles[]|error {
                 username: user.username,
                 displayName: user.displayName,
                 isSuperAdmin: user.isSuperAdmin,
+                isProjectAuthor: user.isProjectAuthor,
                 createdAt: user?.createdAt,
                 updatedAt: user?.updatedAt,
                 roles: userRoles
@@ -1517,7 +1536,7 @@ public isolated function getUsersByProjectIds(string[] projectIds) returns types
     
     // Build query to get distinct user IDs who have roles in the specified projects
     // Need to join through user_roles -> roles to get project_id
-    sql:ParameterizedQuery selectClause = `SELECT DISTINCT u.user_id, u.username, u.display_name, u.is_super_admin, u.created_at, u.updated_at
+    sql:ParameterizedQuery selectClause = `SELECT DISTINCT u.user_id, u.username, u.display_name, u.is_super_admin, u.is_project_author, u.created_at, u.updated_at
          FROM users u
          INNER JOIN user_roles ur ON u.user_id = ur.user_id
          INNER JOIN roles r ON ur.role_id = r.role_id
@@ -1553,6 +1572,7 @@ public isolated function getUsersByProjectIds(string[] projectIds) returns types
                 username: user.username,
                 displayName: user.displayName,
                 isSuperAdmin: user.isSuperAdmin,
+                isProjectAuthor: user.isProjectAuthor,
                 createdAt: user?.createdAt,
                 updatedAt: user?.updatedAt,
                 roles: userRoles

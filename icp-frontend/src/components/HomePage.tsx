@@ -20,10 +20,12 @@ import {
     AccessTime as TimeIcon,
 } from '@mui/icons-material';
 import { useProjects } from '../services/hooks';
+import { useAuth } from '../contexts/AuthContext';
 
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth(); // Get current user to check project author role
     const { loading, error, value: projects, retry } = useProjects();
 
 
@@ -36,19 +38,22 @@ const HomePage: React.FC = () => {
                         <Typography variant="h5" textAlign="left">
                             All Projects
                         </Typography>
-                        <Button
-                            variant="contained"
-                            startIcon={<AddIcon />}
-                            onClick={() => navigate('/projects')}
-                            sx={{
-                                backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-                                }
-                            }}
-                        >
-                            Create New Project
-                        </Button>
+                        {/* Only show Create button for super admins and project authors */}
+                        {(user?.isSuperAdmin || user?.isProjectAuthor) && (
+                            <Button
+                                variant="contained"
+                                startIcon={<AddIcon />}
+                                onClick={() => navigate('/projects')}
+                                sx={{
+                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255, 255, 255, 0.3)',
+                                    }
+                                }}
+                            >
+                                Create New Project
+                            </Button>
+                        )}
                     </Box>
                     <Typography variant="body1" textAlign="left">
                         Manage your integration projects, components, and runtimes from this central dashboard.
@@ -83,15 +88,20 @@ const HomePage: React.FC = () => {
                         No projects found
                     </Typography>
                     <Typography variant="body2" color="text.secondary" mb={3}>
-                        Create your first project to get started
+                        {(user?.isSuperAdmin || user?.isProjectAuthor)
+                            ? 'Create your first project to get started'
+                            : 'No projects available. Contact your administrator to get started.'}
                     </Typography>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate('/projects')}
-                    >
-                        Create Project
-                    </Button>
+                    {/* Only show Create button for super admins and project authors */}
+                    {(user?.isSuperAdmin || user?.isProjectAuthor) && (
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => navigate('/projects')}
+                        >
+                            Create Project
+                        </Button>
+                    )}
                 </Box>
             )}
 

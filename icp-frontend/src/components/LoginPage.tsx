@@ -48,13 +48,14 @@ const LoginPage: React.FC = () => {
             // Calculate token expiration time
             const expiresAt = Date.now() + (response.expiresIn * 1000);
 
-            // Use server-provided user information (including isSuperAdmin from backend)
+            // Use server-provided user information (including isSuperAdmin and isProjectAuthor from backend)
             const authUser = {
                 username: response.username,
                 token: response.token,
                 roles: response.roles,
                 expiresAt,
                 isSuperAdmin: response.isSuperAdmin,
+                isProjectAuthor: response.isProjectAuthor,
             };
 
             // Set token in API client

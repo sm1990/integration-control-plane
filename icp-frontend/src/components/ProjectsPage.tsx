@@ -36,9 +36,11 @@ import {
     CreateProjectRequest,
     UpdateProjectRequest,
 } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProjectsPage: React.FC = () => {
     const navigate = useNavigate();
+    const { user, refreshAuth } = useAuth(); // Get current user to check project author role
 
     // Data hooks
     const { loading, error, value: projects, retry } = useProjects();
@@ -137,30 +139,35 @@ const ProjectsPage: React.FC = () => {
                 enableColumnFilter: false,
                 Cell: ({ row }) => (
                     <Box sx={{ display: 'flex', gap: '0.5rem' }}>
-                        <Tooltip title="Edit Project">
-                            <IconButton
-                                color="primary"
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditClick(row.original);
-                                }}
-                            >
-                                <EditIcon />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete Project">
-                            <IconButton
-                                color="error"
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteClick(row.original);
-                                }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
-                        </Tooltip>
+                        {/* Only show edit/delete buttons for super admins and project authors */}
+                        {(user?.isSuperAdmin || user?.isProjectAuthor) && (
+                            <>
+                                <Tooltip title="Edit Project">
+                                    <IconButton
+                                        color="primary"
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditClick(row.original);
+                                        }}
+                                    >
+                                        <EditIcon />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete Project">
+                                    <IconButton
+                                        color="error"
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteClick(row.original);
+                                        }}
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            </>
+                        )}
                     </Box>
                 ),
             },
@@ -179,6 +186,15 @@ const ProjectsPage: React.FC = () => {
                 severity: 'success'
             });
             retry();
+            
+            // Refresh auth token to get updated roles
+            try {
+                await refreshAuth();
+                console.log('Auth token refreshed after project creation');
+            } catch (error) {
+                console.error('Failed to refresh token after project creation:', error);
+                // Don't fail the whole operation if token refresh fails
+            }
         } catch (error) {
             setSnackbar({
                 open: true,
@@ -277,13 +293,16 @@ const ProjectsPage: React.FC = () => {
         },
         renderTopToolbarCustomActions: () => (
             <Box sx={{ display: 'flex', gap: '1rem', p: '0.5rem', alignItems: 'center' }}>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => setCreateDialogOpen(true)}
-                >
-                    Create
-                </Button>
+                {/* Only show Create button for super admins and project authors */}
+                {(user?.isSuperAdmin || user?.isProjectAuthor) && (
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => setCreateDialogOpen(true)}
+                    >
+                        Create
+                    </Button>
+                )}
                 <Button
                     variant="outlined"
                     startIcon={<RefreshIcon />}

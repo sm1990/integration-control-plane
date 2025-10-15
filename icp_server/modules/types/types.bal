@@ -517,6 +517,10 @@ public type User record {
     }
     boolean isSuperAdmin = false;
     @sql:Column {
+        name: "is_project_author"
+    }
+    boolean isProjectAuthor = false;
+    @sql:Column {
         name: "created_at"
     }
     string? createdAt?;
@@ -559,6 +563,7 @@ public type UserContext record {
     string displayName;
     RoleInfo[] roles;
     boolean isSuperAdmin = false; // Global admin with access to all resources
+    boolean isProjectAuthor = false; // Can create/update/delete projects
 };
 
 // Database role record type
@@ -617,4 +622,10 @@ public type RoleAssignment record {
     string projectId;
     string environmentId;
     PrivilegeLevel privilegeLevel;
+};
+
+// Request body for updating user roles and permissions
+public type UpdateUserRolesRequest record {
+    RoleAssignment[] roles;
+    boolean? isProjectAuthor?; // Optional: only super admins can update this
 };

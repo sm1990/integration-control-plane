@@ -26,6 +26,8 @@ import {
     Radio,
     Divider,
     Snackbar,
+    Checkbox,
+    Tooltip,
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -64,6 +66,7 @@ const UsersPage: React.FC = () => {
     const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [roleAssignments, setRoleAssignments] = useState<RoleAssignment[]>([]);
+    const [isProjectAuthorEdit, setIsProjectAuthorEdit] = useState(false);
     const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
         open: false,
         message: '',
@@ -153,6 +156,7 @@ const UsersPage: React.FC = () => {
 
     const handleEditPermissions = (user: UserWithRoles) => {
         setSelectedUser(user);
+        setIsProjectAuthorEdit(user.isProjectAuthor || false); // Initialize with current value
         setEditPermissionsOpen(true);
         setSelectedProjectId(null); // Reset project selection
         setRoleAssignments([]); // Will be populated when user selects project and environment
@@ -198,8 +202,20 @@ const UsersPage: React.FC = () => {
             
             console.log('Saving permissions for user:', selectedUser.userId);
             console.log('Role assignments:', rolesToSave);
+            console.log('Project author:', isProjectAuthorEdit);
             
-            await updateUserRoles(selectedUser.userId, rolesToSave);
+            // Prepare request payload with both roles and project author flag
+            const payload: any = {
+                roles: rolesToSave,
+            };
+            
+            // Only include isProjectAuthor if current user is super admin
+            // (only super admins can update this flag)
+            if (currentUser?.isSuperAdmin) {
+                payload.isProjectAuthor = isProjectAuthorEdit;
+            }
+            
+            await updateUserRoles(selectedUser.userId, payload);
             
             // Show success message
             setSnackbar({
@@ -284,19 +300,36 @@ const UsersPage: React.FC = () => {
                                     </Typography>
                                 </Box>
                                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="primary"
-                                        startIcon={<EditIcon />}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleEditPermissions(user);
-                                        }}
-                                        disabled={loadingAdminProjects}
-                                    >
-                                        Edit Permissions
-                                    </Button>
+                                    {/* Only super admins can edit super admin permissions */}
+                                    {(user.isSuperAdmin && !currentUser?.isSuperAdmin) ? (
+                                        <Tooltip title="Only super admins can edit super admin permissions">
+                                            <span>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color="primary"
+                                                    startIcon={<EditIcon />}
+                                                    disabled={true}
+                                                >
+                                                    Edit Permissions
+                                                </Button>
+                                            </span>
+                                        </Tooltip>
+                                    ) : (
+                                        <Button
+                                            size="small"
+                                            variant="outlined"
+                                            color="primary"
+                                            startIcon={<EditIcon />}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditPermissions(user);
+                                            }}
+                                            disabled={loadingAdminProjects}
+                                        >
+                                            Edit Permissions
+                                        </Button>
+                                    )}
                                     {/* Only super admins can delete users */}
                                     {currentUser?.isSuperAdmin && (
                                         <IconButton
@@ -330,9 +363,9 @@ const UsersPage: React.FC = () => {
                                 )}
 
                                 <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
-                                    Roles ({user.isSuperAdmin ? user.roles.length + 1 : user.roles.length}):
+                                    Roles ({user.roles.length + (user.isSuperAdmin ? 1 : 0) + (user.isProjectAuthor ? 1 : 0)}):
                                 </Typography>
-                                {!user.isSuperAdmin && user.roles.length === 0 ? (
+                                {!user.isSuperAdmin && !user.isProjectAuthor && user.roles.length === 0 ? (
                                     <Typography variant="body2" color="textSecondary">
                                         No roles assigned
                                     </Typography>
@@ -344,6 +377,18 @@ const UsersPage: React.FC = () => {
                                                 label="Super Admin"
                                                 size="small"
                                                 color="error"
+                                                sx={{ 
+                                                    fontWeight: 'bold',
+                                                    borderWidth: 2
+                                                }}
+                                            />
+                                        )}
+                                        {/* Show Project Author badge if user is project author */}
+                                        {user.isProjectAuthor && (
+                                            <Chip
+                                                label="Project Author"
+                                                size="small"
+                                                color="warning"
                                                 sx={{ 
                                                     fontWeight: 'bold',
                                                     borderWidth: 2
@@ -472,6 +517,37 @@ const UsersPage: React.FC = () => {
                         </Box>
                     ) : (
                         <Box sx={{ mt: 2 }}>
+                            {/* Project Author checkbox - only visible to super admins */}
+                            {currentUser?.isSuperAdmin && (
+                                <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: 'action.hover' }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                checked={isProjectAuthorEdit}
+                                                onChange={(e) => setIsProjectAuthorEdit(e.target.checked)}
+                                                color="primary"
+                                            />
+                                        }
+                                        label={
+                                            <Box>
+                                                <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+                                                    Project Author
+                                                </Typography>
+                                                <Typography variant="body2" color="textSecondary">
+                                                    Can create, update, and delete projects across the system
+                                                </Typography>
+                                            </Box>
+                                        }
+                                    />
+                                </Paper>
+                            )}
+                            
+                            <Divider sx={{ my: 2 }}>
+                                <Typography variant="overline" color="textSecondary">
+                                    Project & Environment Roles
+                                </Typography>
+                            </Divider>
+                            
                             <Typography variant="body2" color="textSecondary" gutterBottom sx={{ mb: 2 }}>
                                 You can only assign roles in projects and environments where you are an admin.
                             </Typography>

@@ -1,0 +1,54 @@
+{
+    "index_patterns": [
+        "wso2-integration-application-logs-*"
+    ],
+    "template": {
+        "mappings": {
+            "properties": {
+                "kubernetes": {
+                    "type": "object",
+                    "properties": {
+                        "labels": {
+                            "type": "object",
+                            "properties": {
+                                "app": {
+                                    "type": "keyword"
+                                },
+                                "component": {
+                                    "type": "keyword"
+                                }
+                            }
+                        }
+                    }
+                },
+                "level": {
+                    "type": "keyword"
+                },
+                "time": {
+                    "type": "date"
+                },
+                "integration": {
+                    "type": "keyword"
+                },
+                "message": {
+                    "type": "keyword"
+                },
+                "product": {
+                    "type": "keyword"
+                },
+                "component": {
+                    "type": "keyword"
+                },
+                "package": {
+                    "type": "keyword"
+                },
+                "log_type": {
+                    "type": "keyword"
+                },
+                "app": {
+                    "type": "keyword"
+                }
+            }
+        }
+    }
+}

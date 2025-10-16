@@ -8,7 +8,6 @@ import {
     Typography,
     Alert,
     Divider,
-    Container,
     Grid,
     Dialog,
     DialogTitle,
@@ -26,11 +25,11 @@ import { icpApiClient } from '../services/ICPApiClient';
 
 const ProfilePage: React.FC = () => {
     const { user, refreshAuth } = useAuth();
-    
+
     // Dialog states
     const [editNameDialogOpen, setEditNameDialogOpen] = useState(false);
     const [changePasswordDialogOpen, setChangePasswordDialogOpen] = useState(false);
-    
+
     // Form states
     const [displayName, setDisplayName] = useState(user?.displayName || user?.username || '');
     const [currentPassword, setCurrentPassword] = useState('');
@@ -144,13 +143,13 @@ const ProfilePage: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="md" sx={{ py: 4 }}>
-            <Typography variant="h4" sx={{ mb: 4, fontWeight: 600 }}>
+        <Box sx={{ p: 3 }}>
+            <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
                 My Profile
             </Typography>
 
             {/* Profile Information Card */}
-            <Card sx={{ mb: 3 }}>
+            <Card sx={{ mb: 3, maxWidth: 800 }}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -189,7 +188,7 @@ const ProfilePage: React.FC = () => {
             </Card>
 
             {/* Roles and Permissions Card */}
-            <Card sx={{ mb: 3 }}>
+            <Card sx={{ mb: 3, maxWidth: 800 }}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                         <SecurityIcon sx={{ mr: 1, color: 'primary.main' }} />
@@ -199,9 +198,9 @@ const ProfilePage: React.FC = () => {
                     <Grid container spacing={3}>
                         {user?.isSuperAdmin && (
                             <Grid item xs={12}>
-                                <Chip 
-                                    label="Super Admin" 
-                                    color="error" 
+                                <Chip
+                                    label="Super Admin"
+                                    color="error"
                                     sx={{ fontWeight: 600 }}
                                 />
                                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -211,9 +210,9 @@ const ProfilePage: React.FC = () => {
                         )}
                         {user?.isProjectAuthor && (
                             <Grid item xs={12}>
-                                <Chip 
-                                    label="Project Author" 
-                                    color="secondary" 
+                                <Chip
+                                    label="Project Author"
+                                    color="secondary"
                                     sx={{ fontWeight: 600 }}
                                 />
                                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -249,7 +248,7 @@ const ProfilePage: React.FC = () => {
             </Card>
 
             {/* Security Card */}
-            <Card>
+            <Card sx={{ maxWidth: 800 }}>
                 <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -367,7 +366,7 @@ const ProfilePage: React.FC = () => {
                     </DialogActions>
                 </form>
             </Dialog>
-        </Container>
+        </Box>
     );
 };
 

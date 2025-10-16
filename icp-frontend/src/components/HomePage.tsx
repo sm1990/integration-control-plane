@@ -6,8 +6,7 @@ import {
     Card,
     CardContent,
     Grid,
-    Container,
-    Paper,
+    Chip,
     Button,
     Alert,
     CircularProgress,
@@ -30,18 +29,17 @@ const HomePage: React.FC = () => {
 
 
     return (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box sx={{ p: 3 }}>
 
-            <Box sx={{ mt: 0 }}>
-                <Paper elevation={1} sx={{ p: 4, backgroundColor: 'primary.light', color: 'primary.contrastText' }}>
-                    <Typography variant="h5" textAlign="left">
-                        All Projects
-                    </Typography>
-                    {/* <Typography variant="body1" textAlign="left">
-                        Manage your integration projects, components, and runtimes from this central dashboard.
-                        Click on any project to view its components or use the sidebar navigation to explore other sections.
-                    </Typography> */}
-                </Paper>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Typography variant="h4" gutterBottom>
+                    All Projects
+                </Typography>
+                <Chip
+                    label={`${projects.length}`}
+                    color="primary"
+                    variant="outlined"
+                />
             </Box>
 
             {loading && (
@@ -235,7 +233,7 @@ const HomePage: React.FC = () => {
                                         size="small"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            navigate(`/projects`);
+                                            navigate(`/projects?edit=${project.projectId}`);
                                         }}
                                     >
                                         Manage
@@ -249,7 +247,7 @@ const HomePage: React.FC = () => {
 
 
 
-        </Container >
+        </Box >
     );
 };
 

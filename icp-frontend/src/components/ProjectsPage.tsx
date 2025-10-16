@@ -85,6 +85,25 @@ const ProjectsPage: React.FC = () => {
         }
     }, [searchParams, setSearchParams]);
 
+    // Check if URL has edit parameter to open edit dialog
+    useEffect(() => {
+        const projectIdFromUrl = searchParams.get('edit');
+        if (projectIdFromUrl && projects.length > 0) {
+            const projectToEdit = projects.find(p => p.projectId === projectIdFromUrl);
+            if (projectToEdit) {
+                setEditProject({
+                    projectId: projectToEdit.projectId,
+                    name: projectToEdit.name,
+                    description: projectToEdit.description,
+                });
+                setEditDialogOpen(true);
+                // Remove the parameter from URL after opening dialog
+                searchParams.delete('edit');
+                setSearchParams(searchParams, { replace: true });
+            }
+        }
+    }, [searchParams, setSearchParams, projects]);
+
     // Material React Table columns configuration
     const columns = useMemo<MRT_ColumnDef<Project>[]>(
         () => [

@@ -266,7 +266,26 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
 
 // Get all runtimes for multiple project+environment combinations (RBAC-aware batch query)
 // Updated to work with environment-type-based role model
-public isolated function getRuntimesByAccessibleEnvironments(types:RoleInfo[] roles) returns types:Runtime[]|error {
+public isolated function getRuntimesByAccessibleEnvironments(types:UserContext userContext) returns types:Runtime[]|error {
+    types:RoleInfo[] roles = userContext.roles;
+    // Super admin: return all runtimes without filtering
+    if userContext.isSuperAdmin {
+        types:Runtime[] runtimeList = [];
+        stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
+            SELECT runtime_id, runtime_type, status, environment_id, project_id, component_id, version, 
+                   platform_name, platform_version, platform_home, os_name, os_version, 
+                   registration_time, last_heartbeat FROM runtimes 
+            ORDER BY registration_time DESC
+        `);
+
+        check from types:RuntimeDBRecord runtime in runtimeStream
+            do {
+                runtimeList.push(check mapToRuntime(runtime));
+            };
+
+        return runtimeList;
+    }
+    
     // Return empty array if no roles provided
     if roles.length() == 0 {
         return [];

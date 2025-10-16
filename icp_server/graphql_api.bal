@@ -107,7 +107,7 @@ service /graphql on graphqlListener {
         
         // No specific filters - return runtimes for all accessible environments
         // Use optimized batch query
-        return check storage:getRuntimesByAccessibleEnvironments(userContext.roles);
+        return check storage:getRuntimesByAccessibleEnvironments(userContext);
     }
 
     // Get a specific runtime by ID

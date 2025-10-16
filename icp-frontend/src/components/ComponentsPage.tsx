@@ -703,12 +703,13 @@ heartbeatInterval=30`;
                         sx={{
                             p: 2,
                             mt: 2,
-                            backgroundColor: 'grey.50',
+                            backgroundColor: 'background.default',
                             fontFamily: 'monospace',
                             fontSize: '0.875rem',
                             whiteSpace: 'pre-wrap',
                             border: '1px solid',
-                            borderColor: 'grey.300',
+                            borderColor: 'divider',
+                            color: 'text.primary',
                         }}
                     >
                         {selectedComponent ? generateRuntimeConfig(selectedComponent) : ''}

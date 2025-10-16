@@ -405,12 +405,14 @@ const RuntimesPage: React.FC = () => {
 
 
                 <FormControl sx={{ minWidth: 200 }} size="small">
-                    <InputLabel>Project</InputLabel>
+                    <InputLabel shrink>Project</InputLabel>
                     <Select
                         value={selectedProjectId}
                         onChange={(e) => setSelectedProjectId(e.target.value)}
                         label="Project"
                         disabled={projectsLoading}
+                        displayEmpty
+                        notched
                     >
                         <MenuItem value="">
                             <em>All Projects</em>
@@ -456,12 +458,14 @@ const RuntimesPage: React.FC = () => {
                 </FormControl>
 
                 <FormControl sx={{ minWidth: 200 }} size="small">
-                    <InputLabel>Environment</InputLabel>
+                    <InputLabel shrink>Environment</InputLabel>
                     <Select
                         value={selectedEnvironmentId}
                         onChange={(e) => setSelectedEnvironmentId(e.target.value)}
                         label="Environment"
                         disabled={environmentsLoading}
+                        displayEmpty
+                        notched
                     >
                         <MenuItem value="">
                             <em>All Environments</em>

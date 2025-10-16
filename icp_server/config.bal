@@ -24,7 +24,7 @@ configurable int serverPort = 9445;
 configurable string serverHost = "0.0.0.0";
 configurable string organization = "WSO2 Inc.";
 configurable int graphqlPort = 9446;
-configurable int observabilityServerPort = 9447;
+configurable int observabilityServerPort = 9448;
 configurable string keystorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaKeystore.p12");
 configurable string keystorePassword = "ballerina";
 configurable string truststorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaTruststore.p12");
@@ -68,7 +68,7 @@ configurable boolean enableAuditLogging = true;
 configurable boolean enableMetrics = true;
 
 // OpenSearch configuration
-configurable string opensearchUrl = "https://localhost:9200";
+configurable string opensearchUrl = "https://opensearch:9200";
 configurable string opensearchUsername = "admin";
 configurable string opensearchPassword = "Ballerina@123";
 

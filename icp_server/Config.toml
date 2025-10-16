@@ -101,7 +101,7 @@ dbHost = "mysql-db"
 dbPort = 3306
 dbName = "icp_database"
 dbUser = "root"
-dbPassword = "icp_root_password"
+dbPassword = "my-secret-pw"
 dbType = "mysql"  # Options: mysql, postgresql
 
 

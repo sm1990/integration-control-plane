@@ -18,6 +18,7 @@ import icp_server.types as types;
 
 import ballerina/http;
 import ballerina/time;
+import ballerina/log;
 
 // HTTP client for OpenSearch with SSL verification disabled
 final http:Client opensearchClient = check new (opensearchUrl,
@@ -45,20 +46,18 @@ listener http:Listener observabilityListener = new (observabilityServerPort,
     }
 );
 
-// Runtime management service
-// JWT configuration
-// @http:ServiceConfig {
-//     auth: [
-//         {
-//             jwtValidatorConfig: {
-//                 issuer: jwtIssuer,
-//                 audience: jwtAudience,
-//                 clockSkew: jwtClockSkewSeconds
-//             }
-//         }
-//     ]
-// }
+@http:ServiceConfig {
+    cors: {
+        allowOrigins: ["http://localhost:3000", "https://localhost:3000"],
+        allowHeaders: ["Content-Type", "Authorization"]
+    }
+}
 service /icp/observability on observabilityListener {
+
+    function init() {
+        log:printInfo("Observability service started at " + serverHost + ":" + observabilityServerPort.toString());
+    }
+
     resource function post logs(types:LogRequest logRequest) returns types:LogEntry[]|error {
         // Build the OpenSearch query
         map<json> query = {
@@ -91,14 +90,14 @@ service /icp/observability on observabilityListener {
         mustFilters.push(timeRangeFilter);
 
         // Add optional filters
-        string? runtimeIdValue = logRequest.runtimeId;
-        if runtimeIdValue is string {
-            json runtimeIdFilter = {
+        string? runtimeValue = logRequest.runtime;
+        if runtimeValue is string {
+            json runtimeFilter = {
                 "term": {
-                    "runtime.keyword": runtimeIdValue
+                    "runtime.keyword": runtimeValue
                 }
             };
-            mustFilters.push(runtimeIdFilter);
+            mustFilters.push(runtimeFilter);
         }
 
         string? componentValue = logRequest.component;
@@ -151,6 +150,7 @@ service /icp/observability on observabilityListener {
 
         // Get response body and parse it
         string responseBody = check response.getTextPayload();
+        log:printInfo("OpenSearch response: " + responseBody);
         json responseJson = check responseBody.fromJsonString();
         
         // Convert to OpenSearch response record
@@ -166,7 +166,7 @@ service /icp/observability on observabilityListener {
             string timestampValue = sourceData.hasKey("@timestamp") ? sourceData.get("@timestamp") : "";
             string levelValue = sourceData.hasKey("level") ? sourceData.get("level") : "";
             string moduleValue = sourceData.hasKey("module") ? sourceData.get("module") : "";
-            string runtimeValue = sourceData.hasKey("runtime") ? sourceData.get("runtime") : "";
+            string runtimeValueFromSource = sourceData.hasKey("runtime") ? sourceData.get("runtime") : "";
             string componentValueFromSource = sourceData.hasKey("component") ? sourceData.get("component") : "";
             string projectValueFromSource = sourceData.hasKey("project") ? sourceData.get("project") : "";
             string environmentValueFromSource = sourceData.hasKey("environment") ? sourceData.get("environment") : "";
@@ -186,7 +186,7 @@ service /icp/observability on observabilityListener {
                 timestamp: timestampValue,
                 level: levelValue,
                 module: moduleValue,
-                runtime: runtimeValue,
+                runtime: runtimeValueFromSource,
                 component: componentValueFromSource,
                 project: projectValueFromSource,
                 environment: environmentValueFromSource,

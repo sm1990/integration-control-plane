@@ -423,7 +423,7 @@ public type ComponentInDB record {
 public type LogRequest record {
     decimal duration;
     int logLimit;
-    string? runtimeId = ();
+    string? runtime = ();
     string? component = ();
     string? environment = ();
     string? project = ();

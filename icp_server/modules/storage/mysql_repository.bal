@@ -285,8 +285,9 @@ public isolated function getRuntimesByAccessibleEnvironments(types:UserContext u
 
         return runtimeList;
     }
+    
     // Return empty array if no roles provided
-    if roles.length() == 0 && !userContext.isSuperAdmin {
+    if roles.length() == 0 {
         return [];
     }
 

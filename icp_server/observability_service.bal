@@ -19,6 +19,8 @@ import icp_server.types as types;
 import ballerina/http;
 import ballerina/time;
 import ballerina/log;
+import icp_server.utils;
+import icp_server.storage;
 
 // HTTP client for OpenSearch with SSL verification disabled
 final http:Client opensearchClient = check new (opensearchUrl,
@@ -47,6 +49,17 @@ listener http:Listener observabilityListener = new (observabilityServerPort,
 );
 
 @http:ServiceConfig {
+    auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ],
     cors: {
         allowOrigins: ["http://localhost:3000", "https://localhost:3000"],
         allowHeaders: ["Content-Type", "Authorization"]
@@ -58,12 +71,24 @@ service /icp/observability on observabilityListener {
         log:printInfo("Observability service started at " + serverHost + ":" + observabilityServerPort.toString());
     }
 
-    resource function post logs(types:LogRequest logRequest) returns types:LogEntry[]|error {
+    resource function post logs(http:Request request, types:LogRequest logRequest) returns types:LogEntry[]|error {
+
+        // Get a specific header
+        string|http:HeaderNotFoundError authHeader = request.getHeader("Authorization");
+        if authHeader is http:HeaderNotFoundError {
+            return error("Authorization header is required for fetching logs");
+        } 
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        log:printInfo(string `Fetching logs for user ${userContext.toString()}`);
+
         // Build the OpenSearch query
         map<json> query = {
             "query": {
                 "bool": {
-                    "must": []
+                    "must": [],
+                    "filter": []
                 }
             },
             "sort": [{"@timestamp": {"order": "desc"}}],
@@ -72,6 +97,7 @@ service /icp/observability on observabilityListener {
 
         // Get the must array to add filters
         json[] mustFilters = <json[]> check query.query.bool.must;
+        json[] filters = <json[]> check query.query.bool.filter;
 
         // Add time range filter based on duration
         time:Utc currentTime = time:utcNow();
@@ -93,51 +119,93 @@ service /icp/observability on observabilityListener {
         string? runtimeValue = logRequest.runtime;
         if runtimeValue is string {
             json runtimeFilter = {
-                "term": {
-                    "runtime.keyword": runtimeValue
+                "terms": {
+                    "runtime.keyword": [runtimeValue]
                 }
             };
-            mustFilters.push(runtimeFilter);
+
+            filters.push(runtimeFilter);
         }
 
         string? componentValue = logRequest.component;
         if componentValue is string {
             json componentFilter = {
-                "term": {
-                    "component.keyword": componentValue
+                "terms": {
+                    "component.keyword": [componentValue]
                 }
             };
-            mustFilters.push(componentFilter);
+            filters.push(componentFilter);
         }
 
         string? environmentValue = logRequest.environment;
         if environmentValue is string {
             json environmentFilter = {
-                "term": {
-                    "environment.keyword": environmentValue
+                "terms": {
+                    "environment.keyword": [environmentValue]
                 }
             };
-            mustFilters.push(environmentFilter);
+            filters.push(environmentFilter);
+        } else {
+            // If no environment is specified, filter by user's accessible environments
+            if (!userContext.isSuperAdmin) {
+                string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
+                string[] allAccessibleEnvironmentIds = [];
+                foreach string projectId in accessibleProjectIds {
+                    string[] accessibleEnvironmentIds = utils:getAccessibleEnvironmentIds(userContext, projectId);
+                    allAccessibleEnvironmentIds.push(...accessibleEnvironmentIds);
+                }
+                string[] accessibleEnvironments = [];
+                foreach string envId in allAccessibleEnvironmentIds {
+                    types:Environment env = check storage:getEnvironmentById(envId);
+                    accessibleEnvironments.push(env.name);
+                }
+                log:printInfo(string `Filtering logs for accessible environments: ${accessibleEnvironments.toString()}`);
+
+                json environmentAccessFilter = {
+                    "terms": {
+                        "environment.keyword": accessibleEnvironments
+                    }
+                };
+                filters.push(environmentAccessFilter);
+            }
         }
 
         string? projectValue = logRequest.project;
         if projectValue is string {
             json projectFilter = {
-                "term": {
-                    "project.keyword": projectValue
+                "terms": {
+                    "project.keyword": [projectValue]
                 }
             };
-            mustFilters.push(projectFilter);
+            filters.push(projectFilter);
+        } else {
+            // If no project is specified, filter by user's accessible projects
+            if (!userContext.isSuperAdmin) {
+                string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
+                string[] accessibleProjects = [];
+                foreach string projectId in accessibleProjectIds {
+                    types:Project project = check storage:getProjectById(projectId);
+                    accessibleProjects.push(project.name);
+                }
+                log:printInfo(string `Filtering logs for accessible projects: ${accessibleProjects[0]}`);
+
+                json projectAccessFilter = {
+                    "terms": {
+                        "project.keyword": accessibleProjects
+                    }
+                };
+                filters.push(projectAccessFilter);
+            }
         }
 
         string? logLevelValue = logRequest.logLevel;
         if logLevelValue is string {
             json logLevelFilter = {
-                "term": {
-                    "level.keyword": logLevelValue
+                "terms": {
+                    "level.keyword": [logLevelValue]
                 }
             };
-            mustFilters.push(logLevelFilter);
+            filters.push(logLevelFilter);
         }
 
         // Convert query to JSON string

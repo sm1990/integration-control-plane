@@ -19,11 +19,26 @@ class ObservabilityApiClient {
     body?: any
   ): Promise<T> {
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Dynamically retrieve token from localStorage (where AuthContext stores it)
+      const storedUser = localStorage.getItem('icp_auth_user');
+      if (storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          if (parsedUser.token) {
+            headers['Authorization'] = `Bearer ${parsedUser.token}`;
+          }
+        } catch (e) {
+          console.error('Failed to parse stored user for auth header', e);
+        }
+      }
+
       const response = await fetch(`${this.endpoint}${path}`, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: body ? JSON.stringify(body) : undefined,
       });
 

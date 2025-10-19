@@ -37,6 +37,12 @@ public isolated function createBadRequestError(string message) returns http:BadR
     }
 };
 
+public isolated function createForbiddenError(string message) returns http:Forbidden => {
+    body: {
+        message
+    }
+};
+
 public isolated function createInternalServerError(string message) returns http:InternalServerError => {
     body: {
         message

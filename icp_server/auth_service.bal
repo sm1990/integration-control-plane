@@ -539,7 +539,7 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function delete users/[string userId](@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:NotFound|http:Unauthorized|http:InternalServerError {
+    isolated resource function delete users/[string userId](@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:NotFound|http:Forbidden|http:Unauthorized|http:InternalServerError {
         log:printInfo("Deleting user", userId = userId);
         
         // Extract user context for RBAC
@@ -560,6 +560,13 @@ service /auth on httpListener {
                 callingUser = userContext.userId,
                 targetUserId = userId);
             return utils:createUnauthorizedError("Super admin access required to delete users");
+        }
+
+        // Super admins cannot delete themselves
+        if userContext.userId == userId {
+            log:printWarn("Super admin attempted to delete their own user account",
+                userId = userId);
+            return utils:createForbiddenError("You cannot delete your own user account");
         }
         
         // Check if user exists

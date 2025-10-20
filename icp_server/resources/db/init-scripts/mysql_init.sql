@@ -456,10 +456,25 @@ VALUES (
         'admin',
         'System Administrator',
         TRUE
+    ),
+    (
+        '660e8400-e29b-41d4-a716-446655440002',
+        'testuser',
+        'Test User for Role Management',
+        FALSE
+    ),
+    (
+        '660e8400-e29b-41d4-a716-446655440003',
+        'targetuser',
+        'Target User for Role Updates',
+        FALSE
     );
 
 -- Insert credentials for admin user
 -- Password: admin (Bcrypt hashed - Ballerina format)
+-- Password for newuser: newuser123
+-- Password for testuser: testuser123
+-- Password for targetuser: targetuser123
 INSERT INTO
     user_credentials (
         user_id,
@@ -478,6 +493,18 @@ VALUES (
         'newuser',
         'New Test User',
         '$2a$12$qJcaAGnurmpgmAPywgMocpUJQCDt3aPTknPZeItz3vEyca46bbg4Kw=='
+    ),
+    (
+        '660e8400-e29b-41d4-a716-446655440002',
+        'testuser',
+        'Test User for Role Management',
+        '$2a$12$OpZbPCxn781N0UM9vAU0uVISXHldE54QcbkrkWTTqWAY+XgQ53p+tQ=='
+    ),
+    (
+        '660e8400-e29b-41d4-a716-446655440003',
+        'targetuser',
+        'Target User for Role Updates',
+        '$2a$12$6POmY2tusrinXSmAJy78aZj+IYh6bK2XpdqbCiwsUFdx9P+oC54t7Q=='
     );
 
 -- Insert sample project
@@ -493,6 +520,13 @@ VALUES (
         '650e8400-e29b-41d4-a716-446655440001',
         'sample_project',
         'Sample project for testing',
+        '550e8400-e29b-41d4-a716-446655440000',
+        'System Administrator'
+    ),
+    (
+        '650e8400-e29b-41d4-a716-446655440002',
+        'sample_project_2',
+        'Second sample project for testing',
         '550e8400-e29b-41d4-a716-446655440000',
         'System Administrator'
     );
@@ -573,5 +607,32 @@ VALUES (
         'prod',
         'developer',
         'sample_project:prod:developer'
+    ),
+    (
+        '850e8400-e29b-41d4-a716-446655440005',
+        '650e8400-e29b-41d4-a716-446655440002',
+        'non-prod',
+        'admin',
+        'sample_project_2:non-prod:admin'
+    ),
+    (
+        '850e8400-e29b-41d4-a716-446655440006',
+        '650e8400-e29b-41d4-a716-446655440002',
+        'non-prod',
+        'developer',
+        'sample_project_2:non-prod:developer'
+    ),
+    (
+        '850e8400-e29b-41d4-a716-446655440007',
+        '650e8400-e29b-41d4-a716-446655440002',
+        'prod',
+        'admin',
+        'sample_project_2:prod:admin'
+    ),
+    (
+        '850e8400-e29b-41d4-a716-446655440008',
+        '650e8400-e29b-41d4-a716-446655440002',
+        'prod',
+        'developer',
+        'sample_project_2:prod:developer'
     );
-   

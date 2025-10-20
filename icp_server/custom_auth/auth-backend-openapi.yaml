@@ -7,14 +7,16 @@ info:
     
     This specification defines the contract for authentication backends that can be integrated
     with the ICP server. Users can implement their own authentication backends following this
-    specification to integrate with enterprise authentication systems (LDAP, OAuth, SSO, etc.).
+    specification to integrate with enterprise authentication systems (LDAP, OAuth, SSO, custom stores, etc.).
     
     ## Overview
     
     The authentication backend is responsible for:
     - Verifying user credentials (username/password)
+    - Creating users when requested by ICP
+    - Changing user passwords when requested by ICP
     - Returning user identity claims (userId, displayName)
-    - Operating independently from the main ICP server
+    - Operating independently from the ICP server
     
     ## Security
     
@@ -23,12 +25,11 @@ info:
     
     ## User Identity
     
-    The authentication backend stores user credentials in a `user_credentials` table and returns:
+    The authentication backend returns:
     - `userId`: A UUID that uniquely identifies the user across systems
     - `displayName`: The user's human-readable display name
     
     The username is provided in the request and does not need to be echoed back.
-    
   contact:
     name: WSO2 Inc.
     url: https://wso2.com
@@ -130,6 +131,154 @@ paths:
                   value:
                     message: "Internal server error"
 
+  /users:
+    post:
+      summary: Create user credentials
+      description: |
+        ICP will send username, displayName and password to your backend.
+        Your backend should add the user to your user store and return the created
+        user's identifiers.
+      operationId: createUser
+      tags:
+        - User Management
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              newUser:
+                summary: Create a new user
+                value:
+                  username: "johndoe"
+                  displayName: "John Doe"
+                  password: "securepassword123"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+              examples:
+                userCreated:
+                  summary: Successfully created user
+                  value:
+                    userId: "550e8400-e29b-41d4-a716-446655440000"
+                    username: "johndoe"
+                    displayName: "John Doe"
+        '400':
+          description: Bad request (invalid input or API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidInput:
+                  summary: Invalid input data
+                  value:
+                    message: "Username is required"
+                duplicateUser:
+                  summary: Username already exists
+                  value:
+                    message: "Username already exists"
+        '401':
+          description: Unauthorized (invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidApiKey:
+                  summary: Invalid API key
+                  value:
+                    message: "Invalid API key"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Internal server error
+                  value:
+                    message: "Internal server error"
+
+  /change-password:
+    post:
+      summary: Change user password
+      description: |
+        ICP will send userId, currentPassword and newPassword to your backend.
+        Your backend should validate the current password, update the password
+        in your user store and return a success response.
+      operationId: changePassword
+      tags:
+        - User Management
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            examples:
+              changePasswordExample:
+                summary: Change password request
+                value:
+                  userId: "550e8400-e29b-41d4-a716-446655440000"
+                  currentPassword: "oldpass"
+                  newPassword: "newpass123"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePasswordResponse'
+              examples:
+                changed:
+                  summary: Password change success
+                  value:
+                    message: "Password changed successfully"
+        '400':
+          description: Bad request (validation failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  summary: Validation error
+                  value:
+                    message: "Current password is incorrect"
+        '401':
+          description: Unauthorized (invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidApiKey:
+                  summary: Invalid API key
+                  value:
+                    message: "Invalid API key"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Internal server error
+                  value:
+                    message: "Internal server error"
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -193,6 +342,86 @@ components:
           example: "2025-10-10T04:26:39.123Z"
       description: Response from successful authentication
 
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+        - displayName
+        - password
+      properties:
+        username:
+          type: string
+          description: The username for the new user
+          example: "johndoe"
+          minLength: 1
+          maxLength: 255
+        displayName:
+          type: string
+          description: The user's display name
+          example: "John Doe"
+          minLength: 1
+          maxLength: 200
+        password:
+          type: string
+          format: password
+          description: The user's password (will be changed/stored per backend policy)
+          example: "securepassword123"
+          minLength: 6
+      description: Request to create a new user (implementation of storage is up to the backend)
+
+    CreateUserResponse:
+      type: object
+      required:
+        - userId
+        - username
+        - displayName
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Unique identifier for the created user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        username:
+          type: string
+          description: The username of the created user
+          example: "johndoe"
+        displayName:
+          type: string
+          description: The display name of the created user
+          example: "John Doe"
+      description: Response from successful user creation
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - userId
+        - currentPassword
+        - newPassword
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        currentPassword:
+          type: string
+          format: password
+          example: "oldpass"
+        newPassword:
+          type: string
+          format: password
+          example: "newpass123"
+      description: Request to change a user's password
+
+    ChangePasswordResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "Password changed successfully"
+      description: Generic success response for password change
+
     ErrorResponse:
       type: object
       required:
@@ -227,6 +456,8 @@ components:
 tags:
   - name: Authentication
     description: User authentication operations
+  - name: User Management
+    description: User credential management operations
 
 externalDocs:
   description: ICP Server Documentation

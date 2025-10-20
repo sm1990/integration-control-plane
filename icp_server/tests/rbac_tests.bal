@@ -318,3 +318,54 @@ function testGetAccessibleEnvironmentIds() returns error? {
     string[] env3Ids = utils:getAccessibleEnvironmentIds(userContext, "project-3");
     test:assertEquals(env3Ids.length(), 0, "Should have 0 environments for project-3");
 }
+
+@test:Config {
+    groups: ["rbac"]
+}
+function testGetAccessibleEnvironmentIdsByType() returns error? {
+    types:UserContext userContext = {
+        userId: "user-1",
+        username: "testuser",
+        displayName: "Test User",
+        roles: [
+            {
+                projectId: "project-1",
+                environmentType: types:NON_PROD,
+                privilegeLevel: types:ADMIN
+            },
+            {
+                projectId: "project-1",
+                environmentType: types:PROD,
+                privilegeLevel: types:DEVELOPER
+            },
+            {
+                projectId: "project-2",
+                environmentType: types:NON_PROD,
+                privilegeLevel: types:ADMIN
+            }
+        ]
+    };
+    
+    // Test getting all accessible environments across all projects
+    string[] accessibleEnvIds = check utils:getAccessibleEnvironmentIdsByType(userContext);
+    test:assertEquals(accessibleEnvIds.length(), 2, "Should have 2 environments (dev and prod)");
+    // Environment IDs seeded in DB: dev -> 750e8400-e29b-41d4-a716-446655440001, prod -> 750e8400-e29b-41d4-a716-446655440002
+    test:assertTrue(accessibleEnvIds.indexOf("750e8400-e29b-41d4-a716-446655440001") != (), "Should include dev env ID");
+    test:assertTrue(accessibleEnvIds.indexOf("750e8400-e29b-41d4-a716-446655440002") != (), "Should include prod env ID");
+}
+
+@test:Config {
+    groups: ["rbac"]
+}
+function testGetAccessibleEnvironmentIdsByTypeNoRoles() returns error? {
+    types:UserContext userContext = {
+        userId: "user-1",
+        username: "testuser",
+        displayName: "Test User",
+        roles: []
+    };
+    
+    // Test getting all accessible environments with no roles
+    string[] accessibleEnvIds = check utils:getAccessibleEnvironmentIdsByType(userContext);
+    test:assertEquals(accessibleEnvIds.length(), 0, "Should have 0 environments with no roles");
+}

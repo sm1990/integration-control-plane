@@ -663,6 +663,36 @@ public isolated function getAdminEnvironmentIdsByType(types:UserContext userCont
     return adminEnvironmentIds;
 }
 
+// Get list of environment IDs where the user has any role (admin or developer) across all projects
+public isolated function getAccessibleEnvironmentIdsByType(types:UserContext userContext) returns string[]|error {
+    // Super admins have access to all environments
+    if userContext.isSuperAdmin {
+        types:Environment[]|error allEnvironments = storage:getEnvironments();
+        if allEnvironments is error {
+            log:printError("Super admin failed to fetch all environments", allEnvironments);
+            return [];
+        }
+        return from types:Environment env in allEnvironments select env.environmentId;
+    }
+    
+    // Determine which environment types the user has access to
+    boolean hasProdAccess = userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
+        return role.environmentType == types:PROD;
+    });
+    
+    boolean hasNonProdAccess = userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
+        return role.environmentType == types:NON_PROD;
+    });
+    
+    // If user has no access to any environment type, return empty array
+    if !hasProdAccess && !hasNonProdAccess {
+        return [];
+    }
+    
+    // Make targeted database query based on accessible environment types
+    return check storage:getEnvironmentIdsByTypes(hasProdAccess, hasNonProdAccess);
+}
+
 // Generate JWT token with user details and roles
 public isolated function generateJWTToken(
     types:User userDetails,

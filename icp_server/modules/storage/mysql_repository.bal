@@ -112,6 +112,39 @@ public isolated function getEnvironmentsByIds(string[] environmentIds) returns t
     return environments;
 }
 
+// Get environment IDs by environment types (for RBAC filtering)
+public isolated function getEnvironmentIdsByTypes(boolean hasProdAccess, boolean hasNonProdAccess) returns string[]|error {
+    if !hasProdAccess && !hasNonProdAccess {
+        return [];
+    }
+
+    string[] environmentIds = [];
+
+    // Build WHERE clause to filter by environment types
+    sql:ParameterizedQuery query = `SELECT environment_id FROM environments WHERE `;
+
+    if hasProdAccess && hasNonProdAccess {
+        query = sql:queryConcat(query, `1=1`);
+    } else if hasProdAccess {
+        query = sql:queryConcat(query, `is_production = true`);
+    } else if hasNonProdAccess {
+        query = sql:queryConcat(query, `is_production = false`);
+    }
+
+    query = sql:queryConcat(query, ` ORDER BY name ASC`);
+
+    stream<record {|string environment_id;|}, sql:Error?> envStream = dbClient->query(query);
+
+    check from record {|string environment_id;|} env in envStream
+        do {
+            environmentIds.push(env.environment_id);
+        };
+
+    log:printInfo("Retrieved environment IDs by types", environmentCount = environmentIds.length());
+
+    return environmentIds;
+}
+
 // Get environment by ID
 public isolated function getEnvironmentById(string environmentId) returns types:Environment|error {
     stream<record {|string environment_id; string name; string? description; boolean is_production; string? created_at; string? updated_at;|}, sql:Error?> envStream =

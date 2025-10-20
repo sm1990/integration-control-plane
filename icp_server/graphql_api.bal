@@ -234,9 +234,30 @@ service /graphql on graphqlListener {
         return storage:createEnvironment(environment);
     }
 
-    // Get all environments
-    isolated resource function get environments() returns types:Environment[]|error? {
-        return check storage:getEnvironments();
+    // Get all environments (filtered by user's accessible environments via RBAC)
+    isolated resource function get environments(graphql:Context context) returns types:Environment[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get all environment IDs where user has any role (across all projects)
+        string[]|error accessibleEnvironmentIds = utils:getAccessibleEnvironmentIdsByType(userContext);
+        if accessibleEnvironmentIds is error {
+            log:printError("Failed to get accessible environment IDs", accessibleEnvironmentIds);
+            return error("Failed to get accessible environment IDs");
+        }
+
+        // Return empty array if user has no access to any environment
+        if accessibleEnvironmentIds.length() == 0 {
+            return [];
+        }
+
+        // Fetch environments by accessible environment IDs
+        return check storage:getEnvironmentsByIds(accessibleEnvironmentIds);
     }
 
     // Get all environments where user has admin access (for permission management)

@@ -113,7 +113,7 @@ function AppContent({ darkMode, onThemeToggle }: { darkMode: boolean; onThemeTog
                         }}
                         onClick={handleTitleClick}
                     >
-                        Integration Control Plane
+                        WSO2 Integrator: ICP
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {user && (

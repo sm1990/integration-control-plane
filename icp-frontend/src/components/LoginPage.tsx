@@ -129,7 +129,7 @@ const LoginPage: React.FC = () => {
                         <ICPLogo size={75} />
                     </Box>
                     <Typography component="h1" variant="h5" gutterBottom color="primary">
-                        Integration Control Plane
+                        WSO2 Integrator: ICP
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         Sign in to your account

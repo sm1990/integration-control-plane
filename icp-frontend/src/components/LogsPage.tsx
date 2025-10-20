@@ -59,11 +59,20 @@ const LogsPage: React.FC = () => {
   const [customStartTime, setCustomStartTime] = useState('');
   const [customEndTime, setCustomEndTime] = useState('');
 
-  // Stored time range for API calls (only updated when needed)
-  const [apiTimeRange, setApiTimeRange] = useState<{ startTime: string; endTime: string }>({
-    startTime: '',
-    endTime: '',
-  });
+  // Calculate initial time range
+  const getInitialTimeRange = () => {
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - 3600000); // 1 hour ago
+    return {
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+    };
+  };
+
+  // Stored time range for API calls (initialized with valid values)
+  const [apiTimeRange, setApiTimeRange] = useState<{ startTime: string; endTime: string }>(
+    getInitialTimeRange()
+  );
 
   const [searchTerm, setSearchTerm] = useState('');
   const [levelFilter, setLevelFilter] = useState('ALL');
@@ -104,28 +113,13 @@ const LogsPage: React.FC = () => {
     };
   }, [duration]);
 
-  // Calculate time range based on mode
-  const calculateTimeRange = useCallback((): { startTime: string; endTime: string } => {
-    if (timeRangeMode === 'preset') {
-      return calculatePresetTimeRange();
-    } else {
-      return {
-        startTime: new Date(customStartTime).toISOString(),
-        endTime: new Date(customEndTime).toISOString(),
-      };
-    }
-  }, [timeRangeMode, calculatePresetTimeRange, customStartTime, customEndTime]);
-
-  // Initialize time range on mount
+  // Initialize custom time inputs on mount
   useEffect(() => {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 3600000);
 
     setCustomStartTime(formatDateTimeLocal(oneHourAgo));
     setCustomEndTime(formatDateTimeLocal(now));
-
-    // Set initial API time range
-    setApiTimeRange(calculatePresetTimeRange());
   }, []); // Only on mount
 
   // Update API time range when duration or mode changes

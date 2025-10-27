@@ -46,23 +46,23 @@ isolated function contextInit(http:RequestContext reqCtx, http:Request request) 
 
 // GraphQL service for runtime details
 
-@graphql:ServiceConfig {
-    contextInit,
-    cors: {
-        allowOrigins: ["*"]
-    },
-    auth: [
-        {
-            jwtValidatorConfig: {
-                issuer: frontendJwtIssuer,
-                audience: frontendJwtAudience,
-                signatureConfig: {
-                    secret: defaultJwtHMACSecret
-                }
-            }
-        }
-    ]
-}
+// @graphql:ServiceConfig {
+//     contextInit,
+//     cors: {
+//         allowOrigins: ["*"]
+//     },
+//     auth: [
+//         {
+//             jwtValidatorConfig: {
+//                 issuer: frontendJwtIssuer,
+//                 audience: frontendJwtAudience,
+//                 signatureConfig: {
+//                     secret: defaultJwtHMACSecret
+//                 }
+//             }
+//         }
+//     ]
+// }
 service /graphql on graphqlListener {
 
     function init() {
@@ -360,18 +360,31 @@ service /graphql on graphqlListener {
     }
 
     // Get all projects (filtered by user's accessible projects via RBAC)
-    isolated resource function get projects(graphql:Context context) returns types:Project[]|error {
-        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
-        if authHeader !is string {
-            return error("Authorization header missing in request");
-        }
+    isolated resource function get projects(graphql:Context context, int? orgId) returns types:Project[]|error {
+        // value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        // if authHeader !is string {
+        //     return error("Authorization header missing in request");
+        // }
 
         // Extract user context for RBAC
-        types:UserContext userContext = check utils:extractUserContext(authHeader);
-        string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
+        // types:UserContext userContext = check utils:extractUserContext(authHeader);
+        // string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
 
         // Get projects filtered by user's access
-        return check storage:getProjectsByIds(accessibleProjectIds);
+        types:Project[] allProjects = check storage:getProjects();
+
+        // Filter by orgId if provided
+        if orgId is int {
+            types:Project[] filteredProjects = [];
+            foreach types:Project project in allProjects {
+                if project.orgId == orgId {
+                    filteredProjects.push(project);
+                }
+            }
+            return filteredProjects;
+        }
+
+        return allProjects;
     }
 
     // Get projects where user has admin access (for permission management)

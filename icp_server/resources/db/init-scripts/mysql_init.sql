@@ -41,16 +41,32 @@ CREATE TABLE user_credentials (
 
 CREATE TABLE projects (
     project_id CHAR(36) PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
+    org_id INT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    version VARCHAR(50) NULL DEFAULT '1.0.0',
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    handler VARCHAR(200) NOT NULL,
+    region VARCHAR(100) NULL,
     description TEXT,
+    default_deployment_pipeline_id CHAR(36) NULL,
+    deployment_pipeline_ids JSON NULL,
+    type VARCHAR(50) NULL,
+    git_provider VARCHAR(50) NULL,
+    git_organization VARCHAR(200) NULL,
+    repository VARCHAR(200) NULL,
+    branch VARCHAR(100) NULL,
+    secret_ref VARCHAR(200) NULL,
     owner_id CHAR(36) NULL, -- User ID of the project owner
     created_by VARCHAR(200) NULL, -- Display name of who created the project
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by VARCHAR(200) NULL, -- Display name of who last updated the project
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_projects_owner FOREIGN KEY (owner_id) REFERENCES users (user_id) ON DELETE SET NULL,
-    UNIQUE KEY uk_project_name (name),
-    INDEX idx_owner_id (owner_id)
+    UNIQUE KEY uk_project_name_org (org_id, name), -- Allow same name in different orgs
+    INDEX idx_owner_id (owner_id),
+    INDEX idx_org_id (org_id),
+    INDEX idx_handler (
+        handler
+    )
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Components belong to projects; users create components.
@@ -511,22 +527,49 @@ VALUES (
 INSERT INTO
     projects (
         project_id,
+        org_id,
         name,
+        version,
+        handler,
+        region,
         description,
+        type,
+        git_provider,
+        git_organization,
+        repository,
+        branch,
         owner_id,
         created_by
     )
 VALUES (
         '650e8400-e29b-41d4-a716-446655440001',
+        3089,
         'sample_project',
+        '1.0.0',
+        'admin',
+        'us-west-2',
         'Sample project for testing',
+        'web-application',
+        'github',
+        'sample-org',
+        'sample-repo',
+        'main',
         '550e8400-e29b-41d4-a716-446655440000',
         'System Administrator'
     ),
     (
         '650e8400-e29b-41d4-a716-446655440002',
+        3089,
         'sample_project_2',
+        '1.1.0',
+        'testuser',
+        'eu-west-1',
         'Second sample project for testing',
+        'api-service',
+        'gitlab',
+        'test-org',
+        'test-repo',
+        'develop',
         '550e8400-e29b-41d4-a716-446655440000',
         'System Administrator'
     );

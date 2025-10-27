@@ -1073,14 +1073,33 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
     string userId = userContext.userId;
     string displayName = userContext.displayName;
 
+    // Convert deployment pipeline IDs array to JSON string if provided
+    string? deploymentPipelineIdsJson = ();
+    string[]? pipelineIds = project?.deploymentPipelineIds;
+    if pipelineIds is string[] {
+        deploymentPipelineIdsJson = pipelineIds.toJsonString();
+    }
+
     transaction {
-        // Insert project with owner_id and created_by (display name)
-        sql:ParameterizedQuery insertQuery = `INSERT INTO projects (project_id, name, description, owner_id, created_by) 
-                                              VALUES (${projectId}, ${project.name}, ${project.description}, ${userId}, ${displayName})`;
+        // Insert project with all new fields
+        sql:ParameterizedQuery insertQuery = `INSERT INTO projects (
+            project_id, org_id, name, version, handler, region, description, 
+            default_deployment_pipeline_id, deployment_pipeline_ids, type, 
+            git_provider, git_organization, repository, branch, secret_ref,
+            owner_id, created_by
+        ) VALUES (
+            ${projectId}, ${project.orgId}, ${project.name}, ${project?.version}, 
+            ${project.handler}, ${project?.region}, ${project?.description},
+            ${project?.defaultDeploymentPipelineId}, ${deploymentPipelineIdsJson}, ${project?.'type},
+            ${project?.gitProvider}, ${project?.gitOrganization}, ${project?.repository}, 
+            ${project?.branch}, ${project?.secretRef}, ${userId}, ${displayName}
+        )`;
         sql:ExecutionResult _ = check dbClient->execute(insertQuery);
 
         log:printInfo(string `Created project: ${project.name}`,
                 projectId = projectId,
+                orgId = project.orgId,
+                handler = project.handler,
                 ownerId = userId,
                 createdBy = displayName);
 
@@ -1125,16 +1144,46 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
 public isolated function getProjects() returns types:Project[]|error {
     types:Project[] projects = [];
 
-    sql:ParameterizedQuery query = `SELECT project_id, name, description, owner_id, created_by, created_at, updated_at, updated_by 
+    sql:ParameterizedQuery query = `SELECT project_id, org_id, name, version, created_date, handler, region, 
+                                          description, default_deployment_pipeline_id, deployment_pipeline_ids, 
+                                          type, git_provider, git_organization, repository, branch, secret_ref,
+                                          owner_id, created_by, updated_at, updated_by 
                                    FROM projects 
                                    ORDER BY name ASC`;
 
-    stream<types:Project, sql:Error?> projectStream = dbClient->query(query);
+    stream<record {}, sql:Error?> projectStream = dbClient->query(query);
 
-    check from types:Project project in projectStream
+    check from record {} projectRecord in projectStream
         do {
+            // Parse deployment pipeline IDs from JSON if present
+            string[]? deploymentPipelineIds = ();
+            if projectRecord["deployment_pipeline_ids"] is string {
+                string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
+                json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
+                deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
+            }
+
             projects.push({
-                ...project
+                projectId: <string>projectRecord["project_id"],
+                orgId: <int>projectRecord["org_id"],
+                name: <string>projectRecord["name"],
+                version: <string?>projectRecord["version"],
+                createdDate: <string?>projectRecord["created_date"],
+                handler: <string>projectRecord["handler"],
+                region: <string?>projectRecord["region"],
+                description: <string?>projectRecord["description"],
+                defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
+                deploymentPipelineIds: deploymentPipelineIds,
+                'type: <string?>projectRecord["type"],
+                gitProvider: <string?>projectRecord["git_provider"],
+                gitOrganization: <string?>projectRecord["git_organization"],
+                repository: <string?>projectRecord["repository"],
+                branch: <string?>projectRecord["branch"],
+                secretRef: <string?>projectRecord["secret_ref"],
+                ownerId: <string?>projectRecord["owner_id"],
+                createdBy: <string?>projectRecord["created_by"],
+                updatedAt: <string?>projectRecord["updated_at"],
+                updatedBy: <string?>projectRecord["updated_by"]
             });
         };
 
@@ -1153,7 +1202,10 @@ public isolated function getProjectsByIds(string[] projectIds) returns types:Pro
     types:Project[] projects = [];
 
     // Build WHERE clause to filter by project IDs
-    sql:ParameterizedQuery query = `SELECT project_id, name, description, owner_id, created_by, created_at, updated_at, updated_by 
+    sql:ParameterizedQuery query = `SELECT project_id, org_id, name, version, created_date, handler, region, 
+                                          description, default_deployment_pipeline_id, deployment_pipeline_ids, 
+                                          type, git_provider, git_organization, repository, branch, secret_ref,
+                                          owner_id, created_by, updated_at, updated_by 
                                      FROM projects 
                                      WHERE project_id IN (`;
 
@@ -1167,12 +1219,39 @@ public isolated function getProjectsByIds(string[] projectIds) returns types:Pro
 
     query = sql:queryConcat(query, `) ORDER BY name ASC`);
 
-    stream<types:Project, sql:Error?> projectStream = dbClient->query(query);
+    stream<record {}, sql:Error?> projectStream = dbClient->query(query);
 
-    check from types:Project project in projectStream
+    check from record {} projectRecord in projectStream
         do {
+            // Parse deployment pipeline IDs from JSON if present
+            string[]? deploymentPipelineIds = ();
+            if projectRecord["deployment_pipeline_ids"] is string {
+                string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
+                json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
+                deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
+            }
+
             projects.push({
-                ...project
+                projectId: <string>projectRecord["project_id"],
+                orgId: <int>projectRecord["org_id"],
+                name: <string>projectRecord["name"],
+                version: <string?>projectRecord["version"],
+                createdDate: <string?>projectRecord["created_date"],
+                handler: <string>projectRecord["handler"],
+                region: <string?>projectRecord["region"],
+                description: <string?>projectRecord["description"],
+                defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
+                deploymentPipelineIds: deploymentPipelineIds,
+                'type: <string?>projectRecord["type"],
+                gitProvider: <string?>projectRecord["git_provider"],
+                gitOrganization: <string?>projectRecord["git_organization"],
+                repository: <string?>projectRecord["repository"],
+                branch: <string?>projectRecord["branch"],
+                secretRef: <string?>projectRecord["secret_ref"],
+                ownerId: <string?>projectRecord["owner_id"],
+                createdBy: <string?>projectRecord["created_by"],
+                updatedAt: <string?>projectRecord["updated_at"],
+                updatedBy: <string?>projectRecord["updated_by"]
             });
         };
 
@@ -1183,18 +1262,53 @@ public isolated function getProjectsByIds(string[] projectIds) returns types:Pro
 
 // Get a specific project by ID
 public isolated function getProjectById(string projectId) returns types:Project|error {
-    stream<types:Project, sql:Error?> projectStream =
-        dbClient->query(`SELECT project_id, name, description, owner_id, created_by, created_at, updated_at, updated_by FROM projects WHERE project_id = ${projectId}`);
+    stream<record {}, sql:Error?> projectStream =
+        dbClient->query(`SELECT project_id, org_id, name, version, created_date, handler, region, 
+                                description, default_deployment_pipeline_id, deployment_pipeline_ids, 
+                                type, git_provider, git_organization, repository, branch, secret_ref,
+                                owner_id, created_by, updated_at, updated_by 
+                         FROM projects WHERE project_id = ${projectId}`);
 
-    types:Project[] projectRecords =
-        check from types:Project project in projectStream
-        select project;
+    record {}[] projectRecords =
+        check from record {} projectRecord in projectStream
+        select projectRecord;
 
     if projectRecords.length() == 0 {
         return error(string `Project with ID ${projectId} not found`);
     }
 
-    return projectRecords[0];
+    record {} projectRecord = projectRecords[0];
+
+    // Parse deployment pipeline IDs from JSON if present
+    string[]? deploymentPipelineIds = ();
+    if projectRecord["deployment_pipeline_ids"] is string {
+        string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
+        json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
+        deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
+    }
+
+    return {
+        projectId: <string>projectRecord["project_id"],
+        orgId: <int>projectRecord["org_id"],
+        name: <string>projectRecord["name"],
+        version: <string?>projectRecord["version"],
+        createdDate: <string?>projectRecord["created_date"],
+        handler: <string>projectRecord["handler"],
+        region: <string?>projectRecord["region"],
+        description: <string?>projectRecord["description"],
+        defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
+        deploymentPipelineIds: deploymentPipelineIds,
+        'type: <string?>projectRecord["type"],
+        gitProvider: <string?>projectRecord["git_provider"],
+        gitOrganization: <string?>projectRecord["git_organization"],
+        repository: <string?>projectRecord["repository"],
+        branch: <string?>projectRecord["branch"],
+        secretRef: <string?>projectRecord["secret_ref"],
+        ownerId: <string?>projectRecord["owner_id"],
+        createdBy: <string?>projectRecord["created_by"],
+        updatedAt: <string?>projectRecord["updated_at"],
+        updatedBy: <string?>projectRecord["updated_by"]
+    };
 }
 
 // Update project name and/or description
@@ -1290,8 +1404,13 @@ public isolated function getComponents(string? projectId) returns types:Componen
     sql:ParameterizedQuery selectClause = `SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
                                                   c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                                   c.updated_by as component_updated_by,
-                                                  p.name as project_name, p.description as project_description, p.created_by as project_created_by, 
-                                                  p.created_at as project_created_at, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
                                            FROM components c 
                                            JOIN projects p ON c.project_id = p.project_id `;
     sql:ParameterizedQuery orderByClause = ` ORDER BY c.name ASC `;
@@ -1302,14 +1421,34 @@ public isolated function getComponents(string? projectId) returns types:Componen
 
     check from types:ComponentInDB component in componentStream
         do {
+            // Parse deployment pipeline IDs from JSON if present
+            string[]? deploymentPipelineIds = ();
+            string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
+            if pipelineIdsJsonStr is string {
+                json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
+                deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
+            }
+
             components.push({
                 componentId: component.component_id,
                 project: {
                     projectId: component.project_id,
+                    orgId: component.project_org_id,
                     name: component.project_name,
+                    version: component.project_version,
+                    createdDate: component.project_created_date,
+                    handler: component.project_handler,
+                    region: component.project_region,
                     description: component.project_description,
+                    defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
+                    deploymentPipelineIds: deploymentPipelineIds,
+                    'type: component.project_type,
+                    gitProvider: component.project_git_provider,
+                    gitOrganization: component.project_git_organization,
+                    repository: component.project_repository,
+                    branch: component.project_branch,
+                    secretRef: component.project_secret_ref,
                     createdBy: component.project_created_by,
-                    createdAt: component.project_created_at,
                     updatedAt: component.project_updated_at,
                     updatedBy: component.project_updated_by
                 },
@@ -1337,8 +1476,13 @@ public isolated function getComponentsByProjectIds(string[] projectIds) returns 
     sql:ParameterizedQuery selectClause = `SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
                                                   c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                                   c.updated_by as component_updated_by,
-                                                  p.name as project_name, p.description as project_description, p.created_by as project_created_by, 
-                                                  p.created_at as project_created_at, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
                                            FROM components c 
                                            JOIN projects p ON c.project_id = p.project_id 
                                            WHERE c.project_id IN (`;
@@ -1362,14 +1506,34 @@ public isolated function getComponentsByProjectIds(string[] projectIds) returns 
 
     check from types:ComponentInDB component in componentStream
         do {
+            // Parse deployment pipeline IDs from JSON if present
+            string[]? deploymentPipelineIds = ();
+            string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
+            if pipelineIdsJsonStr is string {
+                json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
+                deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
+            }
+
             components.push({
                 componentId: component.component_id,
                 project: {
                     projectId: component.project_id,
+                    orgId: component.project_org_id,
                     name: component.project_name,
+                    version: component.project_version,
+                    createdDate: component.project_created_date,
+                    handler: component.project_handler,
+                    region: component.project_region,
                     description: component.project_description,
+                    defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
+                    deploymentPipelineIds: deploymentPipelineIds,
+                    'type: component.project_type,
+                    gitProvider: component.project_git_provider,
+                    gitOrganization: component.project_git_organization,
+                    repository: component.project_repository,
+                    branch: component.project_branch,
+                    secretRef: component.project_secret_ref,
                     createdBy: component.project_created_by,
-                    createdAt: component.project_created_at,
                     updatedAt: component.project_updated_at,
                     updatedBy: component.project_updated_by
                 },
@@ -1391,9 +1555,13 @@ public isolated function getComponentById(string componentId) returns types:Comp
         dbClient->query(`SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
                                 c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                 c.updated_by as component_updated_by,
-                                p.name as project_name, p.description as project_description, 
-                                p.created_by as project_created_by, p.created_at as project_created_at, p.updated_at as project_updated_at,
-                                p.updated_by as project_updated_by
+                                p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
                          FROM components c 
                          JOIN projects p ON c.project_id = p.project_id 
                          WHERE c.component_id = ${componentId}`);
@@ -1408,14 +1576,35 @@ public isolated function getComponentById(string componentId) returns types:Comp
     }
 
     types:ComponentInDB component = componentRecords[0];
+
+    // Parse deployment pipeline IDs from JSON if present
+    string[]? deploymentPipelineIds = ();
+    string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
+    if pipelineIdsJsonStr is string {
+        json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
+        deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
+    }
+
     return {
         componentId: component.component_id,
         project: {
             projectId: component.project_id,
+            orgId: component.project_org_id,
             name: component.project_name,
+            version: component.project_version,
+            createdDate: component.project_created_date,
+            handler: component.project_handler,
+            region: component.project_region,
             description: component.project_description,
+            defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
+            deploymentPipelineIds: deploymentPipelineIds,
+            'type: component.project_type,
+            gitProvider: component.project_git_provider,
+            gitOrganization: component.project_git_organization,
+            repository: component.project_repository,
+            branch: component.project_branch,
+            secretRef: component.project_secret_ref,
             createdBy: component.project_created_by,
-            createdAt: component.project_created_at,
             updatedAt: component.project_updated_at,
             updatedBy: component.project_updated_by
         },

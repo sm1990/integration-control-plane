@@ -303,34 +303,90 @@ public type Project record {
         name: "project_id"
     }
     string projectId;
+
+    @sql:Column {
+        name: "org_id"
+    }
+    int orgId;
+
     string name;
-    string description?;
+    string? version?;
+
+    @sql:Column {
+        name: "created_date"
+    }
+    string? createdDate?;
+
+    string handler;
+    string? region?;
+    string? description?;
+
+    @sql:Column {
+        name: "default_deployment_pipeline_id"
+    }
+    string? defaultDeploymentPipelineId?;
+
+    @sql:Column {
+        name: "deployment_pipeline_ids"
+    }
+    string[]? deploymentPipelineIds?;
+
+    string? 'type?;
+
+    @sql:Column {
+        name: "git_provider"
+    }
+    string? gitProvider?;
+
+    @sql:Column {
+        name: "git_organization"
+    }
+    string? gitOrganization?;
+
+    string? repository?;
+    string? branch?;
+
+    @sql:Column {
+        name: "secret_ref"
+    }
+    string? secretRef?;
+
     @sql:Column {
         name: "owner_id"
     }
-    string ownerId?;
+    string? ownerId?;
+
     @sql:Column {
         name: "created_by"
     }
-    string createdBy?;
-    @sql:Column {
-        name: "created_at"
-    }
-    string createdAt?;
+    string? createdBy?;
 
     @sql:Column {
         name: "updated_at"
     }
-    string updatedAt?;
+    string? updatedAt?;
+
     @sql:Column {
         name: "updated_by"
     }
-    string updatedBy?;
+    string? updatedBy?;
 };
 
 public type ProjectInput record {
+    int orgId;
     string name;
-    string description?;
+    string? version?;
+    string handler;
+    string? region?;
+    string? description?;
+    string? defaultDeploymentPipelineId?;
+    string[]? deploymentPipelineIds?;
+    string? 'type?;
+    string? gitProvider?;
+    string? gitOrganization?;
+    string? repository?;
+    string? branch?;
+    string? secretRef?;
 };
 
 public type Component record {
@@ -417,10 +473,22 @@ public type ComponentInDB record {
     string component_created_at?;
     string component_updated_at?;
     string component_updated_by?;
+    int project_org_id;
     string project_name;
+    string project_version?;
+    string project_created_date?;
+    string project_handler;
+    string project_region?;
     string project_description?;
+    string project_default_deployment_pipeline_id?;
+    string project_deployment_pipeline_ids?;
+    string project_type?;
+    string project_git_provider?;
+    string project_git_organization?;
+    string project_repository?;
+    string project_branch?;
+    string project_secret_ref?;
     string project_created_by?;
-    string project_created_at?;
     string project_updated_at?;
     string project_updated_by?;
 };

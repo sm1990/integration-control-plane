@@ -4,7 +4,7 @@ type Query {
   services(runtimeId: String!): [Service!]!
   listeners(runtimeId: String!): [Listener!]!
   environments: [Environment!]
-  projects: [Project!]!
+  projects(orgId: Int): [Project!]!
   project(projectId: String!): Project
   components(projectId: String): [Component!]!
   component(componentId: String!): Component
@@ -40,10 +40,22 @@ type Component {
 
 type Project {
   projectId: String!
+  orgId: Int!
   name: String!
+  version: String
+  createdDate: String
+  handler: String!
+  region: String
   description: String
+  defaultDeploymentPipelineId: String
+  deploymentPipelineIds: [String!]
+  type: String
+  gitProvider: String
+  gitOrganization: String
+  repository: String
+  branch: String
+  secretRef: String
   createdBy: String
-  createdAt: String
   updatedAt: String
   updatedBy: String
 }
@@ -113,8 +125,20 @@ input EnvironmentInput {
 }
 
 input ProjectInput {
+  orgId: Int!
   name: String!
+  version: String
+  handler: String!
+  region: String
   description: String
+  defaultDeploymentPipelineId: String
+  deploymentPipelineIds: [String!]
+  type: String
+  gitProvider: String
+  gitOrganization: String
+  repository: String
+  branch: String
+  secretRef: String
 }
 
 input ComponentInput {

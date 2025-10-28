@@ -17,11 +17,13 @@
 import icp_server.storage;
 import icp_server.types;
 
+import ballerina/crypto;
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/log;
 import ballerina/time;
 import ballerina/url;
+import ballerina/uuid;
 
 // HTTP error response helpers
 
@@ -692,6 +694,49 @@ public isolated function getAccessibleEnvironmentIdsByType(types:UserContext use
     // Make targeted database query based on accessible environment types
     return check storage:getEnvironmentIdsByTypes(hasProdAccess, hasNonProdAccess);
 }
+
+// ============================================================================
+// REFRESH TOKEN UTILITIES
+// ============================================================================
+
+// Generate a cryptographically secure refresh token
+// Returns a 256-bit random token encoded as a base64 string
+public isolated function generateRefreshToken() returns string {
+    log:printDebug("Generating refresh token");
+    
+    // Generate a UUID v4 as the base for the refresh token
+    // This provides 128 bits of randomness
+    string uuid1 = uuid:createType4AsString();
+    string uuid2 = uuid:createType4AsString();
+    
+    // Combine two UUIDs for 256 bits of randomness and hash with SHA-256
+    string combined = uuid1 + uuid2;
+    byte[] combinedBytes = combined.toBytes();
+    byte[] hashedBytes = crypto:hashSha256(combinedBytes);
+    
+    // Encode as base64 for storage and transmission
+    string refreshToken = hashedBytes.toBase64();
+    
+    log:printDebug("Refresh token generated successfully");
+    return refreshToken;
+}
+
+// Generate a unique token ID (UUID v4)
+public isolated function generateTokenId() returns string {
+    return uuid:createType4AsString();
+}
+
+// Hash a refresh token using SHA-256
+// Tokens should always be hashed before storing in database
+public isolated function hashRefreshToken(string token) returns string {
+    byte[] tokenBytes = token.toBytes();
+    byte[] hashedBytes = crypto:hashSha256(tokenBytes);
+    return hashedBytes.toBase64();
+}
+
+// ============================================================================
+// JWT TOKEN GENERATION
+// ============================================================================
 
 // Generate JWT token with user details and roles
 public isolated function generateJWTToken(

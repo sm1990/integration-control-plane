@@ -14,7 +14,10 @@
 # =============================================================================
 # Runtime management settings
 heartbeatTimeoutSeconds = 300  # 5 minutes
-schedulerIntervalSeconds = 600  # 1 minute
+schedulerIntervalSeconds = 600  # 10 minutes
+
+# Refresh token cleanup settings
+# refreshTokenCleanupIntervalSeconds = 86400  # 24 hours - clean up expired/revoked tokens
 
 # =============================================================================
 # LOGGING CONFIGURATION
@@ -38,6 +41,15 @@ authBackendApiKey = "default-api-key"
 # =============================================================================
 # Authorization service settings
 defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256"
+
+# Token expiry settings
+# defaultTokenExpiryTime = 3600  # 1 hour - JWT access token expiry
+# refreshTokenExpiryTime = 604800  # 7 days - Refresh token expiry
+
+# Refresh token security settings
+# enableRefreshTokenRotation = true  # Rotate refresh token on each use (recommended for security)
+# maxRefreshTokensPerUser = 10  # Maximum active refresh tokens per user (0 = unlimited)
+#                                # Useful to limit the number of devices/sessions per user
 
 
 # =============================================================================
@@ -97,7 +109,7 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 # =============================================================================
 [icp_server.storage]
 # Primary database connection settings
-dbHost = "localhost"
+dbHost = "mysql-db"
 dbPort = 3306
 dbName = "icp_database"
 dbUser = "root"

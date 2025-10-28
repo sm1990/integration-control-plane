@@ -29,6 +29,17 @@ function init() returns error? {
             log:printError("Failed to schedule offline runtime job", id);
         }
     }
+
+    // Start a worker to periodically clean up expired and revoked refresh tokens
+    worker refreshTokenCleanupWorker {
+        task:JobId|error id = task:scheduleJobRecurByFrequency(new RefreshTokenCleanupJob(), <decimal>refreshTokenCleanupIntervalSeconds);
+        if (id is error) {
+            log:printError("Failed to schedule refresh token cleanup job", id);
+        } else {
+            log:printInfo("Refresh token cleanup job scheduled successfully", 
+                intervalSeconds = refreshTokenCleanupIntervalSeconds);
+        }
+    }
 }
 
 // Creates a job to be executed by the scheduler.

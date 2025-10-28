@@ -122,10 +122,26 @@ function testOIDCLoginWithValidCode() returns error? {
     test:assertTrue(responseBody.expiresIn is int, "ExpiresIn should be present in response");
     test:assertTrue(responseBody.username is string, "Username should be present in response");
     test:assertTrue(responseBody.roles is json[], "Roles should be present in response");
+    test:assertTrue(responseBody.refreshToken is string, "Refresh token should be present in response");
+    test:assertTrue(responseBody.refreshTokenExpiresIn is int, "Refresh token expiresIn should be present in response");
+    test:assertTrue(responseBody.displayName is string, "Display name should be present in response");
+    test:assertTrue(responseBody.isSuperAdmin is boolean, "isSuperAdmin should be present in response");
+    test:assertTrue(responseBody.isProjectAuthor is boolean, "isProjectAuthor should be present in response");
+    test:assertTrue(responseBody.isOidcUser is boolean, "isOidcUser should be present in response");
 
     // Validate JWT token
     string token = check responseBody.token;
     test:assertTrue(token.length() > 0, "Token should not be empty");
+    
+    // Validate refresh token
+    string refreshToken = check responseBody.refreshToken;
+    test:assertTrue(refreshToken.length() > 0, "Refresh token should not be empty");
+    test:assertNotEquals(token, refreshToken, "Refresh token should be different from access token");
+    
+    // Validate token expiry times
+    int expiresIn = check responseBody.expiresIn;
+    int refreshTokenExpiresIn = check responseBody.refreshTokenExpiresIn;
+    test:assertTrue(refreshTokenExpiresIn > expiresIn, "Refresh token should have longer expiry than access token");
 
     // Decode JWT to verify claims
     [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(token);

@@ -571,9 +571,25 @@ public type LoginResponse record {|
     boolean isNewUser = false;
     string token?;
     int expiresIn?;
+    string refreshToken?;
+    int refreshTokenExpiresIn?;
     string username?;
+    string displayName?;
     Role[] roles?;
+    boolean isSuperAdmin?;
+    boolean isProjectAuthor?;
+    boolean isOidcUser?;
 |};
+
+// Request type for refresh token endpoint
+public type RefreshTokenRequest record {
+    string refreshToken;
+};
+
+// Request type for revoke token endpoint
+public type RevokeTokenRequest record {
+    string? refreshToken?;  // If provided, revokes specific token. If omitted, revokes all user's tokens
+};
 
 // Types for the /authenticate endpoint
 public type AuthenticateResponse record {
@@ -776,6 +792,49 @@ public type UpdateUserRolesRequest record {
 // Input type for updating user profile (display name)
 public type UpdateProfileRequest record {
     string displayName;
+};
+
+// === Refresh Token Types ===
+
+// Refresh token record from database
+public type RefreshToken record {
+    @sql:Column {
+        name: "token_id"
+    }
+    string tokenId;
+    @sql:Column {
+        name: "user_id"
+    }
+    string userId;
+    @sql:Column {
+        name: "token_hash"
+    }
+    string tokenHash;
+    @sql:Column {
+        name: "expires_at"
+    }
+    time:Civil expiresAt;
+    @sql:Column {
+        name: "created_at"
+    }
+    time:Civil createdAt;
+    @sql:Column {
+        name: "last_used_at"
+    }
+    time:Civil lastUsedAt;
+    boolean revoked;
+    @sql:Column {
+        name: "revoked_at"
+    }
+    time:Civil? revokedAt?;
+    @sql:Column {
+        name: "user_agent"
+    }
+    string? userAgent?;
+    @sql:Column {
+        name: "ip_address"
+    }
+    string? ipAddress?;
 };
 
 // Input type for changing password

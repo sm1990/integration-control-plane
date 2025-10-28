@@ -33,6 +33,7 @@ configurable types:DeploymentType deploymentType = "VM";
 
 configurable int heartbeatTimeoutSeconds = 300;
 configurable int schedulerIntervalSeconds = 600;
+configurable int refreshTokenCleanupIntervalSeconds = 86400; // 24 hours (in seconds)
 
 // Runtime auth configuration (runtime and server communication)
 configurable string jwtIssuer = "icp-runtime-jwt-issuer";
@@ -44,7 +45,12 @@ configurable decimal jwtClockSkewSeconds = 10;
 configurable string defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256";
 configurable string frontendJwtIssuer = "icp-frontend-jwt-issuer";
 configurable string frontendJwtAudience = "icp-server";
-configurable int defaultTokenExpiryTime = 3600; // 1 hour
+configurable int defaultTokenExpiryTime = 3600; // 1 hour (in seconds)
+
+// Refresh token configuration
+configurable int refreshTokenExpiryTime = 604800; // 7 days (in seconds)
+configurable boolean enableRefreshTokenRotation = true; // Rotate refresh token on each use
+configurable int maxRefreshTokensPerUser = 10; // Maximum number of active refresh tokens per user (0 = unlimited)
 
 // Authentication backend configuration 
 configurable string authBackendUrl = "https://localhost:9447";

@@ -45,7 +45,7 @@ final readonly & jwt:IssuerSignatureConfig jwtSignatureConfig = {
 }
 service /auth on httpListener {
 
-    isolated resource function post login(types:Credentials credentials) returns http:Ok|http:Unauthorized|http:InternalServerError|error {
+    isolated resource function post login(types:Credentials credentials, http:Request req) returns http:Ok|http:Unauthorized|http:InternalServerError|error {
         log:printInfo("Login attempt for user", username = credentials.username);
         // Call the authentication backend to verify credentials
         http:Response|error authResponse = authBackendClient->post("/authenticate", credentials, {
@@ -141,11 +141,45 @@ service /auth on httpListener {
             return utils:createInternalServerError("Error generating JWT token");
         }
 
+        // Generate refresh token
+        string refreshToken = utils:generateRefreshToken();
+        string tokenId = utils:generateTokenId();
+        string tokenHash = utils:hashRefreshToken(refreshToken);
+        
+        // Extract user agent and IP address from request
+        string|http:HeaderNotFoundError userAgentHeader = req.getHeader("User-Agent");
+        string? userAgent = userAgentHeader is string ? userAgentHeader : ();
+        
+        string|http:HeaderNotFoundError ipAddressHeader = req.getHeader("X-Forwarded-For");
+        string? ipAddress = ipAddressHeader is string ? ipAddressHeader : ();
+        if ipAddress is () {
+            // Fallback to X-Real-IP if X-Forwarded-For is not present
+            string|http:HeaderNotFoundError realIpHeader = req.getHeader("X-Real-IP");
+            ipAddress = realIpHeader is string ? realIpHeader : ();
+        }
+        
+        // Store refresh token in database
+        error? storeResult = storage:storeRefreshToken(
+            tokenId,
+            userId,
+            tokenHash,
+            refreshTokenExpiryTime,
+            userAgent,
+            ipAddress
+        );
+        
+        if storeResult is error {
+            log:printError("Error storing refresh token", storeResult, userId = userId);
+            return utils:createInternalServerError("Error storing refresh token");
+        }
+
         log:printInfo("Login successful for user", username = username, isSuperAdmin = userDetails.isSuperAdmin, isProjectAuthor = userDetails.isProjectAuthor);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
+                refreshToken: refreshToken,
+                refreshTokenExpiresIn: refreshTokenExpiryTime,
                 username: username,
                 displayName: userDetails.displayName,
                 roles: userRoles,
@@ -157,7 +191,7 @@ service /auth on httpListener {
     }
 
     // OIDC Login endpoint - exchanges authorization code for ICP token
-    isolated resource function post login/oidc(types:OIDCCallbackRequest request) returns http:Ok|http:Unauthorized|http:BadRequest|http:InternalServerError {
+    isolated resource function post login/oidc(types:OIDCCallbackRequest request, http:Request req) returns http:Ok|http:Unauthorized|http:BadRequest|http:InternalServerError {
         log:printInfo("OIDC login attempt - exchanging authorization code");
 
         // Get SSO configuration
@@ -250,12 +284,46 @@ service /auth on httpListener {
             return utils:createInternalServerError("Error generating JWT token");
         }
         
+        // Generate refresh token
+        string refreshToken = utils:generateRefreshToken();
+        string tokenId = utils:generateTokenId();
+        string tokenHash = utils:hashRefreshToken(refreshToken);
+        
+        // Extract user agent and IP address from request
+        string|http:HeaderNotFoundError userAgentHeader = req.getHeader("User-Agent");
+        string? userAgent = userAgentHeader is string ? userAgentHeader : ();
+        
+        string|http:HeaderNotFoundError ipAddressHeader = req.getHeader("X-Forwarded-For");
+        string? ipAddress = ipAddressHeader is string ? ipAddressHeader : ();
+        if ipAddress is () {
+            // Fallback to X-Real-IP if X-Forwarded-For is not present
+            string|http:HeaderNotFoundError realIpHeader = req.getHeader("X-Real-IP");
+            ipAddress = realIpHeader is string ? realIpHeader : ();
+        }
+        
+        // Store refresh token in database
+        error? storeResult = storage:storeRefreshToken(
+            tokenId,
+            userDetails.userId,
+            tokenHash,
+            refreshTokenExpiryTime,
+            userAgent,
+            ipAddress
+        );
+        
+        if storeResult is error {
+            log:printError("Error storing refresh token for OIDC user", storeResult, userId = userDetails.userId);
+            return utils:createInternalServerError("Error storing refresh token");
+        }
+        
         // Return login response
         log:printInfo("OIDC login successful", username = userInfo.username, isSuperAdmin = userDetails.isSuperAdmin, isProjectAuthor = userDetails.isProjectAuthor);
         return <http:Ok>{
             body: {
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
+                refreshToken: refreshToken,
+                refreshTokenExpiresIn: refreshTokenExpiryTime,
                 username: userInfo.username,
                 displayName: userDetails.displayName,
                 roles: userRoles,
@@ -266,7 +334,8 @@ service /auth on httpListener {
         };
     }
 
-    // Token refresh endpoint - regenerates JWT with current user roles
+    // Token renewal endpoint - regenerates JWT with current user roles (without requiring refresh token)
+    // Used when user's permissions change (e.g., after creating a project or role updates)
     @http:ResourceConfig {
         auth: [
             {
@@ -280,31 +349,31 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function post 'refresh\-token(@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:Unauthorized|http:InternalServerError {
-        log:printInfo("Token refresh requested");
+    isolated resource function post 'renew\-token(@http:Header {name: http:AUTH_HEADER} string? authHeader) returns http:Ok|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Token renewal requested");
         
         if authHeader is () {
-            log:printError("Authorization header missing in refresh token request");
+            log:printError("Authorization header missing in token renewal request");
             return utils:createUnauthorizedError("Authorization header required");
         }
         
         // Extract user context from current token
         types:UserContext|error userContext = utils:extractUserContext(authHeader);
         if userContext is error {
-            log:printError("Failed to extract user context for token refresh", userContext);
+            log:printError("Failed to extract user context for token renewal", userContext);
             return utils:createUnauthorizedError("Invalid authorization token");
         }
         
         // Fetch latest user details and roles from database
         types:User|error userDetails = storage:getUserDetailsById(userContext.userId);
         if userDetails is error {
-            log:printError("Error fetching user details for token refresh", userDetails, userId = userContext.userId);
+            log:printError("Error fetching user details for token renewal", userDetails, userId = userContext.userId);
             return utils:createInternalServerError("Failed to fetch user details");
         }
         
         types:Role[]|error userRoles = storage:getUserRoles(userContext.userId);
         if userRoles is error {
-            log:printError("Error fetching user roles for token refresh", userRoles, userId = userContext.userId);
+            log:printError("Error fetching user roles for token renewal", userRoles, userId = userContext.userId);
             return utils:createInternalServerError("Failed to fetch user roles");
         }
         
@@ -319,11 +388,11 @@ service /auth on httpListener {
         );
         
         if jwtToken is error {
-            log:printError("Error generating refreshed JWT token", jwtToken);
+            log:printError("Error generating renewed JWT token", jwtToken);
             return utils:createInternalServerError("Error generating JWT token");
         }
         
-        log:printInfo("Token refreshed successfully", username = userDetails.username, roleCount = userRoles.length());
+        log:printInfo("Token renewed successfully", username = userDetails.username, roleCount = userRoles.length());
         return <http:Ok>{
             body: {
                 token: jwtToken,
@@ -333,6 +402,202 @@ service /auth on httpListener {
                 roles: userRoles,
                 isSuperAdmin: userDetails.isSuperAdmin,
                 isProjectAuthor: userDetails.isProjectAuthor
+            }
+        };
+    }
+
+    // Token refresh endpoint - uses refresh token to generate new access token
+    // This endpoint does NOT require JWT authentication - uses refresh token instead
+    isolated resource function post 'refresh\-token(types:RefreshTokenRequest request, http:Request req) returns http:Ok|http:Unauthorized|http:BadRequest|http:InternalServerError {
+        log:printInfo("Token refresh requested using refresh token");
+        
+        // Validate request
+        if request.refreshToken.trim().length() == 0 {
+            log:printWarn("Empty refresh token provided");
+            return utils:createBadRequestError("Refresh token is required");
+        }
+        
+        // Hash the provided refresh token to compare with stored hash
+        string tokenHash = utils:hashRefreshToken(request.refreshToken);
+        
+        // Validate refresh token and get user details
+        types:User|error userDetails = storage:validateRefreshToken(tokenHash);
+        if userDetails is error {
+            log:printWarn("Invalid or expired refresh token", userDetails);
+            return utils:createUnauthorizedError("Invalid or expired refresh token");
+        }
+        
+        // Fetch user roles
+        types:Role[]|error userRoles = storage:getUserRoles(userDetails.userId);
+        if userRoles is error {
+            log:printError("Error fetching user roles for refresh token", userRoles, userId = userDetails.userId);
+            return utils:createInternalServerError("Failed to fetch user roles");
+        }
+        
+        // Generate new JWT access token
+        string|error jwtToken = utils:generateJWTToken(
+            userDetails,
+            userRoles,
+            frontendJwtIssuer,
+            defaultTokenExpiryTime,
+            frontendJwtAudience,
+            jwtSignatureConfig
+        );
+        
+        if jwtToken is error {
+            log:printError("Error generating JWT token from refresh token", jwtToken);
+            return utils:createInternalServerError("Error generating JWT token");
+        }
+        
+        // If rotation is disabled, return response with same refresh token
+        if !enableRefreshTokenRotation {
+            log:printInfo("Token refreshed without rotation", 
+                username = userDetails.username, 
+                userId = userDetails.userId);
+            return <http:Ok>{
+                body: {
+                    token: jwtToken,
+                    expiresIn: defaultTokenExpiryTime,
+                    refreshToken: request.refreshToken,
+                    refreshTokenExpiresIn: refreshTokenExpiryTime,
+                    username: userDetails.username,
+                    displayName: userDetails.displayName,
+                    roles: userRoles,
+                    isSuperAdmin: userDetails.isSuperAdmin,
+                    isProjectAuthor: userDetails.isProjectAuthor
+                }
+            };
+        }
+        
+        // Rotation is enabled - generate new refresh token
+        string newRefreshToken = utils:generateRefreshToken();
+        string newTokenId = utils:generateTokenId();
+        string newTokenHash = utils:hashRefreshToken(newRefreshToken);
+        
+        // Extract user agent and IP address from request
+        string|http:HeaderNotFoundError userAgentHeader = req.getHeader("User-Agent");
+        string? userAgent = userAgentHeader is string ? userAgentHeader : ();
+        
+        string|http:HeaderNotFoundError ipAddressHeader = req.getHeader("X-Forwarded-For");
+        string? ipAddress = ipAddressHeader is string ? ipAddressHeader : ();
+        if ipAddress is () {
+            // Fallback to X-Real-IP if X-Forwarded-For is not present
+            string|http:HeaderNotFoundError realIpHeader = req.getHeader("X-Real-IP");
+            ipAddress = realIpHeader is string ? realIpHeader : ();
+        }
+        
+        // Revoke the old refresh token (used for rotation)
+        error? revokeResult = storage:revokeRefreshToken(tokenHash);
+        if revokeResult is error {
+            log:printWarn("Failed to revoke old refresh token", revokeResult, userId = userDetails.userId);
+            // Continue anyway - this is not critical
+        }
+        
+        // Store new refresh token
+        error? storeResult = storage:storeRefreshToken(
+            newTokenId,
+            userDetails.userId,
+            newTokenHash,
+            refreshTokenExpiryTime,
+            userAgent,
+            ipAddress
+        );
+        
+        if storeResult is error {
+            log:printError("Error storing new refresh token", storeResult, userId = userDetails.userId);
+            return utils:createInternalServerError("Error storing refresh token");
+        }
+        
+        log:printInfo("Token refreshed with rotation", 
+            username = userDetails.username, 
+            userId = userDetails.userId);
+        return <http:Ok>{
+            body: {
+                token: jwtToken,
+                expiresIn: defaultTokenExpiryTime,
+                refreshToken: newRefreshToken,
+                refreshTokenExpiresIn: refreshTokenExpiryTime,
+                username: userDetails.username,
+                displayName: userDetails.displayName,
+                roles: userRoles,
+                isSuperAdmin: userDetails.isSuperAdmin,
+                isProjectAuthor: userDetails.isProjectAuthor
+            }
+        };
+    }
+
+    // Token revocation endpoint - revokes refresh token(s) for logout
+    // Requires JWT authentication to identify the user
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post 'revoke\-token(@http:Header {name: http:AUTH_HEADER} string? authHeader, types:RevokeTokenRequest request) returns http:Ok|http:Unauthorized|http:BadRequest|http:InternalServerError {
+        log:printInfo("Token revocation requested");
+        
+        if authHeader is () {
+            log:printError("Authorization header missing in revoke token request");
+            return utils:createUnauthorizedError("Authorization header required");
+        }
+        
+        // Extract user context from current JWT
+        types:UserContext|error userContext = utils:extractUserContext(authHeader);
+        if userContext is error {
+            log:printError("Failed to extract user context for token revocation", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+        
+        // Check if a specific refresh token was provided
+        if request?.refreshToken is string {
+            string refreshToken = <string>request?.refreshToken;
+            
+            if refreshToken.trim().length() == 0 {
+                log:printWarn("Empty refresh token provided for revocation", userId = userContext.userId);
+                return utils:createBadRequestError("Refresh token cannot be empty");
+            }
+            
+            // Hash the refresh token to match database storage
+            string tokenHash = utils:hashRefreshToken(refreshToken);
+            
+            // Revoke the specific refresh token
+            error? revokeResult = storage:revokeRefreshToken(tokenHash);
+            if revokeResult is error {
+                log:printError("Error revoking specific refresh token", revokeResult, userId = userContext.userId);
+                return utils:createInternalServerError("Failed to revoke refresh token");
+            }
+            
+            log:printInfo("Specific refresh token revoked successfully", 
+                userId = userContext.userId, 
+                username = userContext.username);
+            return <http:Ok>{
+                body: {
+                    message: "Refresh token revoked successfully"
+                }
+            };
+        } 
+
+        // No specific token provided - revoke ALL refresh tokens for this user (logout from all devices)
+        error? revokeAllResult = storage:revokeAllUserRefreshTokens(userContext.userId);
+        if revokeAllResult is error {
+            log:printError("Error revoking all refresh tokens for user", revokeAllResult, userId = userContext.userId);
+            return utils:createInternalServerError("Failed to revoke refresh tokens");
+        }
+        
+        log:printInfo("All refresh tokens revoked successfully for user", 
+            userId = userContext.userId, 
+            username = userContext.username);
+        return <http:Ok>{
+            body: {
+                message: "All refresh tokens revoked successfully. You have been logged out from all devices."
             }
         };
     }

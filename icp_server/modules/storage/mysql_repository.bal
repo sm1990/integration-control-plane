@@ -1976,3 +1976,158 @@ public isolated function updateUserProfile(string userId, string displayName) re
     return ();
 }
 
+// ============================================================================
+// REFRESH TOKEN FUNCTIONS
+// ============================================================================
+
+// Store a new refresh token in the database
+public isolated function storeRefreshToken(
+    string tokenId,
+    string userId,
+    string tokenHash,
+    int expirySeconds,
+    string? userAgent,
+    string? ipAddress
+) returns error? {
+    log:printDebug(string `Storing refresh token for user: ${userId}`);
+    
+    // Use MySQL DATE_ADD to calculate expiry time directly in the database
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `INSERT INTO refresh_tokens (token_id, user_id, token_hash, expires_at, user_agent, ip_address) 
+         VALUES (${tokenId}, ${userId}, ${tokenHash}, DATE_ADD(NOW(), INTERVAL ${expirySeconds} SECOND), ${userAgent}, ${ipAddress})`
+    );
+    
+    if result is sql:Error {
+        log:printError(string `Failed to store refresh token for user ${userId}`, result);
+        return result;
+    }
+    
+    log:printInfo(string `Successfully stored refresh token for user ${userId}`);
+    return ();
+}
+
+// Validate a refresh token and return user details if valid
+// Returns error if token is invalid, expired, or revoked
+public isolated function validateRefreshToken(string tokenHash) returns types:User|error {
+    log:printDebug("Validating refresh token");
+    
+    // Query for the refresh token with epoch timestamp for expiry
+    record {|
+        string token_id;
+        string user_id;
+        boolean revoked;
+        int expires_at_epoch;
+    |}|sql:Error refreshToken = dbClient->queryRow(
+        `SELECT token_id, user_id, revoked, UNIX_TIMESTAMP(expires_at) as expires_at_epoch
+         FROM refresh_tokens 
+         WHERE token_hash = ${tokenHash}`
+    );
+    
+    if refreshToken is sql:Error {
+        log:printWarn("Refresh token not found in database");
+        return error("Invalid refresh token");
+    }
+    
+    // Check if token is revoked
+    if refreshToken.revoked {
+        log:printWarn("Refresh token has been revoked", tokenId = refreshToken.token_id);
+        return error("Refresh token has been revoked");
+    }
+    
+    // Check if token has expired (compare epoch timestamps)
+    time:Utc currentTime = time:utcNow();
+    decimal currentEpoch = <decimal>currentTime[0];
+    decimal expiryEpoch = <decimal>refreshToken.expires_at_epoch;
+    
+    if expiryEpoch <= currentEpoch {
+        log:printWarn("Refresh token has expired", tokenId = refreshToken.token_id);
+        return error("Refresh token has expired");
+    }
+    
+    // Update last_used_at timestamp
+    sql:ExecutionResult|sql:Error updateResult = dbClient->execute(
+        `UPDATE refresh_tokens 
+         SET last_used_at = CURRENT_TIMESTAMP 
+         WHERE token_hash = ${tokenHash}`
+    );
+    
+    if updateResult is sql:Error {
+        log:printWarn("Failed to update last_used_at for refresh token", updateResult);
+        // Don't fail the validation, just log the warning
+    }
+    
+    // Fetch and return user details
+    types:User|error user = getUserDetailsById(refreshToken.user_id);
+    if user is error {
+        log:printError(string `Failed to get user details for token validation`, user);
+        return error("User not found for refresh token");
+    }
+    
+    log:printInfo("Refresh token validated successfully", userId = user.userId);
+    return user;
+}
+
+// Revoke a refresh token (logout)
+public isolated function revokeRefreshToken(string tokenHash) returns error? {
+    log:printDebug("Revoking refresh token");
+    
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `UPDATE refresh_tokens 
+         SET revoked = TRUE, revoked_at = CURRENT_TIMESTAMP 
+         WHERE token_hash = ${tokenHash}`
+    );
+    
+    if result is sql:Error {
+        log:printError("Failed to revoke refresh token", result);
+        return result;
+    }
+    
+    // Check if any rows were affected
+    int? affectedRows = result.affectedRowCount;
+    if affectedRows is () || affectedRows == 0 {
+        log:printWarn("No refresh token found to revoke");
+        return error("Refresh token not found");
+    }
+    
+    log:printInfo("Successfully revoked refresh token");
+    return ();
+}
+
+// Revoke all refresh tokens for a specific user
+public isolated function revokeAllUserRefreshTokens(string userId) returns error? {
+    log:printDebug(string `Revoking all refresh tokens for user: ${userId}`);
+    
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `UPDATE refresh_tokens 
+         SET revoked = TRUE, revoked_at = CURRENT_TIMESTAMP 
+         WHERE user_id = ${userId} AND revoked = FALSE`
+    );
+    
+    if result is sql:Error {
+        log:printError(string `Failed to revoke refresh tokens for user ${userId}`, result);
+        return result;
+    }
+    
+    int? affectedRows = result.affectedRowCount;
+    log:printInfo(string `Successfully revoked ${affectedRows ?: 0} refresh tokens for user ${userId}`);
+    return ();
+}
+
+// Clean up expired refresh tokens (called by scheduled job)
+public isolated function cleanupExpiredRefreshTokens() returns error? {
+    log:printDebug("Cleaning up expired refresh tokens");
+    
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `DELETE FROM refresh_tokens 
+         WHERE expires_at < CURRENT_TIMESTAMP OR revoked = TRUE`
+    );
+    
+    if result is sql:Error {
+        log:printError("Failed to cleanup expired refresh tokens", result);
+        return result;
+    }
+    
+    int? deletedCount = result.affectedRowCount;
+    log:printInfo(string `Successfully cleaned up ${deletedCount ?: 0} expired/revoked refresh tokens`);
+    return ();
+}

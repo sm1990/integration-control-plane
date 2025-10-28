@@ -21,21 +21,21 @@ import ballerina/test;
 
 // Test: Successful token refresh with valid JWT
 @test:Config {
-    groups: ["token-refresh"]
+    groups: ["token-renew"]
 }
-function testSuccessfulTokenRefresh() returns error? {
-    log:printInfo("Test: Successful token refresh");
+function testSuccessfulTokenRenewal() returns error? {
+    log:printInfo("Test: Successful token renewal");
     
     // Use the pre-generated admin token
     string authHeader = createAuthHeader(adminToken);
     
-    // Send refresh token request
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    // Send renew token request
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": authHeader
     });
     
     // Assert response status
-    assertStatusCode(response.statusCode, 200, "Expected status code 200 for successful token refresh");
+    assertStatusCode(response.statusCode, 200, "Expected status code 200 for successful token renewal");
     
     // Parse response body
     json responseBody = check response.getJsonPayload();
@@ -59,26 +59,26 @@ function testSuccessfulTokenRefresh() returns error? {
     test:assertEquals(payload.sub, "550e8400-e29b-41d4-a716-446655440000", "User ID should match");
     test:assertEquals(payload["username"], "admin", "Username should match");
     
-    log:printInfo("Test passed: Successful token refresh");
+    log:printInfo("Test passed: Successful token renewal");
 }
 
 // Test: Token refresh returns updated roles from database
 @test:Config {
-    groups: ["token-refresh"],
-    dependsOn: [testSuccessfulTokenRefresh]
+    groups: ["token-renew"],
+    dependsOn: [testSuccessfulTokenRenewal]
 }
-function testRefreshTokenWithUpdatedRoles() returns error? {
-    log:printInfo("Test: Refresh token with updated roles from DB");
+function testRenewTokenWithUpdatedRoles() returns error? {
+    log:printInfo("Test: Renew token with updated roles from DB");
     
     // Use the pre-generated admin token
     string authHeader = createAuthHeader(adminToken);
     
-    // Refresh token - should fetch current roles from DB
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    // Renew token - should fetch current roles from DB
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": authHeader
     });
     
-    assertStatusCode(response.statusCode, 200, "Expected successful token refresh");
+    assertStatusCode(response.statusCode, 200, "Expected successful token renewal");
     
     json responseBody = check response.getJsonPayload();
     json roles = check responseBody.roles;
@@ -96,18 +96,18 @@ function testRefreshTokenWithUpdatedRoles() returns error? {
     anydata rolesInToken = payload["roles"];
     test:assertTrue(rolesInToken is json[], "Roles should be in new token");
     
-    log:printInfo("Test passed: Refresh token contains updated roles");
+    log:printInfo("Test passed: Renew token contains updated roles");
 }
 
 // Test: Token refresh fails without authorization header
 @test:Config {
-    groups: ["token-refresh", "negative"]
+    groups: ["token-renew", "negative"]
 }
-function testRefreshTokenWithoutAuthHeader() returns error? {
-    log:printInfo("Test: Token refresh without auth header");
+function testRenewTokenWithoutAuthHeader() returns error? {
+    log:printInfo("Test: Token renewal without auth header");
     
-    // Send refresh token request without Authorization header
-    http:Response response = check authClient->post("/auth/refresh-token", {});
+    // Send renew token request without Authorization header
+    http:Response response = check authClient->post("/auth/renew-token", {});
     
     // Assert response status (should be 401 Unauthorized)
     assertStatusCode(response.statusCode, 401, "Expected status code 401 without auth header");
@@ -118,39 +118,39 @@ function testRefreshTokenWithoutAuthHeader() returns error? {
     // Assert error message
     test:assertTrue(responseBody.message is string, "Error message should be present");
     
-    log:printInfo("Test passed: Token refresh rejected without auth header");
+    log:printInfo("Test passed: Token renewal rejected without auth header");
 }
 
 // Test: Token refresh fails with invalid token
 @test:Config {
-    groups: ["token-refresh", "negative"]
+    groups: ["token-renew", "negative"]
 }
-function testRefreshTokenWithInvalidToken() returns error? {
-    log:printInfo("Test: Token refresh with invalid token");
+function testRenewTokenWithInvalidToken() returns error? {
+    log:printInfo("Test: Token renewal with invalid token");
     
     // Create an invalid token (wrong signature)
     string invalidToken = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
     
-    // Send refresh token request with invalid token
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    // Send renew token request with invalid token
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": invalidToken
     });
     
     // Assert response status (should be 401 Unauthorized)
     assertStatusCode(response.statusCode, 401, "Expected status code 401 with invalid token");
     
-    log:printInfo("Test passed: Token refresh rejected with invalid token");
+    log:printInfo("Test passed: Token renewal rejected with invalid token");
 }
 
 // Test: Token refresh fails with expired token
 // Note: Skipping this test because we cannot generate a token that's already expired
 // The JWT library creates tokens with current timestamp, so expTime is always in the future
 @test:Config {
-    groups: ["token-refresh", "negative"],
+    groups: ["token-renew", "negative"],
     enable: false
 }
-function testRefreshTokenWithExpiredToken() returns error? {
-    log:printInfo("Test: Token refresh with expired token");
+function testRenewTokenWithExpiredToken() returns error? {
+    log:printInfo("Test: Token renewal with expired token");
     
     // Generate an expired token
     string expiredToken = check generateExpiredToken(
@@ -160,23 +160,23 @@ function testRefreshTokenWithExpiredToken() returns error? {
     
     string authHeader = createAuthHeader(expiredToken);
     
-    // Send refresh token request with expired token
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    // Send renew token request with expired token
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": authHeader
     });
     
     // Assert response status (should be 401 Unauthorized)
     assertStatusCode(response.statusCode, 401, "Expected status code 401 with expired token");
     
-    log:printInfo("Test passed: Token refresh rejected with expired token");
+    log:printInfo("Test passed: Token renewal rejected with expired token");
 }
 
 // Test: Token refresh fails when user no longer exists in DB
 @test:Config {
-    groups: ["token-refresh", "negative"]
+    groups: ["token-renew", "negative"]
 }
-function testRefreshTokenWithDeletedUser() returns error? {
-    log:printInfo("Test: Token refresh with deleted user");
+function testRenewTokenWithDeletedUser() returns error? {
+    log:printInfo("Test: Token renewal with deleted user");
     
     // Generate a token for a non-existent user
     string testToken = check generateTestToken(
@@ -189,8 +189,8 @@ function testRefreshTokenWithDeletedUser() returns error? {
     
     string authHeader = createAuthHeader(testToken);
     
-    // Send refresh token request
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    // Send renew token request
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": authHeader
     });
     
@@ -204,26 +204,26 @@ function testRefreshTokenWithDeletedUser() returns error? {
     json responseBody = check response.getJsonPayload();
     test:assertTrue(responseBody.message is string, "Error message should be present");
     
-    log:printInfo("Test passed: Token refresh failed for deleted user");
+    log:printInfo("Test passed: Token renewal failed for deleted user");
 }
 
 // Test: Refreshed token has updated expiration time
 @test:Config {
-    groups: ["token-refresh"]
+    groups: ["token-renew"]
 }
-function testRefreshTokenUpdatesExpiration() returns error? {
-    log:printInfo("Test: Refreshed token has updated expiration time");
+function testRenewTokenUpdatesExpiration() returns error? {
+    log:printInfo("Test: Renewed token has updated expiration time");
     
     // Use the pre-generated admin token
     string oldToken = adminToken;
     string authHeader = createAuthHeader(oldToken);
     
-    // Refresh token
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    // Renew token
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": authHeader
     });
     
-    assertStatusCode(response.statusCode, 200, "Expected successful token refresh");
+    assertStatusCode(response.statusCode, 200, "Expected successful token renewal");
     
     json responseBody = check response.getJsonPayload();
     string newToken = check responseBody.token;
@@ -242,5 +242,5 @@ function testRefreshTokenUpdatesExpiration() returns error? {
         test:assertTrue(newExp >= oldExp, "New token should have same or later expiration than old token");
     }
     
-    log:printInfo("Test passed: Refreshed token has updated expiration");
+    log:printInfo("Test passed: Renewed token has updated expiration");
 }

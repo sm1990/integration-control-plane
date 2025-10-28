@@ -9,6 +9,20 @@ CREATE DATABASE icp_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE icp_database;
 
 -- ============================================================================
+-- ORGANIZATIONS
+-- ============================================================================
+
+CREATE TABLE organizations (
+    org_id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    org_name VARCHAR(255) NOT NULL UNIQUE,
+    org_handle VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_org_handle (org_handle)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ============================================================================
 -- USER MANAGEMENT & AUTHZ
 -- ============================================================================
 
@@ -33,6 +47,28 @@ CREATE TABLE user_credentials (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_username (username)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ============================================================================
+-- REFRESH TOKENS (for authentication session management)
+-- ============================================================================
+
+CREATE TABLE refresh_tokens (
+    token_id CHAR(36) NOT NULL PRIMARY KEY,
+    user_id CHAR(36) NOT NULL,
+    token_hash VARCHAR(255) NOT NULL UNIQUE,  -- SHA256 hash of token
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_used_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked_at TIMESTAMP NULL,
+    user_agent VARCHAR(500) NULL,
+    ip_address VARCHAR(50) NULL,
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_token_hash (token_hash),
+    INDEX idx_expires_at (expires_at),
+    INDEX idx_revoked (revoked)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ============================================================================
@@ -61,6 +97,7 @@ CREATE TABLE projects (
     updated_by VARCHAR(200) NULL, -- Display name of who last updated the project
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_projects_owner FOREIGN KEY (owner_id) REFERENCES users (user_id) ON DELETE SET NULL,
+    CONSTRAINT fk_projects_org FOREIGN KEY (org_id) REFERENCES organizations (org_id) ON DELETE RESTRICT,
     UNIQUE KEY uk_project_name_org (org_id, name), -- Allow same name in different orgs
     INDEX idx_owner_id (owner_id),
     INDEX idx_org_id (org_id),
@@ -459,6 +496,19 @@ ORDER BY cc.issued_at ASC;
 -- SAMPLE DATA FOR TESTING
 -- ============================================================================
 
+-- Insert default organization
+INSERT INTO
+    organizations (
+        org_id,
+        org_name,
+        org_handle
+    )
+VALUES (
+        1,
+        'Default Organization',
+        'default'
+    );
+
 -- Insert a default admin user for testing
 INSERT INTO
     users (
@@ -543,7 +593,7 @@ INSERT INTO
     )
 VALUES (
         '650e8400-e29b-41d4-a716-446655440001',
-        3089,
+        1,
         'sample_project',
         '1.0.0',
         'admin',
@@ -559,7 +609,7 @@ VALUES (
     ),
     (
         '650e8400-e29b-41d4-a716-446655440002',
-        3089,
+        1,
         'sample_project_2',
         '1.1.0',
         'testuser',
@@ -679,3 +729,40 @@ VALUES (
         'developer',
         'sample_project_2:prod:developer'
     );
+
+-- Insert sample refresh token for admin user (for testing)
+-- Token: sample_refresh_token_for_testing (hashed with SHA256)
+-- Expires in 7 days from now
+INSERT INTO
+    refresh_tokens (
+        token_id,
+        user_id,
+        token_hash,
+        expires_at,
+        user_agent,
+        ip_address
+    )
+VALUES (
+        '950e8400-e29b-41d4-a716-446655440001',
+        '550e8400-e29b-41d4-a716-446655440000',
+        'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
+        DATE_ADD(NOW(), INTERVAL 7 DAY),
+        'Mozilla/5.0 (Test Browser)',
+        '127.0.0.1'
+    );
+
+-- ============================================================================
+-- SCHEDULED EVENTS
+-- ============================================================================
+
+-- Enable event scheduler (required for scheduled events to run)
+SET GLOBAL event_scheduler = ON;
+
+-- Create scheduled event to clean up expired and revoked refresh tokens
+-- Runs daily at 2:00 AM
+CREATE EVENT IF NOT EXISTS cleanup_expired_refresh_tokens
+ON SCHEDULE EVERY 1 DAY
+STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 2 HOUR)
+DO
+  DELETE FROM refresh_tokens 
+  WHERE expires_at < NOW() OR revoked = TRUE;

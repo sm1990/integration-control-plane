@@ -517,7 +517,7 @@ function testUpdateRolesVerifyTokenRefresh() returns error? {
     string authHeader = createAuthHeader(testToken);
     
     // Refresh token to get updated roles
-    http:Response response = check authClient->post("/auth/refresh-token", {}, {
+    http:Response response = check authClient->post("/auth/renew-token", {}, {
         "Authorization": authHeader
     });
     

@@ -292,6 +292,377 @@ CREATE TABLE runtime_listeners (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ============================================================================
+-- MI-SPECIFIC ARTIFACT TABLES
+-- ============================================================================
+
+-- REST APIs (MI)
+CREATE TABLE runtime_apis (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    api_name VARCHAR(200) NOT NULL,
+    url VARCHAR(500) NOT NULL,
+    context VARCHAR(500) NOT NULL,
+    version VARCHAR(50) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_apis_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_api (runtime_id, api_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_api_name (api_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Proxy Services (MI)
+CREATE TABLE runtime_proxy_services (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    proxy_name VARCHAR(200) NOT NULL,
+    wsdl TEXT NULL,
+    transports JSON NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_proxy_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_proxy_service (runtime_id, proxy_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_proxy_name (proxy_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Endpoints (MI)
+CREATE TABLE runtime_endpoints (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    endpoint_name VARCHAR(200) NOT NULL,
+    endpoint_type VARCHAR(100) NOT NULL,
+    address VARCHAR(500) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_endpoint (runtime_id, endpoint_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_endpoint_name (endpoint_name),
+    INDEX idx_endpoint_type (endpoint_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Inbound Endpoints (MI)
+CREATE TABLE runtime_inbound_endpoints (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    inbound_name VARCHAR(200) NOT NULL,
+    protocol VARCHAR(50) NOT NULL,
+    sequence VARCHAR(200) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_inbound_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_inbound_endpoint (runtime_id, inbound_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_inbound_name (inbound_name),
+    INDEX idx_protocol (protocol),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Sequences (MI)
+CREATE TABLE runtime_sequences (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    sequence_name VARCHAR(200) NOT NULL,
+    sequence_type VARCHAR(100) NULL,
+    container VARCHAR(200) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_sequences_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_sequence (runtime_id, sequence_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_sequence_name (sequence_name),
+    INDEX idx_sequence_type (sequence_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Tasks (MI)
+CREATE TABLE runtime_tasks (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    task_name VARCHAR(200) NOT NULL,
+    task_class VARCHAR(500) NULL,
+    task_group VARCHAR(200) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_tasks_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_task (runtime_id, task_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_task_name (task_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Templates (MI)
+CREATE TABLE runtime_templates (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    template_name VARCHAR(200) NOT NULL,
+    template_type VARCHAR(100) NOT NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_templates_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_template (runtime_id, template_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_template_name (template_name),
+    INDEX idx_template_type (template_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Message Stores (MI)
+CREATE TABLE runtime_message_stores (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    store_name VARCHAR(200) NOT NULL,
+    store_type VARCHAR(100) NOT NULL,
+    store_class VARCHAR(500) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_message_stores_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_message_store (runtime_id, store_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_store_name (store_name),
+    INDEX idx_store_type (store_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Message Processors (MI)
+CREATE TABLE runtime_message_processors (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    processor_name VARCHAR(200) NOT NULL,
+    processor_type VARCHAR(100) NOT NULL,
+    processor_class VARCHAR(500) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_message_processors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_message_processor (runtime_id, processor_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_processor_name (processor_name),
+    INDEX idx_processor_type (processor_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Local Entries (MI)
+CREATE TABLE runtime_local_entries (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    entry_name VARCHAR(200) NOT NULL,
+    entry_type VARCHAR(100) NOT NULL,
+    entry_value TEXT NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_local_entries_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_local_entry (runtime_id, entry_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_entry_name (entry_name),
+    INDEX idx_entry_type (entry_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Data Services (MI)
+CREATE TABLE runtime_data_services (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    service_name VARCHAR(200) NOT NULL,
+    description TEXT NULL,
+    wsdl TEXT NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_data_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_data_service (runtime_id, service_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_service_name (service_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Carbon Apps (MI)
+CREATE TABLE runtime_carbon_apps (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    app_name VARCHAR(200) NOT NULL,
+    version VARCHAR(50) NULL,
+    deployment_status VARCHAR(100) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_carbon_apps_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_carbon_app (runtime_id, app_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_app_name (app_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Data Sources (MI)
+CREATE TABLE runtime_data_sources (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    datasource_name VARCHAR(200) NOT NULL,
+    driver VARCHAR(500) NULL,
+    url VARCHAR(1000) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_data_sources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_data_source (runtime_id, datasource_name),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_datasource_name (datasource_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Connectors (MI)
+CREATE TABLE runtime_connectors (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    connector_name VARCHAR(200) NOT NULL,
+    package VARCHAR(200) NOT NULL,
+    version VARCHAR(50) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_connectors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_connector (runtime_id, connector_name, package),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_connector_name (connector_name),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- Registry Resources (MI)
+CREATE TABLE runtime_registry_resources (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    resource_name VARCHAR(200) NOT NULL,
+    path VARCHAR(1000) NOT NULL,
+    resource_type VARCHAR(100) NULL,
+    state ENUM(
+        'ENABLED',
+        'DISABLED',
+        'STARTING',
+        'STOPPING',
+        'FAILED'
+    ) NOT NULL DEFAULT 'ENABLED',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_registry_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_registry_resource (runtime_id, resource_name, path(255)),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_resource_name (resource_name),
+    INDEX idx_resource_type (resource_type),
+    INDEX idx_state (state)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- System Info (MI)
+CREATE TABLE runtime_system_info (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    info_key VARCHAR(200) NOT NULL,
+    value TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_system_info_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    UNIQUE KEY uk_runtime_system_info (runtime_id, info_key),
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_info_key (info_key)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ============================================================================
 -- CONTROL COMMANDS
 -- ============================================================================
 

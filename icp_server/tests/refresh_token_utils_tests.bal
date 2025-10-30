@@ -15,7 +15,7 @@
 // under the License.
 
 import ballerina/log;
-import ballerina/regex;
+import ballerina/lang.regexp as regex;
 import ballerina/test;
 import icp_server.utils;
 
@@ -71,7 +71,7 @@ function testGenerateTokenId() returns error? {
     
     // Assert token ID follows UUID v4 format (8-4-4-4-12 hexadecimal pattern)
     // Example: 550e8400-e29b-41d4-a716-446655440000
-    boolean isValidUuid = regex:matches(tokenId, "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$");
+    boolean isValidUuid = regex:isFullMatch(re `^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`, tokenId);
     test:assertTrue(isValidUuid, "Token ID should be a valid UUID v4 format");
     
     log:printInfo("Test passed: Token ID is valid UUID v4", tokenId = tokenId);

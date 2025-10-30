@@ -57,33 +57,59 @@ public type Artifact record {
 };
 
 public type Resource record {
-
-    string[] methods;
+    @sql:Column {
+        name: "resource_path"
+    }
+    string path = ""; // "/unittest", "/", "/send", etc.
+    @sql:Column {
+        name: "resource_method" 
+    }
+    string method = ""; // "GET", "POST", "PUT", "DELETE"
+    // Legacy fields for backward compatibility
     @sql:Column {
         name: "resource_url"
     }
-    string url;
+    string url = "";
+    string[] methods = [];
 };
 
 public type Artifacts record {
-    Listener[] listeners;
-    Service[] services;
+    Listener[] listeners = [];
+    Service[] services = [];
+    // MI-specific artifact types that may be present in heartbeat payloads
+    RestApi[] apis = [];
+    ProxyService[] proxyServices = [];
+    Endpoint[] endpoints = [];
+    InboundEndpoint[] inboundEndpoints = [];
+    Sequence[] sequences = [];
+    Task[] tasks = [];
+    Template[] templates = [];
+    MessageStore[] messageStores = [];
+    MessageProcessor[] messageProcessors = [];
+    LocalEntry[] localEntries = [];
+    DataService[] dataServices = [];
+    CarbonApp[] carbonApps = [];
+    DataSource[] dataSources = [];
+    Connector[] connectors = [];
+    RegistryResource[] registryResources = [];
+    SystemInfo[] systemInfo = [];
 };
 
 public type Node record {
-    string platformName = "ballerina";
+    string platformName = "wso2-mi";
     string platformVersion?;
     string platformHome?;
     string ballerinaHome?;
     string osName?;
     string osVersion?;
+    string javaVersion?;
 };
 
 // Heartbeat that includes all runtime information for registration/updates
 public type Heartbeat record {|
     string runtime;
-    RuntimeType runtimeType;
-    RuntimeStatus status;
+    string runtimeType; // "wso2-mi" from payloads
+    string status; // "RUNNING", "STOPPED", etc.
     string environment;
     string project;
     string component;
@@ -252,6 +278,7 @@ public type ServiceRecordInDB record {
     string service_package;
     string base_path;
     ArtifactState state;
+    string service_type;
 };
 
 public type ListenerRecordInDB record {
@@ -259,11 +286,85 @@ public type ListenerRecordInDB record {
     string listener_package;
     string protocol;
     ArtifactState state;
+    string port?;
+    string destination?;
+    string queue?;
+    string path?;
+};
+
+// Database record types for MI artifacts
+public type ProxyServiceRecordInDB record {
+    string proxy_name;
+    string proxy_package;
+    string base_path;
+    ArtifactState state;
+    string wsdl = "";
+    string transports = "";
+};
+
+public type EndpointRecordInDB record {
+    string endpoint_name;
+    string endpoint_type;
+    string address?;
+    ArtifactState state;
+};
+
+public type SequenceRecordInDB record {
+    string sequence_name;
+    string sequence_type?;
+    string container?;
+    ArtifactState state;
+};
+
+public type TaskRecordInDB record {
+    string task_name;
+    string task_class?;
+    string task_group?;
+    ArtifactState state;
+};
+
+public type MessageStoreRecordInDB record {
+    string store_name;
+    string store_type;
+    string store_class?;
+    ArtifactState state;
+};
+
+public type MessageProcessorRecordInDB record {
+    string processor_name;
+    string processor_type;
+    string processor_class?;
+    ArtifactState state;
+};
+
+public type LocalEntryRecordInDB record {
+    string entry_name;
+    string entry_type;
+    string entry_value?;
+    ArtifactState state;
+};
+
+public type CarbonAppRecordInDB record {
+    string app_name;
+    string version = "";
+    string app_version = "";
+    string deployment_status = "";
+    ArtifactState state;
+};
+
+public type RegistryResourceRecordInDB record {
+    string resource_name;
+    string resource_path;
+    string resource_type = "";
+    ArtifactState state;
+    string path = "";
 };
 
 public type ResourceRecord record {
-    string resource_url;
-    string methods; // JSON string of array
+    string resource_path = "";
+    string method = ""; // Single method like "GET", "POST", etc.
+    string resource_url = "";
+    string methods = ""; // JSON string of array
 };
 
 public type Service record {
@@ -274,13 +375,21 @@ public type Service record {
     @sql:Column {
         name: "service_package"
     }
-    string package;
+    string package = "";
     @sql:Column {
         name: "base_path"
     }
-    string basePath;
-    ArtifactState state = ENABLED;
+    string basePath = "";
+    @sql:Column {
+        name: "service_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "service_type"
+    }
+    string 'type = ""; // "API", "ProxyService", "DataService", "InboundEndpoint", "ScheduledTask"
     Resource[] resources;
+    Listener[] listeners;
 };
 
 public type Listener record {
@@ -291,9 +400,238 @@ public type Listener record {
     @sql:Column {
         name: "listener_package"
     }
-    string package;
+    string package = "";
+    @sql:Column {
+        name: "listener_protocol"
+    }
+    string protocol = ""; // "http", "https", "jms", "rabbitmq", "file"
+    @sql:Column {
+        name: "listener_port"
+    }
+    string? port?; // "8290", "8253" for network protocols
+    @sql:Column {
+        name: "listener_destination"
+    }
+    string? destination?; // JMS destination name
+    @sql:Column {
+        name: "listener_queue"
+    }
+    string? queue?; // RabbitMQ queue name
+    @sql:Column {
+        name: "listener_path"
+    }
+    string? path?; // File system path
+    @sql:Column {
+        name: "listener_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+// MI Runtime specific artifact types
+public type RestApi record {
+    @sql:Column {
+        name: "api_name"
+    }
+    string name;
+    string url;
+    string context;
+    string version?;
+    @sql:Column {
+        name: "api_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type ProxyService record {
+    @sql:Column {
+        name: "proxy_name"
+    }
+    string name;
+    string wsdl?;
+    string[] transports?;
+    @sql:Column {
+        name: "proxy_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type Endpoint record {
+    @sql:Column {
+        name: "endpoint_name"
+    }
+    string name;
+    string 'type;
+    string address?;
+    @sql:Column {
+        name: "endpoint_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type InboundEndpoint record {
+    @sql:Column {
+        name: "inbound_name"
+    }
+    string name;
     string protocol;
-    ArtifactState state = ENABLED;
+    string sequence?;
+    @sql:Column {
+        name: "inbound_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type Sequence record {
+    @sql:Column {
+        name: "sequence_name"
+    }
+    string name;
+    string 'type?;
+    string container?;
+    @sql:Column {
+        name: "sequence_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type Task record {
+    @sql:Column {
+        name: "task_name"
+    }
+    string name;
+    string 'class?;
+    string group?;
+    @sql:Column {
+        name: "task_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type Template record {
+    @sql:Column {
+        name: "template_name"
+    }
+    string name;
+    string 'type;
+    @sql:Column {
+        name: "template_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type MessageStore record {
+    @sql:Column {
+        name: "store_name"
+    }
+    string name;
+    string 'type;
+    string 'class?;
+    @sql:Column {
+        name: "store_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type MessageProcessor record {
+    @sql:Column {
+        name: "processor_name"
+    }
+    string name;
+    string 'type;
+    string 'class?;
+    @sql:Column {
+        name: "processor_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type LocalEntry record {
+    @sql:Column {
+        name: "entry_name"
+    }
+    string name;
+    string 'type;
+    string value?;
+    @sql:Column {
+        name: "entry_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type DataService record {
+    @sql:Column {
+        name: "service_name"
+    }
+    string name;
+    string description?;
+    string wsdl?;
+    @sql:Column {
+        name: "dataservice_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type CarbonApp record {
+    @sql:Column {
+        name: "app_name"
+    }
+    string name;
+    string version?;
+    string deploymentStatus?;
+    @sql:Column {
+        name: "app_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type DataSource record {
+    @sql:Column {
+        name: "datasource_name"
+    }
+    string name;
+    string driver?;
+    string url?;
+    @sql:Column {
+        name: "datasource_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type Connector record {
+    @sql:Column {
+        name: "connector_name"
+    }
+    string name;
+    string 'package;
+    string version?;
+    @sql:Column {
+        name: "connector_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type RegistryResource record {
+    @sql:Column {
+        name: "resource_name"
+    }
+    string name;
+    string path;
+    @sql:Column {
+        name: "resource_type"
+    }
+    string 'type = "";
+    @sql:Column {
+        name: "registryresource_state"
+    }
+    string state = "ENABLED"; // "ENABLED", "DISABLED"
+};
+
+public type SystemInfo record {
+    @sql:Column {
+        name: "info_key"
+    }
+    string key;
+    string value;
 };
 
 // === Project & Component Types ===
@@ -586,14 +924,8 @@ public type LoginResponse record {|
     boolean isNewUser = false;
     string token?;
     int expiresIn?;
-    string refreshToken?;
-    int refreshTokenExpiresIn?;
     string username?;
-    string displayName?;
     Role[] roles?;
-    boolean isSuperAdmin?;
-    boolean isProjectAuthor?;
-    boolean isOidcUser?;
 |};
 
 // Request type for refresh token endpoint
@@ -808,49 +1140,6 @@ public type UpdateUserRolesRequest record {
 // Input type for updating user profile (display name)
 public type UpdateProfileRequest record {
     string displayName;
-};
-
-// === Refresh Token Types ===
-
-// Refresh token record from database
-public type RefreshToken record {
-    @sql:Column {
-        name: "token_id"
-    }
-    string tokenId;
-    @sql:Column {
-        name: "user_id"
-    }
-    string userId;
-    @sql:Column {
-        name: "token_hash"
-    }
-    string tokenHash;
-    @sql:Column {
-        name: "expires_at"
-    }
-    time:Civil expiresAt;
-    @sql:Column {
-        name: "created_at"
-    }
-    time:Civil createdAt;
-    @sql:Column {
-        name: "last_used_at"
-    }
-    time:Civil lastUsedAt;
-    boolean revoked;
-    @sql:Column {
-        name: "revoked_at"
-    }
-    time:Civil? revokedAt?;
-    @sql:Column {
-        name: "user_agent"
-    }
-    string? userAgent?;
-    @sql:Column {
-        name: "ip_address"
-    }
-    string? ipAddress?;
 };
 
 // Input type for changing password

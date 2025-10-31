@@ -57,7 +57,7 @@ public isolated function createInternalServerError(string message) returns http:
 public isolated function buildAuthorizationUrl(types:SSOConfig config, string? state = ()) returns string|error {
     // Use provided state or generate a default one
     string stateParam = state ?: "default";
-    
+
     // Build query parameters
     map<string> params = {
         "response_type": "code",
@@ -82,9 +82,9 @@ public isolated function buildAuthorizationUrl(types:SSOConfig config, string? s
     return authorizationUrl;
 }
 
-public isolated function exchangeCodeForTokens(string code, types:SSOConfig config) 
+public isolated function exchangeCodeForTokens(string code, types:SSOConfig config)
     returns types:OIDCTokenResponse|http:Unauthorized|http:InternalServerError {
-    
+
     log:printInfo("Exchanging authorization code with OIDC provider", tokenEndpoint = config.tokenEndpoint);
 
     // Create HTTP client on-demand for the token endpoint
@@ -114,19 +114,19 @@ public isolated function exchangeCodeForTokens(string code, types:SSOConfig conf
 
     // Check status code
     int statusCode = tokenHttpResponse.statusCode;
-    
+
     if statusCode == http:STATUS_BAD_REQUEST || statusCode == http:STATUS_UNAUTHORIZED {
         // Get error details from response
         json|error errorPayload = tokenHttpResponse.getJsonPayload();
         string errorMessage = "Invalid authorization code or authentication failed";
-        
+
         if errorPayload is json {
             json|error errorDesc = errorPayload.error_description;
             if errorDesc is string {
                 errorMessage = errorDesc;
             }
         }
-        
+
         log:printError("OIDC token exchange failed", statusCode = statusCode, message = errorMessage);
         return createUnauthorizedError(errorMessage);
     }
@@ -154,21 +154,21 @@ public isolated function exchangeCodeForTokens(string code, types:SSOConfig conf
 }
 
 // Decode and validate ID token, return claims
-public isolated function decodeAndValidateIdToken(string idToken, types:SSOConfig config) 
+public isolated function decodeAndValidateIdToken(string idToken, types:SSOConfig config)
     returns types:OIDCIdTokenClaims|http:Unauthorized|http:InternalServerError {
-    
+
     log:printInfo("Decoding ID token");
-    
+
     // Decode JWT without signature validation (validation deferred to security hardening)
     [jwt:Header, jwt:Payload]|jwt:Error decodeResult = jwt:decode(idToken);
     if decodeResult is jwt:Error {
         log:printError("Failed to decode ID token", decodeResult);
         return createUnauthorizedError("Invalid ID token");
     }
-    
+
     // Extract payload from decode result
     jwt:Payload payload = decodeResult[1];
-    
+
     // Manually construct OIDCIdTokenClaims from JWT payload
     // This is necessary because jwt:Payload may contain additional fields (like nbf, jti)
     // that are not part of our closed OIDCIdTokenClaims record
@@ -177,16 +177,16 @@ public isolated function decodeAndValidateIdToken(string idToken, types:SSOConfi
         log:printError("Failed to build ID token claims structure", claims);
         return createUnauthorizedError("Invalid ID token structure");
     }
-    
+
     log:printInfo("Successfully decoded ID token");
-    
+
     // Validate claims
     error? validationError = validateIdTokenClaims(claims, config);
     if validationError is error {
         log:printError("ID token validation failed", validationError);
         return createUnauthorizedError(validationError.message());
     }
-    
+
     log:printInfo("ID token validation successful", sub = claims.sub);
     return claims;
 }
@@ -198,49 +198,49 @@ isolated function buildIdTokenClaims(jwt:Payload payload) returns types:OIDCIdTo
     if sub is error {
         return error("Missing or invalid 'sub' claim");
     }
-    
+
     string|error iss = payload.iss.ensureType();
     if iss is error {
         return error("Missing or invalid 'iss' claim");
     }
-    
+
     string|string[]|error aud = payload.aud.ensureType();
     if aud is error {
         return error("Missing or invalid 'aud' claim");
     }
-    
+
     int|error exp = payload.exp.ensureType();
     if exp is error {
         return error("Missing or invalid 'exp' claim");
     }
-    
+
     int|error iat = payload.iat.ensureType();
     if iat is error {
         return error("Missing or invalid 'iat' claim");
     }
-    
+
     // Extract optional claims from the payload map
     // Cast payload to map<json> to access additional claims
     map<json> payloadMap = <map<json>>payload.toJson();
-    
+
     string? email = ();
     json emailJson = payloadMap["email"];
     if emailJson is string {
         email = emailJson;
     }
-    
+
     string? name = ();
     json nameJson = payloadMap["name"];
     if nameJson is string {
         name = nameJson;
     }
-    
+
     string? preferredUsername = ();
     json preferredUsernameJson = payloadMap["preferred_username"];
     if preferredUsernameJson is string {
         preferredUsername = preferredUsernameJson;
     }
-    
+
     // Construct OIDCIdTokenClaims record
     types:OIDCIdTokenClaims claims = {
         sub: sub,
@@ -252,7 +252,7 @@ isolated function buildIdTokenClaims(jwt:Payload payload) returns types:OIDCIdTo
         name: name,
         preferred_username: preferredUsername
     };
-    
+
     return claims;
 }
 
@@ -262,7 +262,7 @@ isolated function validateIdTokenClaims(types:OIDCIdTokenClaims claims, types:SS
     if claims.iss != config.issuer {
         return error(string `Invalid issuer: expected '${config.issuer}', got '${claims.iss}'`);
     }
-    
+
     // Validate audience (can be string or string[])
     boolean validAudience = false;
     if claims.aud is string {
@@ -277,31 +277,31 @@ isolated function validateIdTokenClaims(types:OIDCIdTokenClaims claims, types:SS
             }
         }
     }
-    
+
     if !validAudience {
         return error(string `Invalid audience: token not intended for this client`);
     }
-    
+
     // Validate expiry
     time:Utc currentTime = time:utcNow();
     int currentTimestamp = <int>currentTime[0]; // Get seconds from Utc tuple
-    
+
     if claims.exp <= currentTimestamp {
         return error("ID token has expired");
     }
-    
+
     return;
 }
 
 // Extract user information from ID token claims
-public isolated function extractUserInfo(types:OIDCIdTokenClaims claims, types:SSOConfig config) 
+public isolated function extractUserInfo(types:OIDCIdTokenClaims claims, types:SSOConfig config)
     returns types:ExtractedUserInfo|http:InternalServerError {
-    
+
     log:printInfo("Extracting user information from ID token claims");
-    
+
     // Extract userId (sub claim is required)
     string userId = claims.sub;
-    
+
     // Extract username from configured claim
     string? username = ();
     if config.usernameClaim == "email" {
@@ -309,17 +309,17 @@ public isolated function extractUserInfo(types:OIDCIdTokenClaims claims, types:S
     } else if config.usernameClaim == "preferred_username" {
         username = claims?.preferred_username;
     }
-    
+
     if username is () {
         log:printError(string `Required claim '${config.usernameClaim}' not found in ID token`);
         return createInternalServerError(string `ID token missing required claim: ${config.usernameClaim}`);
     }
-    
+
     // Extract displayName with fallback logic
     string displayName = buildDisplayName(claims, username);
-    
+
     log:printInfo("Successfully extracted user info", userId = userId, username = username, displayName = displayName);
-    
+
     return {
         userId: userId,
         username: username,
@@ -334,13 +334,13 @@ isolated function buildDisplayName(types:OIDCIdTokenClaims claims, string userna
     if name is string && name.trim() != "" {
         return name;
     }
-    
+
     // Priority 2: Use 'email' claim if available
     string? email = claims?.email;
     if email is string && email.trim() != "" {
         return stripEmailDomain(email);
     }
-    
+
     // Priority 3: Use username and strip domain if it's an email
     return stripEmailDomain(username);
 }
@@ -364,43 +364,43 @@ public isolated function extractUserContext(string authorizationHeader) returns 
     if authorizationHeader.toLowerAscii().startsWith("bearer ") {
         token = authorizationHeader.substring(7);
     }
-    
+
     // Decode JWT token (validation already done by GraphQL auth interceptor)
     [jwt:Header, jwt:Payload]|jwt:Error decodeResult = jwt:decode(token);
     if decodeResult is jwt:Error {
         log:printError("Failed to decode JWT token for user context", decodeResult);
         return error("Invalid JWT token");
     }
-    
+
     jwt:Payload payload = decodeResult[1];
-    
+
     // Extract user ID (sub claim)
     string|error userId = payload.sub.ensureType();
     if userId is error {
         log:printError("JWT token missing 'sub' claim");
         return error("Invalid token: missing user ID");
     }
-    
+
     // Extract username from custom claims
     anydata usernameData = payload["username"];
     json|error usernameJson = usernameData.ensureType();
     string username = usernameJson is string ? usernameJson : userId;
-    
+
     // Extract display name from custom claims
     anydata displayNameData = payload["displayName"];
     json|error displayNameJson = displayNameData.ensureType();
     string displayName = displayNameJson is string ? displayNameJson : username;
-    
+
     // Extract super admin flag from custom claims
     anydata superAdminData = payload["isSuperAdmin"];
     json|error superAdminJson = superAdminData.ensureType();
     boolean isSuperAdmin = superAdminJson is boolean ? superAdminJson : false;
-    
+
     // Extract project author flag from custom claims
     anydata projectAuthorData = payload["isProjectAuthor"];
     json|error projectAuthorJson = projectAuthorData.ensureType();
     boolean isProjectAuthor = projectAuthorJson is boolean ? projectAuthorJson : false;
-    
+
     // Extract roles from custom claims
     anydata rolesData = payload["roles"];
     json|error rolesJson = rolesData.ensureType();
@@ -416,21 +416,21 @@ public isolated function extractUserContext(string authorizationHeader) returns 
             isProjectAuthor: isProjectAuthor
         };
     }
-    
+
     // Parse roles array from JWT
     types:RoleInfo[]|error roles = parseRolesFromJWT(rolesJson);
     if roles is error {
         log:printError("Failed to parse roles from JWT", roles, userId = userId);
         return error("Invalid token: malformed roles claim");
     }
-    
-    log:printInfo("Successfully extracted user context", 
-                  userId = userId, 
-                  username = username, 
-                  roleCount = roles.length(), 
-                  isSuperAdmin = isSuperAdmin,
-                  isProjectAuthor = isProjectAuthor);
-    
+
+    log:printInfo("Successfully extracted user context",
+            userId = userId,
+            username = username,
+            roleCount = roles.length(),
+            isSuperAdmin = isSuperAdmin,
+            isProjectAuthor = isProjectAuthor);
+
     return {
         userId: userId,
         username: username,
@@ -445,26 +445,26 @@ public isolated function extractUserContext(string authorizationHeader) returns 
 isolated function parseRolesFromJWT(json rolesJson) returns types:RoleInfo[]|error {
     json[] rolesArray = check rolesJson.ensureType();
     types:RoleInfo[] roles = [];
-    
+
     foreach json roleJson in rolesArray {
         // Extract role fields (only what's needed for authorization)
         map<json> roleMap = check roleJson.ensureType();
-        
+
         string projectId = check roleMap["projectId"].ensureType();
         string environmentTypeStr = check roleMap["environmentType"].ensureType();
         string privilegeLevelStr = check roleMap["privilegeLevel"].ensureType();
-        
+
         // Parse environment type and privilege level enums
         types:EnvironmentType environmentType = check environmentTypeStr.ensureType();
         types:PrivilegeLevel privilegeLevel = check privilegeLevelStr.ensureType();
-        
+
         roles.push({
             projectId: projectId,
             environmentType: environmentType,
             privilegeLevel: privilegeLevel
         });
     }
-    
+
     return roles;
 }
 
@@ -492,16 +492,16 @@ public isolated function hasAccessToEnvironment(types:UserContext userContext, s
     if userContext.isSuperAdmin {
         return true;
     }
-    
+
     // Get environment details to determine type
     types:Environment|error environment = storage:getEnvironmentById(environmentId);
     if environment is error {
         return false;
     }
-    
+
     final types:EnvironmentType environmentType = environment.isProduction ? types:PROD : types:NON_PROD;
-    
-    return userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
+
+    return userContext.roles.some(isolated function(types:RoleInfo role) returns boolean {
         return role.projectId == projectId && role.environmentType == environmentType;
     });
 }
@@ -512,18 +512,18 @@ public isolated function hasAdminAccess(types:UserContext userContext, string pr
     if userContext.isSuperAdmin {
         return true;
     }
-    
+
     // Get environment details to determine type
     types:Environment|error environment = storage:getEnvironmentById(environmentId);
     if environment is error {
         return false;
     }
-    
+
     final types:EnvironmentType environmentType = environment.isProduction ? types:PROD : types:NON_PROD;
-    
-    return userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
-        return role.projectId == projectId && 
-        role.environmentType == environmentType && 
+
+    return userContext.roles.some(isolated function(types:RoleInfo role) returns boolean {
+        return role.projectId == projectId &&
+        role.environmentType == environmentType &&
         role.privilegeLevel == types:ADMIN;
     });
 }
@@ -534,8 +534,8 @@ public isolated function isAdminInProject(types:UserContext userContext, string 
     if userContext.isSuperAdmin {
         return true;
     }
-    return userContext.roles.some(role => 
-        role.projectId == projectId && 
+    return userContext.roles.some(role =>
+        role.projectId == projectId &&
         role.privilegeLevel == types:ADMIN
     );
 }
@@ -549,9 +549,10 @@ public isolated function getAccessibleProjectIds(types:UserContext userContext) 
             log:printError("Super admin failed to fetch all projects", allProjects);
             return [];
         }
-        return from types:Project project in allProjects select project.projectId;
+        return from types:Project project in allProjects
+            select project.projectId;
     }
-    
+
     string[] projectIds = [];
     foreach types:RoleInfo role in userContext.roles {
         // Add project ID if not already in list (avoid duplicates)
@@ -578,28 +579,29 @@ public isolated function getAccessibleEnvironmentIds(types:UserContext userConte
             log:printError("Super admin failed to fetch all environments", allEnvironments);
             return [];
         }
-        return from types:Environment env in allEnvironments select env.environmentId;
+        return from types:Environment env in allEnvironments
+            select env.environmentId;
     }
-    
+
     // Get all environments and filter by user's access to project and environment types
     types:Environment[]|error allEnvironments = storage:getEnvironments();
     if allEnvironments is error {
         log:printError("Failed to fetch environments for access check", allEnvironments);
         return [];
     }
-    
+
     string[] environmentIds = [];
     foreach types:Environment env in allEnvironments {
         final types:EnvironmentType envType = env.isProduction ? types:PROD : types:NON_PROD;
-        boolean hasAccess = userContext.roles.some(isolated function (types:RoleInfo role) returns boolean { 
+        boolean hasAccess = userContext.roles.some(isolated function(types:RoleInfo role) returns boolean {
             return role.projectId == projectId && role.environmentType == envType;
         });
-        
+
         if hasAccess {
             environmentIds.push(env.environmentId);
         }
     }
-    
+
     return environmentIds;
 }
 
@@ -612,9 +614,10 @@ public isolated function getAdminProjectIds(types:UserContext userContext) retur
             log:printError("Super admin failed to fetch all projects", allProjects);
             return [];
         }
-        return from types:Project project in allProjects select project.projectId;
+        return from types:Project project in allProjects
+            select project.projectId;
     }
-    
+
     string[] adminProjectIds = [];
     foreach types:RoleInfo role in userContext.roles {
         if role.privilegeLevel == types:ADMIN {
@@ -643,28 +646,29 @@ public isolated function getAdminEnvironmentIdsByType(types:UserContext userCont
             log:printError("Super admin failed to fetch all environments", allEnvironments);
             return [];
         }
-        return from types:Environment env in allEnvironments select env.environmentId;
+        return from types:Environment env in allEnvironments
+            select env.environmentId;
     }
-    
+
     string[] adminEnvironmentIds = [];
     types:Environment[]|error allEnvironments = storage:getEnvironments();
     if allEnvironments is error {
         log:printError("Failed to fetch environments for admin check", allEnvironments);
         return [];
     }
-    
+
     // For each environment, check if user has admin access to its type
     foreach types:Environment env in allEnvironments {
         final types:EnvironmentType envType = env.isProduction ? types:PROD : types:NON_PROD;
-        boolean hasAdminAccess = userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
+        boolean hasAdminAccess = userContext.roles.some(isolated function(types:RoleInfo role) returns boolean {
             return role.environmentType == envType && role.privilegeLevel == types:ADMIN;
         });
-        
+
         if hasAdminAccess {
             adminEnvironmentIds.push(env.environmentId);
         }
     }
-    
+
     return adminEnvironmentIds;
 }
 
@@ -677,23 +681,24 @@ public isolated function getAccessibleEnvironmentIdsByType(types:UserContext use
             log:printError("Super admin failed to fetch all environments", allEnvironments);
             return [];
         }
-        return from types:Environment env in allEnvironments select env.environmentId;
+        return from types:Environment env in allEnvironments
+            select env.environmentId;
     }
-    
+
     // Determine which environment types the user has access to
-    boolean hasProdAccess = userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
+    boolean hasProdAccess = userContext.roles.some(isolated function(types:RoleInfo role) returns boolean {
         return role.environmentType == types:PROD;
     });
-    
-    boolean hasNonProdAccess = userContext.roles.some(isolated function (types:RoleInfo role) returns boolean {
+
+    boolean hasNonProdAccess = userContext.roles.some(isolated function(types:RoleInfo role) returns boolean {
         return role.environmentType == types:NON_PROD;
     });
-    
+
     // If user has no access to any environment type, return empty array
     if !hasProdAccess && !hasNonProdAccess {
         return [];
     }
-    
+
     // Make targeted database query based on accessible environment types
     return check storage:getEnvironmentIdsByTypes(hasProdAccess, hasNonProdAccess);
 }
@@ -706,20 +711,20 @@ public isolated function getAccessibleEnvironmentIdsByType(types:UserContext use
 // Returns a 256-bit random token encoded as a base64 string
 public isolated function generateRefreshToken() returns string {
     log:printDebug("Generating refresh token");
-    
+
     // Generate a UUID v4 as the base for the refresh token
     // This provides 128 bits of randomness
     string uuid1 = uuid:createType4AsString();
     string uuid2 = uuid:createType4AsString();
-    
+
     // Combine two UUIDs for 256 bits of randomness and hash with SHA-256
     string combined = uuid1 + uuid2;
     byte[] combinedBytes = combined.toBytes();
     byte[] hashedBytes = crypto:hashSha256(combinedBytes);
-    
+
     // Encode as base64 for storage and transmission
     string refreshToken = hashedBytes.toBase64();
-    
+
     log:printDebug("Refresh token generated successfully");
     return refreshToken;
 }
@@ -743,15 +748,15 @@ public isolated function hashRefreshToken(string token) returns string {
 
 // Generate JWT token with user details and roles
 public isolated function generateJWTToken(
-    types:User userDetails,
-    types:Role[] userRoles,
-    string jwtIssuer,
-    int tokenExpiryTime,
-    string jwtAudience,
-    jwt:IssuerSignatureConfig signatureConfig
+        types:User userDetails,
+        types:Role[] userRoles,
+        string jwtIssuer,
+        int tokenExpiryTime,
+        string jwtAudience,
+        jwt:IssuerSignatureConfig signatureConfig
 ) returns string|error {
     log:printDebug("Generating JWT token", username = userDetails.username, roleCount = userRoles.length());
-    
+
     // Convert roles to RoleInfo format for JWT
     types:RoleInfo[] roleInfos = from types:Role role in userRoles
         select {
@@ -759,7 +764,7 @@ public isolated function generateJWTToken(
             environmentType: role.environmentType,
             privilegeLevel: role.privilegeLevel
         };
-    
+
     // Generate JWT token with updated roles
     // Note: IssuerConfig.username sets the 'sub' claim, which should be the userId (UUID)
     jwt:IssuerConfig issuerConfig = {
@@ -769,19 +774,19 @@ public isolated function generateJWTToken(
         audience: jwtAudience,
         signatureConfig: signatureConfig
     };
-    
+
     issuerConfig.customClaims["roles"] = roleInfos.toJson();
     issuerConfig.customClaims["username"] = userDetails.username;
     issuerConfig.customClaims["displayName"] = userDetails.displayName;
     issuerConfig.customClaims["isSuperAdmin"] = userDetails.isSuperAdmin;
     issuerConfig.customClaims["isProjectAuthor"] = userDetails.isProjectAuthor;
-    
+
     string|jwt:Error jwtToken = jwt:issue(issuerConfig);
     if jwtToken is jwt:Error {
         log:printError("Error generating JWT token", jwtToken, username = userDetails.username);
         return error("Failed to generate JWT token", jwtToken);
     }
-    
+
     log:printInfo("JWT token generated successfully", username = userDetails.username, roleCount = userRoles.length());
     return jwtToken;
 }
@@ -791,9 +796,9 @@ public isolated function isAdminInAnyEnvironment(types:UserContext userContext, 
     if userContext.isSuperAdmin {
         return true;
     }
-    
-    return userContext.roles.some(role => 
-        role.projectId == projectId && 
+
+    return userContext.roles.some(role =>
+        role.projectId == projectId &&
         role.privilegeLevel == types:ADMIN
     );
 }
@@ -804,28 +809,29 @@ public isolated function isAdminInAnyEnvironment(types:UserContext userContext, 
 
 // Convert internal Project type to frontend-compatible ProjectResponse
 // This ensures the GraphQL response matches Choreo frontend expectations
-public isolated function convertProjectToResponse(types:Project project) returns types:ProjectResponse {
-    return {
-        id: project.projectId, // Map projectId to id
-        orgId: project.orgId.toString(), // Convert int to string
-        name: project.name,
-        version: project?.version ?: "1.0", // Default version if not set
-        stage: "", // ICP doesn't have stages, use empty string
-        owner: project?.owner ?: project?.ownerId ?: project?.createdBy ?: "system", // Fallback chain
-        'group: "", // ICP doesn't have groups, use empty string (tick for reserved keyword)
-        createdDate: project?.createdDate ?: "", // Required field
-        updatedAt: project?.updatedAt ?: "", // Required field
-        handler: project.handler,
-        region: project?.region ?: "", // Required field
-        description: project?.description,
-        'type: project?.'type,
-        gitProvider: project?.gitProvider,
-        repository: project?.repository,
-        gitOrganization: project?.gitOrganization,
-        branch: project?.branch,
-        secretRef: project?.secretRef,
-        defaultDeploymentPipelineId: project?.defaultDeploymentPipelineId,
-        deploymentPipelineIds: project?.deploymentPipelineIds
-    };
-}
+// TODO: Define ProjectResponse type
+// public isolated function convertProjectToResponse(types:Project project) returns types:ProjectResponse {
+//     return {
+//         id: project.projectId, // Map projectId to id
+//         orgId: project.orgId.toString(), // Convert int to string
+//         name: project.name,
+//         version: project?.version ?: "1.0", // Default version if not set
+//         stage: "", // ICP doesn't have stages, use empty string
+//         owner: project?.owner ?: project?.ownerId ?: project?.createdBy ?: "system", // Fallback chain
+//         'group: "", // ICP doesn't have groups, use empty string (tick for reserved keyword)
+//         createdDate: project?.createdDate ?: "", // Required field
+//         updatedAt: project?.updatedAt ?: "", // Required field
+//         handler: project.handler,
+//         region: project?.region ?: "", // Required field
+//         description: project?.description,
+//         'type: project?.'type,
+//         gitProvider: project?.gitProvider,
+//         repository: project?.repository,
+//         gitOrganization: project?.gitOrganization,
+//         branch: project?.branch,
+//         secretRef: project?.secretRef,
+//         defaultDeploymentPipelineId: project?.defaultDeploymentPipelineId,
+//         deploymentPipelineIds: project?.deploymentPipelineIds
+//     };
+// }
 

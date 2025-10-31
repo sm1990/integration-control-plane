@@ -2058,6 +2058,12 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
     string userId = userContext.userId;
     string displayName = userContext.displayName;
 
+    // Use projectHandler as the handler field, fallback to handler if projectHandler is not provided
+    string handler = project.projectHandler;
+    if handler.trim() == "" {
+        return error("Project handler is required");
+    }
+
     // Convert deployment pipeline IDs array to JSON string if provided
     string? deploymentPipelineIdsJson = ();
     string[]? pipelineIds = project?.deploymentPipelineIds;
@@ -2074,7 +2080,7 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
             owner_id, created_by
         ) VALUES (
             ${projectId}, ${project.orgId}, ${project.name}, ${project?.version}, 
-            ${project.handler}, ${project?.region}, ${project?.description},
+            ${handler}, ${project?.region}, ${project?.description},
             ${project?.defaultDeploymentPipelineId}, ${deploymentPipelineIdsJson}, ${project?.'type},
             ${project?.gitProvider}, ${project?.gitOrganization}, ${project?.repository}, 
             ${project?.branch}, ${project?.secretRef}, ${userId}, ${displayName}
@@ -2084,7 +2090,7 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
         log:printInfo(string `Created project: ${project.name}`,
                 projectId = projectId,
                 orgId = project.orgId,
-                handler = project.handler,
+                handler = handler,
                 ownerId = userId,
                 createdBy = displayName);
 
@@ -2149,6 +2155,7 @@ public isolated function getProjects() returns types:Project[]|error {
             }
 
             projects.push({
+                id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
                 projectId: <string>projectRecord["project_id"],
                 orgId: <int>projectRecord["org_id"],
                 name: <string>projectRecord["name"],
@@ -2217,6 +2224,7 @@ public isolated function getProjectsByIds(string[] projectIds) returns types:Pro
             }
 
             projects.push({
+                id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
                 projectId: <string>projectRecord["project_id"],
                 orgId: <int>projectRecord["org_id"],
                 name: <string>projectRecord["name"],
@@ -2273,6 +2281,7 @@ public isolated function getProjectById(string projectId) returns types:Project|
     }
 
     types:Project project = {
+        id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
         projectId: <string>projectRecord["project_id"],
         orgId: <int>projectRecord["org_id"],
         name: <string>projectRecord["name"],
@@ -3283,5 +3292,68 @@ public isolated function checkProjectCreationEligibility(int orgId, string orgHa
 
     return {
         isProjectCreationAllowed: isAllowed
+    };
+}
+
+// Check project handler availability for an organization
+public isolated function checkProjectHandlerAvailability(int orgId, string projectHandlerCandidate) returns types:ProjectHandlerAvailability|error {
+    log:printDebug(string `Checking project handler availability for orgId: ${orgId}, handler: ${projectHandlerCandidate}`);
+
+    // Check if the handler already exists for this organization
+    sql:ParameterizedQuery query = `SELECT COUNT(*) as handlerCount 
+                                   FROM projects 
+                                   WHERE org_id = ${orgId} AND handler = ${projectHandlerCandidate}`;
+
+    int existingHandlerCount = 0;
+
+    stream<record {}, sql:Error?> handlerCountStream = dbClient->query(query);
+
+    check from record {} countRecord in handlerCountStream
+        do {
+            existingHandlerCount = <int>countRecord["handlerCount"];
+        };
+
+    boolean isHandlerUnique = existingHandlerCount == 0;
+    string? alternateCandidate = ();
+
+    // If handler is not unique, generate an alternate candidate
+    if !isHandlerUnique {
+        // Generate alternate handler suggestions by appending numbers
+        int counter = 1;
+        string baseHandler = projectHandlerCandidate;
+
+        while counter <= 10 { // Limit to 10 attempts to avoid infinite loop
+            string candidate = string `${baseHandler}${counter}`;
+
+            sql:ParameterizedQuery alternateQuery = `SELECT COUNT(*) as handlerCount 
+                                                   FROM projects 
+                                                   WHERE org_id = ${orgId} AND handler = ${candidate}`;
+
+            int candidateCount = 0;
+            stream<record {}, sql:Error?> candidateStream = dbClient->query(alternateQuery);
+
+            check from record {} candidateRecord in candidateStream
+                do {
+                    candidateCount = <int>candidateRecord["handlerCount"];
+                };
+
+            if candidateCount == 0 {
+                alternateCandidate = candidate;
+                break;
+            }
+
+            counter += 1;
+        }
+    }
+
+    log:printInfo(string `Project handler availability check completed`,
+            orgId = orgId,
+            projectHandlerCandidate = projectHandlerCandidate,
+            isHandlerUnique = isHandlerUnique,
+            alternateCandidate = alternateCandidate);
+
+    return {
+        handlerUnique: isHandlerUnique,
+        alternateHandlerCandidate: alternateCandidate
     };
 }

@@ -9,6 +9,7 @@ type Query {
   components(orgHandler: String!, projectId: String, options: ComponentOptionsInput): [Component!]!
   component(componentId: String!): Component
   projectCreationEligibility(orgId: Int!, orgHandler: String!): ProjectCreationEligibility!
+  projectHandlerAvailability(orgId: Int!, projectHandlerCandidate: String!): ProjectHandlerAvailability!
 }
 
 type Runtime {
@@ -175,9 +176,11 @@ input EnvironmentInput {
 
 input ProjectInput {
   orgId: Int!
+  orgHandler: String!
   name: String!
   version: String
-  handler: String!
+  projectHandler: String!
+  handler: String
   region: String
   description: String
   defaultDeploymentPipelineId: String
@@ -412,4 +415,12 @@ input PaginationInput {
 # ============================================
 type ProjectCreationEligibility {
   isProjectCreationAllowed: Boolean!
+}
+
+# ============================================
+# Project Handler Availability Type
+# ============================================
+type ProjectHandlerAvailability {
+  handlerUnique: Boolean!
+  alternateHandlerCandidate: String
 }

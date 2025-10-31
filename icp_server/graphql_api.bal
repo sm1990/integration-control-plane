@@ -361,8 +361,7 @@ service /graphql on graphqlListener {
     }
 
     // Get all projects (filtered by user's accessible projects via RBAC)
-    // Returns ProjectResponse[] which is frontend-compatible (matches Choreo format)
-    isolated resource function get projects(graphql:Context context, int? orgId) returns types:ProjectResponse[]|error {
+    isolated resource function get projects(graphql:Context context, int? orgId) returns types:Project[]|error {
         // value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
         // if authHeader !is string {
         //     return error("Authorization header missing in request");
@@ -376,24 +375,17 @@ service /graphql on graphqlListener {
         types:Project[] allProjects = check storage:getProjects();
 
         // Filter by orgId if provided
-        types:Project[] filteredProjects = [];
         if orgId is int {
+            types:Project[] filteredProjects = [];
             foreach types:Project project in allProjects {
                 if project.orgId == orgId {
                     filteredProjects.push(project);
                 }
             }
-        } else {
-            filteredProjects = allProjects;
+            return filteredProjects;
         }
 
-        // Convert to ProjectResponse format for frontend compatibility
-        types:ProjectResponse[] responseProjects = [];
-        foreach types:Project project in filteredProjects {
-            responseProjects.push(utils:convertProjectToResponse(project));
-        }
-
-        return responseProjects;
+        return allProjects;
     }
 
     // Get projects where user has admin access (for permission management)
@@ -458,6 +450,19 @@ service /graphql on graphqlListener {
 
         // Call storage layer to check eligibility
         return check storage:checkProjectCreationEligibility(orgId, orgHandler);
+    }
+
+    // Check project handler availability for an organization
+    isolated resource function get projectHandlerAvailability(graphql:Context context, int orgId, string projectHandlerCandidate) returns types:ProjectHandlerAvailability|error {
+        // Note: This endpoint might not require authentication depending on business requirements
+        // For now, we'll allow it without authentication to match the example
+        // value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        // if authHeader !is string {
+        //     return error("Authorization header missing in request");
+        // }
+
+        // Call storage layer to check handler availability
+        return check storage:checkProjectHandlerAvailability(orgId, projectHandlerCandidate);
     }
 
     // Delete a project

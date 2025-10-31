@@ -798,3 +798,34 @@ public isolated function isAdminInAnyEnvironment(types:UserContext userContext, 
     );
 }
 
+// ============================================================================
+// DATA TRANSFORMATION UTILITIES
+// ============================================================================
+
+// Convert internal Project type to frontend-compatible ProjectResponse
+// This ensures the GraphQL response matches Choreo frontend expectations
+public isolated function convertProjectToResponse(types:Project project) returns types:ProjectResponse {
+    return {
+        id: project.projectId, // Map projectId to id
+        orgId: project.orgId.toString(), // Convert int to string
+        name: project.name,
+        version: project?.version ?: "1.0", // Default version if not set
+        stage: "", // ICP doesn't have stages, use empty string
+        owner: project?.owner ?: project?.ownerId ?: project?.createdBy ?: "system", // Fallback chain
+        'group: "", // ICP doesn't have groups, use empty string (tick for reserved keyword)
+        createdDate: project?.createdDate ?: "", // Required field
+        updatedAt: project?.updatedAt ?: "", // Required field
+        handler: project.handler,
+        region: project?.region ?: "", // Required field
+        description: project?.description,
+        'type: project?.'type,
+        gitProvider: project?.gitProvider,
+        repository: project?.repository,
+        gitOrganization: project?.gitOrganization,
+        branch: project?.branch,
+        secretRef: project?.secretRef,
+        defaultDeploymentPipelineId: project?.defaultDeploymentPipelineId,
+        deploymentPipelineIds: project?.deploymentPipelineIds
+    };
+}
+

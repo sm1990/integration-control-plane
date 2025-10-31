@@ -725,6 +725,31 @@ public type Project record {
     string? updatedBy?;
 };
 
+// ProjectResponse type that matches frontend expectations (Choreo-compatible)
+// This type is returned by GraphQL queries to ensure frontend compatibility
+public type ProjectResponse record {|
+    string id; // Maps from projectId
+    string orgId; // String version of orgId (frontend expects string)
+    string name;
+    string version; // Required by frontend
+    string stage; // Default empty string for ICP
+    string owner; // Maps from ownerId or createdBy
+    string 'group; // Default empty string for ICP (reserved keyword, use tick)
+    string createdDate; // Required by frontend
+    string updatedAt; // Required by frontend
+    string handler;
+    string region; // Required by frontend
+    string? description?;
+    string? 'type?;
+    string? gitProvider?;
+    string? repository?;
+    string? gitOrganization?;
+    string? branch?;
+    string? secretRef?;
+    string? defaultDeploymentPipelineId?;
+    string[]? deploymentPipelineIds?;
+|};
+
 public type ProjectInput record {
     int orgId;
     string name;

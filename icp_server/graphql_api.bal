@@ -361,7 +361,8 @@ service /graphql on graphqlListener {
     }
 
     // Get all projects (filtered by user's accessible projects via RBAC)
-    isolated resource function get projects(graphql:Context context, int? orgId) returns types:Project[]|error {
+    // Returns ProjectResponse[] which is frontend-compatible (matches Choreo format)
+    isolated resource function get projects(graphql:Context context, int? orgId) returns types:ProjectResponse[]|error {
         // value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
         // if authHeader !is string {
         //     return error("Authorization header missing in request");
@@ -375,17 +376,24 @@ service /graphql on graphqlListener {
         types:Project[] allProjects = check storage:getProjects();
 
         // Filter by orgId if provided
+        types:Project[] filteredProjects = [];
         if orgId is int {
-            types:Project[] filteredProjects = [];
             foreach types:Project project in allProjects {
                 if project.orgId == orgId {
                     filteredProjects.push(project);
                 }
             }
-            return filteredProjects;
+        } else {
+            filteredProjects = allProjects;
         }
 
-        return allProjects;
+        // Convert to ProjectResponse format for frontend compatibility
+        types:ProjectResponse[] responseProjects = [];
+        foreach types:Project project in filteredProjects {
+            responseProjects.push(utils:convertProjectToResponse(project));
+        }
+
+        return responseProjects;
     }
 
     // Get projects where user has admin access (for permission management)

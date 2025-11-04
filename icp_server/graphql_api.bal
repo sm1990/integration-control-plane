@@ -529,8 +529,29 @@ service /graphql on graphqlListener {
             return error("Admin access required in project to create components");
         }
 
+        // Validate component name format (3-64 characters, alphanumeric, hyphens, underscores)
+        if component.name.length() < 3 || component.name.length() > 64 {
+            return error("Component name must be between 3 and 64 characters");
+        }
+
+        // Set displayName (use provided or fallback to name)
+        if component.displayName is () || component.displayName == "" {
+            component.displayName = component.name;
+        }
+
+        // Set default description if not provided
+        if component.description is () {
+            component.description = "";
+        }
+
         // Set the createdBy field to the current user's ID
         component.createdBy = userContext.userId;
+
+        // Note: The extended fields (orgId, orgHandler, componentType, technology, repository, etc.)
+        // are accepted for compatibility with the frontend but not yet persisted to the database.
+        // The current database schema only stores: component_id, project_id, name, description,
+        // created_by, created_at, updated_by, updated_at.
+        // These extended fields will be used in future implementations.
 
         return storage:createComponent(component);
     }

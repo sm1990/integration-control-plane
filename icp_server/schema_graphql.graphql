@@ -1,17 +1,56 @@
+# ============================================
+# Query Type - Read Operations
+# ============================================
 type Query {
+  # Runtime Queries
   runtimes(status: String, runtimeType: String, environmentId: String, projectId: String, componentId: String): [Runtime!]!
   runtime(runtimeId: String!): Runtime
   services(runtimeId: String!): [Service!]!
   listeners(runtimeId: String!): [Listener!]!
-  environments: [Environment!]
+
+  # Environment Queries
+  environments: [Environment!]!
+  adminEnvironments: [Environment!]!
+
+  # Project Queries
   projects(orgId: Int): [Project!]!
+  adminProjects: [Project!]!
   project(orgId: Int, projectId: String!): Project
-  components(orgHandler: String!, projectId: String, options: ComponentOptionsInput): [Component!]!
-  component(componentId: String!): Component
   projectCreationEligibility(orgId: Int!, orgHandler: String!): ProjectCreationEligibility!
   projectHandlerAvailability(orgId: Int!, projectHandlerCandidate: String!): ProjectHandlerAvailability!
+
+  # Component Queries
+  components(orgHandler: String!, projectId: String, options: ComponentOptionsInput): [Component!]!
+  component(componentId: String!): Component
 }
 
+# ============================================
+# Mutation Type - Write Operations
+# ============================================
+type Mutation {
+  # Runtime Mutations
+  deleteRuntime(runtimeId: String!): Boolean!
+
+  # Environment Mutations
+  createEnvironment(environment: EnvironmentInput!): Environment
+  deleteEnvironment(environmentId: String!): Boolean!
+  updateEnvironment(environmentId: String!, name: String, description: String): Environment
+  updateEnvironmentProductionStatus(environmentId: String!, isProduction: Boolean!): Environment
+
+  # Project Mutations
+  createProject(project: ProjectInput!): Project
+  deleteProject(projectId: String!): Boolean!
+  updateProject(projectId: String!, name: String, description: String): Project
+
+  # Component Mutations
+  createComponent(component: ComponentInput!): Component
+  deleteComponent(componentId: String!): Boolean!
+  updateComponent(componentId: String!, name: String, description: String): Component!
+}
+
+# ============================================
+# Runtime Type - Runtime Instance Details
+# ============================================
 type Runtime {
   runtimeId: String!
   runtimeType: String!
@@ -29,6 +68,57 @@ type Runtime {
   artifacts: Artifacts
 }
 
+# ============================================
+# Artifacts Type - Runtime Artifacts Container
+# ============================================
+type Artifacts {
+  listeners: [Listener!]!
+  services: [Service!]!
+}
+
+# ============================================
+# Service Type - Service Artifacts
+# ============================================
+type Service {
+  name: String!
+  package: String!
+  basePath: String!
+  state: ArtifactState!
+  resources: [Resource!]!
+}
+
+# ============================================
+# Listener Type - Listener Artifacts
+# ============================================
+type Listener {
+  name: String!
+  package: String!
+  protocol: String!
+  state: ArtifactState!
+}
+
+# ============================================
+# Resource Type - Service Resources
+# ============================================
+type Resource {
+  methods: [String!]!
+  url: String!
+}
+
+# ============================================
+# ArtifactState Enum - Artifact Status
+# ============================================
+enum ArtifactState {
+  FAILED
+  STOPPING
+  STARTING
+  DISABLED
+  ENABLED
+}
+
+# ============================================
+# Component Type - Application Component
+# ============================================
 type Component {
   # Basic Identity Fields
   id: String!
@@ -84,6 +174,9 @@ type Component {
   project: Project
 }
 
+# ============================================
+# Project Type - Project Details
+# ============================================
 type Project {
   id: String!
   projectId: String!
@@ -110,6 +203,9 @@ type Project {
   updatedBy: String
 }
 
+# ============================================
+# Environment Type - Deployment Environment
+# ============================================
 type Environment {
   environmentId: String!
   name: String!
@@ -392,8 +488,67 @@ type Secret {
 }
 
 # ============================================
+# Input Types for Mutations
+# ============================================
+
+# Environment Input
+input EnvironmentInput {
+  name: String!
+  description: String
+  isProduction: Boolean
+}
+
+# Project Input
+input ProjectInput {
+  orgId: Int!
+  orgHandler: String!
+  name: String!
+  version: String
+  projectHandler: String!
+  handler: String
+  region: String
+  description: String
+  defaultDeploymentPipelineId: String
+  deploymentPipelineIds: [String!]
+  type: String
+  gitProvider: String
+  gitOrganization: String
+  repository: String
+  branch: String
+  secretRef: String
+}
+
+# Component Input
+input ComponentInput {
+  # Required Fields
+  projectId: String!
+  name: String!
+
+  # Recommended Fields
+  displayName: String
+  description: String
+
+  # Organization Context (optional - can derive from projectId)
+  orgId: Int
+  orgHandler: String
+
+  # Component Classification (optional - can have defaults)
+  componentType: String
+  technology: String
+
+  # Repository Integration (optional - for future use)
+  repository: String
+  branch: String
+  directoryPath: String
+  secretRef: String
+  isPublicRepo: Boolean
+}
+
+# ============================================
 # Input Types for Queries
 # ============================================
+
+# Component Filter Input
 input ComponentFilterInput {
   withSystemComponents: Boolean
   displayType: String
@@ -401,21 +556,24 @@ input ComponentFilterInput {
   componentSubType: String
 }
 
-input ComponentOptionsInput {
-  filter: ComponentFilterInput
-  sort: ComponentSortInput
-  pagination: PaginationInput
-}
-
+# Component Sort Input
 input ComponentSortInput {
   field: String!
   order: String!
 }
 
+# Pagination Input
 input PaginationInput {
   limit: Int
   offset: Int
   cursor: String
+}
+
+# Component Options Input
+input ComponentOptionsInput {
+  filter: ComponentFilterInput
+  sort: ComponentSortInput
+  pagination: PaginationInput
 }
 
 # ============================================

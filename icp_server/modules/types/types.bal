@@ -867,9 +867,30 @@ public type Component record {
 };
 
 public type ComponentInput record {
+    // Required Fields
     string projectId;
     string name;
-    string description?;
+
+    // Recommended Fields
+    string displayName?; // User-friendly display name
+    string description?; // Component description
+
+    // Organization Context (optional - can derive from projectId)
+    int orgId?; // Organization ID
+    string orgHandler?; // Organization handle
+
+    // Component Classification (optional - can have defaults)
+    string componentType?; // Type: "integration", "service", etc.
+    string technology?; // Technology: "WSO2MI", "Ballerina", etc.
+
+    // Repository Integration (optional - for future use)
+    string repository?; // Git repository URL
+    string branch?; // Git branch
+    string directoryPath?; // Path within repository
+    string secretRef?; // Reference to credentials
+    boolean isPublicRepo?; // Public/private repository flag
+
+    // Internal field (set by backend)
     string createdBy?;
 };
 

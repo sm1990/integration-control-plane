@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage as storage;
+
 import ballerina/log;
 import ballerina/task;
 
@@ -26,7 +28,7 @@ class RefreshTokenCleanupJob {
     public function execute() {
         do {
             log:printInfo("Starting refresh token cleanup job");
-            check repoClient.cleanupExpiredRefreshTokens();
+            check storage:getDBClient().cleanupExpiredRefreshTokens();
             log:printInfo("Refresh token cleanup completed successfully");
         } on fail error e {
             log:printError("Failed to cleanup expired refresh tokens", e);

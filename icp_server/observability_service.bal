@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage as storage;
 import icp_server.types as types;
 import icp_server.utils;
 
@@ -163,7 +164,7 @@ isolated function buildBaseQuery(types:LogEntryRequest logRequest, types:UserCon
             }
             string[] accessibleEnvironments = [];
             foreach string envId in allAccessibleEnvironmentIds {
-                types:Environment env = check repoClient.getEnvironmentById(envId);
+                types:Environment env = check storage:getDBClient().getEnvironmentById(envId);
                 accessibleEnvironments.push(env.name);
             }
 
@@ -190,7 +191,7 @@ isolated function buildBaseQuery(types:LogEntryRequest logRequest, types:UserCon
             string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
             string[] accessibleProjects = [];
             foreach string projectId in accessibleProjectIds {
-                types:Project project = check repoClient.getProjectById(projectId);
+                types:Project project = check storage:getDBClient().getProjectById(projectId);
                 accessibleProjects.push(project.name);
             }
 

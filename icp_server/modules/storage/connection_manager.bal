@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/log;
+
 enum DatabaseType {
     MYSQL = "mysql",
     H2 = "h2"
@@ -21,8 +23,10 @@ enum DatabaseType {
 
 public isolated function getDBClient() returns BaseRepository {
     if dbType == MYSQL {
+        log:printInfo("Using MySQL database for storage");
         return checkpanic new MySQLRepositoryImplementation();
     } else if dbType == H2 {
+        log:printInfo("Using H2 database for storage");
         return checkpanic new H2RepositoryImplementation();
     } else {
         panic error("Unsupported database type: " + dbType.toString());

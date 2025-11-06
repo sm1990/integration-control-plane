@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage as storage;
 import icp_server.types as types;
 
 import ballerina/http;
@@ -60,7 +61,7 @@ service /icp on httpListener {
     isolated resource function post heartbeat(types:Heartbeat heartbeat) returns types:HeartbeatResponse|error? {
         do {
             // Process heartbeat using the repository (handles both registration and updates)
-            types:HeartbeatResponse heartbeatResponse = check repoClient.processHeartbeat(heartbeat);
+            types:HeartbeatResponse heartbeatResponse = check storage:getDBClient().processHeartbeat(heartbeat);
             log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtime}`);
             return heartbeatResponse;
 
@@ -85,7 +86,7 @@ service /icp on httpListener {
     isolated resource function post deltaHeartbeat(types:DeltaHeartbeat deltaHeartbeat) returns types:HeartbeatResponse|error? {
         do {
             // Process delta heartbeat using the repository
-            types:HeartbeatResponse heartbeatResponse = check repoClient.processDeltaHeartbeat(deltaHeartbeat);
+            types:HeartbeatResponse heartbeatResponse = check storage:getDBClient().processDeltaHeartbeat(deltaHeartbeat);
             log:printInfo(string `Delta heartbeat processed successfully for ${deltaHeartbeat.runtime}`);
             return heartbeatResponse;
 

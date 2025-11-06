@@ -23,7 +23,7 @@ import ballerina/log;
 import ballerina/sql;
 import ballerina/time;
 import ballerina/uuid;
-import ballerinax/mysql;
+import ballerinax/java.jdbc;
 
 configurable int authServicePort = 9447;
 configurable string authServiceHost = "0.0.0.0";
@@ -41,7 +41,7 @@ listener http:Listener defaultAuthServiceListener = new (authServicePort,
     }
 );
 
-final sql:Client dbClient = check new mysql:Client("localhost", "root", "my-secret-pw", "icp_database", 3306);
+final sql:Client dbClient = check new jdbc:Client("jdbc:h2:file:./database/icpdb;MODE=MySQL;AUTO_SERVER=TRUE", "sa", "");
 
 service / on defaultAuthServiceListener {
 

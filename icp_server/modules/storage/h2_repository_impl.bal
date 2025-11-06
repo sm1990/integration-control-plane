@@ -21,7 +21,6 @@ import ballerina/log;
 import ballerina/sql;
 import ballerina/time;
 import ballerina/uuid;
-import ballerinax/h2.driver as _;
 import ballerinax/java.jdbc;
 
 class H2RepositoryImplementation {
@@ -31,13 +30,9 @@ class H2RepositoryImplementation {
     *BaseRepository;
 
     isolated function init() returns error? {
-        sql:ConnectionPool pool = {
-            maxOpenConnections: maxOpenConnections,
-            minIdleConnections: minIdleConnections,
-            maxConnectionLifeTime: maxConnectionLifeTime
-        };
-        self.dbClient = check new jdbc:Client(dbHost, dbUser, dbPassword, connectionPool = pool);
+        self.dbClient = check new jdbc:Client("jdbc:h2:file:./database/icpdb;MODE=MySQL;AUTO_SERVER=TRUE", "sa", "");
         self.hashCache = new (capacity = 1000, evictionFactor = 0.2);
+        log:printInfo("H2 Database initialized successfully.");
     }
 
     isolated function getDisplayNameById(string? userId) returns string? {
@@ -56,8 +51,8 @@ class H2RepositoryImplementation {
 
     public isolated function getEnvironments() returns types:Environment[]|error {
         types:Environment[] environments = [];
-        stream<types:Environment, sql:Error?> envStream = self.dbClient->query(`SELECT environment_id, name , description, is_production, created_at, updated_at, created_by, updated_by
-                                                                       FROM environments ORDER BY name ASC`);
+        stream<types:Environment, sql:Error?> envStream = self.dbClient->query(`SELECT environment_id, name , description, is_production, created_at, 
+        updated_at, created_by, updated_by FROM environments ORDER BY name ASC`);
         check from types:Environment env in envStream
             do {
                 environments.push({
@@ -933,8 +928,8 @@ class H2RepositoryImplementation {
         };
     }
 
-    // Helper function to convert time:Utc to MySQL datetime format
-    isolated function utcToMySQLDateTime(time:Utc utcTime) returns string|error {
+    // Helper function to convert time:Utc to H2 datetime format
+    isolated function utcToH2DateTime(time:Utc utcTime) returns string|error {
         time:Civil civilTime = time:utcToCivil(utcTime);
         // Ensure seconds is between 0-59 by truncating instead of rounding
         int seconds = <int>civilTime.second;
@@ -953,8 +948,8 @@ class H2RepositoryImplementation {
         // Calculate the threshold timestamp
         time:Utc threshold = time:utcAddSeconds(now, -<decimal>heartbeatTimeoutSeconds);
 
-        // Convert threshold to MySQL datetime format
-        string thresholdStr = check self.utcToMySQLDateTime(threshold);
+        // Convert threshold to H2 datetime format
+        string thresholdStr = check self.utcToH2DateTime(threshold);
 
         // Update all runtimes whose last_heartbeat is too old and not already OFFLINE
         sql:ParameterizedQuery updateQuery = `
@@ -975,7 +970,7 @@ class H2RepositoryImplementation {
         }
 
         time:Utc currentTime = time:utcNow();
-        string currentTimeStr = check self.utcToMySQLDateTime(currentTime);
+        string currentTimeStr = check self.utcToH2DateTime(currentTime);
         types:ControlCommand[] pendingCommands = [];
         boolean hashMatches = false;
 
@@ -1490,36 +1485,25 @@ class H2RepositoryImplementation {
     // Returns true if it was a new registration, false if it was an update
     isolated function upsertRuntime(types:Heartbeat heartbeat, string currentTimeStr) returns boolean|error {
         sql:ExecutionResult result = check self.dbClient->execute(`
-        INSERT INTO runtimes (
+        MERGE INTO runtimes (
             runtime_id, name, runtime_type, status, version,
             environment_id, project_id, component_id,
             platform_name, platform_version, platform_home,
             os_name, os_version,
             registration_time, last_heartbeat
-        ) VALUES (
+        ) KEY (runtime_id)
+        VALUES (
             ${heartbeat.runtime}, ${heartbeat.runtime}, ${heartbeat.runtimeType}, ${heartbeat.status}, ${heartbeat.version},
             ${heartbeat.environment}, ${heartbeat.project}, ${heartbeat.component},
             ${heartbeat.nodeInfo.platformName}, ${heartbeat.nodeInfo.platformVersion}, ${heartbeat.nodeInfo.ballerinaHome},
             ${heartbeat.nodeInfo.osName}, ${heartbeat.nodeInfo.osVersion},
             ${currentTimeStr}, ${currentTimeStr}
         )
-        ON DUPLICATE KEY UPDATE
-            status = VALUES(status),
-            runtime_type = VALUES(runtime_type),
-            environment_id = VALUES(environment_id),
-            version = VALUES(version),
-            platform_name = VALUES(platform_name),
-            platform_version = VALUES(platform_version),
-            platform_home = VALUES(platform_home),
-            os_name = VALUES(os_name),
-            os_version = VALUES(os_version),
-            last_heartbeat = VALUES(last_heartbeat)
     `);
 
         // Determine if this was a new registration or an update based on affected rows
-        // In MySQL, for INSERT ... ON DUPLICATE KEY UPDATE:
-        // - affectedRowCount = 1 means new insert
-        // - affectedRowCount = 2 means update (1 for delete + 1 for insert)
+        // In H2, for MERGE:
+        // - affectedRowCount = 1 means either new insert or update
         // - affectedRowCount = 0 means no change (values were same)
         int? affectedRows = result.affectedRowCount;
         return affectedRows == 1;
@@ -1796,7 +1780,7 @@ class H2RepositoryImplementation {
     public isolated function processHeartbeat(types:Heartbeat heartbeat) returns types:HeartbeatResponse|error {
         check self.validateHeartbeatData(heartbeat);
         time:Utc currentTime = time:utcNow();
-        string currentTimeStr = check self.utcToMySQLDateTime(currentTime);
+        string currentTimeStr = check self.utcToH2DateTime(currentTime);
         boolean isNewRegistration = false;
         types:ControlCommand[] pendingCommands = [];
 
@@ -2142,46 +2126,18 @@ class H2RepositoryImplementation {
         types:Project[] projects = [];
 
         sql:ParameterizedQuery query = `SELECT project_id, org_id, name, version, created_date, handler, region, 
-                                          description, default_deployment_pipeline_id, deployment_pipeline_ids, 
+                                          description, 
                                           type, git_provider, git_organization, repository, branch, secret_ref,
                                           owner_id, created_by, updated_at, updated_by 
                                    FROM projects 
                                    ORDER BY name ASC`;
 
-        stream<record {}, sql:Error?> projectStream = self.dbClient->query(query);
+        stream<types:Project, sql:Error?> projectStream = self.dbClient->query(query);
 
-        check from record {} projectRecord in projectStream
+        check from types:Project projectRecord in projectStream
             do {
-                // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                if projectRecord["deployment_pipeline_ids"] is string {
-                    string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
-                    json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
-
                 projects.push({
-                    id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
-                    projectId: <string>projectRecord["project_id"],
-                    orgId: <int>projectRecord["org_id"],
-                    name: <string>projectRecord["name"],
-                    version: <string?>projectRecord["version"],
-                    createdDate: <string?>projectRecord["created_date"],
-                    handler: <string>projectRecord["handler"],
-                    region: <string?>projectRecord["region"],
-                    description: <string?>projectRecord["description"],
-                    defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
-                    deploymentPipelineIds: deploymentPipelineIds,
-                    'type: <string?>projectRecord["type"],
-                    gitProvider: <string?>projectRecord["git_provider"],
-                    gitOrganization: <string?>projectRecord["git_organization"],
-                    repository: <string?>projectRecord["repository"],
-                    branch: <string?>projectRecord["branch"],
-                    secretRef: <string?>projectRecord["secret_ref"],
-                    ownerId: <string?>projectRecord["owner_id"],
-                    createdBy: <string?>projectRecord["created_by"],
-                    updatedAt: <string?>projectRecord["updated_at"],
-                    updatedBy: <string?>projectRecord["updated_by"]
+                    ...projectRecord
                 });
             };
 
@@ -2201,7 +2157,7 @@ class H2RepositoryImplementation {
 
         // Build WHERE clause to filter by project IDs
         sql:ParameterizedQuery query = `SELECT project_id, org_id, name, version, created_date, handler, region, 
-                                          description, default_deployment_pipeline_id, deployment_pipeline_ids, 
+                                          description,   
                                           type, git_provider, git_organization, repository, branch, secret_ref,
                                           owner_id, created_by, updated_at, updated_by 
                                      FROM projects 
@@ -2221,26 +2177,16 @@ class H2RepositoryImplementation {
 
         check from record {} projectRecord in projectStream
             do {
-                // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                if projectRecord["deployment_pipeline_ids"] is string {
-                    string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
-                    json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 projects.push({
                     id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
-                    projectId: <string>projectRecord["project_id"],
                     orgId: <int>projectRecord["org_id"],
                     name: <string>projectRecord["name"],
-                    version: <string?>projectRecord["version"],
+                    version: <string>projectRecord["version"],
                     createdDate: <string?>projectRecord["created_date"],
                     handler: <string>projectRecord["handler"],
                     region: <string?>projectRecord["region"],
                     description: <string?>projectRecord["description"],
-                    defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
-                    deploymentPipelineIds: deploymentPipelineIds,
                     'type: <string?>projectRecord["type"],
                     gitProvider: <string?>projectRecord["git_provider"],
                     gitOrganization: <string?>projectRecord["git_organization"],
@@ -2261,58 +2207,23 @@ class H2RepositoryImplementation {
 
     // Get a specific project by ID
     public isolated function getProjectById(string projectId) returns types:Project|error {
-        stream<record {}, sql:Error?> projectStream =
+        stream<types:Project, sql:Error?> projectStream =
         self.dbClient->query(`SELECT project_id, org_id, name, version, created_date, handler, region, 
-                                description, default_deployment_pipeline_id, deployment_pipeline_ids, 
+                                description, 
                                 type, git_provider, git_organization, repository, branch, secret_ref,
                                 owner_id, created_by, updated_at, updated_by 
                          FROM projects WHERE project_id = ${projectId}`);
 
-        record {}[] projectRecords =
-        check from record {} projectRecord in projectStream
+        types:Project[] projectRecords =
+        check from types:Project projectRecord in projectStream
             select projectRecord;
 
         if projectRecords.length() == 0 {
             return error(string `Project with ID ${projectId} not found`);
         }
 
-        record {} projectRecord = projectRecords[0];
-
-        // Parse deployment pipeline IDs from JSON if present
-        string[]? deploymentPipelineIds = ();
-        if projectRecord["deployment_pipeline_ids"] is string {
-            string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
-            json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
-            deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-        }
-
-        types:Project project = {
-            id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
-            projectId: <string>projectRecord["project_id"],
-            orgId: <int>projectRecord["org_id"],
-            name: <string>projectRecord["name"],
-            version: <string?>projectRecord["version"],
-            createdDate: <string?>projectRecord["created_date"],
-            handler: <string>projectRecord["handler"],
-            extendedHandler: <string?>projectRecord["extended_handler"],
-            region: <string?>projectRecord["region"],
-            description: <string?>projectRecord["description"],
-            ownerId: <string?>projectRecord["owner_id"],
-            labels: (),
-            defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
-            deploymentPipelineIds: deploymentPipelineIds,
-            'type: <string?>projectRecord["type"],
-            gitProvider: <string?>projectRecord["git_provider"],
-            gitOrganization: <string?>projectRecord["git_organization"],
-            repository: <string?>projectRecord["repository"],
-            branch: <string?>projectRecord["branch"],
-            secretRef: <string?>projectRecord["secret_ref"],
-            createdBy: <string?>projectRecord["created_by"],
-            updatedAt: <string?>projectRecord["updated_at"],
-            updatedBy: <string?>projectRecord["updated_by"]
-        };
-
-        return project;
+        types:Project projectRecord = projectRecords[0];
+        return projectRecord;
     }
 
     // Update project name and/or description
@@ -2499,12 +2410,6 @@ class H2RepositoryImplementation {
         check from types:ComponentInDB component in componentStream
             do {
                 // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-                if pipelineIdsJsonStr is string {
-                    json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 components.push({
                     // Basic Identity Fields
@@ -2555,16 +2460,14 @@ class H2RepositoryImplementation {
                     componentId: component.component_id,
                     project: {
                         id: component.project_id,
-                        projectId: component.project_id,
                         orgId: component.project_org_id,
                         name: component.project_name,
-                        version: component.project_version,
+                        version: <string>component.project_version,
                         createdDate: component.project_created_date,
                         handler: component.project_handler,
                         region: component.project_region,
                         description: component.project_description,
-                        defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
-                        deploymentPipelineIds: deploymentPipelineIds,
+
                         'type: component.project_type,
                         gitProvider: component.project_git_provider,
                         gitOrganization: component.project_git_organization,
@@ -2625,13 +2528,6 @@ class H2RepositoryImplementation {
 
         check from types:ComponentInDB component in componentStream
             do {
-                // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-                if pipelineIdsJsonStr is string {
-                    json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 components.push({
                     // Basic Identity Fields
@@ -2682,16 +2578,13 @@ class H2RepositoryImplementation {
                     componentId: component.component_id,
                     project: {
                         id: component.project_id,
-                        projectId: component.project_id,
                         orgId: component.project_org_id,
                         name: component.project_name,
-                        version: component.project_version,
+                        version: <string>component.project_version,
                         createdDate: component.project_created_date,
                         handler: component.project_handler,
                         region: component.project_region,
                         description: component.project_description,
-                        defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
-                        deploymentPipelineIds: deploymentPipelineIds,
                         'type: component.project_type,
                         gitProvider: component.project_git_provider,
                         gitOrganization: component.project_git_organization,
@@ -2737,14 +2630,6 @@ class H2RepositoryImplementation {
         }
 
         types:ComponentInDB component = componentRecords[0];
-
-        // Parse deployment pipeline IDs from JSON if present
-        string[]? deploymentPipelineIds = ();
-        string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-        if pipelineIdsJsonStr is string {
-            json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-            deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-        }
 
         return {
             // Basic Identity Fields
@@ -2798,16 +2683,14 @@ class H2RepositoryImplementation {
             componentId: component.component_id,
             project: {
                 id: component.project_id,
-                projectId: component.project_id,
                 orgId: component.project_org_id,
                 name: component.project_name,
-                version: component.project_version,
+                version: <string>component.project_version,
                 createdDate: component.project_created_date,
                 handler: component.project_handler,
                 region: component.project_region,
                 description: component.project_description,
-                defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
-                deploymentPipelineIds: deploymentPipelineIds,
+
                 'type: component.project_type,
                 gitProvider: component.project_git_provider,
                 gitOrganization: component.project_git_organization,
@@ -3197,10 +3080,10 @@ class H2RepositoryImplementation {
 ) returns error? {
         log:printDebug(string `Storing refresh token for user: ${userId}`);
 
-        // Use MySQL DATE_ADD to calculate expiry time directly in the database
+        // Use  DATEADD to calculate expiry time directly in the database
         sql:ExecutionResult|sql:Error result = self.dbClient->execute(
         `INSERT INTO refresh_tokens (token_id, user_id, token_hash, expires_at, user_agent, ip_address) 
-         VALUES (${tokenId}, ${userId}, ${tokenHash}, DATE_ADD(NOW(), INTERVAL ${expirySeconds} SECOND), ${userAgent}, ${ipAddress})`
+         VALUES (${tokenId}, ${userId}, ${tokenHash}, DATEADD('SECOND', ${expirySeconds}, NOW()), ${userAgent}, ${ipAddress})`
         );
 
         if result is sql:Error {
@@ -3342,11 +3225,10 @@ class H2RepositoryImplementation {
     public isolated function checkProjectCreationEligibility(int orgId, string orgHandler) returns types:ProjectCreationEligibility|error {
         log:printDebug(string `Checking project creation eligibility for orgId: ${orgId}, orgHandler: ${orgHandler}`);
         // TODO:
-        // For now, we'll implement a simple eligibility check
         // Simple implementation: allow project creation if organization exists and is active
         // This can be extended with more complex business logic
 
-        sql:ParameterizedQuery query = `SELECT COUNT(*) as projectCount 
+        sql:ParameterizedQuery query = `SELECT COUNT(*) as PROJECTCOUNT 
                                    FROM projects 
                                    WHERE org_id = ${orgId}`;
 
@@ -3356,11 +3238,9 @@ class H2RepositoryImplementation {
 
         check from record {} countRecord in projectCountStream
             do {
-                currentProjectCount = <int>countRecord["projectCount"];
+                currentProjectCount = <int>countRecord["PROJECTCOUNT"];
             };
 
-        // For demonstration, allow unlimited projects (always return true)
-        // In real implementation, you might check against org limits
         boolean isAllowed = true;
 
         log:printInfo(string `Project creation eligibility check completed`,
@@ -3379,7 +3259,7 @@ class H2RepositoryImplementation {
         log:printDebug(string `Checking project handler availability for orgId: ${orgId}, handler: ${projectHandlerCandidate}`);
 
         // Check if the handler already exists for this organization
-        sql:ParameterizedQuery query = `SELECT COUNT(*) as handlerCount 
+        sql:ParameterizedQuery query = `SELECT COUNT(*) as HANDLECOUNT 
                                    FROM projects 
                                    WHERE org_id = ${orgId} AND handler = ${projectHandlerCandidate}`;
 
@@ -3389,7 +3269,7 @@ class H2RepositoryImplementation {
 
         check from record {} countRecord in handlerCountStream
             do {
-                existingHandlerCount = <int>countRecord["handlerCount"];
+                existingHandlerCount = <int>countRecord["HANDLECOUNT"];
             };
 
         boolean isHandlerUnique = existingHandlerCount == 0;
@@ -3404,7 +3284,7 @@ class H2RepositoryImplementation {
             while counter <= 10 { // Limit to 10 attempts to avoid infinite loop
                 string candidate = string `${baseHandler}${counter}`;
 
-                sql:ParameterizedQuery alternateQuery = `SELECT COUNT(*) as handlerCount 
+                sql:ParameterizedQuery alternateQuery = `SELECT COUNT(*) as HANDLECOUNT 
                                                    FROM projects 
                                                    WHERE org_id = ${orgId} AND handler = ${candidate}`;
 
@@ -3413,7 +3293,7 @@ class H2RepositoryImplementation {
 
                 check from record {} candidateRecord in candidateStream
                     do {
-                        candidateCount = <int>candidateRecord["handlerCount"];
+                        candidateCount = <int>candidateRecord["HANDLECOUNT"];
                     };
 
                 if candidateCount == 0 {

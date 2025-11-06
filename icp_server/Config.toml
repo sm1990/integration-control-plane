@@ -114,7 +114,7 @@ dbPort = 3306
 dbName = "icp_database"
 dbUser = "root"
 dbPassword = "my-secret-pw"
-dbType = "mysql"  # Options: mysql, postgresql
+dbType = "h2"  # Options: mysql, postgresql
 
 
 [[ballerina.log.modules]]

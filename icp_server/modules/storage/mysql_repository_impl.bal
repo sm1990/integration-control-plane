@@ -16,7 +16,6 @@
 
 import icp_server.types as types;
 
-import ballerina/cache;
 import ballerina/log;
 import ballerina/sql;
 import ballerina/time;
@@ -24,10 +23,8 @@ import ballerina/uuid;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
 
-
 class MySQLRepositoryImplementation {
     sql:Client dbClient;
-    cache:Cache hashCache;
 
     *BaseRepository;
 
@@ -38,7 +35,6 @@ class MySQLRepositoryImplementation {
             maxConnectionLifeTime: maxConnectionLifeTime
         };
         self.dbClient = check new mysql:Client(dbHost, dbUser, dbPassword, dbName, dbPort, connectionPool = pool);
-        self.hashCache = new (capacity = 1000, evictionFactor = 0.2);
     }
 
     isolated function getDisplayNameById(string? userId) returns string? {
@@ -980,8 +976,8 @@ class MySQLRepositoryImplementation {
         types:ControlCommand[] pendingCommands = [];
         boolean hashMatches = false;
 
-        if self.hashCache.hasKey(deltaHeartbeat.runtime) {
-            any|error cachedHash = self.hashCache.get(deltaHeartbeat.runtime);
+        if hashCache.hasKey(deltaHeartbeat.runtime) {
+            any|error cachedHash = hashCache.get(deltaHeartbeat.runtime);
             hashMatches = cachedHash is string && cachedHash == deltaHeartbeat.runtimeHash;
             log:printInfo(string `Hash for runtime ${deltaHeartbeat.runtime} matches: ${hashMatches}`);
         }
@@ -2045,7 +2041,7 @@ class MySQLRepositoryImplementation {
         }
 
         // Cache the runtime hash value after successful processing (outside transaction)
-        error? cacheResult = self.hashCache.put(heartbeat.runtime, heartbeat.runtimeHash);
+        error? cacheResult = hashCache.put(heartbeat.runtime, heartbeat.runtimeHash);
         if cacheResult is error {
             log:printWarn(string `Failed to cache runtime hash for ${heartbeat.runtime}`, cacheResult);
         } else {
@@ -2154,25 +2150,16 @@ class MySQLRepositoryImplementation {
         check from record {} projectRecord in projectStream
             do {
                 // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                if projectRecord["deployment_pipeline_ids"] is string {
-                    string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
-                    json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 projects.push({
                     id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
-                    projectId: <string>projectRecord["project_id"],
                     orgId: <int>projectRecord["org_id"],
                     name: <string>projectRecord["name"],
-                    version: <string?>projectRecord["version"],
+                    version: <string>projectRecord["version"],
                     createdDate: <string?>projectRecord["created_date"],
                     handler: <string>projectRecord["handler"],
                     region: <string?>projectRecord["region"],
                     description: <string?>projectRecord["description"],
-                    defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
-                    deploymentPipelineIds: deploymentPipelineIds,
                     'type: <string?>projectRecord["type"],
                     gitProvider: <string?>projectRecord["git_provider"],
                     gitOrganization: <string?>projectRecord["git_organization"],
@@ -2222,26 +2209,16 @@ class MySQLRepositoryImplementation {
 
         check from record {} projectRecord in projectStream
             do {
-                // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                if projectRecord["deployment_pipeline_ids"] is string {
-                    string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
-                    json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 projects.push({
                     id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
-                    projectId: <string>projectRecord["project_id"],
                     orgId: <int>projectRecord["org_id"],
                     name: <string>projectRecord["name"],
-                    version: <string?>projectRecord["version"],
+                    version: <string>projectRecord["version"],
                     createdDate: <string?>projectRecord["created_date"],
                     handler: <string>projectRecord["handler"],
                     region: <string?>projectRecord["region"],
                     description: <string?>projectRecord["description"],
-                    defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
-                    deploymentPipelineIds: deploymentPipelineIds,
                     'type: <string?>projectRecord["type"],
                     gitProvider: <string?>projectRecord["git_provider"],
                     gitOrganization: <string?>projectRecord["git_organization"],
@@ -2279,20 +2256,11 @@ class MySQLRepositoryImplementation {
 
         record {} projectRecord = projectRecords[0];
 
-        // Parse deployment pipeline IDs from JSON if present
-        string[]? deploymentPipelineIds = ();
-        if projectRecord["deployment_pipeline_ids"] is string {
-            string pipelineIdsJson = <string>projectRecord["deployment_pipeline_ids"];
-            json pipelineIdsJsonParsed = check pipelineIdsJson.fromJsonString();
-            deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-        }
-
         types:Project project = {
             id: <string>projectRecord["project_id"], // Populate the id field as alias for projectId
-            projectId: <string>projectRecord["project_id"],
             orgId: <int>projectRecord["org_id"],
             name: <string>projectRecord["name"],
-            version: <string?>projectRecord["version"],
+            version: <string>projectRecord["version"],
             createdDate: <string?>projectRecord["created_date"],
             handler: <string>projectRecord["handler"],
             extendedHandler: <string?>projectRecord["extended_handler"],
@@ -2300,8 +2268,6 @@ class MySQLRepositoryImplementation {
             description: <string?>projectRecord["description"],
             ownerId: <string?>projectRecord["owner_id"],
             labels: (),
-            defaultDeploymentPipelineId: <string?>projectRecord["default_deployment_pipeline_id"],
-            deploymentPipelineIds: deploymentPipelineIds,
             'type: <string?>projectRecord["type"],
             gitProvider: <string?>projectRecord["git_provider"],
             gitOrganization: <string?>projectRecord["git_organization"],
@@ -2499,13 +2465,6 @@ class MySQLRepositoryImplementation {
 
         check from types:ComponentInDB component in componentStream
             do {
-                // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-                if pipelineIdsJsonStr is string {
-                    json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 components.push({
                     // Basic Identity Fields
@@ -2556,16 +2515,13 @@ class MySQLRepositoryImplementation {
                     componentId: component.component_id,
                     project: {
                         id: component.project_id,
-                        projectId: component.project_id,
                         orgId: component.project_org_id,
                         name: component.project_name,
-                        version: component.project_version,
+                        version: <string>component.project_version,
                         createdDate: component.project_created_date,
                         handler: component.project_handler,
                         region: component.project_region,
                         description: component.project_description,
-                        defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
-                        deploymentPipelineIds: deploymentPipelineIds,
                         'type: component.project_type,
                         gitProvider: component.project_git_provider,
                         gitOrganization: component.project_git_organization,
@@ -2626,13 +2582,6 @@ class MySQLRepositoryImplementation {
 
         check from types:ComponentInDB component in componentStream
             do {
-                // Parse deployment pipeline IDs from JSON if present
-                string[]? deploymentPipelineIds = ();
-                string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-                if pipelineIdsJsonStr is string {
-                    json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-                    deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-                }
 
                 components.push({
                     // Basic Identity Fields
@@ -2683,16 +2632,14 @@ class MySQLRepositoryImplementation {
                     componentId: component.component_id,
                     project: {
                         id: component.project_id,
-                        projectId: component.project_id,
                         orgId: component.project_org_id,
                         name: component.project_name,
-                        version: component.project_version,
+                        version: <string>component.project_version,
                         createdDate: component.project_created_date,
                         handler: component.project_handler,
                         region: component.project_region,
                         description: component.project_description,
-                        defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
-                        deploymentPipelineIds: deploymentPipelineIds,
+
                         'type: component.project_type,
                         gitProvider: component.project_git_provider,
                         gitOrganization: component.project_git_organization,
@@ -2738,14 +2685,6 @@ class MySQLRepositoryImplementation {
         }
 
         types:ComponentInDB component = componentRecords[0];
-
-        // Parse deployment pipeline IDs from JSON if present
-        string[]? deploymentPipelineIds = ();
-        string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-        if pipelineIdsJsonStr is string {
-            json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-            deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-        }
 
         return {
             // Basic Identity Fields
@@ -2799,16 +2738,13 @@ class MySQLRepositoryImplementation {
             componentId: component.component_id,
             project: {
                 id: component.project_id,
-                projectId: component.project_id,
                 orgId: component.project_org_id,
                 name: component.project_name,
-                version: component.project_version,
+                version: <string>component.project_version,
                 createdDate: component.project_created_date,
                 handler: component.project_handler,
                 region: component.project_region,
                 description: component.project_description,
-                defaultDeploymentPipelineId: component.project_default_deployment_pipeline_id,
-                deploymentPipelineIds: deploymentPipelineIds,
                 'type: component.project_type,
                 gitProvider: component.project_git_provider,
                 gitOrganization: component.project_git_organization,

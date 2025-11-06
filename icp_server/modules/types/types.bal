@@ -642,12 +642,10 @@ public type SystemInfo record {
 // === Project & Component Types ===
 
 public type Project record {
-    string? id?; // Alias for projectId to support queries requesting 'id'
-
     @sql:Column {
         name: "project_id"
     }
-    string projectId;
+    string id; // Alias for projectId to support queries requesting 'id'
 
     @sql:Column {
         name: "org_id"
@@ -655,12 +653,12 @@ public type Project record {
     int orgId;
 
     string name;
-    string? version?;
+    string version;
 
     @sql:Column {
         name: "created_date"
     }
-    string? createdDate?;
+    string createdDate?;
 
     string handler;
 
@@ -669,27 +667,24 @@ public type Project record {
     }
     string? extendedHandler?;
 
-    string? region?;
-    string? description?;
+    string region?;
+    string description?;
 
     @sql:Column {
         name: "owner_id"
     }
-    string? owner?;
+    string owner?;
 
-    string[]? labels?;
+    string[] labels?;
 
     @sql:Column {
         name: "default_deployment_pipeline_id"
     }
-    string? defaultDeploymentPipelineId?;
+    string defaultDeploymentPipelineId = "";
 
-    @sql:Column {
-        name: "deployment_pipeline_ids"
-    }
-    string[]? deploymentPipelineIds?;
+    string[] deploymentPipelineIds = [];
 
-    string? 'type?;
+    string 'type?;
 
     @sql:Column {
         name: "git_provider"
@@ -699,35 +694,35 @@ public type Project record {
     @sql:Column {
         name: "git_organization"
     }
-    string? gitOrganization?;
+    string gitOrganization?;
 
-    string? repository?;
-    string? branch?;
+    string repository?;
+    string branch?;
 
     @sql:Column {
         name: "secret_ref"
     }
-    string? secretRef?;
+    string secretRef?;
 
     @sql:Column {
         name: "owner_id"
     }
-    string? ownerId?;
+    string ownerId?;
 
     @sql:Column {
         name: "created_by"
     }
-    string? createdBy?;
+    string createdBy?;
 
     @sql:Column {
         name: "updated_at"
     }
-    string? updatedAt?;
+    string updatedAt?;
 
     @sql:Column {
         name: "updated_by"
     }
-    string? updatedBy?;
+    string updatedBy?;
 };
 
 public type ProjectInput record {

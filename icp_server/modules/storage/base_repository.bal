@@ -16,7 +16,10 @@
 
 import icp_server.types as types;
 
+import ballerina/cache;
+
 configurable int heartbeatTimeoutSeconds = 300;
+final cache:Cache hashCache = new (capacity = 1000, evictionFactor = 0.2);
 
 public type BaseRepository distinct object {
 

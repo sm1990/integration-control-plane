@@ -25,9 +25,6 @@ import ballerina/time;
 import ballerina/url;
 import ballerina/uuid;
 
-// Database repository client instance
-final readonly & storage:BaseRepository repoClient = <storage:BaseRepository & readonly>storage:getDBClient();
-
 // HTTP error response helpers
 
 public isolated function createUnauthorizedError(string message) returns http:Unauthorized => {
@@ -497,7 +494,7 @@ public isolated function hasAccessToEnvironment(types:UserContext userContext, s
     }
 
     // Get environment details to determine type
-    types:Environment|error environment = repoClient.getEnvironmentById(environmentId);
+    types:Environment|error environment = storage:getDBClient().getEnvironmentById(environmentId);
     if environment is error {
         return false;
     }
@@ -517,7 +514,7 @@ public isolated function hasAdminAccess(types:UserContext userContext, string pr
     }
 
     // Get environment details to determine type
-    types:Environment|error environment = repoClient.getEnvironmentById(environmentId);
+    types:Environment|error environment = storage:getDBClient().getEnvironmentById(environmentId);
     if environment is error {
         return false;
     }
@@ -547,13 +544,13 @@ public isolated function isAdminInProject(types:UserContext userContext, string 
 public isolated function getAccessibleProjectIds(types:UserContext userContext) returns string[] {
     // Super admins have access to all projects
     if userContext.isSuperAdmin {
-        types:Project[]|error allProjects = repoClient.getProjects();
+        types:Project[]|error allProjects = storage:getDBClient().getProjects();
         if allProjects is error {
             log:printError("Super admin failed to fetch all projects", allProjects);
             return [];
         }
         return from types:Project project in allProjects
-            select project.projectId;
+            select project.id;
     }
 
     string[] projectIds = [];
@@ -577,7 +574,7 @@ public isolated function getAccessibleProjectIds(types:UserContext userContext) 
 public isolated function getAccessibleEnvironmentIds(types:UserContext userContext, string projectId) returns string[] {
     // Super admins have access to all environments
     if userContext.isSuperAdmin {
-        types:Environment[]|error allEnvironments = repoClient.getEnvironments();
+        types:Environment[]|error allEnvironments = storage:getDBClient().getEnvironments();
         if allEnvironments is error {
             log:printError("Super admin failed to fetch all environments", allEnvironments);
             return [];
@@ -587,7 +584,7 @@ public isolated function getAccessibleEnvironmentIds(types:UserContext userConte
     }
 
     // Get all environments and filter by user's access to project and environment types
-    types:Environment[]|error allEnvironments = repoClient.getEnvironments();
+    types:Environment[]|error allEnvironments = storage:getDBClient().getEnvironments();
     if allEnvironments is error {
         log:printError("Failed to fetch environments for access check", allEnvironments);
         return [];
@@ -612,13 +609,13 @@ public isolated function getAccessibleEnvironmentIds(types:UserContext userConte
 public isolated function getAdminProjectIds(types:UserContext userContext) returns string[] {
     // Super admins have admin access to all projects - fetch from database
     if userContext.isSuperAdmin {
-        types:Project[]|error allProjects = repoClient.getProjects();
+        types:Project[]|error allProjects = storage:getDBClient().getProjects();
         if allProjects is error {
             log:printError("Super admin failed to fetch all projects", allProjects);
             return [];
         }
         return from types:Project project in allProjects
-            select project.projectId;
+            select project.id;
     }
 
     string[] adminProjectIds = [];
@@ -644,7 +641,7 @@ public isolated function getAdminProjectIds(types:UserContext userContext) retur
 public isolated function getAdminEnvironmentIdsByType(types:UserContext userContext) returns string[] {
     // Super admins have admin access to all environments - fetch from database
     if userContext.isSuperAdmin {
-        types:Environment[]|error allEnvironments = repoClient.getEnvironments();
+        types:Environment[]|error allEnvironments = storage:getDBClient().getEnvironments();
         if allEnvironments is error {
             log:printError("Super admin failed to fetch all environments", allEnvironments);
             return [];
@@ -654,7 +651,7 @@ public isolated function getAdminEnvironmentIdsByType(types:UserContext userCont
     }
 
     string[] adminEnvironmentIds = [];
-    types:Environment[]|error allEnvironments = repoClient.getEnvironments();
+    types:Environment[]|error allEnvironments = storage:getDBClient().getEnvironments();
     if allEnvironments is error {
         log:printError("Failed to fetch environments for admin check", allEnvironments);
         return [];
@@ -679,7 +676,7 @@ public isolated function getAdminEnvironmentIdsByType(types:UserContext userCont
 public isolated function getAccessibleEnvironmentIdsByType(types:UserContext userContext) returns string[]|error {
     // Super admins have access to all environments
     if userContext.isSuperAdmin {
-        types:Environment[]|error allEnvironments = repoClient.getEnvironments();
+        types:Environment[]|error allEnvironments = storage:getDBClient().getEnvironments();
         if allEnvironments is error {
             log:printError("Super admin failed to fetch all environments", allEnvironments);
             return [];
@@ -703,7 +700,7 @@ public isolated function getAccessibleEnvironmentIdsByType(types:UserContext use
     }
 
     // Make targeted database query based on accessible environment types
-    return check repoClient.getEnvironmentIdsByTypes(hasProdAccess, hasNonProdAccess);
+    return check storage:getDBClient().getEnvironmentIdsByTypes(hasProdAccess, hasNonProdAccess);
 }
 
 // ============================================================================

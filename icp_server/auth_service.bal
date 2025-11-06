@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage as storage;
 import icp_server.types as types;
 import icp_server.utils;
 
@@ -94,19 +95,19 @@ service /auth on httpListener {
         // Use username from the original request credentials
         string username = credentials.username;
 
-        types:User|error userDetails = repoClient.getUserDetailsById(userId);
+        types:User|error userDetails = storage:getDBClient().getUserDetailsById(userId);
         if userDetails is error {
             if userDetails is sql:NoRowsError {
                 // New user
                 log:printInfo(string `User ${username} authenticated but not found in users table, creating user record`);
-                error? createResult = repoClient.createUser(userId, username, displayName);
+                error? createResult = storage:getDBClient().createUser(userId, username, displayName);
                 if createResult is error {
                     log:printError("Error creating user in database", createResult, username = username);
                     return utils:createInternalServerError("Error creating user record");
                 }
 
                 // Fetch the newly created user details
-                userDetails = repoClient.getUserDetailsById(userId);
+                userDetails = storage:getDBClient().getUserDetailsById(userId);
                 if userDetails is error {
                     log:printError("Error getting newly created user details", userDetails);
                     return utils:createInternalServerError("Error getting user details");
@@ -119,7 +120,7 @@ service /auth on httpListener {
             }
         }
 
-        types:Role[]|error userRoles = repoClient.getUserRoles(userDetails.userId);
+        types:Role[]|error userRoles = storage:getDBClient().getUserRoles(userDetails.userId);
         if userRoles is error {
             log:printError("Error getting user roles", userRoles);
             return utils:createInternalServerError("Error getting user roles");
@@ -158,7 +159,7 @@ service /auth on httpListener {
         }
 
         // Store refresh token in database
-        error? storeResult = repoClient.storeRefreshToken(
+        error? storeResult = storage:getDBClient().storeRefreshToken(
             tokenId,
             userId,
             tokenHash,
@@ -234,7 +235,7 @@ service /auth on httpListener {
         }
 
         // Check if user exists, create if new
-        types:User|error userDetails = repoClient.getUserDetailsById(userInfo.userId);
+        types:User|error userDetails = storage:getDBClient().getUserDetailsById(userInfo.userId);
         if userDetails is error {
             if userDetails is sql:NoRowsError {
                 // New OIDC user - create record
@@ -242,7 +243,7 @@ service /auth on httpListener {
                         userId = userInfo.userId,
                         username = userInfo.username);
 
-                error? createResult = repoClient.createUser(userInfo.userId, userInfo.username, userInfo.displayName);
+                error? createResult = storage:getDBClient().createUser(userInfo.userId, userInfo.username, userInfo.displayName);
                 if createResult is error {
                     log:printError("Error creating OIDC user in database", createResult,
                             username = userInfo.username);
@@ -250,7 +251,7 @@ service /auth on httpListener {
                 }
 
                 // Fetch the newly created user details
-                userDetails = repoClient.getUserDetailsById(userInfo.userId);
+                userDetails = storage:getDBClient().getUserDetailsById(userInfo.userId);
                 if userDetails is error {
                     log:printError("Error getting newly created OIDC user details", userDetails);
                     return utils:createInternalServerError("Error getting user details");
@@ -262,7 +263,7 @@ service /auth on httpListener {
         }
 
         // Fetch user roles
-        types:Role[]|error userRoles = repoClient.getUserRoles(userDetails.userId);
+        types:Role[]|error userRoles = storage:getDBClient().getUserRoles(userDetails.userId);
         if userRoles is error {
             log:printError("Error getting user roles for OIDC user", userRoles);
             return utils:createInternalServerError("Error getting user roles");
@@ -301,7 +302,7 @@ service /auth on httpListener {
         }
 
         // Store refresh token in database
-        error? storeResult = repoClient.storeRefreshToken(
+        error? storeResult = storage:getDBClient().storeRefreshToken(
             tokenId,
             userDetails.userId,
             tokenHash,
@@ -364,13 +365,13 @@ service /auth on httpListener {
         }
 
         // Fetch latest user details and roles from database
-        types:User|error userDetails = repoClient.getUserDetailsById(userContext.userId);
+        types:User|error userDetails = storage:getDBClient().getUserDetailsById(userContext.userId);
         if userDetails is error {
             log:printError("Error fetching user details for token renewal", userDetails, userId = userContext.userId);
             return utils:createInternalServerError("Failed to fetch user details");
         }
 
-        types:Role[]|error userRoles = repoClient.getUserRoles(userContext.userId);
+        types:Role[]|error userRoles = storage:getDBClient().getUserRoles(userContext.userId);
         if userRoles is error {
             log:printError("Error fetching user roles for token renewal", userRoles, userId = userContext.userId);
             return utils:createInternalServerError("Failed to fetch user roles");
@@ -420,14 +421,14 @@ service /auth on httpListener {
         string tokenHash = utils:hashRefreshToken(request.refreshToken);
 
         // Validate refresh token and get user details
-        types:User|error userDetails = repoClient.validateRefreshToken(tokenHash);
+        types:User|error userDetails = storage:getDBClient().validateRefreshToken(tokenHash);
         if userDetails is error {
             log:printWarn("Invalid or expired refresh token", userDetails);
             return utils:createUnauthorizedError("Invalid or expired refresh token");
         }
 
         // Fetch user roles
-        types:Role[]|error userRoles = repoClient.getUserRoles(userDetails.userId);
+        types:Role[]|error userRoles = storage:getDBClient().getUserRoles(userDetails.userId);
         if userRoles is error {
             log:printError("Error fetching user roles for refresh token", userRoles, userId = userDetails.userId);
             return utils:createInternalServerError("Failed to fetch user roles");
@@ -486,14 +487,14 @@ service /auth on httpListener {
         }
 
         // Revoke the old refresh token (used for rotation)
-        error? revokeResult = repoClient.revokeRefreshToken(tokenHash);
+        error? revokeResult = storage:getDBClient().revokeRefreshToken(tokenHash);
         if revokeResult is error {
             log:printWarn("Failed to revoke old refresh token", revokeResult, userId = userDetails.userId);
             // Continue anyway - this is not critical
         }
 
         // Store new refresh token
-        error? storeResult = repoClient.storeRefreshToken(
+        error? storeResult = storage:getDBClient().storeRefreshToken(
             newTokenId,
             userDetails.userId,
             newTokenHash,
@@ -568,7 +569,7 @@ service /auth on httpListener {
             string tokenHash = utils:hashRefreshToken(refreshToken);
 
             // Revoke the specific refresh token
-            error? revokeResult = repoClient.revokeRefreshToken(tokenHash);
+            error? revokeResult = storage:getDBClient().revokeRefreshToken(tokenHash);
             if revokeResult is error {
                 log:printError("Error revoking specific refresh token", revokeResult, userId = userContext.userId);
                 return utils:createInternalServerError("Failed to revoke refresh token");
@@ -585,7 +586,7 @@ service /auth on httpListener {
         }
 
         // No specific token provided - revoke ALL refresh tokens for this user (logout from all devices)
-        error? revokeAllResult = repoClient.revokeAllUserRefreshTokens(userContext.userId);
+        error? revokeAllResult = storage:getDBClient().revokeAllUserRefreshTokens(userContext.userId);
         if revokeAllResult is error {
             log:printError("Error revoking all refresh tokens for user", revokeAllResult, userId = userContext.userId);
             return utils:createInternalServerError("Failed to revoke refresh tokens");
@@ -670,7 +671,7 @@ service /auth on httpListener {
         // Super admins can see ALL users (including those without any roles/projects)
         if userContext.isSuperAdmin {
             log:printInfo("Super admin fetching all users", userId = userContext.userId);
-            users = repoClient.getAllUsers();
+            users = storage:getDBClient().getAllUsers();
             if users is error {
                 log:printError("Error fetching all users for super admin", users);
                 return utils:createInternalServerError("Failed to fetch users");
@@ -695,7 +696,7 @@ service /auth on httpListener {
         }
 
         // Fetch users who have roles in projects where the caller is admin
-        users = repoClient.getUsersByProjectIds(adminProjectIds);
+        users = storage:getDBClient().getUsersByProjectIds(adminProjectIds);
         if users is error {
             log:printError("Error fetching users", users);
             return utils:createInternalServerError("Failed to fetch users");
@@ -798,14 +799,14 @@ service /auth on httpListener {
 
             if userIdJson is string && usernameJson is string && displayNameJson is string {
                 // Create user in users table (auth service manages users table)
-                error? createUserResult = repoClient.createUser(userIdJson, usernameJson, displayNameJson);
+                error? createUserResult = storage:getDBClient().createUser(userIdJson, usernameJson, displayNameJson);
                 if createUserResult is error {
                     log:printError("Error creating user in users table", createUserResult, username = usernameJson);
                     return utils:createInternalServerError("Failed to create user record");
                 }
 
                 // Get the created user details
-                types:User|error userDetails = repoClient.getUserDetailsById(userIdJson);
+                types:User|error userDetails = storage:getDBClient().getUserDetailsById(userIdJson);
                 if userDetails is error {
                     log:printError("Error getting created user details", userDetails);
                     return utils:createInternalServerError("Failed to get user details");
@@ -868,7 +869,7 @@ service /auth on httpListener {
         }
 
         // Check if user exists
-        types:User|error existingUser = repoClient.getUserDetailsById(userId);
+        types:User|error existingUser = storage:getDBClient().getUserDetailsById(userId);
         if existingUser is error {
             if existingUser is sql:NoRowsError {
                 log:printWarn("User not found for deletion", userId = userId);
@@ -883,7 +884,7 @@ service /auth on httpListener {
         }
 
         // Delete the user
-        error? deleteResult = repoClient.deleteUserById(userId);
+        error? deleteResult = storage:getDBClient().deleteUserById(userId);
         if deleteResult is error {
             log:printError("Error deleting user", deleteResult, userId = userId);
             return utils:createInternalServerError("Failed to delete user");
@@ -933,14 +934,14 @@ service /auth on httpListener {
         }
 
         // Update profile
-        error? updateResult = repoClient.updateUserProfile(userContext.userId, request.displayName);
+        error? updateResult = storage:getDBClient().updateUserProfile(userContext.userId, request.displayName);
         if updateResult is error {
             log:printError("Error updating user profile", updateResult, userId = userContext.userId);
             return utils:createInternalServerError("Failed to update profile");
         }
 
         // Fetch updated user details
-        types:User|error updatedUser = repoClient.getUserDetailsById(userContext.userId);
+        types:User|error updatedUser = storage:getDBClient().getUserDetailsById(userContext.userId);
         if updatedUser is error {
             log:printError("Error fetching updated user details", updatedUser);
             return utils:createInternalServerError("Failed to fetch updated profile");
@@ -1060,7 +1061,7 @@ service /auth on httpListener {
         }
 
         // Check if target user exists and get their details
-        types:User|error targetUser = repoClient.getUserDetailsById(userId);
+        types:User|error targetUser = storage:getDBClient().getUserDetailsById(userId);
         if targetUser is error {
             if targetUser is sql:NoRowsError {
                 log:printWarn("Target user not found for role update", userId = userId);
@@ -1127,7 +1128,7 @@ service /auth on httpListener {
         // Update isProjectAuthor flag if provided (and super admin has approved)
         if request?.isProjectAuthor is boolean {
             boolean isProjectAuthor = check request?.isProjectAuthor.ensureType();
-            error? updateAuthorResult = repoClient.updateUserProjectAuthor(userId, isProjectAuthor);
+            error? updateAuthorResult = storage:getDBClient().updateUserProjectAuthor(userId, isProjectAuthor);
             if updateAuthorResult is error {
                 log:printError("Error updating user project author flag", updateAuthorResult, userId = userId);
                 return utils:createInternalServerError("Failed to update project author permission");
@@ -1136,14 +1137,14 @@ service /auth on httpListener {
         }
 
         // Update roles
-        error? updateResult = repoClient.updateUserRoles(userId, request.roles);
+        error? updateResult = storage:getDBClient().updateUserRoles(userId, request.roles);
         if updateResult is error {
             log:printError("Error updating user roles", updateResult, userId = userId);
             return utils:createInternalServerError("Failed to update user roles");
         }
 
         // Fetch updated user with roles
-        types:Role[]|error updatedRoles = repoClient.getUserRoles(userId);
+        types:Role[]|error updatedRoles = storage:getDBClient().getUserRoles(userId);
         if updatedRoles is error {
             log:printError("Error fetching updated roles", updatedRoles);
             return utils:createInternalServerError("Failed to fetch updated roles");

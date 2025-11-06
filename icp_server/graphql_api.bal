@@ -37,8 +37,6 @@ isolated function contextInit(http:RequestContext reqCtx, http:Request request) 
     return context;
 }
 
-final storage:BaseRepository & readonly repoClient = <storage:BaseRepository & readonly>storage:getDBClient();
-
 // GraphQL service for runtime details
 @graphql:ServiceConfig {
     contextInit,
@@ -80,7 +78,7 @@ service /graphql on graphqlListener {
             if !utils:hasAccessToEnvironment(userContext, projectId, environmentId) {
                 return error("Access denied to environment");
             }
-            return check repoClient.getRuntimes(status, runtimeType, environmentId, projectId, componentId);
+            return check storage:getDBClient().getRuntimes(status, runtimeType, environmentId, projectId, componentId);
         }
 
         // If only projectId is provided, filter by accessible environments in that project
@@ -94,7 +92,7 @@ service /graphql on graphqlListener {
             // Get runtimes for each accessible environment and aggregate
             types:Runtime[] allRuntimes = [];
             foreach string envId in accessibleEnvIds {
-                types:Runtime[] envRuntimes = check repoClient.getRuntimes(status, runtimeType, envId, projectId, componentId);
+                types:Runtime[] envRuntimes = check storage:getDBClient().getRuntimes(status, runtimeType, envId, projectId, componentId);
                 allRuntimes.push(...envRuntimes);
             }
             return allRuntimes;
@@ -102,7 +100,7 @@ service /graphql on graphqlListener {
 
         // No specific filters - return runtimes for all accessible environments
         // Use optimized batch query
-        return check repoClient.getRuntimesByAccessibleEnvironments(userContext);
+        return check storage:getDBClient().getRuntimesByAccessibleEnvironments(userContext);
     }
 
     // Get a specific runtime by ID
@@ -116,7 +114,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // First, fetch the runtime to get its project and environment
-        types:Runtime? runtime = check repoClient.getRuntimeById(runtimeId);
+        types:Runtime? runtime = check storage:getDBClient().getRuntimeById(runtimeId);
 
         if runtime is () {
             return (); // Runtime not found
@@ -141,7 +139,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // First, fetch the runtime to verify access to its environment
-        types:Runtime? runtime = check repoClient.getRuntimeById(runtimeId);
+        types:Runtime? runtime = check storage:getDBClient().getRuntimeById(runtimeId);
 
         if runtime is () {
             return error("Runtime not found");
@@ -152,7 +150,7 @@ service /graphql on graphqlListener {
             return error("Access denied to runtime");
         }
 
-        return check repoClient.getServicesForRuntime(runtimeId);
+        return check storage:getDBClient().getServicesForRuntime(runtimeId);
     }
 
     // Get listeners for a specific runtime
@@ -166,7 +164,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // First, fetch the runtime to verify access to its environment
-        types:Runtime? runtime = check repoClient.getRuntimeById(runtimeId);
+        types:Runtime? runtime = check storage:getDBClient().getRuntimeById(runtimeId);
 
         if runtime is () {
             return error("Runtime not found");
@@ -177,7 +175,7 @@ service /graphql on graphqlListener {
             return error("Access denied to runtime");
         }
 
-        return check repoClient.getListenersForRuntime(runtimeId);
+        return check storage:getDBClient().getListenersForRuntime(runtimeId);
     }
 
     // Delete a runtime by ID
@@ -191,7 +189,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // First, fetch the runtime to get its project and environment
-        types:Runtime? runtime = check repoClient.getRuntimeById(runtimeId);
+        types:Runtime? runtime = check storage:getDBClient().getRuntimeById(runtimeId);
 
         if runtime is () {
             return error("Runtime not found");
@@ -202,7 +200,7 @@ service /graphql on graphqlListener {
             return error("Admin access required to delete runtime");
         }
 
-        check repoClient.deleteRuntime(runtimeId);
+        check storage:getDBClient().deleteRuntime(runtimeId);
         return true;
     }
 
@@ -226,7 +224,7 @@ service /graphql on graphqlListener {
         environment.createdBy = userContext.userId;
 
         // Call storage layer to insert environments
-        return repoClient.createEnvironment(environment);
+        return storage:getDBClient().createEnvironment(environment);
     }
 
     // Get all environments (filtered by user's accessible environments via RBAC)
@@ -252,7 +250,7 @@ service /graphql on graphqlListener {
         }
 
         // Fetch environments by accessible environment IDs
-        return check repoClient.getEnvironmentsByIds(accessibleEnvironmentIds);
+        return check storage:getDBClient().getEnvironmentsByIds(accessibleEnvironmentIds);
     }
 
     // Get all environments where user has admin access (for permission management)
@@ -274,7 +272,7 @@ service /graphql on graphqlListener {
         }
 
         // Fetch environments by admin environment IDs
-        return check repoClient.getEnvironmentsByIds(adminEnvironmentIds);
+        return check storage:getDBClient().getEnvironmentsByIds(adminEnvironmentIds);
     }
 
     // Delete an environment (super admin only)
@@ -292,7 +290,7 @@ service /graphql on graphqlListener {
             return error("Super admin access required to delete environments");
         }
 
-        check repoClient.deleteEnvironment(environmentId);
+        check storage:getDBClient().deleteEnvironment(environmentId);
         return true;
     }
 
@@ -311,8 +309,8 @@ service /graphql on graphqlListener {
             return error("Super admin access required to update environments");
         }
 
-        check repoClient.updateEnvironment(environmentId, name, description);
-        return check repoClient.getEnvironmentById(environmentId);
+        check storage:getDBClient().updateEnvironment(environmentId, name, description);
+        return check storage:getDBClient().getEnvironmentById(environmentId);
     }
 
     // Update environment production status (super admin only)
@@ -330,8 +328,8 @@ service /graphql on graphqlListener {
             return error("Super admin access required to update environment production status");
         }
 
-        check repoClient.updateEnvironmentProductionStatus(environmentId, isProduction);
-        return check repoClient.getEnvironmentById(environmentId);
+        check storage:getDBClient().updateEnvironmentProductionStatus(environmentId, isProduction);
+        return check storage:getDBClient().getEnvironmentById(environmentId);
     }
 
     //------------- Project Resources
@@ -352,7 +350,7 @@ service /graphql on graphqlListener {
         }
 
         // Create project and auto-assign admin roles to creating user
-        return check repoClient.createProject(project, userContext);
+        return check storage:getDBClient().createProject(project, userContext);
     }
 
     // Get all projects (filtered by user's accessible projects via RBAC)
@@ -367,7 +365,7 @@ service /graphql on graphqlListener {
         // string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
 
         // Get projects filtered by user's access
-        types:Project[] allProjects = check repoClient.getProjects();
+        types:Project[] allProjects = check storage:getDBClient().getProjects();
 
         // Filter by orgId if provided
         if orgId is int {
@@ -402,7 +400,7 @@ service /graphql on graphqlListener {
         }
 
         // Fetch projects by admin project IDs
-        return check repoClient.getProjectsByIds(adminProjectIds);
+        return check storage:getDBClient().getProjectsByIds(adminProjectIds);
     }
 
     // Get a specific project by ID with optional orgId filter
@@ -420,7 +418,7 @@ service /graphql on graphqlListener {
             return error("Access denied to project");
         }
 
-        types:Project? project = check repoClient.getProjectById(projectId);
+        types:Project? project = check storage:getDBClient().getProjectById(projectId);
 
         if project is () {
             return (); // Project not found
@@ -444,7 +442,7 @@ service /graphql on graphqlListener {
         // }
 
         // Call storage layer to check eligibility
-        return check repoClient.checkProjectCreationEligibility(orgId, orgHandler);
+        return check storage:getDBClient().checkProjectCreationEligibility(orgId, orgHandler);
     }
 
     // Check project handler availability for an organization
@@ -457,7 +455,7 @@ service /graphql on graphqlListener {
         // }
 
         // Call storage layer to check handler availability
-        return check repoClient.checkProjectHandlerAvailability(orgId, projectHandlerCandidate);
+        return check storage:getDBClient().checkProjectHandlerAvailability(orgId, projectHandlerCandidate);
     }
 
     // Delete a project
@@ -475,7 +473,7 @@ service /graphql on graphqlListener {
         }
 
         // Check if the project has any components
-        boolean hasComponents = check repoClient.hasProjectComponents(projectId);
+        boolean hasComponents = check storage:getDBClient().hasProjectComponents(projectId);
         if hasComponents {
             return {
                 status: "failed",
@@ -484,7 +482,7 @@ service /graphql on graphqlListener {
         }
 
         // Proceed with deletion if no components exist
-        check repoClient.deleteProject(projectId);
+        check storage:getDBClient().deleteProject(projectId);
         return {
             status: "success",
             details: string `Deleted project with ID: ${projectId}`
@@ -492,7 +490,7 @@ service /graphql on graphqlListener {
     }
 
     // Update project name and/or description
-    isolated remote function updateProject(graphql:Context context, types:ProjectUpdateInput project) returns types:Project?|error {
+    isolated remote function updateProject(graphql:Context context, types:ProjectUpdateInput project) returns types:Project|error {
         value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
         if authHeader !is string {
             return error("Authorization header missing in request");
@@ -505,8 +503,12 @@ service /graphql on graphqlListener {
             return error("Project author access required to update projects");
         }
 
-        check repoClient.updateProjectWithInput(project);
-        return check repoClient.getProjectById(project.id);
+        check storage:getDBClient().updateProjectWithInput(project);
+        types:Project? updatedProject = check storage:getDBClient().getProjectById(project.id);
+        if updatedProject is () {
+            return error("Project not found after update");
+        }
+        return updatedProject;
     }
 
     // ----------- Component Resources
@@ -542,7 +544,7 @@ service /graphql on graphqlListener {
         // Set the createdBy field to the current user's ID
         component.createdBy = userContext.userId;
 
-        return repoClient.createComponent(component);
+        return storage:getDBClient().createComponent(component);
     }
 
     // Get all components with optional project filter
@@ -560,7 +562,7 @@ service /graphql on graphqlListener {
             if !utils:hasAccessToProject(userContext, projectId) {
                 return error("Access denied to project");
             }
-            return check repoClient.getComponents(projectId, options);
+            return check storage:getDBClient().getComponents(projectId, options);
         }
 
         // If no projectId filter, return components for all accessible projects
@@ -568,7 +570,7 @@ service /graphql on graphqlListener {
         string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
 
         // Use optimized batch query with WHERE IN clause
-        return check repoClient.getComponentsByProjectIds(accessibleProjectIds, options);
+        return check storage:getDBClient().getComponentsByProjectIds(accessibleProjectIds, options);
     }
 
     // Get a specific component by ID
@@ -582,7 +584,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // First, fetch the component to get its parent project ID
-        types:Component? component = check repoClient.getComponentById(componentId);
+        types:Component? component = check storage:getDBClient().getComponentById(componentId);
 
         if component is () {
             return (); // Component not found
@@ -606,7 +608,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // Get component to check project access
-        types:Component? component = check repoClient.getComponentById(componentId);
+        types:Component? component = check storage:getDBClient().getComponentById(componentId);
         if component is () {
             return error("Component not found");
         }
@@ -617,7 +619,7 @@ service /graphql on graphqlListener {
         }
 
         // Get all environments where this component has runtimes
-        string[] environmentsWithRuntimes = check repoClient.getEnvironmentIdsWithRuntimes(componentId);
+        string[] environmentsWithRuntimes = check storage:getDBClient().getEnvironmentIdsWithRuntimes(componentId);
 
         // Check if user is admin in ALL environments where the component has runtimes
         foreach string envId in environmentsWithRuntimes {
@@ -626,7 +628,7 @@ service /graphql on graphqlListener {
             }
         }
 
-        check repoClient.deleteComponent(componentId);
+        check storage:getDBClient().deleteComponent(componentId);
         return true;
     }
 
@@ -640,7 +642,7 @@ service /graphql on graphqlListener {
         types:UserContext userContext = check utils:extractUserContext(authHeader);
 
         // Get component to check project access
-        types:Component? component = check repoClient.getComponentById(componentId);
+        types:Component? component = check storage:getDBClient().getComponentById(componentId);
         if component is () {
             return error("Component not found");
         }
@@ -650,7 +652,7 @@ service /graphql on graphqlListener {
             return error("Admin access required in project to update components");
         }
 
-        check repoClient.updateComponent(componentId, name, description, userContext.userId);
-        return check repoClient.getComponentById(componentId);
+        check storage:getDBClient().updateComponent(componentId, name, description, userContext.userId);
+        return check storage:getDBClient().getComponentById(componentId);
     }
 }

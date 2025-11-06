@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage as storage;
+
 import ballerina/log;
 import ballerina/task;
 
@@ -48,7 +50,7 @@ class Job {
     // Executes this function when the scheduled trigger fires.
     public function execute() {
         do {
-            check repoClient.markOfflineRuntimes();
+            check storage:getDBClient().markOfflineRuntimes();
             log:printDebug("Updated offline runtimes successfully");
         } on fail error e {
             log:printError("Failed to update offline runtimes", e);

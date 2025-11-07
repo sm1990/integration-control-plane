@@ -35,8 +35,8 @@ services:
         image: wso2/icp_server
         container_name: icp-server-test
         build: 
-            context: .
-            dockerfile: build.Dockerfile
+            context: ..
+            dockerfile: ./icp_server/build.Dockerfile
         depends_on:
             mysql-db:
                 condition: service_healthy

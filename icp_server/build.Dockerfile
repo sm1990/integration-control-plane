@@ -18,7 +18,8 @@ FROM ballerina/ballerina:2201.12.8
 
 USER root
 
-COPY . /home/work-dir/icp_server
+COPY ./icp_server /home/work-dir/icp_server
+COPY ../conf /home/work-dir/conf
 WORKDIR /home/work-dir/icp_server
 
 RUN bal build

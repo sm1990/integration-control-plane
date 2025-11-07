@@ -35,8 +35,8 @@ services:
         image: wso2/icp_server
         container_name: icp-server-local
         build:
-            context: .
-            dockerfile: build.Dockerfile
+            context: ..
+            dockerfile: ./icp_server/build.Dockerfile
         ports:
             - "9445:9445"
             - "9446:9446"

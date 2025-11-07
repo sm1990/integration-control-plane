@@ -16,6 +16,7 @@
 
 import ballerina/log;
 import ballerina/sql;
+import ballerinax/h2.driver as _;
 import ballerinax/java.jdbc as jdbc;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
@@ -38,9 +39,11 @@ public client class DatabaseConnectionManager {
         };
 
         if dbType == MYSQL {
+            log:printInfo("Initializing MySQL Database...");
             self.dbClient = check new mysql:Client(dbHost, dbUser, dbPassword, dbName, dbPort, connectionPool = pool);
             log:printInfo("MySQL Database initialized successfully.");
         } else {
+            log:printInfo("Initializing H2 Database...");
             self.dbClient = check new jdbc:Client("jdbc:h2:file:./database/icpdb;MODE=MySQL;AUTO_SERVER=TRUE", "sa", "");
             log:printInfo("H2 Database initialized successfully.");
         }

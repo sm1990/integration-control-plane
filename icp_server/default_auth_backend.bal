@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.storage;
 import icp_server.types;
 import icp_server.utils;
 
@@ -23,7 +24,6 @@ import ballerina/log;
 import ballerina/sql;
 import ballerina/time;
 import ballerina/uuid;
-import ballerinax/java.jdbc;
 
 configurable int authServicePort = 9447;
 configurable string authServiceHost = "0.0.0.0";
@@ -40,8 +40,6 @@ listener http:Listener defaultAuthServiceListener = new (authServicePort,
         }
     }
 );
-
-final sql:Client dbClient = check new jdbc:Client("jdbc:h2:file:./database/icpdb;MODE=MySQL;AUTO_SERVER=TRUE", "sa", "");
 
 service / on defaultAuthServiceListener {
 
@@ -172,7 +170,7 @@ service / on defaultAuthServiceListener {
         }
 
         // Check if user already exists
-        types:UserCredentials|sql:Error existingUser = dbClient->queryRow(
+        types:UserCredentials|sql:Error existingUser = storage:dbClient->queryRow(
             `SELECT user_id, username, display_name FROM user_credentials WHERE username = ${request.username}`
         );
 
@@ -208,7 +206,7 @@ service / on defaultAuthServiceListener {
 isolated function authenticateUser(string username, string password) returns types:User|error {
     log:printDebug("Attempting to authenticate user: " + username);
     // Query user credentials table only (auth backend is independent)
-    types:UserCredentials|sql:Error credentials = dbClient->queryRow(
+    types:UserCredentials|sql:Error credentials = storage:dbClient->queryRow(
         `SELECT user_id as userId, username, display_name as displayName, 
                 password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
          FROM user_credentials 
@@ -244,7 +242,7 @@ isolated function authenticateUser(string username, string password) returns typ
 
 isolated function getUserCredentialsById(string userId) returns types:UserCredentials|error {
     log:printDebug(string `Fetching credentials for userId: ${userId}`);
-    types:UserCredentials|sql:Error credentials = dbClient->queryRow(
+    types:UserCredentials|sql:Error credentials = storage:dbClient->queryRow(
         `SELECT user_id as userId, username, display_name as displayName, 
                 password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
          FROM user_credentials 
@@ -262,7 +260,7 @@ isolated function getUserCredentialsById(string userId) returns types:UserCreden
 isolated function updateUserPasswordInDb(string userId, string newPasswordHash) returns error? {
     log:printDebug(string `Updating password for user: ${userId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
+    sql:ExecutionResult result = check storage:dbClient->execute(
         `UPDATE user_credentials 
          SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP 
          WHERE user_id = ${userId}`
@@ -280,7 +278,7 @@ isolated function updateUserPasswordInDb(string userId, string newPasswordHash) 
 isolated function createUserCredentials(string userId, string username, string displayName, string passwordHash) returns error? {
     log:printDebug(string `Auth backend creating user credentials: ${username} (${userId})`);
 
-    sql:ExecutionResult|error insertError = dbClient->execute(
+    sql:ExecutionResult|error insertError = storage:dbClient->execute(
         `INSERT INTO user_credentials (user_id, username, display_name, password_hash)
          VALUES (${userId}, ${username}, ${displayName}, ${passwordHash})`
     );

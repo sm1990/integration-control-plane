@@ -1,0 +1,211 @@
+// ICP Server Build Configuration
+// This is a Ballerina project wrapper for Gradle
+
+description = 'WSO2 ICP Server - Ballerina Backend'
+
+// Ballerina project tasks
+task ballerinaClean {
+    description = 'Clean Ballerina build artifacts'
+    doLast {
+        println 'Cleaning Ballerina artifacts...'
+        exec {
+            commandLine 'bal', 'clean'
+        }
+    }
+}
+
+task ballerinaBuild {
+    description = 'Build Ballerina project'
+    dependsOn ballerinaClean
+    doLast {
+        println 'Building Ballerina project...'
+        exec {
+            commandLine 'bal', 'build'
+        }
+        println 'Ballerina build complete'
+    }
+}
+
+task ballerinaTest {
+    description = 'Run Ballerina tests'
+    doLast {
+        println 'Running Ballerina tests...'
+        exec {
+            commandLine 'bal', 'test'
+        }
+        println 'Ballerina tests complete'
+    }
+}
+
+task ballerinaRun {
+    description = 'Run Ballerina application'
+    dependsOn ballerinaBuild
+    doLast {
+        println 'Starting Ballerina application...'
+        exec {
+            commandLine 'bal', 'run'
+        }
+    }
+}
+
+task ballerinaFormat {
+    description = 'Format Ballerina code'
+    doLast {
+        println 'Formatting Ballerina code...'
+        exec {
+            commandLine 'bal', 'format'
+        }
+    }
+}
+
+// Docker tasks for ICP Server
+task dockerBuild {
+    description = 'Build Docker image locally'
+    doLast {
+        println 'Building Docker image with docker-compose...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'build'
+        }
+    }
+}
+
+task dockerUp {
+    description = 'Start Docker containers'
+    dependsOn dockerBuild
+    doLast {
+        println 'Starting Docker containers...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'up', '-d'
+        }
+        println """
+        ╔════════════════════════════════════════╗
+        ║  ICP Server is starting...             ║
+        ║                                        ║
+        ║  Endpoints:                            ║
+        ║  - HTTP/GraphQL: http://localhost:9445 ║
+        ║  - GraphQL: http://localhost:9446      ║
+        ║  - Auth Backend: http://localhost:9447 ║
+        ║  - MySQL: localhost:3307               ║
+        ║                                        ║
+        ║  Logs: docker-compose logs -f          ║
+        ╚════════════════════════════════════════╝
+        """
+    }
+}
+
+task dockerDown {
+    description = 'Stop Docker containers'
+    doLast {
+        println 'Stopping Docker containers...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'down'
+        }
+        println 'Docker containers stopped'
+    }
+}
+
+task dockerLogs {
+    description = 'View Docker logs'
+    doLast {
+        println 'Showing Docker logs (press Ctrl+C to exit)...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'logs', '-f'
+        }
+    }
+}
+
+task dockerTestUp {
+    description = 'Start Docker containers for testing'
+    doLast {
+        println 'Starting test Docker containers...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.test.yml', 'up'
+        }
+    }
+}
+
+task dockerTestDown {
+    description = 'Stop test Docker containers'
+    doLast {
+        println 'Stopping test Docker containers...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.test.yml', 'down'
+        }
+    }
+}
+
+// Observability stack
+task observabilityUp {
+    description = 'Start observability stack (Prometheus, Grafana, etc.)'
+    doLast {
+        println 'Starting observability stack...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.observability.yml', 'up', '-d'
+        }
+        println """
+        Observability stack started:
+        - Grafana: http://localhost:3000
+        - Prometheus: http://localhost:9090
+        """
+    }
+}
+
+task observabilityDown {
+    description = 'Stop observability stack'
+    doLast {
+        println 'Stopping observability stack...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.observability.yml', 'down'
+        }
+    }
+}
+
+// MySQL database tasks
+task dbUp {
+    description = 'Start MySQL database'
+    doLast {
+        println 'Starting MySQL database...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.mysql.yml', 'up', '-d'
+        }
+        println 'MySQL database started on localhost:3307'
+    }
+}
+
+task dbDown {
+    description = 'Stop MySQL database'
+    doLast {
+        println 'Stopping MySQL database...'
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.mysql.yml', 'down'
+        }
+    }
+}
+
+// Convenience tasks
+task dev {
+    description = 'Start development environment (Docker + app)'
+    dependsOn dockerUp
+    doLast {
+        println 'Development environment started'
+    }
+}
+
+task devDown {
+    description = 'Stop development environment'
+    dependsOn dockerDown
+    doLast {
+        println 'Development environment stopped'
+    }
+}
+
+task devFull {
+    description = 'Start full development environment (app + observability)'
+    dependsOn observabilityUp, dockerUp
+    doLast {
+        println 'Full development environment started'
+    }
+}
+
+// Default task for this module
+defaultTasks 'ballerinaBuild'

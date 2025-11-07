@@ -321,9 +321,6 @@ dependencies = [
 	{org = "ballerina", name = "io"},
 	{org = "ballerina", name = "jballerina.java"}
 ]
-modules = [
-	{org = "ballerina", packageName = "os", moduleName = "os"}
-]
 
 [[package]]
 org = "ballerina"
@@ -487,6 +484,14 @@ dependencies = [
 
 [[package]]
 org = "ballerinax"
+name = "h2.driver"
+version = "1.2.0"
+modules = [
+	{org = "ballerinax", packageName = "h2.driver", moduleName = "h2.driver"}
+]
+
+[[package]]
+org = "ballerinax"
 name = "java.jdbc"
 version = "1.14.0"
 dependencies = [
@@ -528,7 +533,7 @@ modules = [
 [[package]]
 org = "wso2"
 name = "icp_server"
-version = "0.1.0"
+version = "2.0.0-SNAPSHOT"
 dependencies = [
 	{org = "ballerina", name = "cache"},
 	{org = "ballerina", name = "crypto"},
@@ -538,7 +543,6 @@ dependencies = [
 	{org = "ballerina", name = "jwt"},
 	{org = "ballerina", name = "lang.value"},
 	{org = "ballerina", name = "log"},
-	{org = "ballerina", name = "os"},
 	{org = "ballerina", name = "regex"},
 	{org = "ballerina", name = "sql"},
 	{org = "ballerina", name = "task"},
@@ -547,6 +551,7 @@ dependencies = [
 	{org = "ballerina", name = "url"},
 	{org = "ballerina", name = "uuid"},
 	{org = "ballerinai", name = "transaction"},
+	{org = "ballerinax", name = "h2.driver"},
 	{org = "ballerinax", name = "java.jdbc"},
 	{org = "ballerinax", name = "mysql"},
 	{org = "ballerinax", name = "mysql.driver"}

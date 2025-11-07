@@ -1,0 +1,314 @@
+/*
+ * Copyright (c) 2025, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+ *
+ * WSO2 Inc. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+plugins {
+    id 'java'
+}
+
+group = 'wso2'
+version = '2.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+// Project description
+description = 'WSO2 Integration Control Plane - Build Configuration'
+
+// Define subproject or module tasks
+task cleanICP {
+    description = 'Clean build artifacts'
+    doLast {
+        println 'Cleaning Integration Control Plane...'
+        exec {
+            commandLine 'rm', '-rf', 'icp_server/target'
+        }
+        println 'Clean complete'
+    }
+}
+
+task buildICP {
+    description = 'Build the Integration Control Plane project'
+    dependsOn cleanICP
+    doLast {
+        println 'Building Integration Control Plane...'
+        exec {
+            workingDir 'icp_server'
+            commandLine 'bal', 'build'
+        }
+        println 'Build complete'
+    }
+}
+
+// Override default build task
+build.dependsOn buildICP
+
+task run {
+    description = 'Run the ICP Server locally'
+    dependsOn buildICP
+    doLast {
+        println 'Starting ICP Server...'
+        exec {
+            workingDir 'icp_server'
+            commandLine 'bal', 'run'
+        }
+    }
+}
+
+task testICP {
+    description = 'Run tests for the Integration Control Plane'
+    doLast {
+        println 'Running tests...'
+        exec {
+            workingDir 'icp_server'
+            commandLine 'bal', 'test'
+        }
+        println 'Tests complete'
+    }
+}
+
+task buildDocker {
+    description = 'Build Docker image using docker-compose'
+    doLast {
+        println 'Building Docker image...'
+        exec {
+            workingDir 'icp_server'
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'up', '--build'
+        }
+        println 'Docker build complete'
+    }
+}
+
+task testDocker {
+    description = 'Run tests using Docker Compose'
+    doLast {
+        println 'Running tests with Docker Compose...'
+        exec {
+            workingDir 'icp_server'
+            commandLine 'docker-compose', '-f', 'docker-compose.test.yml', 'up', '--build'
+        }
+        println 'Docker tests complete'
+    }
+}
+
+task stopDocker {
+    description = 'Stop Docker containers'
+    doLast {
+        println 'Stopping Docker containers...'
+        exec {
+            workingDir 'icp_server'
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'down'
+        }
+        println 'Docker containers stopped'
+    }
+}
+
+task packageICP {
+    description = 'Package the ICP executable JAR into a zip file'
+    dependsOn buildICP
+    doLast {
+        println 'Packaging Integration Control Plane...'
+        
+        def jarFile = file('icp_server/target/bin/icp_server.jar')
+        def zipDir = file('build/distribution')
+        def zipFile = file("build/distribution/icp-server-${version}.zip")
+        
+        if (!zipDir.exists()) {
+            zipDir.mkdirs()
+        }
+        
+        if (jarFile.exists()) {
+            // Create a temporary directory for packaging
+            def tempDir = file('build/temp-package')
+            if (tempDir.exists()) {
+                delete tempDir
+            }
+            tempDir.mkdirs()
+            
+            // Copy JAR to bin directory
+            def binDir = file("${tempDir}/bin")
+            if (!binDir.exists()) {
+                binDir.mkdirs()
+            }
+            copy {
+                from jarFile
+                into binDir
+                rename { 'icp-server.jar' }
+            }
+            
+            // Copy README and LICENSE if they exist
+            if (file('README.md').exists()) {
+                copy {
+                    from 'README.md'
+                    into tempDir
+                }
+            }
+            
+            if (file('LICENSE').exists()) {
+                copy {
+                    from 'LICENSE'
+                    into tempDir
+                }
+            }
+            
+            // Copy Config.toml if it exists
+            if (file('icp_server/Config.toml').exists()) {
+                def confDir = file("${tempDir}/conf")
+                if (!confDir.exists()) {
+                    confDir.mkdirs()
+                }
+                copy {
+                    from 'icp_server/Config.toml'
+                    into confDir
+                    rename { 'deployment.toml' }
+                }
+            }
+            
+            // Copy conf/security folder if it exists (from root conf folder)
+            if (file('conf/security').exists()) {
+                def securityDir = file("${tempDir}/conf/security")
+                if (!securityDir.exists()) {
+                    securityDir.mkdirs()
+                }
+                copy {
+                    from 'conf/security'
+                    into securityDir
+                }
+            }
+            
+            
+            // Copy database file if it exists
+            if (file('icp_server/database/icpdb.mv.db').exists()) {
+                def dbDir = file("${tempDir}/bin/database")
+                if (!dbDir.exists()) {
+                    dbDir.mkdirs()
+                }
+                copy {
+                    from 'icp_server/database/icpdb.mv.db'
+                    into dbDir
+                }
+            }
+            
+            // Copy scripts from distribution/scripts folder to bin directory only
+            def scriptsDir = file('distribution/scripts')
+            if (scriptsDir.exists()) {
+                // Copy only to bin directory
+                def tempBinDir = file("${tempDir}/bin")
+                if (!tempBinDir.exists()) {
+                    tempBinDir.mkdirs()
+                }
+                
+                copy {
+                    from scriptsDir
+                    into tempBinDir
+                }
+                
+                // Make shell scripts executable
+                new ProcessBuilder('chmod', '+x', file("${tempBinDir}/run.sh").absolutePath).start().waitFor()
+            } else {
+                println "Warning: Scripts directory not found at ${scriptsDir.absolutePath}"
+                println "Please ensure distribution/scripts folder exists with run.sh and run.bat"
+            }
+            
+            // Create the zip file
+            println "Creating zip file: ${zipFile.absolutePath}"
+            exec {
+                workingDir 'build/temp-package'
+                commandLine 'zip', '-r', zipFile.absolutePath, '.'
+            }
+            
+            // Clean up temp directory
+            delete tempDir
+            
+            println "Package created: ${zipFile.absolutePath}"
+            println "Archive contents:"
+            exec {
+                commandLine 'unzip', '-l', zipFile.absolutePath
+            }
+        } else {
+            println "ERROR: JAR file not found at ${jarFile.absolutePath}"
+            println "Please run 'gradle buildICP' first"
+        }
+    }
+}
+
+// Make build task depend on packageICP (which depends on buildICP)
+build.dependsOn packageICP
+
+// Build lifecycle tasks
+task assembleICP {
+    description = 'Build and package the project'
+    dependsOn buildICP, packageICP
+}
+
+task checkICP {
+    description = 'Run checks and tests'
+    dependsOn testICP
+}
+
+// Help task
+task helpICP {
+    description = 'Show build tasks'
+    doLast {
+        println """
+        WSO2 Integration Control Plane - Gradle Build Tasks
+        ====================================================
+        
+        Available tasks:
+        
+        Build Tasks:
+        - gradle buildICP        : Build the project (Ballerina compilation)
+        - gradle cleanICP        : Clean build artifacts
+        - gradle assembleICP     : Build and package the project (creates ZIP)
+        - gradle packageICP      : Package the JAR into a distributable ZIP file
+        
+        Execution Tasks:
+        - gradle run             : Run the ICP Server locally
+        - gradle testICP         : Run unit tests
+        
+        Docker Tasks:
+        - gradle buildDocker     : Build and run with Docker Compose
+        - gradle testDocker      : Run tests with Docker Compose
+        - gradle stopDocker      : Stop Docker containers
+        
+        Other Tasks:
+        - gradle checkICP        : Run checks and tests
+        - gradle helpICP         : Show this help message
+        
+        Prerequisites:
+        - Ballerina SDK installed for local builds
+        - Docker and Docker Compose for container builds
+        
+        Example workflow:
+        1. gradle buildICP       # Build the project
+        2. gradle testICP        # Run tests
+        3. gradle run            # Run the server
+        
+        For Docker-based workflow:
+        1. gradle buildDocker    # Build and run with Docker
+        """
+    }
+}
+
+// Default task
+defaultTasks 'helpICP'
+
+// Wrapper configuration
+wrapper {
+    gradleVersion = '8.5'
+}

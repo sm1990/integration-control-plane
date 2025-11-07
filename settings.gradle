@@ -1,0 +1,13 @@
+rootProject.name = 'integration-control-plane'
+
+// Include subprojects if needed in the future
+// include 'icp_server'
+// include 'icp_frontend'
+// include 'icp_cli'
+
+println """
+╔════════════════════════════════════════════════╗
+║  WSO2 Integration Control Plane                ║
+║  Gradle Build Configuration                    ║
+╚════════════════════════════════════════════════╝
+"""

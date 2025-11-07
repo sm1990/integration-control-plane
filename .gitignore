@@ -127,4 +127,52 @@ typings/
 # webpack
 dist/
 
+# Gradle Build Files
+.gradle/
+gradle/
+build/
+dist/
+*.jar
+*.war
+out/
+bin/
+target/
+
+# Gradle wrapper
+gradle-wrapper.jar
+
+# Local Gradle cache
+.gradle
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Editor backups
+*.backup
+*.bak
+
 

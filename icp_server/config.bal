@@ -17,7 +17,6 @@
 import icp_server.types;
 
 import ballerina/file;
-import ballerina/os;
 
 // Server configuration
 configurable int serverPort = 9445;
@@ -25,9 +24,9 @@ configurable string serverHost = "0.0.0.0";
 configurable string organization = "WSO2 Inc.";
 configurable int graphqlPort = 9446;
 configurable int observabilityServerPort = 9448;
-configurable string keystorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaKeystore.p12");
+configurable string keystorePath = check file:joinPath("..", "conf", "security", "ballerinaKeystore.p12");
 configurable string keystorePassword = "ballerina";
-configurable string truststorePath = check file:joinPath(os:getEnv("BALLERINA_HOME"), "bre", "security", "ballerinaTruststore.p12");
+configurable string truststorePath = check file:joinPath("..", "conf", "security", "ballerinaTruststore.p12");
 configurable string truststorePassword = "ballerina";
 configurable types:DeploymentType deploymentType = "VM";
 
@@ -131,7 +130,7 @@ public isolated function validateSSOConfig(types:SSOConfig config) returns error
     if config.scopes.length() == 0 {
         return error("'ssoScopes' must contain at least 'openid' scope");
     }
-    
+
     boolean hasOpenIdScope = false;
     foreach string scope in config.scopes {
         if scope == "openid" {
@@ -139,7 +138,7 @@ public isolated function validateSSOConfig(types:SSOConfig config) returns error
             break;
         }
     }
-    
+
     if !hasOpenIdScope {
         return error("'ssoScopes' must include 'openid' scope");
     }

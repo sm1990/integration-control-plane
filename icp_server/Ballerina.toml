@@ -5,7 +5,3 @@ version = "2.0.0-SNAPSHOT"
 license = ["Apache-2.0"]
 description = "ICP Server"    
 
-[[platform.java17.dependency]]
-artifactId = "h2"
-version = "2.2.224"
-groupId = "com.h2database"

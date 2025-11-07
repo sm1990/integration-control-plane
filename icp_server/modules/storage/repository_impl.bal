@@ -2690,15 +2690,6 @@ public isolated function getComponentByProjectAndHandler(string projectId, strin
     }
 
     types:ComponentInDB component = componentRecords[0];
-
-    // Parse deployment pipeline IDs from JSON if present
-    string[]? deploymentPipelineIds = ();
-    string? pipelineIdsJsonStr = component.project_deployment_pipeline_ids;
-    if pipelineIdsJsonStr is string {
-        json pipelineIdsJsonParsed = check pipelineIdsJsonStr.fromJsonString();
-        deploymentPipelineIds = check pipelineIdsJsonParsed.cloneWithType();
-    }
-
     return {
         // Basic Identity Fields
         id: component.component_id,

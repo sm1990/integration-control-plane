@@ -17,7 +17,7 @@
 # under the License.
 
 # ICP Server Launcher Script
-# Usage: ./run.sh
+# Usage: ./icp.sh
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 JAR_FILE="$SCRIPT_DIR/icp-server.jar"

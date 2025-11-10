@@ -109,11 +109,11 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 # =============================================================================
 [icp_server.storage]
 # Primary database connection settings
-dbHost = "mysql-db"
-dbPort = 3306
-dbName = "icp_database"
-dbUser = "root"
-dbPassword = "my-secret-pw"
+# dbHost = "mysql-db"
+# dbPort = 3306
+# dbName = "icp_database"
+# dbUser = "root"
+# dbPassword = "my-secret-pw"
 
 
 dbType = "h2"  # Options: mysql, h2

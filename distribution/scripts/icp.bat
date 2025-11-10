@@ -16,7 +16,7 @@ REM specific language governing permissions and limitations
 REM under the License.
 
 REM ICP Server Launcher Script
-REM Usage: run.bat
+REM Usage: icp.bat
 
 setlocal enabledelayedexpansion
 set SCRIPT_DIR=%~dp0

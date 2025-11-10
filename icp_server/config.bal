@@ -28,6 +28,11 @@ configurable string keystorePath = check file:joinPath("..", "conf", "security",
 configurable string keystorePassword = "ballerina";
 configurable string truststorePath = check file:joinPath("..", "conf", "security", "ballerinaTruststore.p12");
 configurable string truststorePassword = "ballerina";
+
+configurable int webServerPort = 3000;
+configurable string webServerKeystorePath = check file:joinPath("..", "conf", "security", "keystore.p12");
+configurable string webServerKeystorePassword = "changeit";
+
 configurable types:DeploymentType deploymentType = "VM";
 
 configurable int heartbeatTimeoutSeconds = 300;

@@ -991,8 +991,8 @@ INSERT INTO
     )
 VALUES (
         '640e8400-e29b-41d4-a716-446655440001',
-        'sample_component',
-        'Sample component for testing',
+        'sample_integration',
+        'Sample integration for testing',
         '550e8400-e29b-41d4-a716-446655440000',
         '650e8400-e29b-41d4-a716-446655440001'
     );

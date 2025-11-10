@@ -618,7 +618,11 @@ CREATE TABLE runtime_connectors (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_runtime_connectors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
-    UNIQUE KEY uk_runtime_connector (runtime_id, connector_name, package),
+    UNIQUE KEY uk_runtime_connector (
+        runtime_id,
+        connector_name,
+        package
+    ),
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_connector_name (connector_name),
     INDEX idx_state (state)
@@ -641,7 +645,11 @@ CREATE TABLE runtime_registry_resources (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_runtime_registry_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
-    UNIQUE KEY uk_runtime_registry_resource (runtime_id, resource_name, path(255)),
+    UNIQUE KEY uk_runtime_registry_resource (
+        runtime_id,
+        resource_name,
+        path (255)
+    ),
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_resource_name (resource_name),
     INDEX idx_resource_type (resource_type),
@@ -1001,8 +1009,8 @@ INSERT INTO
     )
 VALUES (
         '640e8400-e29b-41d4-a716-446655440001',
-        'sample_component',
-        'Sample component for testing',
+        'sample_integration',
+        'Sample integration for testing',
         '550e8400-e29b-41d4-a716-446655440000',
         '650e8400-e29b-41d4-a716-446655440001'
     );

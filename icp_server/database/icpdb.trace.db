@@ -1,0 +1,402 @@
+2025-11-12 15:10:21.658290+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "C.COMPONENT_TYPE" not found; SQL statement:
+SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+                                                  c.updated_by as component_updated_by,
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                           FROM components c 
+                                           JOIN projects p ON c.project_id = p.project_id  WHERE 1=1   AND c.project_id =  ?   ORDER BY c.name ASC [42122-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:514)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	at org.h2.message.DbException.get(DbException.java:223)
+	at org.h2.message.DbException.get(DbException.java:199)
+	at org.h2.expression.ExpressionColumn.getColumnException(ExpressionColumn.java:244)
+	at org.h2.expression.ExpressionColumn.optimizeOther(ExpressionColumn.java:226)
+	at org.h2.expression.ExpressionColumn.optimize(ExpressionColumn.java:213)
+	at org.h2.command.query.Select.optimizeExpressionsAndPreserveAliases(Select.java:1344)
+	at org.h2.command.query.Select.prepareExpressions(Select.java:1225)
+	at org.h2.command.query.Query.prepare(Query.java:232)
+	at org.h2.command.Parser.prepareCommand(Parser.java:489)
+	at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:645)
+	at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:561)
+	at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1164)
+	at org.h2.jdbc.JdbcPreparedStatement.<init>(JdbcPreparedStatement.java:93)
+	at org.h2.jdbc.JdbcConnection.prepareStatement(JdbcConnection.java:315)
+	at com.zaxxer.hikari.pool.ProxyConnection.prepareStatement(ProxyConnection.java:337)
+	at com.zaxxer.hikari.pool.HikariProxyConnection.prepareStatement(HikariProxyConnection.java)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQueryExecutable(QueryProcessor.java:111)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.lambda$nativeQuery$0(QueryProcessor.java:85)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:85)
+	at io.ballerina.stdlib.java.jdbc.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:44)
+	at ballerinax.java&0046jdbc.1.$value$Client.query(client.bal:56)
+	at ballerinax.java&0046jdbc.1.$value$Client.call(client.bal)
+	at wso2.icp_server&0046storage.2.repository_impl.getComponents(repository_impl.bal:2464)
+	at wso2.icp_server.2.$value$$anonType$_174.$get$components(graphql_api.bal:605)
+	at wso2.icp_server.2.$value$$anonType$_174.call(graphql_api.bal)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:178)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:85)
+	at io.ballerina.runtime.internal.BalRuntime.callMethod(BalRuntime.java:122)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.callResourceMethod(Engine.java:146)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.lambda$getResultObject$0(Engine.java:137)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.getResultObject(Engine.java:134)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.executeQueryResource(Engine.java:157)
+	at ballerina.graphql.1.$value$Engine.executeQueryResource(engine.bal:500)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolveResourceMethod(engine.bal:399)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.getFieldValue(engine.bal:454)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolve(engine.bal:367)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.execute(executor_visitor.bal:122)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.visitField(executor_visitor.bal:84)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.accept(field_node.bal:38)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.call(field_node.bal)
+	at ballerina.graphql.1.lambdas.$_generated5$value$ExecutorVisitor.$gen$(ballerina&0047graphql&0046parser&00581&0058$anonType$SelectionNode$_0 & readonly)&0046accept$lambda$0$($value$ExecutorVisitor:153)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.lambda$startIsolatedWorker$0(Scheduler.java:120)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+2025-11-12 15:10:21.740652+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "C.COMPONENT_TYPE" not found; SQL statement:
+SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+                                                  c.updated_by as component_updated_by,
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                           FROM components c 
+                                           JOIN projects p ON c.project_id = p.project_id  WHERE 1=1   AND c.project_id =  ?   ORDER BY c.name ASC [42122-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:514)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	at org.h2.message.DbException.get(DbException.java:223)
+	at org.h2.message.DbException.get(DbException.java:199)
+	at org.h2.expression.ExpressionColumn.getColumnException(ExpressionColumn.java:244)
+	at org.h2.expression.ExpressionColumn.optimizeOther(ExpressionColumn.java:226)
+	at org.h2.expression.ExpressionColumn.optimize(ExpressionColumn.java:213)
+	at org.h2.command.query.Select.optimizeExpressionsAndPreserveAliases(Select.java:1344)
+	at org.h2.command.query.Select.prepareExpressions(Select.java:1225)
+	at org.h2.command.query.Query.prepare(Query.java:232)
+	at org.h2.command.Parser.prepareCommand(Parser.java:489)
+	at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:645)
+	at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:561)
+	at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1164)
+	at org.h2.jdbc.JdbcPreparedStatement.<init>(JdbcPreparedStatement.java:93)
+	at org.h2.jdbc.JdbcConnection.prepareStatement(JdbcConnection.java:315)
+	at com.zaxxer.hikari.pool.ProxyConnection.prepareStatement(ProxyConnection.java:337)
+	at com.zaxxer.hikari.pool.HikariProxyConnection.prepareStatement(HikariProxyConnection.java)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQueryExecutable(QueryProcessor.java:111)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.lambda$nativeQuery$0(QueryProcessor.java:85)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:85)
+	at io.ballerina.stdlib.java.jdbc.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:44)
+	at ballerinax.java&0046jdbc.1.$value$Client.query(client.bal:56)
+	at ballerinax.java&0046jdbc.1.$value$Client.call(client.bal)
+	at wso2.icp_server&0046storage.2.repository_impl.getComponents(repository_impl.bal:2464)
+	at wso2.icp_server.2.$value$$anonType$_174.$get$components(graphql_api.bal:605)
+	at wso2.icp_server.2.$value$$anonType$_174.call(graphql_api.bal)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:178)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:85)
+	at io.ballerina.runtime.internal.BalRuntime.callMethod(BalRuntime.java:122)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.callResourceMethod(Engine.java:146)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.lambda$getResultObject$0(Engine.java:137)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.getResultObject(Engine.java:134)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.executeQueryResource(Engine.java:157)
+	at ballerina.graphql.1.$value$Engine.executeQueryResource(engine.bal:500)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolveResourceMethod(engine.bal:399)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.getFieldValue(engine.bal:454)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolve(engine.bal:367)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.execute(executor_visitor.bal:122)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.visitField(executor_visitor.bal:84)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.accept(field_node.bal:38)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.call(field_node.bal)
+	at ballerina.graphql.1.lambdas.$_generated5$value$ExecutorVisitor.$gen$(ballerina&0047graphql&0046parser&00581&0058$anonType$SelectionNode$_0 & readonly)&0046accept$lambda$0$($value$ExecutorVisitor:153)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.lambda$startIsolatedWorker$0(Scheduler.java:120)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+2025-11-12 15:10:32.254483+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "C.COMPONENT_TYPE" not found; SQL statement:
+SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+                                                  c.updated_by as component_updated_by,
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                           FROM components c 
+                                           JOIN projects p ON c.project_id = p.project_id  WHERE 1=1   AND c.project_id =  ?   ORDER BY c.name ASC [42122-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:514)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	at org.h2.message.DbException.get(DbException.java:223)
+	at org.h2.message.DbException.get(DbException.java:199)
+	at org.h2.expression.ExpressionColumn.getColumnException(ExpressionColumn.java:244)
+	at org.h2.expression.ExpressionColumn.optimizeOther(ExpressionColumn.java:226)
+	at org.h2.expression.ExpressionColumn.optimize(ExpressionColumn.java:213)
+	at org.h2.command.query.Select.optimizeExpressionsAndPreserveAliases(Select.java:1344)
+	at org.h2.command.query.Select.prepareExpressions(Select.java:1225)
+	at org.h2.command.query.Query.prepare(Query.java:232)
+	at org.h2.command.Parser.prepareCommand(Parser.java:489)
+	at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:645)
+	at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:561)
+	at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1164)
+	at org.h2.jdbc.JdbcPreparedStatement.<init>(JdbcPreparedStatement.java:93)
+	at org.h2.jdbc.JdbcConnection.prepareStatement(JdbcConnection.java:315)
+	at com.zaxxer.hikari.pool.ProxyConnection.prepareStatement(ProxyConnection.java:337)
+	at com.zaxxer.hikari.pool.HikariProxyConnection.prepareStatement(HikariProxyConnection.java)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQueryExecutable(QueryProcessor.java:111)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.lambda$nativeQuery$0(QueryProcessor.java:85)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:85)
+	at io.ballerina.stdlib.java.jdbc.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:44)
+	at ballerinax.java&0046jdbc.1.$value$Client.query(client.bal:56)
+	at ballerinax.java&0046jdbc.1.$value$Client.call(client.bal)
+	at wso2.icp_server&0046storage.2.repository_impl.getComponents(repository_impl.bal:2464)
+	at wso2.icp_server.2.$value$$anonType$_174.$get$components(graphql_api.bal:605)
+	at wso2.icp_server.2.$value$$anonType$_174.call(graphql_api.bal)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:178)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:85)
+	at io.ballerina.runtime.internal.BalRuntime.callMethod(BalRuntime.java:122)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.callResourceMethod(Engine.java:146)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.lambda$getResultObject$0(Engine.java:137)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.getResultObject(Engine.java:134)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.executeQueryResource(Engine.java:157)
+	at ballerina.graphql.1.$value$Engine.executeQueryResource(engine.bal:500)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolveResourceMethod(engine.bal:399)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.getFieldValue(engine.bal:454)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolve(engine.bal:367)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.execute(executor_visitor.bal:122)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.visitField(executor_visitor.bal:84)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.accept(field_node.bal:38)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.call(field_node.bal)
+	at ballerina.graphql.1.lambdas.$_generated5$value$ExecutorVisitor.$gen$(ballerina&0047graphql&0046parser&00581&0058$anonType$SelectionNode$_0 & readonly)&0046accept$lambda$0$($value$ExecutorVisitor:153)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.lambda$startIsolatedWorker$0(Scheduler.java:120)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+2025-11-12 15:10:32.338394+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "C.COMPONENT_TYPE" not found; SQL statement:
+SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+                                                  c.updated_by as component_updated_by,
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                           FROM components c 
+                                           JOIN projects p ON c.project_id = p.project_id  WHERE 1=1   AND c.project_id =  ?   ORDER BY c.name ASC [42122-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:514)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	at org.h2.message.DbException.get(DbException.java:223)
+	at org.h2.message.DbException.get(DbException.java:199)
+	at org.h2.expression.ExpressionColumn.getColumnException(ExpressionColumn.java:244)
+	at org.h2.expression.ExpressionColumn.optimizeOther(ExpressionColumn.java:226)
+	at org.h2.expression.ExpressionColumn.optimize(ExpressionColumn.java:213)
+	at org.h2.command.query.Select.optimizeExpressionsAndPreserveAliases(Select.java:1344)
+	at org.h2.command.query.Select.prepareExpressions(Select.java:1225)
+	at org.h2.command.query.Query.prepare(Query.java:232)
+	at org.h2.command.Parser.prepareCommand(Parser.java:489)
+	at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:645)
+	at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:561)
+	at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1164)
+	at org.h2.jdbc.JdbcPreparedStatement.<init>(JdbcPreparedStatement.java:93)
+	at org.h2.jdbc.JdbcConnection.prepareStatement(JdbcConnection.java:315)
+	at com.zaxxer.hikari.pool.ProxyConnection.prepareStatement(ProxyConnection.java:337)
+	at com.zaxxer.hikari.pool.HikariProxyConnection.prepareStatement(HikariProxyConnection.java)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQueryExecutable(QueryProcessor.java:111)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.lambda$nativeQuery$0(QueryProcessor.java:85)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:85)
+	at io.ballerina.stdlib.java.jdbc.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:44)
+	at ballerinax.java&0046jdbc.1.$value$Client.query(client.bal:56)
+	at ballerinax.java&0046jdbc.1.$value$Client.call(client.bal)
+	at wso2.icp_server&0046storage.2.repository_impl.getComponents(repository_impl.bal:2464)
+	at wso2.icp_server.2.$value$$anonType$_174.$get$components(graphql_api.bal:605)
+	at wso2.icp_server.2.$value$$anonType$_174.call(graphql_api.bal)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:178)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:85)
+	at io.ballerina.runtime.internal.BalRuntime.callMethod(BalRuntime.java:122)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.callResourceMethod(Engine.java:146)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.lambda$getResultObject$0(Engine.java:137)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.getResultObject(Engine.java:134)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.executeQueryResource(Engine.java:157)
+	at ballerina.graphql.1.$value$Engine.executeQueryResource(engine.bal:500)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolveResourceMethod(engine.bal:399)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.getFieldValue(engine.bal:454)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolve(engine.bal:367)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.execute(executor_visitor.bal:122)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.visitField(executor_visitor.bal:84)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.accept(field_node.bal:38)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.call(field_node.bal)
+	at ballerina.graphql.1.lambdas.$_generated5$value$ExecutorVisitor.$gen$(ballerina&0047graphql&0046parser&00581&0058$anonType$SelectionNode$_0 & readonly)&0046accept$lambda$0$($value$ExecutorVisitor:153)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.lambda$startIsolatedWorker$0(Scheduler.java:120)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+2025-11-12 15:10:52.544030+05:30 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "C.COMPONENT_TYPE" not found; SQL statement:
+SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+                                                  c.updated_by as component_updated_by,
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                           FROM components c 
+                                           JOIN projects p ON c.project_id = p.project_id  WHERE 1=1   AND c.project_id =  ?   ORDER BY c.name ASC [42122-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:514)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	at org.h2.message.DbException.get(DbException.java:223)
+	at org.h2.message.DbException.get(DbException.java:199)
+	at org.h2.expression.ExpressionColumn.getColumnException(ExpressionColumn.java:244)
+	at org.h2.expression.ExpressionColumn.optimizeOther(ExpressionColumn.java:226)
+	at org.h2.expression.ExpressionColumn.optimize(ExpressionColumn.java:213)
+	at org.h2.command.query.Select.optimizeExpressionsAndPreserveAliases(Select.java:1344)
+	at org.h2.command.query.Select.prepareExpressions(Select.java:1225)
+	at org.h2.command.query.Query.prepare(Query.java:232)
+	at org.h2.command.Parser.prepareCommand(Parser.java:489)
+	at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:645)
+	at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:561)
+	at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1164)
+	at org.h2.jdbc.JdbcPreparedStatement.<init>(JdbcPreparedStatement.java:93)
+	at org.h2.jdbc.JdbcConnection.prepareStatement(JdbcConnection.java:315)
+	at com.zaxxer.hikari.pool.ProxyConnection.prepareStatement(ProxyConnection.java:337)
+	at com.zaxxer.hikari.pool.HikariProxyConnection.prepareStatement(HikariProxyConnection.java)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQueryExecutable(QueryProcessor.java:111)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.lambda$nativeQuery$0(QueryProcessor.java:85)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:85)
+	at io.ballerina.stdlib.java.jdbc.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:44)
+	at ballerinax.java&0046jdbc.1.$value$Client.query(client.bal:56)
+	at ballerinax.java&0046jdbc.1.$value$Client.call(client.bal)
+	at wso2.icp_server&0046storage.2.repository_impl.getComponents(repository_impl.bal:2464)
+	at wso2.icp_server.2.$value$$anonType$_174.$get$components(graphql_api.bal:605)
+	at wso2.icp_server.2.$value$$anonType$_174.call(graphql_api.bal)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:178)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:85)
+	at io.ballerina.runtime.internal.BalRuntime.callMethod(BalRuntime.java:122)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.callResourceMethod(Engine.java:146)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.lambda$getResultObject$0(Engine.java:137)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.getResultObject(Engine.java:134)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.executeQueryResource(Engine.java:157)
+	at ballerina.graphql.1.$value$Engine.executeQueryResource(engine.bal:500)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolveResourceMethod(engine.bal:399)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.getFieldValue(engine.bal:454)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolve(engine.bal:367)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.execute(executor_visitor.bal:122)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.visitField(executor_visitor.bal:84)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.accept(field_node.bal:38)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.call(field_node.bal)
+	at ballerina.graphql.1.lambdas.$_generated5$value$ExecutorVisitor.$gen$(ballerina&0047graphql&0046parser&00581&0058$anonType$SelectionNode$_0 & readonly)&0046accept$lambda$0$($value$ExecutorVisitor:153)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.lambda$startIsolatedWorker$0(Scheduler.java:120)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)
+2025-11-12 15:10:52.635419+05:30 jdbc[3]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Column "C.COMPONENT_TYPE" not found; SQL statement:
+SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+                                                  c.updated_by as component_updated_by,
+                                                  p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
+                                                  p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
+                                                  p.description as project_description, p.default_deployment_pipeline_id as project_default_deployment_pipeline_id,
+                                                  p.deployment_pipeline_ids as project_deployment_pipeline_ids, p.type as project_type,
+                                                  p.git_provider as project_git_provider, p.git_organization as project_git_organization,
+                                                  p.repository as project_repository, p.branch as project_branch, p.secret_ref as project_secret_ref,
+                                                  p.created_by as project_created_by, p.updated_at as project_updated_at, p.updated_by as project_updated_by
+                                           FROM components c 
+                                           JOIN projects p ON c.project_id = p.project_id  WHERE 1=1   AND c.project_id =  ?   ORDER BY c.name ASC [42122-232]
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:514)
+	at org.h2.message.DbException.getJdbcSQLException(DbException.java:489)
+	at org.h2.message.DbException.get(DbException.java:223)
+	at org.h2.message.DbException.get(DbException.java:199)
+	at org.h2.expression.ExpressionColumn.getColumnException(ExpressionColumn.java:244)
+	at org.h2.expression.ExpressionColumn.optimizeOther(ExpressionColumn.java:226)
+	at org.h2.expression.ExpressionColumn.optimize(ExpressionColumn.java:213)
+	at org.h2.command.query.Select.optimizeExpressionsAndPreserveAliases(Select.java:1344)
+	at org.h2.command.query.Select.prepareExpressions(Select.java:1225)
+	at org.h2.command.query.Query.prepare(Query.java:232)
+	at org.h2.command.Parser.prepareCommand(Parser.java:489)
+	at org.h2.engine.SessionLocal.prepareLocal(SessionLocal.java:645)
+	at org.h2.engine.SessionLocal.prepareCommand(SessionLocal.java:561)
+	at org.h2.jdbc.JdbcConnection.prepareCommand(JdbcConnection.java:1164)
+	at org.h2.jdbc.JdbcPreparedStatement.<init>(JdbcPreparedStatement.java:93)
+	at org.h2.jdbc.JdbcConnection.prepareStatement(JdbcConnection.java:315)
+	at com.zaxxer.hikari.pool.ProxyConnection.prepareStatement(ProxyConnection.java:337)
+	at com.zaxxer.hikari.pool.HikariProxyConnection.prepareStatement(HikariProxyConnection.java)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQueryExecutable(QueryProcessor.java:111)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.lambda$nativeQuery$0(QueryProcessor.java:85)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.sql.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:85)
+	at io.ballerina.stdlib.java.jdbc.nativeimpl.QueryProcessor.nativeQuery(QueryProcessor.java:44)
+	at ballerinax.java&0046jdbc.1.$value$Client.query(client.bal:56)
+	at ballerinax.java&0046jdbc.1.$value$Client.call(client.bal)
+	at wso2.icp_server&0046storage.2.repository_impl.getComponents(repository_impl.bal:2464)
+	at wso2.icp_server.2.$value$$anonType$_174.$get$components(graphql_api.bal:605)
+	at wso2.icp_server.2.$value$$anonType$_174.call(graphql_api.bal)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:178)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.callMethod(Scheduler.java:85)
+	at io.ballerina.runtime.internal.BalRuntime.callMethod(BalRuntime.java:122)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.callResourceMethod(Engine.java:146)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.lambda$getResultObject$0(Engine.java:137)
+	at io.ballerina.runtime.internal.BalEnvironment.yieldAndRun(BalEnvironment.java:67)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.getResultObject(Engine.java:134)
+	at io.ballerina.stdlib.graphql.runtime.engine.Engine.executeQueryResource(Engine.java:157)
+	at ballerina.graphql.1.$value$Engine.executeQueryResource(engine.bal:500)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolveResourceMethod(engine.bal:399)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.getFieldValue(engine.bal:454)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$Engine.resolve(engine.bal:367)
+	at ballerina.graphql.1.$value$Engine.call(engine.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.execute(executor_visitor.bal:122)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql.1.$value$ExecutorVisitor.visitField(executor_visitor.bal:84)
+	at ballerina.graphql.1.$value$ExecutorVisitor.call(executor_visitor.bal)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.accept(field_node.bal:38)
+	at ballerina.graphql&0046parser.1.$value$FieldNode.call(field_node.bal)
+	at ballerina.graphql.1.lambdas.$_generated5$value$ExecutorVisitor.$gen$(ballerina&0047graphql&0046parser&00581&0058$anonType$SelectionNode$_0 & readonly)&0046accept$lambda$0$($value$ExecutorVisitor:153)
+	at io.ballerina.runtime.internal.scheduling.Scheduler.lambda$startIsolatedWorker$0(Scheduler.java:120)
+	at java.base/java.lang.VirtualThread.run(VirtualThread.java:329)

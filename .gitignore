@@ -132,13 +132,11 @@ dist/
 build/
 dist/
 *.jar
+!gradle/wrapper/gradle-wrapper.jar
 *.war
 out/
 bin/
 target/
-
-# Gradle wrapper
-gradle-wrapper.jar
 
 # Local Gradle cache
 .gradle

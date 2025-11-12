@@ -4,38 +4,66 @@ import icp_server.types as types;
 type schema_graphql service object {
     *graphql:Service;
     # Runtime Queries
-    resource function get runtimes(string? status, string? runtimeType, string? environmentId, string? projectId, string? componentId) returns Runtime[];
-    resource function get runtime(string runtimeId) returns Runtime?;
-    resource function get services(string runtimeId) returns Service[];
-    resource function get listeners(string runtimeId) returns Listener[];
+    # + return - List of runtimes
+    isolated resource function get runtimes(string? status, string? runtimeType, string? environmentId, string? projectId, string? componentId) returns Runtime[];
+    # + runtimeId - Runtime identifier
+    # + return - Runtime details or nil
+    isolated resource function get runtime(string runtimeId) returns Runtime?;
+    # + runtimeId - Runtime identifier
+    # + return - List of services
+    isolated resource function get services(string runtimeId) returns Service[];
+    # + runtimeId - Runtime identifier
+    # + return - List of listeners
+    isolated resource function get listeners(string runtimeId) returns Listener[];
     # Environment Queries
-    resource function get environments(string? orgUuid, string? 'type, string? projectId) returns Environment[];
-    resource function get adminEnvironments() returns Environment[];
+    # + return - List of environments
+    isolated resource function get environments(string? orgUuid, string? 'type, string? projectId) returns Environment[];
+    # + return - List of admin environments
+    isolated resource function get adminEnvironments() returns Environment[];
     # Project Queries
-    resource function get projects(int? orgId) returns Project[];
-    resource function get adminProjects() returns Project[];
-    resource function get project(int? orgId, string projectId) returns Project?;
-    resource function get projectCreationEligibility(int orgId, string orgHandler) returns ProjectCreationEligibility;
-    resource function get projectHandlerAvailability(int orgId, string projectHandlerCandidate) returns ProjectHandlerAvailability;
+    # + return - List of projects
+    isolated resource function get projects(int? orgId) returns Project[];
+    # + return - List of admin projects
+    isolated resource function get adminProjects() returns Project[];
+    # + return - Project details or nil
+    isolated resource function get project(int? orgId, string projectId) returns Project?;
+    isolated resource function get projectCreationEligibility(int orgId, string orgHandler) returns ProjectCreationEligibility;
+    isolated resource function get projectHandlerAvailability(int orgId, string projectHandlerCandidate) returns ProjectHandlerAvailability;
     # Component Queries
-    resource function get components(string orgHandler, string? projectId, ComponentOptionsInput? options) returns Component[];
-    resource function get component(string? componentId, string? projectId, string? componentHandler) returns Component?;
-    resource function get componentDeployment(string orgHandler, string orgUuid, string componentId, string versionId, string environmentId) returns ComponentDeployment?;
+    # + return - List of components
+    isolated resource function get components(string orgHandler, string? projectId, ComponentOptionsInput? options) returns Component[];
+    isolated resource function get component(string? componentId, string? projectId, string? componentHandler) returns Component?;
+    isolated resource function get componentDeployment(string orgHandler, string orgUuid, string componentId, string versionId, string environmentId) returns ComponentDeployment?;
     # Runtime Mutations
+    # + runtimeId - Runtime identifier
+    # + return - Success status
     remote function deleteRuntime(string runtimeId) returns boolean;
     # Environment Mutations
+    # + environment - Environment input
+    # + return - Created environment or nil
     remote function createEnvironment(EnvironmentInput environment) returns Environment?;
     remote function deleteEnvironment(string environmentId) returns boolean;
     remote function updateEnvironment(string environmentId, string? name, string? description) returns Environment?;
     remote function updateEnvironmentProductionStatus(string environmentId, boolean isProduction) returns Environment?;
     # Project Mutations
+    # + project - Project input
+    # + return - Created project or nil
     remote function createProject(ProjectInput project) returns Project?;
     remote function deleteProject(int orgId, string projectId) returns DeleteResponse;
+    # + project - Project update input
+    # + return - Updated project or nil
     remote function updateProject(ProjectUpdateInput project) returns Project?;
     # Component Mutations
+    # + component - Component input
+    # + return - Created component or nil
     remote function createComponent(ComponentInput component) returns Component?;
     remote function deleteComponent(string componentId) returns boolean;
     remote function deleteComponentV2(string orgHandler, string componentId, string projectId) returns DeleteComponentV2Response;
+    # + componentId - Component identifier
+    # + name - Component name
+    # + description - Component description
+    # + component - Component update input
+    # + return - Updated component
     remote function updateComponent(string? componentId, string? name, string? description, ComponentUpdateInput? component) returns Component;
 };
 
@@ -44,44 +72,66 @@ type schema_graphql service object {
 # ============================================
 # Component Filter Input
 public type ComponentFilterInput record {|
+    # Include system components in results
     boolean? withSystemComponents;
+    # Filter by display type
     string? displayType;
+    # Filter by status
     string? status;
+    # Filter by component sub type
     string? componentSubType;
 |};
 
 # Component Input
 public type ComponentInput record {|
     # Required Fields
+    # Project identifier
     string projectId;
+    # Component name
     string name;
     # Recommended Fields
+    # Display name
     string? displayName;
+    # Component description
     string? description;
     # Organization Context (optional - can derive from projectId)
+    # Organization ID
     int? orgId;
+    # Organization handler
     string? orgHandler;
     # Component Classification (optional - can have defaults)
+    # Component type (runtime type)
     types:RuntimeType? componentType;
+    # Technology stack
     string? technology;
     # Repository Integration (optional - for future use)
+    # Repository name
     string? repository;
+    # Branch name
     string? branch;
+    # Directory path
     string? directoryPath;
+    # Secret reference
     string? secretRef;
+    # Is public repository
     boolean? isPublicRepo;
 |};
 
 # Component Options Input
 public type ComponentOptionsInput record {|
+    # Filter options
     ComponentFilterInput? filter;
+    # Sort options
     ComponentSortInput? sort;
+    # Pagination options
     PaginationInput? pagination;
 |};
 
 # Component Sort Input
 public type ComponentSortInput record {|
+    # Field to sort by
     string sortField;
+    # Sort order (asc/desc)
     string sortOrder;
 |};
 
@@ -90,20 +140,34 @@ public type ComponentUpdateInput record {|
     # Required field - component ID to update
     string id;
     # Basic fields that can be updated
+    # Component name
     string? name;
+    # Display name
     string? displayName;
+    # Component description
     string? description;
+    # Component type (runtime type)
     types:RuntimeType? componentType;
+    # Version
     string? version;
+    # Labels
     string? labels;
+    # Service access mode
     string? serviceAccessMode;
     # Extended fields (accepted for compatibility but may not be persisted)
+    # API identifier
     string? apiId;
+    # HTTP based flag
     boolean? httpBased;
+    # Migration completed flag
     boolean? isMigrationCompleted;
+    # Skip deploy flag
     boolean? skipDeploy;
+    # Endpoint short URL enabled
     boolean? endpointShortUrlEnabled;
+    # Unified config mapping flag
     boolean? isUnifiedConfigMapping;
+    # Component sub type
     string? componentSubType;
 |};
 
@@ -112,44 +176,71 @@ public type ComponentUpdateInput record {|
 # ============================================
 # Environment Input
 public type EnvironmentInput record {|
+    # Environment name
     string name;
+    # Environment description
     string? description;
+    # Is production environment
     boolean? isProduction;
 |};
 
 # Pagination Input
 public type PaginationInput record {|
+    # Limit number of results
     int? 'limit;
+    # Offset for pagination
     int? offset;
+    # Cursor for pagination
     string? cursor;
 |};
 
 # Project Input
 public type ProjectInput record {|
+    # Organization ID
     int orgId;
+    # Organization handler
     string orgHandler;
+    # Project name
     string name;
+    # Project version
     string? version;
+    # Project handler
     string projectHandler;
+    # Handler
     string? handler;
+    # Region
     string? region;
+    # Project description
     string? description;
+    # Default deployment pipeline ID
     string? defaultDeploymentPipelineId;
+    # Deployment pipeline IDs
     string[]? deploymentPipelineIds;
+    # Project type
     string? 'type;
+    # Git provider
     string? gitProvider;
+    # Git organization
     string? gitOrganization;
+    # Repository name
     string? repository;
+    # Branch name
     string? branch;
+    # Secret reference
     string? secretRef;
 |};
 
 # Project Update Input
 public type ProjectUpdateInput record {|
+    # Project identifier
     string id;
+    # Organization ID
     int? orgId;
+    # Project name
     string? name;
+    # Project version
     string? version;
+    # Project description
     string? description;
 |};
 
@@ -167,13 +258,15 @@ public enum ArtifactState {
 # ============================================
 # API Revision Type
 # ============================================
-public distinct service class ApiRevision {
-    resource function get id() returns string {
+public isolated distinct service class ApiRevision {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get displayName() returns string {
+    # + return - Value
+    isolated resource function get displayName() returns string {
     
         return "";
     }
@@ -182,103 +275,121 @@ public distinct service class ApiRevision {
 # ============================================
 # API Version Type - API Management
 # ============================================
-public distinct service class ApiVersion {
+public isolated distinct service class ApiVersion {
     # Identity
-    resource function get id() returns string {
+    # + return - API version identifier
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get apiVersion() returns string {
+    # + return - API version number
+    isolated resource function get apiVersion() returns string {
     
         return "";
     }
 
-    resource function get versionId() returns string? {
+    # + return - Version identifier or nil
+    isolated resource function get versionId() returns string? {
     
         return ();
     }
 
     # Proxy Configuration
-    resource function get proxyName() returns string? {
+    # + return - Proxy name or nil
+    isolated resource function get proxyName() returns string? {
     
         return ();
     }
 
-    resource function get proxyUrl() returns string? {
+    # + return - Proxy URL or nil
+    isolated resource function get proxyUrl() returns string? {
     
         return ();
     }
 
-    resource function get proxyId() returns string? {
+    # + return - Proxy identifier or nil
+    isolated resource function get proxyId() returns string? {
     
         return ();
     }
 
     # State Management
-    resource function get state() returns string {
+    # + return - State
+    isolated resource function get state() returns string {
     
         return "";
     }
 
-    resource function get latest() returns boolean {
+    # + return - Boolean value
+    isolated resource function get latest() returns boolean {
     
         return false;
     }
 
     # Git Integration
-    resource function get branch() returns string? {
+    # + return - Branch name or nil
+    isolated resource function get branch() returns string? {
     
         return ();
     }
 
     # Access Control
-    resource function get accessibility() returns string? {
+    # + return - Accessibility setting or nil
+    isolated resource function get accessibility() returns string? {
     
         return ();
     }
 
     # Deployment Settings
-    resource function get autoDeployEnabled() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get autoDeployEnabled() returns boolean? {
     
         return ();
     }
 
     # Environment Versions
-    resource function get appEnvVersions() returns AppEnvVersion[]? {
+    # + return - Value or nil
+    isolated resource function get appEnvVersions() returns AppEnvVersion[]? {
     
         return ();
     }
 
     # Observability
-    resource function get cellDiagram() returns CellDiagram? {
+    # + return - Value or nil
+    isolated resource function get cellDiagram() returns CellDiagram? {
     
         return ();
     }
 
     # API Specification
-    resource function get openApiSpec() returns string? {
+    # + return - Value or nil
+    isolated resource function get openApiSpec() returns string? {
     
         return ();
     }
 
-    resource function get graphqlSchema() returns string? {
+    # + return - Value or nil
+    isolated resource function get graphqlSchema() returns string? {
     
         return ();
     }
 
     # Metadata
-    resource function get createdAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdAt() returns string? {
     
         return ();
     }
 
-    resource function get updatedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedAt() returns string? {
     
         return ();
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
@@ -287,18 +398,21 @@ public distinct service class ApiVersion {
 # ============================================
 # App Environment Version Type
 # ============================================
-public distinct service class AppEnvVersion {
-    resource function get environmentId() returns string {
+public isolated distinct service class AppEnvVersion {
+    # + return - Value
+    isolated resource function get environmentId() returns string {
     
         return "";
     }
 
-    resource function get releaseId() returns string {
+    # + return - Value
+    isolated resource function get releaseId() returns string {
     
         return "";
     }
 
-    resource function get release() returns Release? {
+    # + return - Value or nil
+    isolated resource function get release() returns Release? {
     
         return ();
     }
@@ -307,13 +421,15 @@ public distinct service class AppEnvVersion {
 # ============================================
 # Artifacts Type - Runtime Artifacts Container
 # ============================================
-public distinct service class Artifacts {
-    resource function get listeners() returns Listener[] {
+public isolated distinct service class Artifacts {
+    # + return - Array of values
+    isolated resource function get listeners() returns Listener[] {
     
         return [];
     }
 
-    resource function get services() returns Service[] {
+    # + return - Array of values
+    isolated resource function get services() returns Service[] {
     
         return [];
     }
@@ -322,23 +438,27 @@ public distinct service class Artifacts {
 # ============================================
 # Author Info Type - Commit Author Information
 # ============================================
-public distinct service class AuthorInfo {
-    resource function get name() returns string {
+public isolated distinct service class AuthorInfo {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get date() returns string {
+    # + return - Value
+    isolated resource function get date() returns string {
     
         return "";
     }
 
-    resource function get email() returns string {
+    # + return - Value
+    isolated resource function get email() returns string {
     
         return "";
     }
 
-    resource function get avatarUrl() returns string {
+    # + return - Value
+    isolated resource function get avatarUrl() returns string {
     
         return "";
     }
@@ -347,53 +467,64 @@ public distinct service class AuthorInfo {
 # ============================================
 # Build Info Type - Build Information
 # ============================================
-public distinct service class BuildInfo {
-    resource function get buildId() returns string {
+public isolated distinct service class BuildInfo {
+    # + return - Value
+    isolated resource function get buildId() returns string {
     
         return "";
     }
 
-    resource function get deployedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get deployedAt() returns string? {
     
         return ();
     }
 
-    resource function get 'commit() returns CommitInfo? {
+    # + return - Value or nil
+    isolated resource function get 'commit() returns CommitInfo? {
+        return ();
     }
 
-    resource function get sourceConfigMigrationStatus() returns SourceConfigMigrationStatus? {
+    # + return - Value or nil
+    isolated resource function get sourceConfigMigrationStatus() returns SourceConfigMigrationStatus? {
     
         return ();
     }
 
-    resource function get runId() returns string {
+    # + return - Value
+    isolated resource function get runId() returns string {
     
         return "";
     }
 }
 
-public distinct service class Buildpack {
-    resource function get id() returns string {
+public isolated distinct service class Buildpack {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get name() returns string? {
+    # + return - Value or nil
+    isolated resource function get name() returns string? {
     
         return ();
     }
 
-    resource function get language() returns string {
+    # + return - Value
+    isolated resource function get language() returns string {
     
         return "";
     }
 
-    resource function get version() returns string? {
+    # + return - Value or nil
+    isolated resource function get version() returns string? {
     
         return ();
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
@@ -402,53 +533,63 @@ public distinct service class Buildpack {
 # ============================================
 # Buildpack Configuration
 # ============================================
-public distinct service class BuildpackConfig {
-    resource function get versionId() returns string? {
+public isolated distinct service class BuildpackConfig {
+    # + return - Value or nil
+    isolated resource function get versionId() returns string? {
     
         return ();
     }
 
-    resource function get buildContext() returns string? {
+    # + return - Value or nil
+    isolated resource function get buildContext() returns string? {
     
         return ();
     }
 
-    resource function get languageVersion() returns string? {
+    # + return - Value or nil
+    isolated resource function get languageVersion() returns string? {
     
         return ();
     }
 
-    resource function get buildCommand() returns string? {
+    # + return - Value or nil
+    isolated resource function get buildCommand() returns string? {
     
         return ();
     }
 
-    resource function get runCommand() returns string? {
+    # + return - Value or nil
+    isolated resource function get runCommand() returns string? {
     
         return ();
     }
 
-    resource function get isUnitTestEnabled() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isUnitTestEnabled() returns boolean? {
     
         return ();
     }
 
-    resource function get pullLatestSubmodules() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get pullLatestSubmodules() returns boolean? {
     
         return ();
     }
 
-    resource function get enableTrivyScan() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get enableTrivyScan() returns boolean? {
     
         return ();
     }
 
-    resource function get buildpack() returns Buildpack? {
+    # + return - Value or nil
+    isolated resource function get buildpack() returns Buildpack? {
     
         return ();
     }
 
-    resource function get keyValues() returns KeyValue[]? {
+    # + return - Value or nil
+    isolated resource function get keyValues() returns KeyValue[]? {
     
         return ();
     }
@@ -457,43 +598,51 @@ public distinct service class BuildpackConfig {
 # ============================================
 # BYOC Build Configuration
 # ============================================
-public distinct service class ByocBuildConfig {
-    resource function get id() returns string? {
+public isolated distinct service class ByocBuildConfig {
+    # + return - Value or nil
+    isolated resource function get id() returns string? {
     
         return ();
     }
 
-    resource function get isMainContainer() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isMainContainer() returns boolean? {
     
         return ();
     }
 
-    resource function get containerId() returns string? {
+    # + return - Value or nil
+    isolated resource function get containerId() returns string? {
     
         return ();
     }
 
-    resource function get componentId() returns string? {
+    # + return - Value or nil
+    isolated resource function get componentId() returns string? {
     
         return ();
     }
 
-    resource function get repositoryId() returns string? {
+    # + return - Value or nil
+    isolated resource function get repositoryId() returns string? {
     
         return ();
     }
 
-    resource function get dockerContext() returns string? {
+    # + return - Value or nil
+    isolated resource function get dockerContext() returns string? {
     
         return ();
     }
 
-    resource function get dockerfilePath() returns string? {
+    # + return - Value or nil
+    isolated resource function get dockerfilePath() returns string? {
     
         return ();
     }
 
-    resource function get oasFilePath() returns string? {
+    # + return - Value or nil
+    isolated resource function get oasFilePath() returns string? {
     
         return ();
     }
@@ -502,73 +651,87 @@ public distinct service class ByocBuildConfig {
 # ============================================
 # BYOC Web App Build Configuration
 # ============================================
-public distinct service class ByocWebAppBuildConfig {
-    resource function get id() returns string? {
+public isolated distinct service class ByocWebAppBuildConfig {
+    # + return - Value or nil
+    isolated resource function get id() returns string? {
     
         return ();
     }
 
-    resource function get containerId() returns string? {
+    # + return - Value or nil
+    isolated resource function get containerId() returns string? {
     
         return ();
     }
 
-    resource function get componentId() returns string? {
+    # + return - Value or nil
+    isolated resource function get componentId() returns string? {
     
         return ();
     }
 
-    resource function get repositoryId() returns string? {
+    # + return - Value or nil
+    isolated resource function get repositoryId() returns string? {
     
         return ();
     }
 
-    resource function get dockerContext() returns string? {
+    # + return - Value or nil
+    isolated resource function get dockerContext() returns string? {
     
         return ();
     }
 
-    resource function get webAppType() returns string? {
+    # + return - Value or nil
+    isolated resource function get webAppType() returns string? {
     
         return ();
     }
 
-    resource function get port() returns int? {
+    # + return - Value or nil
+    isolated resource function get port() returns int? {
     
         return ();
     }
 
-    resource function get imageUrl() returns string? {
+    # + return - Value or nil
+    isolated resource function get imageUrl() returns string? {
     
         return ();
     }
 
-    resource function get registryId() returns string? {
+    # + return - Value or nil
+    isolated resource function get registryId() returns string? {
     
         return ();
     }
 
-    resource function get dockerfile() returns string? {
+    # + return - Value or nil
+    isolated resource function get dockerfile() returns string? {
     
         return ();
     }
 
-    resource function get buildCommand() returns string? {
+    # + return - Value or nil
+    isolated resource function get buildCommand() returns string? {
     
         return ();
     }
 
-    resource function get packageManagerVersion() returns string? {
+    # + return - Value or nil
+    isolated resource function get packageManagerVersion() returns string? {
     
         return ();
     }
 
-    resource function get outputDirectory() returns string? {
+    # + return - Value or nil
+    isolated resource function get outputDirectory() returns string? {
     
         return ();
     }
 
-    resource function get enableTrivyScan() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get enableTrivyScan() returns boolean? {
     
         return ();
     }
@@ -577,23 +740,27 @@ public distinct service class ByocWebAppBuildConfig {
 # ============================================
 # Cell Diagram - Observability & Architecture View
 # ============================================
-public distinct service class CellDiagram {
-    resource function get data() returns string? {
+public isolated distinct service class CellDiagram {
+    # + return - Value or nil
+    isolated resource function get data() returns string? {
     
         return ();
     }
 
-    resource function get message() returns string? {
+    # + return - Value or nil
+    isolated resource function get message() returns string? {
     
         return ();
     }
 
-    resource function get errorName() returns string? {
+    # + return - Value or nil
+    isolated resource function get errorName() returns string? {
     
         return ();
     }
 
-    resource function get success() returns boolean {
+    # + return - Boolean value
+    isolated resource function get success() returns boolean {
     
         return false;
     }
@@ -602,23 +769,27 @@ public distinct service class CellDiagram {
 # ============================================
 # Commit Info Type - Git Commit Information
 # ============================================
-public distinct service class CommitInfo {
-    resource function get author() returns AuthorInfo {
+public isolated distinct service class CommitInfo {
+    # + return - Value
+    isolated resource function get author() returns AuthorInfo {
         // Return a dummy AuthorInfo object
         return new AuthorInfo();
     }
 
-    resource function get sha() returns string {
+    # + return - Value
+    isolated resource function get sha() returns string {
     
         return "";
     }
 
-    resource function get message() returns string {
+    # + return - Value
+    isolated resource function get message() returns string {
     
         return "";
     }
 
-    resource function get isLatest() returns boolean {
+    # + return - Boolean value
+    isolated resource function get isLatest() returns boolean {
     
         return false;
     }
@@ -627,196 +798,237 @@ public distinct service class CommitInfo {
 # ============================================
 # Component Type - Application Component
 # ============================================
-public distinct service class Component {
+public isolated distinct service class Component {
     # Basic Identity Fields
-    resource function get id() returns string {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get projectId() returns string {
+    # + return - Value
+    isolated resource function get projectId() returns string {
     
         return "";
     }
 
-    resource function get orgHandler() returns string {
+    # + return - Value
+    isolated resource function get orgHandler() returns string {
     
         return "";
     }
 
-    resource function get orgId() returns int? {
+    # + return - Value or nil
+    isolated resource function get orgId() returns int? {
     
         return ();
     }
 
     # Component Metadata
-    resource function get name() returns string {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get handler() returns string {
+    # + return - Value
+    isolated resource function get handler() returns string {
     
         return "";
     }
 
-    resource function get displayName() returns string {
+    # + return - Value
+    isolated resource function get displayName() returns string {
     
         return "";
     }
 
-    resource function get displayType() returns string {
+    # + return - Value
+    isolated resource function get displayType() returns string {
     
         return "";
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
 
-    resource function get ownerName() returns string? {
+    # + return - Value or nil
+    isolated resource function get ownerName() returns string? {
     
         return ();
     }
 
     # Status Fields
-    resource function get status() returns string {
+    # + return - Value
+    isolated resource function get status() returns string {
     
         return "";
     }
 
-    resource function get initStatus() returns string? {
+    # + return - Value or nil
+    isolated resource function get initStatus() returns string? {
     
         return ();
     }
 
     # Version & Timestamps
-    resource function get version() returns string {
+    # + return - Value
+    isolated resource function get version() returns string {
     
         return "";
     }
 
-    resource function get createdAt() returns string {
+    # + return - Value
+    isolated resource function get createdAt() returns string {
     
         return "";
     }
 
-    resource function get lastBuildDate() returns string? {
+    # + return - Value or nil
+    isolated resource function get lastBuildDate() returns string? {
     
         return ();
     }
 
-    resource function get updatedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedAt() returns string? {
     
         return ();
     }
 
     # Classification
-    resource function get componentSubType() returns string? {
+    # + return - Value or nil
+    isolated resource function get componentSubType() returns string? {
     
         return ();
     }
 
-    resource function get componentType() returns types:RuntimeType? {
+    # + return - Value or nil
+    isolated resource function get componentType() returns types:RuntimeType? {
         return ();
     }
 
-    resource function get labels() returns string? {
+    # + return - Value or nil
+    isolated resource function get labels() returns string? {
         return "";
     }
 
     # System Component Flag
-    resource function get isSystemComponent() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isSystemComponent() returns boolean? {
         return ();
     }
 
     # Component Configuration Flags
-    resource function get apiId() returns string? {
+    # + return - Value or nil
+    isolated resource function get apiId() returns string? {
         return ();
     }
 
-    resource function get httpBased() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get httpBased() returns boolean? {
         return ();
     }
 
-    resource function get isMigrationCompleted() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isMigrationCompleted() returns boolean? {
         return ();
     }
 
-    resource function get skipDeploy() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get skipDeploy() returns boolean? {
         return ();
     }
 
-    resource function get endpointShortUrlEnabled() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get endpointShortUrlEnabled() returns boolean? {
         return ();
     }
 
-    resource function get isUnifiedConfigMapping() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isUnifiedConfigMapping() returns boolean? {
         return ();
     }
 
-    resource function get serviceAccessMode() returns string? {
+    # + return - Value or nil
+    isolated resource function get serviceAccessMode() returns string? {
         return ();
     }
 
     # Nested Objects
-    resource function get repository() returns Repository? {
+    # + return - Value or nil
+    isolated resource function get repository() returns Repository? {
         return ();
     }
 
-    resource function get apiVersions() returns ApiVersion[]? {
+    # + return - Value or nil
+    isolated resource function get apiVersions() returns ApiVersion[]? {
         return ();
     }
 
-    resource function get deploymentTracks() returns DeploymentTrack[]? {
+    # + return - Value or nil
+    isolated resource function get deploymentTracks() returns DeploymentTrack[]? {
         return ();
     }
 
     # Git Integration (for components with source control)
-    resource function get gitProvider() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitProvider() returns string? {
         return ();
     }
 
-    resource function get gitOrganization() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitOrganization() returns string? {
         return ();
     }
 
-    resource function get gitRepository() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitRepository() returns string? {
         return ();
     }
 
-    resource function get branch() returns string? {
+    # + return - Value or nil
+    isolated resource function get branch() returns string? {
         return ();
     }
 
     # Advanced Fields (used in specific views)
-    resource function get endpoints() returns Endpoint[]? {
+    # + return - Value or nil
+    isolated resource function get endpoints() returns Endpoint[]? {
         return ();
     }
 
-    resource function get environmentVariables() returns EnvironmentVariable[]? {
+    # + return - Value or nil
+    isolated resource function get environmentVariables() returns EnvironmentVariable[]? {
         return ();
     }
 
-    resource function get secrets() returns Secret[]? {
+    # + return - Value or nil
+    isolated resource function get secrets() returns Secret[]? {
         return ();
     }
 
     # Legacy fields for backward compatibility
-    resource function get createdBy() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdBy() returns string? {
         return ();
     }
 
-    resource function get updatedBy() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedBy() returns string? {
         return ();
     }
 
-    resource function get componentId() returns string? {
+    # + return - Value or nil
+    isolated resource function get componentId() returns string? {
         return ();
     }
 
-    resource function get project() returns Project? {
+    # + return - Value or nil
+    isolated resource function get project() returns Project? {
         return ();
     }
 }
@@ -824,73 +1036,87 @@ public distinct service class Component {
 # ============================================
 # Component Deployment Type - Deployment Information
 # ============================================
-public distinct service class ComponentDeployment {
-    resource function get environmentId() returns string {
+public isolated distinct service class ComponentDeployment {
+    # + return - Value
+    isolated resource function get environmentId() returns string {
     
         return "";
     }
 
-    resource function get configCount() returns int {
+    # + return - Integer value
+    isolated resource function get configCount() returns int {
     
         return 0;
     }
 
-    resource function get apiId() returns string? {
+    # + return - Value or nil
+    isolated resource function get apiId() returns string? {
     
         return ();
     }
 
-    resource function get releaseId() returns string {
+    # + return - Value
+    isolated resource function get releaseId() returns string {
     
         return "";
     }
 
-    resource function get apiRevision() returns ApiRevision? {
+    # + return - Value or nil
+    isolated resource function get apiRevision() returns ApiRevision? {
     
         return ();
     }
 
-    resource function get build() returns BuildInfo {
+    # + return - Value
+    isolated resource function get build() returns BuildInfo {
         // Return a dummy BuildInfo object  
         return new BuildInfo();
     }
 
-    resource function get imageUrl() returns string {
+    # + return - Value
+    isolated resource function get imageUrl() returns string {
     
         return "";
     }
 
-    resource function get invokeUrl() returns string {
+    # + return - Value
+    isolated resource function get invokeUrl() returns string {
     
         return "";
     }
 
-    resource function get versionId() returns string {
+    # + return - Value
+    isolated resource function get versionId() returns string {
     
         return "";
     }
 
-    resource function get deploymentStatus() returns string {
+    # + return - Value
+    isolated resource function get deploymentStatus() returns string {
     
         return "";
     }
 
-    resource function get deploymentStatusV2() returns string {
+    # + return - Value
+    isolated resource function get deploymentStatusV2() returns string {
     
         return "";
     }
 
-    resource function get version() returns string? {
+    # + return - Value or nil
+    isolated resource function get version() returns string? {
     
         return ();
     }
 
-    resource function get cron() returns string? {
+    # + return - Value or nil
+    isolated resource function get cron() returns string? {
     
         return ();
     }
 
-    resource function get cronTimezone() returns string? {
+    # + return - Value or nil
+    isolated resource function get cronTimezone() returns string? {
     
         return ();
     }
@@ -899,23 +1125,27 @@ public distinct service class ComponentDeployment {
 # ============================================
 # Delete Component V2 Response Type
 # ============================================
-public distinct service class DeleteComponentV2Response {
-    resource function get status() returns string {
+public isolated distinct service class DeleteComponentV2Response {
+    # + return - Value
+    isolated resource function get status() returns string {
     
         return "";
     }
 
-    resource function get canDelete() returns boolean {
+    # + return - Boolean value
+    isolated resource function get canDelete() returns boolean {
     
         return false;
     }
 
-    resource function get message() returns string {
+    # + return - Value
+    isolated resource function get message() returns string {
     
         return "";
     }
 
-    resource function get encodedData() returns string {
+    # + return - Value
+    isolated resource function get encodedData() returns string {
     
         return "";
     }
@@ -924,13 +1154,15 @@ public distinct service class DeleteComponentV2Response {
 # ============================================
 # Delete Response Type
 # ============================================
-public distinct service class DeleteResponse {
-    resource function get status() returns string {
+public isolated distinct service class DeleteResponse {
+    # + return - Value
+    isolated resource function get status() returns string {
     
         return "";
     }
 
-    resource function get details() returns string {
+    # + return - Value
+    isolated resource function get details() returns string {
     
         return "";
     }
@@ -939,84 +1171,99 @@ public distinct service class DeleteResponse {
 # ============================================
 # Deployment Track Type - CI/CD Configuration
 # ============================================
-public distinct service class DeploymentTrack {
+public isolated distinct service class DeploymentTrack {
     # Identity
-    resource function get id() returns string {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get componentId() returns string {
+    # + return - Value
+    isolated resource function get componentId() returns string {
     
         return "";
     }
 
     # Timestamps
-    resource function get createdAt() returns string {
+    # + return - Value
+    isolated resource function get createdAt() returns string {
     
         return "";
     }
 
-    resource function get updatedAt() returns string {
+    # + return - Value
+    isolated resource function get updatedAt() returns string {
     
         return "";
     }
 
     # Version Configuration
-    resource function get apiVersion() returns string {
+    # + return - Value
+    isolated resource function get apiVersion() returns string {
     
         return "";
     }
 
-    resource function get branch() returns string? {
+    # + return - Value or nil
+    isolated resource function get branch() returns string? {
     
         return ();
     }
 
-    resource function get latest() returns boolean {
+    # + return - Boolean value
+    isolated resource function get latest() returns boolean {
     
         return false;
     }
 
-    resource function get versionStrategy() returns string? {
+    # + return - Value or nil
+    isolated resource function get versionStrategy() returns string? {
     
         return ();
     }
 
     # Deployment Settings
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
 
-    resource function get autoDeployEnabled() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get autoDeployEnabled() returns boolean? {
     
         return ();
     }
 
-    resource function get autoBuildEnabled() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get autoBuildEnabled() returns boolean? {
     
         return ();
     }
 
     # Environment Settings
-    resource function get environmentName() returns string? {
+    # + return - Value or nil
+    isolated resource function get environmentName() returns string? {
     
         return ();
     }
 
-    resource function get environmentId() returns string? {
+    # + return - Value or nil
+    isolated resource function get environmentId() returns string? {
     
         return ();
     }
 
     # Deployment Status
-    resource function get deploymentStatus() returns string? {
+    # + return - Value or nil
+    isolated resource function get deploymentStatus() returns string? {
     
         return ();
     }
 
-    resource function get lastDeployedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get lastDeployedAt() returns string? {
     
         return ();
     }
@@ -1025,33 +1272,39 @@ public distinct service class DeploymentTrack {
 # ============================================
 # Docker Build Configuration
 # ============================================
-public distinct service class DockerBuildConfig {
-    resource function get id() returns string? {
+public isolated distinct service class DockerBuildConfig {
+    # + return - Value or nil
+    isolated resource function get id() returns string? {
     
         return ();
     }
 
-    resource function get dockerContext() returns string? {
+    # + return - Value or nil
+    isolated resource function get dockerContext() returns string? {
     
         return ();
     }
 
-    resource function get dockerfile() returns string? {
+    # + return - Value or nil
+    isolated resource function get dockerfile() returns string? {
     
         return ();
     }
 
-    resource function get port() returns int? {
+    # + return - Value or nil
+    isolated resource function get port() returns int? {
     
         return ();
     }
 
-    resource function get imageUrl() returns string? {
+    # + return - Value or nil
+    isolated resource function get imageUrl() returns string? {
     
         return ();
     }
 
-    resource function get registryId() returns string? {
+    # + return - Value or nil
+    isolated resource function get registryId() returns string? {
     
         return ();
     }
@@ -1060,42 +1313,50 @@ public distinct service class DockerBuildConfig {
 # ============================================
 # Endpoint Type - Service Endpoints
 # ============================================
-public distinct service class Endpoint {
-    resource function get id() returns string {
+public isolated distinct service class Endpoint {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get componentId() returns string {
+    # + return - Value
+    isolated resource function get componentId() returns string {
     
         return "";
     }
 
-    resource function get name() returns string {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get url() returns string {
+    # + return - Value
+    isolated resource function get url() returns string {
     
         return "";
     }
 
-    resource function get 'type() returns string {
+    # + return - Value
+    isolated resource function get 'type() returns string {
         return "";
     }
 
-    resource function get protocol() returns string? {
+    # + return - Value or nil
+    isolated resource function get protocol() returns string? {
     
         return ();
     }
 
-    resource function get port() returns int? {
+    # + return - Value or nil
+    isolated resource function get port() returns int? {
     
         return ();
     }
 
-    resource function get visibility() returns string? {
+    # + return - Value or nil
+    isolated resource function get visibility() returns string? {
     
         return ();
     }
@@ -1104,121 +1365,143 @@ public distinct service class Endpoint {
 # ============================================
 # Environment Type - Deployment Environment
 # ============================================
-public distinct service class Environment {
+public isolated distinct service class Environment {
     # Core Identity
-    resource function get environmentId() returns string {
+    # + return - Value
+    isolated resource function get environmentId() returns string {
     
         return "";
     }
 
-    resource function get id() returns string {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get name() returns string {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
 
-    resource function get isProduction() returns boolean {
+    # + return - Boolean value
+    isolated resource function get isProduction() returns boolean {
     
         return false;
     }
 
     # Choreo Environment Configuration
-    resource function get choreoEnv() returns string? {
+    # + return - Value or nil
+    isolated resource function get choreoEnv() returns string? {
     
         return ();
     }
 
     # Virtual Host Configuration
-    resource function get vhost() returns string? {
+    # + return - Value or nil
+    isolated resource function get vhost() returns string? {
     
         return ();
     }
 
-    resource function get sandboxVhost() returns string? {
+    # + return - Value or nil
+    isolated resource function get sandboxVhost() returns string? {
     
         return ();
     }
 
     # API Management
-    resource function get apiEnvName() returns string? {
+    # + return - Value or nil
+    isolated resource function get apiEnvName() returns string? {
     
         return ();
     }
 
-    resource function get apimEnvId() returns string? {
+    # + return - Value or nil
+    isolated resource function get apimEnvId() returns string? {
     
         return ();
     }
 
     # Migration & Deployment
-    resource function get isMigrating() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isMigrating() returns boolean? {
     
         return ();
     }
 
-    resource function get promoteFrom() returns string? {
+    # + return - Value or nil
+    isolated resource function get promoteFrom() returns string? {
     
         return ();
     }
 
     # Infrastructure
-    resource function get namespace() returns string? {
+    # + return - Value or nil
+    isolated resource function get namespace() returns string? {
     
         return ();
     }
 
-    resource function get dpId() returns string? {
+    # + return - Value or nil
+    isolated resource function get dpId() returns string? {
     
         return ();
     }
 
-    resource function get templateId() returns string {
+    # + return - Value
+    isolated resource function get templateId() returns string {
     
         return "";
     }
 
     # Features & Flags
-    resource function get critical() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get critical() returns boolean? {
     
         return ();
     }
 
-    resource function get isPdp() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isPdp() returns boolean? {
     
         return ();
     }
 
-    resource function get scaleToZeroEnabled() returns boolean {
+    # + return - Boolean value
+    isolated resource function get scaleToZeroEnabled() returns boolean {
     
         return false;
     }
 
     # Audit Fields
-    resource function get createdAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdAt() returns string? {
     
         return ();
     }
 
-    resource function get updatedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedAt() returns string? {
     
         return ();
     }
 
-    resource function get updatedBy() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedBy() returns string? {
     
         return ();
     }
 
-    resource function get createdBy() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdBy() returns string? {
     
         return ();
     }
@@ -1227,23 +1510,27 @@ public distinct service class Environment {
 # ============================================
 # Environment Variable Type
 # ============================================
-public distinct service class EnvironmentVariable {
-    resource function get key() returns string {
+public isolated distinct service class EnvironmentVariable {
+    # + return - Value
+    isolated resource function get key() returns string {
     
         return "";
     }
 
-    resource function get value() returns string? {
+    # + return - Value or nil
+    isolated resource function get value() returns string? {
     
         return ();
     }
 
-    resource function get isSecret() returns boolean {
+    # + return - Boolean value
+    isolated resource function get isSecret() returns boolean {
     
         return false;
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
@@ -1252,18 +1539,21 @@ public distinct service class EnvironmentVariable {
 # ============================================
 # Key Value Pair
 # ============================================
-public distinct service class KeyValue {
-    resource function get id() returns string? {
+public isolated distinct service class KeyValue {
+    # + return - Value or nil
+    isolated resource function get id() returns string? {
     
         return ();
     }
 
-    resource function get key() returns string {
+    # + return - Value
+    isolated resource function get key() returns string {
     
         return "";
     }
 
-    resource function get value() returns string? {
+    # + return - Value or nil
+    isolated resource function get value() returns string? {
     
         return ();
     }
@@ -1272,23 +1562,27 @@ public distinct service class KeyValue {
 # ============================================
 # Listener Type - Listener Artifacts
 # ============================================
-public distinct service class Listener {
-    resource function get name() returns string {
+public isolated distinct service class Listener {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get package() returns string {
+    # + return - Value
+    isolated resource function get package() returns string {
     
         return "";
     }
 
-    resource function get protocol() returns string {
+    # + return - Value
+    isolated resource function get protocol() returns string {
     
         return "";
     }
 
-    resource function get state() returns ArtifactState {
+    # + return - Value
+    isolated resource function get state() returns ArtifactState {
         return ENABLED;
     }
 }
@@ -1296,117 +1590,140 @@ public distinct service class Listener {
 # ============================================
 # Project Type - Project Details
 # ============================================
-public distinct service class Project {
-    resource function get id() returns string {
+public isolated distinct service class Project {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get projectId() returns string {
+    # + return - Value
+    isolated resource function get projectId() returns string {
     
         return "";
     }
 
-    resource function get orgId() returns int {
+    # + return - Integer value
+    isolated resource function get orgId() returns int {
     
         return 0;
     }
 
-    resource function get name() returns string {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get version() returns string? {
+    # + return - Value or nil
+    isolated resource function get version() returns string? {
     
         return ();
     }
 
-    resource function get createdDate() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdDate() returns string? {
     
         return ();
     }
 
-    resource function get handler() returns string {
+    # + return - Value
+    isolated resource function get handler() returns string {
     
         return "";
     }
 
-    resource function get extendedHandler() returns string? {
+    # + return - Value or nil
+    isolated resource function get extendedHandler() returns string? {
     
         return ();
     }
 
-    resource function get region() returns string? {
+    # + return - Value or nil
+    isolated resource function get region() returns string? {
     
         return ();
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
 
-    resource function get owner() returns string? {
+    # + return - Value or nil
+    isolated resource function get owner() returns string? {
     
         return ();
     }
 
-    resource function get labels() returns string[]? {
+    # + return - Value or nil
+    isolated resource function get labels() returns string[]? {
     
         return ();
     }
 
-    resource function get defaultDeploymentPipelineId() returns string? {
+    # + return - Value or nil
+    isolated resource function get defaultDeploymentPipelineId() returns string? {
     
         return ();
     }
 
-    resource function get deploymentPipelineIds() returns string[]? {
+    # + return - Value or nil
+    isolated resource function get deploymentPipelineIds() returns string[]? {
     
         return ();
     }
 
-    resource function get 'type() returns string? {
+    # + return - Value or nil
+    isolated resource function get 'type() returns string? {
         return ();
     }
 
-    resource function get gitProvider() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitProvider() returns string? {
     
         return ();
     }
 
-    resource function get gitOrganization() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitOrganization() returns string? {
     
         return ();
     }
 
-    resource function get repository() returns string? {
+    # + return - Value or nil
+    isolated resource function get repository() returns string? {
     
         return ();
     }
 
-    resource function get branch() returns string? {
+    # + return - Value or nil
+    isolated resource function get branch() returns string? {
     
         return ();
     }
 
-    resource function get secretRef() returns string? {
+    # + return - Value or nil
+    isolated resource function get secretRef() returns string? {
     
         return ();
     }
 
-    resource function get createdBy() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdBy() returns string? {
     
         return ();
     }
 
-    resource function get updatedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedAt() returns string? {
     
         return ();
     }
 
-    resource function get updatedBy() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedBy() returns string? {
     
         return ();
     }
@@ -1415,8 +1732,9 @@ public distinct service class Project {
 # ============================================
 # Project Creation Eligibility Type
 # ============================================
-public distinct service class ProjectCreationEligibility {
-    resource function get isProjectCreationAllowed() returns boolean {
+public isolated distinct service class ProjectCreationEligibility {
+    # + return - Boolean value
+    isolated resource function get isProjectCreationAllowed() returns boolean {
     
         return false;
     }
@@ -1425,52 +1743,61 @@ public distinct service class ProjectCreationEligibility {
 # ============================================
 # Project Handler Availability Type
 # ============================================
-public distinct service class ProjectHandlerAvailability {
-    resource function get handlerUnique() returns boolean {
+public isolated distinct service class ProjectHandlerAvailability {
+    # + return - Boolean value
+    isolated resource function get handlerUnique() returns boolean {
     
         return false;
     }
 
-    resource function get alternateHandlerCandidate() returns string? {
+    # + return - Value or nil
+    isolated resource function get alternateHandlerCandidate() returns string? {
     
         return ();
     }
 }
 
-public distinct service class Release {
-    resource function get id() returns string {
+public isolated distinct service class Release {
+    # + return - Value
+    isolated resource function get id() returns string {
     
         return "";
     }
 
-    resource function get metadata() returns ReleaseMetadata? {
+    # + return - Value or nil
+    isolated resource function get metadata() returns ReleaseMetadata? {
     
         return ();
     }
 
-    resource function get environmentId() returns string? {
+    # + return - Value or nil
+    isolated resource function get environmentId() returns string? {
     
         return ();
     }
 
-    resource function get environment() returns string? {
+    # + return - Value or nil
+    isolated resource function get environment() returns string? {
     
         return ();
     }
 
-    resource function get gitHash() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitHash() returns string? {
     
         return ();
     }
 
-    resource function get gitOpsHash() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitOpsHash() returns string? {
     
         return ();
     }
 }
 
-public distinct service class ReleaseMetadata {
-    resource function get choreoEnv() returns string? {
+public isolated distinct service class ReleaseMetadata {
+    # + return - Value or nil
+    isolated resource function get choreoEnv() returns string? {
     
         return ();
     }
@@ -1479,117 +1806,139 @@ public distinct service class ReleaseMetadata {
 # ============================================
 # Repository Type - Build & Deploy Configuration
 # ============================================
-public distinct service class Repository {
+public isolated distinct service class Repository {
     # Build Configurations
-    resource function get buildpackConfig() returns BuildpackConfig? {
+    # + return - Value or nil
+    isolated resource function get buildpackConfig() returns BuildpackConfig? {
     
         return ();
     }
 
-    resource function get byocWebAppBuildConfig() returns ByocWebAppBuildConfig? {
+    # + return - Value or nil
+    isolated resource function get byocWebAppBuildConfig() returns ByocWebAppBuildConfig? {
     
         return ();
     }
 
-    resource function get byocBuildConfig() returns ByocBuildConfig? {
+    # + return - Value or nil
+    isolated resource function get byocBuildConfig() returns ByocBuildConfig? {
     
         return ();
     }
 
-    resource function get dockerBuildConfig() returns DockerBuildConfig? {
+    # + return - Value or nil
+    isolated resource function get dockerBuildConfig() returns DockerBuildConfig? {
     
         return ();
     }
 
-    resource function get testRunnerConfig() returns TestRunnerConfig? {
+    # + return - Value or nil
+    isolated resource function get testRunnerConfig() returns TestRunnerConfig? {
     
         return ();
     }
 
     # Repository Source Information
-    resource function get repositoryType() returns string? {
+    # + return - Value or nil
+    isolated resource function get repositoryType() returns string? {
     
         return ();
     }
 
-    resource function get repositoryBranch() returns string? {
+    # + return - Value or nil
+    isolated resource function get repositoryBranch() returns string? {
     
         return ();
     }
 
-    resource function get repositorySubPath() returns string? {
+    # + return - Value or nil
+    isolated resource function get repositorySubPath() returns string? {
     
         return ();
     }
 
-    resource function get repositoryUrl() returns string? {
+    # + return - Value or nil
+    isolated resource function get repositoryUrl() returns string? {
     
         return ();
     }
 
     # Git Provider Information
-    resource function get bitbucketServerUrl() returns string? {
+    # + return - Value or nil
+    isolated resource function get bitbucketServerUrl() returns string? {
     
         return ();
     }
 
-    resource function get serverUrl() returns string? {
+    # + return - Value or nil
+    isolated resource function get serverUrl() returns string? {
     
         return ();
     }
 
-    resource function get gitProvider() returns string? {
+    # + return - Value or nil
+    isolated resource function get gitProvider() returns string? {
     
         return ();
     }
 
-    resource function get nameApp() returns string? {
+    # + return - Value or nil
+    isolated resource function get nameApp() returns string? {
     
         return ();
     }
 
-    resource function get nameConfig() returns string? {
+    # + return - Value or nil
+    isolated resource function get nameConfig() returns string? {
     
         return ();
     }
 
-    resource function get branch() returns string? {
+    # + return - Value or nil
+    isolated resource function get branch() returns string? {
     
         return ();
     }
 
-    resource function get branchApp() returns string? {
+    # + return - Value or nil
+    isolated resource function get branchApp() returns string? {
     
         return ();
     }
 
-    resource function get organizationApp() returns string? {
+    # + return - Value or nil
+    isolated resource function get organizationApp() returns string? {
     
         return ();
     }
 
-    resource function get organizationConfig() returns string? {
+    # + return - Value or nil
+    isolated resource function get organizationConfig() returns string? {
     
         return ();
     }
 
-    resource function get appSubPath() returns string? {
+    # + return - Value or nil
+    isolated resource function get appSubPath() returns string? {
     
         return ();
     }
 
     # Repository Flags
-    resource function get isUserManage() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isUserManage() returns boolean? {
     
         return ();
     }
 
-    resource function get isAuthorizedRepo() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isAuthorizedRepo() returns boolean? {
     
         return ();
     }
 
-    resource function get isBuildConfigurationMigrated() returns boolean? {
+    # + return - Value or nil
+    isolated resource function get isBuildConfigurationMigrated() returns boolean? {
     
         return ();
     }
@@ -1598,12 +1947,14 @@ public distinct service class Repository {
 # ============================================
 # Resource Type - Service Resources
 # ============================================
-public distinct service class Resource {
-    resource function get methods() returns string[] {
+public isolated distinct service class Resource {
+    # + return - Array of values
+    isolated resource function get methods() returns string[] {
         return [];
     }
 
-    resource function get url() returns string {
+    # + return - Value
+    isolated resource function get url() returns string {
     
         return "";
     }
@@ -1612,71 +1963,85 @@ public distinct service class Resource {
 # ============================================
 # Runtime Type - Runtime Instance Details
 # ============================================
-public distinct service class Runtime {
-    resource function get runtimeId() returns string {
+public isolated distinct service class Runtime {
+    # + return - Value
+    isolated resource function get runtimeId() returns string {
     
         return "";
     }
 
-    resource function get runtimeType() returns string {
+    # + return - Value
+    isolated resource function get runtimeType() returns string {
     
         return "";
     }
 
-    resource function get status() returns string {
+    # + return - Value
+    isolated resource function get status() returns string {
     
         return "";
     }
 
-    resource function get version() returns string? {
+    # + return - Value or nil
+    isolated resource function get version() returns string? {
     
         return ();
     }
 
-    resource function get component() returns Component {
+    # + return - Value
+    isolated resource function get component() returns Component {
         return new Component();
     }
 
-    resource function get environment() returns Environment {
+    # + return - Value
+    isolated resource function get environment() returns Environment {
         return new Environment();
     }
 
-    resource function get platformName() returns string? {
+    # + return - Value or nil
+    isolated resource function get platformName() returns string? {
     
         return ();
     }
 
-    resource function get platformVersion() returns string? {
+    # + return - Value or nil
+    isolated resource function get platformVersion() returns string? {
     
         return ();
     }
 
-    resource function get platformHome() returns string? {
+    # + return - Value or nil
+    isolated resource function get platformHome() returns string? {
     
         return ();
     }
 
-    resource function get osName() returns string? {
+    # + return - Value or nil
+    isolated resource function get osName() returns string? {
     
         return ();
     }
 
-    resource function get osVersion() returns string? {
+    # + return - Value or nil
+    isolated resource function get osVersion() returns string? {
     
         return ();
     }
 
-    resource function get registrationTime() returns string? {
+    # + return - Value or nil
+    isolated resource function get registrationTime() returns string? {
     
         return ();
     }
 
-    resource function get lastHeartbeat() returns string? {
+    # + return - Value or nil
+    isolated resource function get lastHeartbeat() returns string? {
     
         return ();
     }
 
-    resource function get artifacts() returns Artifacts? {
+    # + return - Value or nil
+    isolated resource function get artifacts() returns Artifacts? {
     
         return ();
     }
@@ -1685,23 +2050,27 @@ public distinct service class Runtime {
 # ============================================
 # Secret Type
 # ============================================
-public distinct service class Secret {
-    resource function get key() returns string {
+public isolated distinct service class Secret {
+    # + return - Value
+    isolated resource function get key() returns string {
     
         return "";
     }
 
-    resource function get description() returns string? {
+    # + return - Value or nil
+    isolated resource function get description() returns string? {
     
         return ();
     }
 
-    resource function get createdAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get createdAt() returns string? {
     
         return ();
     }
 
-    resource function get updatedAt() returns string? {
+    # + return - Value or nil
+    isolated resource function get updatedAt() returns string? {
     
         return ();
     }
@@ -1710,27 +2079,32 @@ public distinct service class Secret {
 # ============================================
 # Service Type - Service Artifacts
 # ============================================
-public distinct service class Service {
-    resource function get name() returns string {
+public isolated distinct service class Service {
+    # + return - Value
+    isolated resource function get name() returns string {
     
         return "";
     }
 
-    resource function get package() returns string {
+    # + return - Value
+    isolated resource function get package() returns string {
     
         return "";
     }
 
-    resource function get basePath() returns string {
+    # + return - Value
+    isolated resource function get basePath() returns string {
     
         return "";
     }
 
-    resource function get state() returns ArtifactState {
+    # + return - Value
+    isolated resource function get state() returns ArtifactState {
         return ENABLED;
     }
 
-    resource function get resources() returns Resource[] {
+    # + return - Array of values
+    isolated resource function get resources() returns Resource[] {
     
         return [];
     }
@@ -1739,18 +2113,21 @@ public distinct service class Service {
 # ============================================
 # Source Config Migration Status Type
 # ============================================
-public distinct service class SourceConfigMigrationStatus {
-    resource function get canMigrate() returns boolean {
+public isolated distinct service class SourceConfigMigrationStatus {
+    # + return - Boolean value
+    isolated resource function get canMigrate() returns boolean {
     
         return false;
     }
 
-    resource function get existingFileName() returns string {
+    # + return - Value
+    isolated resource function get existingFileName() returns string {
     
         return "";
     }
 
-    resource function get existingFileSchemaVersion() returns string {
+    # + return - Value
+    isolated resource function get existingFileSchemaVersion() returns string {
     
         return "";
     }
@@ -1759,18 +2136,21 @@ public distinct service class SourceConfigMigrationStatus {
 # ============================================
 # Test Runner Configuration
 # ============================================
-public distinct service class TestRunnerConfig {
-    resource function get dockerContext() returns string? {
+public isolated distinct service class TestRunnerConfig {
+    # + return - Value or nil
+    isolated resource function get dockerContext() returns string? {
     
         return ();
     }
 
-    resource function get postmanDirectory() returns string? {
+    # + return - Value or nil
+    isolated resource function get postmanDirectory() returns string? {
     
         return ();
     }
 
-    resource function get testRunnerType() returns string? {
+    # + return - Value or nil
+    isolated resource function get testRunnerType() returns string? {
     
         return ();
     }

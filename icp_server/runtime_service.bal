@@ -41,7 +41,10 @@ listener http:Listener httpListener = new (serverPort,
             jwtValidatorConfig: {
                 issuer: jwtIssuer,
                 audience: jwtAudience,
-                clockSkew: jwtClockSkewSeconds
+                clockSkew: jwtClockSkewSeconds,
+                signatureConfig: {
+                    secret: defaultRuntimeJwtHMACSecret
+                }
             }
         }
     ]

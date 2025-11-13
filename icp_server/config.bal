@@ -51,6 +51,9 @@ configurable string frontendJwtIssuer = "icp-frontend-jwt-issuer";
 configurable string frontendJwtAudience = "icp-server";
 configurable int defaultTokenExpiryTime = 3600; // 1 hour (in seconds)
 
+
+configurable string defaultRuntimeJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256";
+
 // Refresh token configuration
 configurable int refreshTokenExpiryTime = 604800; // 7 days (in seconds)
 configurable boolean enableRefreshTokenRotation = true; // Rotate refresh token on each use

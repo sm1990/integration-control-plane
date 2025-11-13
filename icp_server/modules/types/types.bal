@@ -409,30 +409,37 @@ public type Listener record {
         name: "listener_name"
     }
     string name;
+
     @sql:Column {
         name: "listener_package"
     }
     string package = "";
+
     @sql:Column {
         name: "listener_protocol"
     }
     string protocol = ""; // "http", "https", "jms", "rabbitmq", "file"
+
     @sql:Column {
         name: "listener_port"
     }
-    string? port?; // "8290", "8253" for network protocols
+    int port?; // "8290", "8253" for network protocols
+
     @sql:Column {
         name: "listener_destination"
     }
-    string? destination?; // JMS destination name
+    string destination?; // JMS destination name
+
     @sql:Column {
         name: "listener_queue"
     }
-    string? queue?; // RabbitMQ queue name
+    string queue?; // RabbitMQ queue name
+
     @sql:Column {
         name: "listener_path"
     }
-    string? path?; // File system path
+    string path?; // File system path
+
     @sql:Column {
         name: "listener_state"
     }

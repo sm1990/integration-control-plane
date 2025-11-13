@@ -753,10 +753,10 @@ public type ProjectInput record {
 
 public type ProjectUpdateInput record {
     string id;
-    int? orgId?;
-    string? name?;
-    string? version?;
-    string? description?;
+    int orgId?;
+    string name?;
+    string version?;
+    string description?;
 };
 
 public type Component record {

@@ -22,7 +22,9 @@ import ballerina/log;
 service / on httpListener {
 
     function init() {
-        log:printInfo("Starting webserver on https://localhost:9445");
+        log:printInfo("--------------------------------");
+        log:printInfo("WSO2 Integrator: ICP Console started at https://" + serverHost + ":" + serverPort.toString());
+        log:printInfo("--------------------------------");
     }
 
     // Serve static files from build directory

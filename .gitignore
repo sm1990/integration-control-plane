@@ -172,4 +172,5 @@ temp/
 *.backup
 *.bak
 
-database/icpdb.trace.db
+# H2 database
+database/

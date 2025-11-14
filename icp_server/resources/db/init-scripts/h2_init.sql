@@ -118,7 +118,9 @@ CREATE TABLE components (
     project_id CHAR(36) NOT NULL,
     name VARCHAR(150) NOT NULL,
     description TEXT,
-    component_type VARCHAR(10) NOT NULL DEFAULT 'BI' CHECK (component_type IN ('MI', 'BI')),
+    component_type VARCHAR(10) NOT NULL DEFAULT 'BI' CHECK (
+        component_type IN ('MI', 'BI')
+    ),
     created_by CHAR(36),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_by CHAR(36),
@@ -795,72 +797,6 @@ CREATE TABLE system_config (
 CREATE INDEX idx_system_config_config_type ON system_config (config_type);
 
 CREATE INDEX idx_system_config_updated_at ON system_config (updated_at);
-
--- ============================================================================
--- VIEWS
--- ============================================================================
-
-CREATE VIEW runtime_summary AS
-SELECT
-    r.runtime_id,
-    r.runtime_type,
-    r.status,
-    e.name AS environment,
-    r.version,
-    r.last_heartbeat,
-    COALESCE(rs_cnt.total_services, 0) AS total_services,
-    COALESCE(rl_cnt.total_listeners, 0) AS total_listeners,
-    (
-        r.last_heartbeat > DATEADD ('MINUTE', -5, NOW())
-    ) AS is_online,
-    r.registration_time,
-    r.created_at,
-    r.updated_at,
-    c.name AS component_name,
-    p.name AS project_name
-FROM
-    runtimes r
-    JOIN environments e ON r.environment_id = e.environment_id
-    JOIN components c ON r.component_id = c.component_id
-    JOIN projects p ON r.project_id = p.project_id
-    LEFT JOIN (
-        SELECT runtime_id, COUNT(*) AS total_services
-        FROM runtime_services
-        GROUP BY
-            runtime_id
-    ) rs_cnt ON rs_cnt.runtime_id = r.runtime_id
-    LEFT JOIN (
-        SELECT runtime_id, COUNT(*) AS total_listeners
-        FROM runtime_listeners
-        GROUP BY
-            runtime_id
-    ) rl_cnt ON rl_cnt.runtime_id = r.runtime_id;
-
-CREATE VIEW active_commands AS
-SELECT
-    cc.command_id,
-    cc.runtime_id,
-    cc.target_artifact,
-    cc.action,
-    cc.parameters,
-    cc.status,
-    cc.issued_at,
-    cc.sent_at,
-    cc.acknowledged_at,
-    cc.completed_at,
-    cc.error_message,
-    cc.issued_by,
-    cc.created_at,
-    cc.updated_at,
-    r.runtime_type,
-    r.status AS runtime_status,
-    DATEDIFF('SECOND', cc.issued_at, NOW()) AS age_seconds
-FROM
-    control_commands cc
-    JOIN runtimes r ON cc.runtime_id = r.runtime_id
-WHERE
-    cc.status IN ('pending', 'sent')
-ORDER BY cc.issued_at ASC;
 
 -- ============================================================================
 -- SAMPLE DATA FOR TESTING

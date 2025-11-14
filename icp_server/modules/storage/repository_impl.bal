@@ -1057,10 +1057,10 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
         log:printInfo(string `Hash mismatch for runtime ${deltaHeartbeat.runtime}, requesting full heartbeat`);
 
         // Still update the timestamp to show runtime is alive
-        // No transaction needed - UPDATE is already atomic
+        // Use database's native timestamp function (CURRENT_TIMESTAMP works in both H2 MySQL mode and MySQL)
         sql:ExecutionResult|error result = dbClient->execute(`
             UPDATE runtimes
-            SET last_heartbeat = ${currentTimeStr}, status = 'RUNNING'
+            SET last_heartbeat = CURRENT_TIMESTAMP, status = 'RUNNING'
             WHERE runtime_id = ${deltaHeartbeat.runtime}
         `);
 
@@ -1079,10 +1079,10 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
 
     // Hash matches, process delta heartbeat
 
-    // Update the heartbeat timestamp (no transaction needed - UPDATE is atomic)
+    // Update the heartbeat timestamp using database's native timestamp function
     sql:ExecutionResult|error timestampResult = dbClient->execute(`
         UPDATE runtimes
-        SET last_heartbeat = ${currentTimeStr}, status = 'RUNNING'
+        SET last_heartbeat = CURRENT_TIMESTAMP, status = 'RUNNING'
         WHERE runtime_id = ${deltaHeartbeat.runtime}
     `);
 
@@ -1555,28 +1555,35 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
 
 // Upsert runtime record (insert new or update existing)
 // Returns true if it was a new registration, false if it was an update
-isolated function upsertRuntime(types:Heartbeat heartbeat, string currentTimeStr) returns boolean|error {
+isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error {
     sql:ExecutionResult result = check dbClient->execute(`
-        MERGE INTO runtimes (
+        INSERT INTO runtimes (
             runtime_id, name, runtime_type, status, version,
             environment_id, project_id, component_id,
             platform_name, platform_version, platform_home,
-            os_name, os_version,
-            registration_time, last_heartbeat
-        ) KEY (runtime_id)
-        VALUES (
+            os_name, os_version
+        ) VALUES (
             ${heartbeat.runtime}, ${heartbeat.runtime}, ${heartbeat.runtimeType}, ${heartbeat.status}, ${heartbeat.version},
             ${heartbeat.environment}, ${heartbeat.project}, ${heartbeat.component},
             ${heartbeat.nodeInfo.platformName}, ${heartbeat.nodeInfo.platformVersion}, ${heartbeat.nodeInfo.ballerinaHome},
-            ${heartbeat.nodeInfo.osName}, ${heartbeat.nodeInfo.osVersion},
-            ${currentTimeStr}, ${currentTimeStr}
+            ${heartbeat.nodeInfo.osName}, ${heartbeat.nodeInfo.osVersion}
         )
+        ON DUPLICATE KEY UPDATE
+            name = VALUES(name),
+            runtime_type = VALUES(runtime_type),
+            status = VALUES(status),
+            version = VALUES(version),
+            environment_id = VALUES(environment_id),
+            project_id = VALUES(project_id),
+            component_id = VALUES(component_id),
+            platform_name = VALUES(platform_name),
+            platform_version = VALUES(platform_version),
+            platform_home = VALUES(platform_home),
+            os_name = VALUES(os_name),
+            os_version = VALUES(os_version),
+            last_heartbeat = CURRENT_TIMESTAMP
     `);
 
-    // Determine if this was a new registration or an update based on affected rows
-    // In H2, for MERGE:
-    // - affectedRowCount = 1 means either new insert or update
-    // - affectedRowCount = 0 means no change (values were same)
     int? affectedRows = result.affectedRowCount;
     return affectedRows == 1;
 }
@@ -1851,13 +1858,12 @@ isolated function countTotalArtifacts(types:Artifacts artifacts) returns int {
 // Heartbeat processing that handles both registration and updates
 public isolated function processHeartbeat(types:Heartbeat heartbeat) returns types:HeartbeatResponse|error {
     check validateHeartbeatData(heartbeat);
-    time:Utc currentTime = time:utcNow();
-    string currentTimeStr = check convertUtcToDbDateTime(currentTime);
+
     boolean isNewRegistration = false;
     types:ControlCommand[] pendingCommands = [];
 
     // Upsert runtime record (atomic, no transaction needed)
-    isNewRegistration = check upsertRuntime(heartbeat, currentTimeStr);
+    isNewRegistration = check upsertRuntime(heartbeat);
 
     if isNewRegistration {
         log:printInfo(string `Registered new runtime via heartbeat: ${heartbeat.runtime}`);
@@ -2083,11 +2089,11 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
 
         _ = check dbClient->execute(`
             INSERT INTO audit_logs (
-                runtime_id, action, details, timestamp
+                runtime_id, action, details
             ) VALUES (
                 ${heartbeat.runtime}, ${action}, 
-                ${string `Runtime ${action.toLowerAscii()} processed with ${totalArtifacts} total artifacts (${heartbeat.artifacts.services.length()} services, ${heartbeat.artifacts.listeners.length()} listeners)`},
-                ${currentTimeStr}
+                ${string `Runtime ${action.toLowerAscii()} processed with ${totalArtifacts} total artifacts (${heartbeat.artifacts.services.length()} services,
+                 ${heartbeat.artifacts.listeners.length()} listeners)`}
             )
         `);
         check commit;

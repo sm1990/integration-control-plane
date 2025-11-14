@@ -824,47 +824,6 @@ CREATE TABLE system_config (
     INDEX idx_updated_at (updated_at)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
--- ============================================================================
--- VIEWS
--- ============================================================================
-
--- Runtime summary view (is_online = heartbeat within last 5 minutes)
-CREATE OR REPLACE VIEW runtime_summary AS
-SELECT
-    r.runtime_id,
-    r.runtime_type,
-    r.status,
-    e.name AS environment,
-    r.version,
-    r.last_heartbeat,
-    rs_cnt.total_services,
-    rl_cnt.total_listeners,
-    (
-        r.last_heartbeat > (NOW(6) - INTERVAL 5 MINUTE)
-    ) AS is_online,
-    r.registration_time,
-    r.created_at,
-    r.updated_at,
-    c.name AS component_name,
-    p.name AS project_name
-FROM
-    runtimes r
-    JOIN environments e ON r.environment_id = e.environment_id
-    JOIN components c ON r.component_id = c.component_id
-    JOIN projects p ON r.project_id = p.project_id
-    LEFT JOIN (
-        SELECT runtime_id, COUNT(*) AS total_services
-        FROM runtime_services
-        GROUP BY
-            runtime_id
-    ) rs_cnt ON rs_cnt.runtime_id = r.runtime_id
-    LEFT JOIN (
-        SELECT runtime_id, COUNT(*) AS total_listeners
-        FROM runtime_listeners
-        GROUP BY
-            runtime_id
-    ) rl_cnt ON rl_cnt.runtime_id = r.runtime_id;
-
 -- Active commands view
 CREATE OR REPLACE VIEW active_commands AS
 SELECT

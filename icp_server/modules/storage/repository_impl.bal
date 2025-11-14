@@ -1181,6 +1181,13 @@ isolated function validateHeartbeatData(types:Heartbeat heartbeat) returns error
         return error(string `Invalid component configuration detected: ${heartbeat.component}`, componentId);
     }
     heartbeat.component = componentId;
+    types:Component|error componentById = getComponentById(componentId);
+    if componentById is error {
+        return error(string `Invalid component configuration detected: ${heartbeat.component}`, componentById);
+    }
+    if componentById.componentType != heartbeat.runtimeType {
+        return error(string `Component type mismatch for component ${heartbeat.component}. Expected: ${componentById.componentType}, Got: ${heartbeat.runtimeType}`);
+    }
 
     // Validate that all runtimes in the same component have consistent services and listeners
     // check validateComponentRuntimeConsistency(componentId, heartbeat.artifacts);
@@ -2167,9 +2174,13 @@ public isolated function deleteProject(string projectId) returns error? {
 // Create a new component in the components table
 public isolated function createComponent(types:ComponentInput component) returns types:Component|error? {
     string componentId = uuid:createType1AsString();
-    string componentTypeValue = component.componentType is types:RuntimeType ? component.componentType.toString() : "BI";
-    sql:ParameterizedQuery insertQuery = `INSERT INTO components (component_id, project_id, name, description, component_type, created_by) 
-                                          VALUES (${componentId}, ${component.projectId}, ${component.name}, ${component.description}, ${componentTypeValue}, ${component.createdBy})`;
+    string componentTypeValue = component.componentType.toString();
+    
+    // Use displayName if provided, otherwise fall back to name
+    string displayName = component?.displayName ?: component.name;
+    
+    sql:ParameterizedQuery insertQuery = `INSERT INTO components (component_id, project_id, name, display_name, description, component_type, created_by) 
+                                          VALUES (${componentId}, ${component.projectId}, ${component.name}, ${displayName}, ${component.description}, ${componentTypeValue}, ${component.createdBy})`;
     var result = dbClient->execute(insertQuery);
     if result is sql:Error {
         return result;
@@ -2202,7 +2213,7 @@ public isolated function getComponents(string? projectId, types:ComponentOptions
         whereConditions = sql:queryConcat(whereConditions, ` AND c.project_id = ${projectId} `);
     }
 
-    sql:ParameterizedQuery selectClause = `SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+    sql:ParameterizedQuery selectClause = `SELECT c.component_id, c.project_id, c.name as component_name, c.display_name as component_display_name, c.description as component_description, 
                                                   c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                                   c.updated_by as component_updated_by,
                                                   p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
@@ -2234,7 +2245,7 @@ public isolated function getComponents(string? projectId, types:ComponentOptions
                 // Component Metadata
                 name: component.component_name,
                 handler: component.component_name, // Using component name as handler
-                displayName: component.component_name, // Using component name as display name
+                displayName: component.component_display_name ?: component.component_name, // Use display_name or fallback to name
                 displayType: "service", // Default to "service"
                 description: component.component_description,
 
@@ -2310,8 +2321,8 @@ public isolated function getComponentsByProjectIds(string[] projectIds, types:Co
     types:Component[] components = [];
 
     // Build WHERE IN clause for multiple project IDs
-    sql:ParameterizedQuery selectClause = `SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
-                                                  c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
+    sql:ParameterizedQuery selectClause = `SELECT c.component_id, c.project_id, c.name as component_name, c.display_name as component_display_name, c.description as component_description, 
+                                                  c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                                   c.updated_by as component_updated_by,
                                                   p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
                                                   p.created_date as project_created_date, p.handler as project_handler, p.region as project_region,
@@ -2353,8 +2364,9 @@ public isolated function getComponentsByProjectIds(string[] projectIds, types:Co
 
                 // Component Metadata
                 name: component.component_name,
+                componentType: component.component_type == "MI" ? types:MI : types:BI,
                 handler: component.component_name, // Using component name as handler
-                displayName: component.component_name, // Using component name as display name
+                displayName: component.component_display_name ?: component.component_name, // Use display_name or fallback to name
                 displayType: "service", // Default to "service"
                 description: component.component_description,
 
@@ -2370,7 +2382,6 @@ public isolated function getComponentsByProjectIds(string[] projectIds, types:Co
 
                 // Classification
                 componentSubType: (),
-                componentType: component.component_type == "MI" ? types:MI : types:BI,
                 labels: (),
 
                 // System Component Flag
@@ -2424,7 +2435,7 @@ public isolated function getComponentsByProjectIds(string[] projectIds, types:Co
 // GetComponentById function - FIRST
 public isolated function getComponentById(string componentId) returns types:Component|error {
     stream<types:ComponentInDB, sql:Error?> componentStream =
-        dbClient->query(`SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description, 
+        dbClient->query(`SELECT c.component_id, c.project_id, c.name as component_name, c.display_name as component_display_name, c.description as component_description, 
                                 c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                 c.updated_by as component_updated_by,
                                 p.org_id as project_org_id, p.name as project_name, p.version as project_version, 
@@ -2459,7 +2470,7 @@ public isolated function getComponentById(string componentId) returns types:Comp
         // Component Metadata
         name: component.component_name,
         handler: component.component_name, // Using component name as handler
-        displayName: component.component_name, // Using component name as display name
+        displayName: component.component_display_name ?: component.component_name, // Use display_name or fallback to name
         displayType: "service", // Default to "service"
         description: component.component_description,
 
@@ -2526,7 +2537,7 @@ public isolated function getComponentById(string componentId) returns types:Comp
 // Get a component by project ID and handler (component name) - SECOND
 public isolated function getComponentByProjectAndHandler(string projectId, string handler) returns types:Component?|error {
     stream<types:ComponentInDB, sql:Error?> componentStream =
-        dbClient->query(`SELECT c.component_id, c.project_id, c.name as component_name, c.description as component_description,
+        dbClient->query(`SELECT c.component_id, c.project_id, c.name as component_name, c.display_name as component_display_name, c.description as component_description,
                                 c.component_type, c.created_by as component_created_by, c.created_at as component_created_at, c.updated_at as component_updated_at,
                                 c.updated_by as component_updated_by,
                                 p.org_id as project_org_id, p.name as project_name, p.version as project_version,
@@ -2560,7 +2571,7 @@ public isolated function getComponentByProjectAndHandler(string projectId, strin
         // Component Metadata
         name: component.component_name,
         handler: component.component_name, // Using component name as handler
-        displayName: component.component_name, // Using component name as display name
+        displayName: component.component_display_name ?: component.component_name, // Use display_name or fallback to name
         displayType: "service", // Default to "service"
         description: component.component_description,
 
@@ -2637,12 +2648,15 @@ public isolated function deleteComponent(string componentId) returns error? {
 }
 
 // Update component name and/or description
-public isolated function updateComponent(string componentId, string? name, string? description, string updatedBy) returns error? {
+public isolated function updateComponent(string componentId, string? name, string? displayName, string? description, string updatedBy) returns error? {
     sql:ParameterizedQuery whereClause = ` WHERE component_id = ${componentId} `;
     sql:ParameterizedQuery updateFields = ` SET updated_at = CURRENT_TIMESTAMP, updated_by = ${updatedBy} `;
 
     if name is string {
         updateFields = sql:queryConcat(updateFields, `, name = ${name} `);
+    }
+    if displayName is string {
+        updateFields = sql:queryConcat(updateFields, `, display_name = ${displayName} `);
     }
     if description is string {
         updateFields = sql:queryConcat(updateFields, `, description = ${description} `);

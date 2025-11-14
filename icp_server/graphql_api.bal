@@ -779,7 +779,8 @@ service /graphql on graphqlListener {
 
         // Extract values from ComponentUpdateInput
         string targetComponentId = component.id;
-        string? targetName = component.name ?: component.displayName; // Use displayName if name is not provided
+        string? targetName = component.name;
+        string? targetDisplayName = component.displayName;
         string? targetDescription = component.description;
 
         // Get component to check project access
@@ -794,7 +795,7 @@ service /graphql on graphqlListener {
         }
 
         // Call the existing backend method to maintain consistency
-        check storage:updateComponent(targetComponentId, targetName, targetDescription, userContext.userId);
+        check storage:updateComponent(targetComponentId, targetName, targetDisplayName, targetDescription, userContext.userId);
         return check storage:getComponentById(targetComponentId);
     }
 }

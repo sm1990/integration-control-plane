@@ -111,6 +111,7 @@ CREATE TABLE components (
     component_id CHAR(36) PRIMARY KEY,
     project_id CHAR(36) NOT NULL,
     name VARCHAR(150) NOT NULL,
+    display_name VARCHAR(200) NOT NULL,
     description TEXT NULL,
     component_type ENUM('MI', 'BI') NOT NULL DEFAULT 'BI',
     created_by CHAR(36) NULL,
@@ -974,6 +975,8 @@ INSERT INTO
     components (
         component_id,
         name,
+        display_name,
+        component_type,
         description,
         created_by,
         project_id
@@ -981,6 +984,8 @@ INSERT INTO
 VALUES (
         '640e8400-e29b-41d4-a716-446655440001',
         'sample_integration',
+        'Sample Integration',
+        'BI',
         'Sample integration for testing',
         '550e8400-e29b-41d4-a716-446655440000',
         '650e8400-e29b-41d4-a716-446655440001'

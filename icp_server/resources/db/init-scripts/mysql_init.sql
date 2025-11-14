@@ -278,6 +278,8 @@ CREATE TABLE runtime_listeners (
     listener_name VARCHAR(100) NOT NULL,
     listener_package VARCHAR(200) NOT NULL,
     protocol VARCHAR(20) NULL DEFAULT 'HTTP',
+    listener_host VARCHAR(100),
+    listener_port INT,
     state ENUM(
         'ENABLED',
         'DISABLED',
@@ -291,7 +293,9 @@ CREATE TABLE runtime_listeners (
     UNIQUE KEY uk_runtime_listener (
         runtime_id,
         listener_name,
-        listener_package
+        listener_package,
+        listener_host,
+        listener_port
     ),
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_listener_name (listener_name),
@@ -669,7 +673,7 @@ CREATE TABLE runtime_system_info (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     runtime_id CHAR(36) NOT NULL,
     info_key VARCHAR(200) NOT NULL,
-    value TEXT NOT NULL,
+    info_value TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_runtime_system_info_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,

@@ -829,7 +829,7 @@ public isolated function getDataSourcesForRuntime(string runtimeId) returns type
 public isolated function getConnectorsForRuntime(string runtimeId) returns types:Connector[]|error {
     types:Connector[] connectorList = [];
     stream<types:Connector, sql:Error?> connectorStream = dbClient->query(`
-        SELECT connector_name, connector_package, version, state 
+        SELECT connector_name, package as connector_package, version, state
         FROM runtime_connectors 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -869,7 +869,7 @@ public isolated function getRegistryResourcesForRuntime(string runtimeId) return
 public isolated function getSystemInfoForRuntime(string runtimeId) returns types:SystemInfo[]|error {
     types:SystemInfo[] infoList = [];
     stream<types:SystemInfo, sql:Error?> infoStream = dbClient->query(`
-        SELECT info_key, value 
+        SELECT info_key, info_value
         FROM runtime_system_info 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -1373,15 +1373,42 @@ isolated function deleteExistingArtifacts(string runtimeId) returns error? {
     _ = check dbClient->execute(`DELETE FROM runtime_system_info WHERE runtime_id = ${runtimeId}`);
 }
 
+// Helper function to convert systemInfo (json) to SystemInfo array
+public isolated function convertSystemInfoToArray(json systemInfo) returns types:SystemInfo[] {
+    types:SystemInfo[] result = [];
+
+    // If systemInfo is already an array, cast and return it
+    if systemInfo is json[] {
+        foreach json item in systemInfo {
+            if item is map<json> {
+                string key = item["key"] is string ? <string>item["key"] : "";
+                string value = item["value"] is string ? <string>item["value"] : "";
+                result.push({key, value});
+            }
+        }
+        return result;
+    }
+
+    // If systemInfo is an object, convert each key-value pair
+    if systemInfo is map<json> {
+        foreach [string, json] [key, value] in systemInfo.entries() {
+            string valueStr = value.toString();
+            result.push({key, value: valueStr});
+        }
+    }
+
+    return result;
+}
+
 // Helper function to insert MI artifacts
 isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
-    // Insert MI artifacts if present
+    // Insert MI-specific artifacts (APIs, Proxy Services, Endpoints)
     foreach types:RestApi api in <types:RestApi[]>heartbeat.artifacts.apis {
         _ = check dbClient->execute(`
                 INSERT INTO runtime_apis (
                     runtime_id, api_name, url, context, version, state
                 ) VALUES (
-                    ${heartbeat.runtime}, ${api.name}, ${api.url}, 
+                    ${heartbeat.runtime}, ${api.name}, ${api.url},
                     ${api.context}, ${api.version}, ${api.state}
                 )
             `);
@@ -1393,7 +1420,7 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                 INSERT INTO runtime_proxy_services (
                     runtime_id, proxy_name, wsdl, transports, state
                 ) VALUES (
-                    ${heartbeat.runtime}, ${proxy.name}, ${proxy.wsdl}, 
+                    ${heartbeat.runtime}, ${proxy.name}, ${proxy.wsdl},
                     ${transportsJson}, ${proxy.state}
                 )
             `);
@@ -1404,152 +1431,14 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                 INSERT INTO runtime_endpoints (
                     runtime_id, endpoint_name, endpoint_type, address, state
                 ) VALUES (
-                    ${heartbeat.runtime}, ${endpoint.name}, ${endpoint.'type}, 
+                    ${heartbeat.runtime}, ${endpoint.name}, ${endpoint.'type},
                     ${endpoint.address}, ${endpoint.state}
                 )
             `);
     }
 
-    foreach types:InboundEndpoint inbound in <types:InboundEndpoint[]>heartbeat.artifacts.inboundEndpoints {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_inbound_endpoints (
-                    runtime_id, inbound_name, protocol, sequence, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${inbound.name}, ${inbound.protocol}, 
-                    ${inbound.sequence}, ${inbound.state}
-                )
-            `);
-    }
-
-    foreach types:Sequence sequence in <types:Sequence[]>heartbeat.artifacts.sequences {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_sequences (
-                    runtime_id, sequence_name, sequence_type, container, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${sequence.name}, ${sequence.'type}, 
-                    ${sequence.container}, ${sequence.state}
-                )
-            `);
-    }
-
-    foreach types:Task task in <types:Task[]>heartbeat.artifacts.tasks {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_tasks (
-                    runtime_id, task_name, task_class, task_group, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${task.name}, ${task.'class}, 
-                    ${task.group}, ${task.state}
-                )
-            `);
-    }
-
-    foreach types:Template template in <types:Template[]>heartbeat.artifacts.templates {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_templates (
-                    runtime_id, template_name, template_type, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${template.state}
-                )
-            `);
-    }
-
-    foreach types:MessageStore store in <types:MessageStore[]>heartbeat.artifacts.messageStores {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_message_stores (
-                    runtime_id, store_name, store_type, store_class, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${store.name}, ${store.'type}, 
-                    ${store.'class}, ${store.state}
-                )
-            `);
-    }
-
-    foreach types:MessageProcessor processor in <types:MessageProcessor[]>heartbeat.artifacts.messageProcessors {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_message_processors (
-                    runtime_id, processor_name, processor_type, processor_class, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${processor.name}, ${processor.'type}, 
-                    ${processor.'class}, ${processor.state}
-                )
-            `);
-    }
-
-    foreach types:LocalEntry entry in <types:LocalEntry[]>heartbeat.artifacts.localEntries {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_local_entries (
-                    runtime_id, entry_name, entry_type, entry_value, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${entry.name}, ${entry.'type}, 
-                    ${entry.value}, ${entry.state}
-                )
-            `);
-    }
-
-    foreach types:DataService dataService in <types:DataService[]>heartbeat.artifacts.dataServices {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_data_services (
-                    runtime_id, service_name, description, wsdl, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${dataService.name}, ${dataService.description}, 
-                    ${dataService.wsdl}, ${dataService.state}
-                )
-            `);
-    }
-
-    foreach types:CarbonApp app in <types:CarbonApp[]>heartbeat.artifacts.carbonApps {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_carbon_apps (
-                    runtime_id, app_name, version, deployment_status, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${app.name}, ${app.version}, 
-                    ${app.deploymentStatus}, ${app.state}
-                )
-            `);
-    }
-
-    foreach types:DataSource ds in <types:DataSource[]>heartbeat.artifacts.dataSources {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_datasources (
-                    runtime_id, datasource_name, driver, url, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${ds.name}, ${ds.driver}, 
-                    ${ds.url}, ${ds.state}
-                )
-            `);
-    }
-
-    foreach types:Connector connector in <types:Connector[]>heartbeat.artifacts.connectors {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_connectors (
-                    runtime_id, connector_name, connector_package, version, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${connector.name}, ${connector.package}, 
-                    ${connector.version}, ${connector.state}
-                )
-            `);
-    }
-
-    foreach types:RegistryResource registryResource in <types:RegistryResource[]>heartbeat.artifacts.registryResources {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_registry_resources (
-                    runtime_id, resource_name, path, resource_type, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${registryResource.name}, ${registryResource.path}, 
-                    ${registryResource.'type}, ${registryResource.state}
-                )
-            `);
-    }
-
-    foreach types:SystemInfo info in <types:SystemInfo[]>heartbeat.artifacts.systemInfo {
-        _ = check dbClient->execute(`
-                INSERT INTO runtime_system_info (
-                    runtime_id, info_key, info_value
-                ) VALUES (
-                    ${heartbeat.runtime}, ${info.key}, ${info.value}
-                )
-            `);
-    }
+    // LocalEntries, DataServices, CarbonApps, DataSources, Connectors, RegistryResources, and SystemInfo
+    // are handled in insertAdditionalMIArtifacts() to avoid duplication
 
 }
 
@@ -1621,12 +1510,15 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
 
     // Insert updated listeners
     foreach types:Listener listenerDetail in heartbeat.artifacts.listeners {
+        string? host = listenerDetail?.host;
+        int? port = listenerDetail?.port;
         _ = check dbClient->execute(`
             INSERT INTO runtime_listeners (
-                runtime_id, listener_name, listener_package, protocol, state
+                runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state
             ) VALUES (
                 ${heartbeat.runtime}, ${listenerDetail.name},
                 ${listenerDetail.package}, ${listenerDetail.protocol},
+                ${host}, ${port},
                 ${listenerDetail.state}
             )
         `);
@@ -1772,10 +1664,10 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
             `);
     }
 
-    foreach types:SystemInfo info in <types:SystemInfo[]>heartbeat.artifacts.systemInfo {
+    foreach types:SystemInfo info in heartbeat.artifacts.systemInfo {
         _ = check dbClient->execute(`
                 INSERT INTO runtime_system_info (
-                    runtime_id, info_key, value
+                    runtime_id, info_key, info_value
                 ) VALUES (
                     ${heartbeat.runtime}, ${info.key}, ${info.value}
                 )
@@ -1875,147 +1767,6 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
     transaction {
         // Insert all runtime artifacts (services, listeners, MI artifacts, etc.)
         check insertRuntimeArtifacts(heartbeat);
-
-        foreach types:InboundEndpoint inbound in <types:InboundEndpoint[]>heartbeat.artifacts.inboundEndpoints {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_inbound_endpoints (
-                        runtime_id, inbound_name, protocol, sequence, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${inbound.name}, ${inbound.protocol}, 
-                        ${inbound.sequence}, ${inbound.state}
-                    )
-                `);
-        }
-
-        foreach types:Sequence sequence in <types:Sequence[]>heartbeat.artifacts.sequences {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_sequences (
-                        runtime_id, sequence_name, sequence_type, container, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${sequence.name}, ${sequence.'type}, 
-                        ${sequence.container}, ${sequence.state}
-                    )
-                `);
-        }
-
-        foreach types:Task task in <types:Task[]>heartbeat.artifacts.tasks {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_tasks (
-                        runtime_id, task_name, task_class, task_group, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${task.name}, ${task.'class}, 
-                        ${task.group}, ${task.state}
-                    )
-                `);
-        }
-
-        foreach types:Template template in <types:Template[]>heartbeat.artifacts.templates {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_templates (
-                        runtime_id, template_name, template_type, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${template.state}
-                    )
-                `);
-        }
-
-        foreach types:MessageStore store in <types:MessageStore[]>heartbeat.artifacts.messageStores {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_message_stores (
-                        runtime_id, store_name, store_type, store_class, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${store.name}, ${store.'type}, 
-                        ${store.'class}, ${store.state}
-                    )
-                `);
-        }
-
-        foreach types:MessageProcessor processor in <types:MessageProcessor[]>heartbeat.artifacts.messageProcessors {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_message_processors (
-                        runtime_id, processor_name, processor_type, processor_class, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${processor.name}, ${processor.'type}, 
-                        ${processor.'class}, ${processor.state}
-                    )
-                `);
-        }
-
-        foreach types:LocalEntry entry in <types:LocalEntry[]>heartbeat.artifacts.localEntries {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_local_entries (
-                        runtime_id, entry_name, entry_type, entry_value, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${entry.name}, ${entry.'type}, 
-                        ${entry.value}, ${entry.state}
-                    )
-                `);
-        }
-
-        foreach types:DataService dataService in <types:DataService[]>heartbeat.artifacts.dataServices {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_data_services (
-                        runtime_id, service_name, description, wsdl, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${dataService.name}, ${dataService.description}, 
-                        ${dataService.wsdl}, ${dataService.state}
-                    )
-                `);
-        }
-
-        foreach types:CarbonApp app in <types:CarbonApp[]>heartbeat.artifacts.carbonApps {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_carbon_apps (
-                        runtime_id, app_name, version, deployment_status, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${app.name}, ${app.version}, 
-                        ${app.deploymentStatus}, ${app.state}
-                    )
-                `);
-        }
-
-        foreach types:DataSource dataSource in <types:DataSource[]>heartbeat.artifacts.dataSources {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_data_sources (
-                        runtime_id, datasource_name, driver, url, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${dataSource.name}, ${dataSource.driver}, 
-                        ${dataSource.url}, ${dataSource.state}
-                    )
-                `);
-        }
-
-        foreach types:Connector connector in <types:Connector[]>heartbeat.artifacts.connectors {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_connectors (
-                        runtime_id, connector_name, connector_package, version, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${connector.name}, ${connector.package}, 
-                        ${connector.version}, ${connector.state}
-                    )
-                `);
-        }
-
-        foreach types:RegistryResource registryResource in <types:RegistryResource[]>heartbeat.artifacts.registryResources {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_registry_resources (
-                        runtime_id, resource_name, path, resource_type, state
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${registryResource.name}, ${registryResource.path}, 
-                        ${registryResource.'type}, ${registryResource.state}
-                    )
-                `);
-        }
-
-        foreach types:SystemInfo info in <types:SystemInfo[]>heartbeat.artifacts.systemInfo {
-            _ = check dbClient->execute(`
-                    INSERT INTO runtime_system_info (
-                        runtime_id, info_key, value
-                    ) VALUES (
-                        ${heartbeat.runtime}, ${info.key}, ${info.value}
-                    )
-                `);
-        }
 
         // Validate runtime consistency within component (only for new registrations)
         if isNewRegistration {

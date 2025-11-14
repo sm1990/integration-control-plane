@@ -61,9 +61,34 @@ service /icp on httpListener {
             scopes: ["runtime_agent"]
         }
     }
-    isolated resource function post heartbeat(types:Heartbeat heartbeat) returns types:HeartbeatResponse|error? {
+    isolated resource function post heartbeat(@http:Payload json heartbeatJson) returns types:HeartbeatResponse|error? {
         do {
-            // Process heartbeat using the repository (handles both registration and updates)
+            // Convert systemInfo if it's an object (MI format) to empty array for data binding
+            json mutableHeartbeat = heartbeatJson.clone();
+            if mutableHeartbeat is map<json> {
+                if mutableHeartbeat["artifacts"] is map<json> {
+                    map<json> artifacts = <map<json>>mutableHeartbeat["artifacts"];
+                    // Store original systemInfo for later processing
+                    json originalSystemInfo = artifacts["systemInfo"] ?: [];
+                    // Set to empty array for data binding (will be populated later)
+                    artifacts["systemInfo"] = [];
+                    mutableHeartbeat["artifacts"] = artifacts;
+
+                    // Parse heartbeat with empty systemInfo array
+                    types:Heartbeat heartbeat = check mutableHeartbeat.cloneWithType(types:Heartbeat);
+
+                    // Now convert and populate systemInfo properly
+                    heartbeat.artifacts.systemInfo = storage:convertSystemInfoToArray(originalSystemInfo);
+
+                    // Process heartbeat using the repository (handles both registration and updates)
+                    types:HeartbeatResponse heartbeatResponse = check storage:processHeartbeat(heartbeat);
+                    log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtime}`);
+                    return heartbeatResponse;
+                }
+            }
+
+            // Fallback: try direct parsing if artifacts is not a map
+            types:Heartbeat heartbeat = check heartbeatJson.cloneWithType(types:Heartbeat);
             types:HeartbeatResponse heartbeatResponse = check storage:processHeartbeat(heartbeat);
             log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtime}`);
             return heartbeatResponse;

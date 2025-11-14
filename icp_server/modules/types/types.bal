@@ -396,8 +396,7 @@ public type Listener record {
     @sql:Column {
         name: "listener_name"
     }
-    string name;
-
+    string name = "";
     @sql:Column {
         name: "listener_package"
     }
@@ -408,6 +407,10 @@ public type Listener record {
     }
     string protocol = ""; // "http", "https", "jms", "rabbitmq", "file"
 
+    @sql:Column {
+        name: "listener_host"
+    }
+    string? host?; // "0.0.0.0", "localhost" for network protocols
     @sql:Column {
         name: "listener_port"
     }
@@ -622,7 +625,7 @@ public type RegistryResource record {
         name: "resource_name"
     }
     string name;
-    string path;
+    string path = "";
     @sql:Column {
         name: "resource_type"
     }
@@ -638,6 +641,9 @@ public type SystemInfo record {
         name: "info_key"
     }
     string key;
+    @sql:Column {
+        name: "info_value"
+    }
     string value;
 };
 

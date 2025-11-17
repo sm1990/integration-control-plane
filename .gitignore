@@ -174,3 +174,5 @@ temp/
 
 # H2 database
 database/
+
+www/*

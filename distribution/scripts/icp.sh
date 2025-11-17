@@ -32,6 +32,24 @@ fi
 # Change to bin directory so relative paths in config work correctly
 cd "$SCRIPT_DIR"
 
+# Read ssoEnabled from deployment.toml and update the frontend config file
+SSO_ENABLED="false"  # Default value
+if [ -f "$CONFIG_FILE" ]; then
+    SSO_VALUE=$(grep -E "^\s*ssoEnabled\s*=" "$CONFIG_FILE" | awk -F= '{print $2}' | tr -d ' ')
+    if [ ! -z "$SSO_VALUE" ]; then
+        SSO_ENABLED="$SSO_VALUE"
+    fi
+fi
+
+WWW_CONFIG_FILE="$PARENT_DIR/www/public/choreo.env.config.js"
+if [ -f "$WWW_CONFIG_FILE" ]; then
+    sed -i.bak -E "s/\"SSO_ENABLED\": '(true|false)'/\"SSO_ENABLED\": '$SSO_ENABLED'/" "$WWW_CONFIG_FILE"
+    rm -f "$WWW_CONFIG_FILE.bak"  # Remove backup file
+    echo "SSO Configuration: Updated frontend config with SSO_ENABLED=$SSO_ENABLED"
+else
+    echo "Warning: Frontend config file not found at $WWW_CONFIG_FILE"
+fi
+
 if [ ! -f "$CONFIG_FILE" ]; then
     echo "Warning: Configuration file not found at $CONFIG_FILE"
     echo "Starting ICP Server without custom configuration..."

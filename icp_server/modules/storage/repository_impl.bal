@@ -1016,22 +1016,22 @@ public isolated function mapToService(types:Service serviceRecord, string runtim
 // Periodically mark runtimes as OFFLINE if heartbeat is too old
 public isolated function markOfflineRuntimes() returns error? {
     log:printDebug("Marking offline runtimes");
-    time:Utc now = time:utcNow();
-    // Calculate the threshold timestamp
-    time:Utc threshold = time:utcAddSeconds(now, -<decimal>heartbeatTimeoutSeconds);
 
-    // Convert threshold to H2 datetime format
-    string thresholdStr = check convertUtcToDbDateTime(threshold);
-
-    // Update all runtimes whose last_heartbeat is too old and not already OFFLINE
+    // Use database native timestamp functions for reliable comparison
+    // TIMESTAMPDIFF and DATE_SUB work in both H2 (in MySQL mode) and MySQL
     sql:ParameterizedQuery updateQuery = `
         UPDATE runtimes
         SET status = 'OFFLINE'
         WHERE status != 'OFFLINE'
         AND last_heartbeat IS NOT NULL
-        AND last_heartbeat < ${thresholdStr}
+        AND TIMESTAMPDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}
     `;
-    sql:ExecutionResult _ = check dbClient->execute(updateQuery);
+    sql:ExecutionResult result = check dbClient->execute(updateQuery);
+
+    int? affectedCount = result.affectedRowCount;
+    if affectedCount is int && affectedCount > 0 {
+        log:printInfo(string `Marked ${affectedCount} runtime(s) as OFFLINE`);
+    }
 }
 
 // Process delta heartbeat with hash validation
@@ -2175,10 +2175,10 @@ public isolated function deleteProject(string projectId) returns error? {
 public isolated function createComponent(types:ComponentInput component) returns types:Component|error? {
     string componentId = uuid:createType1AsString();
     string componentTypeValue = component.componentType.toString();
-    
+
     // Use displayName if provided, otherwise fall back to name
     string displayName = component?.displayName ?: component.name;
-    
+
     sql:ParameterizedQuery insertQuery = `INSERT INTO components (component_id, project_id, name, display_name, description, component_type, created_by) 
                                           VALUES (${componentId}, ${component.projectId}, ${component.name}, ${displayName}, ${component.description}, ${componentTypeValue}, ${component.createdBy})`;
     var result = dbClient->execute(insertQuery);

@@ -2369,10 +2369,12 @@ public isolated function getComponentsByProjectIds(string[] projectIds, types:Co
                 updatedAt: component.component_updated_at,
 
                 // Classification
-                // componentSubType, componentType, labels omitted (optional fields)
+                componentSubType: (),
+                componentType: component.component_type == "MI" ? types:MI : types:BI,
+                labels: (),
 
                 // System Component Flag
-                // isSystemComponent omitted (optional field, defaults to false)
+                isSystemComponent: false,
 
                 // Nested Objects (empty arrays for now)
                 apiVersions: [],

@@ -156,7 +156,7 @@ type Component {
 
   # Classification
   componentSubType: String
-  componentType: RuntimeType
+  componentType: RuntimeType!
   labels: String
 
   # System Component Flag

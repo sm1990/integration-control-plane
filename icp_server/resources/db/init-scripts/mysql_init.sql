@@ -574,14 +574,10 @@ CREATE TABLE runtime_carbon_apps (
     runtime_id CHAR(36) NOT NULL,
     app_name VARCHAR(200) NOT NULL,
     version VARCHAR(50) NULL,
-    deployment_status VARCHAR(100) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'Active',
+        'Faulty'
+    ) NOT NULL DEFAULT 'Active',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_runtime_carbon_apps_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,

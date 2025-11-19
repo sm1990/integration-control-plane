@@ -462,7 +462,7 @@ public isolated function getDataServicesForRuntime(string runtimeId) returns typ
 public isolated function getCarbonAppsForRuntime(string runtimeId) returns types:CarbonApp[]|error {
     types:CarbonApp[] appList = [];
     stream<types:CarbonAppRecordInDB, sql:Error?> appStream = dbClient->query(`
-        SELECT app_name, version, deployment_status, state 
+        SELECT app_name, version, state
         FROM runtime_carbon_apps 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -471,8 +471,8 @@ public isolated function getCarbonAppsForRuntime(string runtimeId) returns types
         do {
             types:CarbonApp app = {
                 name: appRecord.app_name,
+                componentId: appRecord.component_id,
                 version: appRecord.version,
-                deploymentStatus: appRecord.deployment_status,
                 state: appRecord.state
             };
             appList.push(app);

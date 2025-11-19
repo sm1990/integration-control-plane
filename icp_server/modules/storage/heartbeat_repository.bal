@@ -620,10 +620,9 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
     foreach types:CarbonApp app in <types:CarbonApp[]>heartbeat.artifacts.carbonApps {
         _ = check dbClient->execute(`
             INSERT INTO runtime_carbon_apps (
-                runtime_id, app_name, version, deployment_status, state
+                runtime_id, app_name, version, state
             ) VALUES (
-                ${heartbeat.runtime}, ${app.name}, ${app.version},
-                ${app.deploymentStatus}, ${app.state}
+                ${heartbeat.runtime}, ${app.name}, ${app.version}, ${app.state}
             )
         `);
     }

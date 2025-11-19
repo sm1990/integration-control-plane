@@ -361,9 +361,9 @@ public type LocalEntryRecordInDB record {
 
 public type CarbonAppRecordInDB record {
     string app_name;
+    string component_id;
     string version = "";
     string app_version = "";
-    string deployment_status = "";
     ArtifactState state;
 };
 
@@ -458,7 +458,7 @@ public type RestApi record {
         name: "api_name"
     }
     string name;
-    string url;
+    string url = "";
     string context;
     string version?;
     @sql:Column {
@@ -601,12 +601,12 @@ public type CarbonApp record {
         name: "app_name"
     }
     string name;
+    string componentId?;
     string version?;
-    string deploymentStatus?;
     @sql:Column {
         name: "app_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    string state = "Active"; // "Active", "Faulty"
 };
 
 public type DataSource record {

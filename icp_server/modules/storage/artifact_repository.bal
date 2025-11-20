@@ -177,3 +177,35 @@ public isolated function getRestApisByEnvironmentAndComponent(string environment
 
     return apiList;
 }
+
+// Get Carbon Apps for a specific environment and component
+public isolated function getCarbonAppsByEnvironmentAndComponent(string environmentId, string componentId) returns types:CarbonApp[]|error {
+    types:CarbonApp[] appList = [];
+
+    // First, get all runtimes for this environment and component
+    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
+        SELECT runtime_id 
+        FROM runtimes 
+        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
+    `);
+
+    // Collect all runtime IDs
+    string[] runtimeIds = [];
+    check from types:RuntimeDBRecord runtime in runtimeStream
+        do {
+            runtimeIds.push(runtime.runtime_id);
+        };
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return appList;
+    }
+
+    // Get all Carbon Apps for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:CarbonApp[] runtimeApps = check getCarbonAppsForRuntime(runtimeId);
+        appList.push(...runtimeApps);
+    }
+
+    return appList;
+}

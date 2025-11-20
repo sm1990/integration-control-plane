@@ -473,6 +473,7 @@ isolated function deleteExistingArtifacts(string runtimeId) returns error? {
     _ = check dbClient->execute(`DELETE FROM runtime_services WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM runtime_listeners WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM service_resources WHERE runtime_id = ${runtimeId}`);
+    _ = check dbClient->execute(`DELETE FROM runtime_api_resources WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM runtime_apis WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM runtime_proxy_services WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM runtime_endpoints WHERE runtime_id = ${runtimeId}`);
@@ -502,6 +503,19 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                 ${api.context}, ${api.version}, ${api.state}
             )
         `);
+
+        // Insert API resources for this API
+        foreach types:ApiResource apiResource in api.resources {
+            // MI sends methods as a single string (e.g., "POST"), store as-is
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_api_resources (
+                    runtime_id, api_name, resource_path, methods
+                ) VALUES (
+                    ${heartbeat.runtime}, ${api.name},
+                    ${apiResource.path}, ${apiResource.methods}
+                )
+            `);
+        }
     }
 
     foreach types:ProxyService proxy in <types:ProxyService[]>heartbeat.artifacts.proxyServices {

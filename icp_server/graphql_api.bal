@@ -284,6 +284,30 @@ service /graphql on graphqlListener {
         return check storage:getRestApisByEnvironmentAndComponent(environmentId, componentId);
     }
 
+    // Get Carbon Apps for a specific environment and component
+    isolated resource function get carbonAppsByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:CarbonApp[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getCarbonAppsByEnvironmentAndComponent(environmentId, componentId);
+    }
+
     // Delete a runtime by ID
     isolated remote function deleteRuntime(graphql:Context context, string runtimeId) returns boolean|error {
         value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");

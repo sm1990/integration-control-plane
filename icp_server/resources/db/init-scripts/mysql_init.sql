@@ -332,6 +332,21 @@ CREATE TABLE runtime_apis (
     INDEX idx_state (state)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
+-- API Resources (MI) - Resources inside an API
+CREATE TABLE runtime_api_resources (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    runtime_id CHAR(36) NOT NULL,
+    api_name VARCHAR(200) NOT NULL,
+    resource_path VARCHAR(1000) NOT NULL,
+    methods VARCHAR(20) NOT NULL,  -- Single HTTP method as string (e.g., "POST", "GET")
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_api_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    INDEX idx_runtime_api (runtime_id, api_name),
+    INDEX idx_resource_path (resource_path(255)),
+    INDEX idx_methods (methods)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
 -- Proxy Services (MI)
 CREATE TABLE runtime_proxy_services (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

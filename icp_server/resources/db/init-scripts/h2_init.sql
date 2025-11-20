@@ -334,6 +334,24 @@ CREATE INDEX idx_runtime_apis_api_name ON runtime_apis (api_name);
 
 CREATE INDEX idx_runtime_apis_state ON runtime_apis (state);
 
+-- API Resources (MI) - Resources inside an API
+CREATE TABLE runtime_api_resources (
+    id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    runtime_id CHAR(36) NOT NULL,
+    api_name VARCHAR(200) NOT NULL,
+    resource_path VARCHAR(1000) NOT NULL,
+    methods VARCHAR(20) NOT NULL,  -- Single HTTP method as string (e.g., "POST", "GET")
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_runtime_api_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_runtime_api_resources_runtime_api ON runtime_api_resources (runtime_id, api_name);
+
+CREATE INDEX idx_runtime_api_resources_resource_path ON runtime_api_resources (resource_path);
+
+CREATE INDEX idx_runtime_api_resources_methods ON runtime_api_resources (methods);
+
 -- Proxy Services (MI)
 CREATE TABLE runtime_proxy_services (
     id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,

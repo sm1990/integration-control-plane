@@ -468,6 +468,16 @@ public type RestApi record {
         name: "api_state"
     }
     string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ApiResource[] resources = []; // API resources (path + methods)
+};
+
+// API Resource type for MI API resources
+public type ApiResource record {
+    @sql:Column {
+        name: "resource_path"
+    }
+    string path = ""; // "/unittest", "/*", etc.
+    string methods = ""; // Single method as string from MI heartbeat (e.g., "POST", "GET")
 };
 
 public type ProxyService record {

@@ -235,10 +235,35 @@ public isolated function getApisForRuntime(string runtimeId) returns types:RestA
 
     check from types:RestApi apiRecord in apiStream
         do {
+            // Get resources for this API
+            types:ApiResource[] resources = check getApiResourcesForRuntime(runtimeId, apiRecord.name);
+            apiRecord.resources = resources;
             apiList.push(apiRecord);
         };
 
     return apiList;
+}
+
+// Get API resources for a specific runtime and API
+isolated function getApiResourcesForRuntime(string runtimeId, string apiName) returns types:ApiResource[]|error {
+    types:ApiResource[] resourceList = [];
+
+    stream<record {| string resource_path; string methods; |}, sql:Error?> resourceStream = dbClient->query(`
+        SELECT resource_path, methods
+        FROM runtime_api_resources
+        WHERE runtime_id = ${runtimeId} AND api_name = ${apiName}
+    `);
+
+    check from record {| string resource_path; string methods; |} resourceRecord in resourceStream
+        do {
+            types:ApiResource apiResource = {
+                path: resourceRecord.resource_path,
+                methods: resourceRecord.methods
+            };
+            resourceList.push(apiResource);
+        };
+
+    return resourceList;
 }
 
 // Get proxy services for a specific runtime

@@ -14,7 +14,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import icp_server.storage;
 import icp_server.types;
 import icp_server.utils;
 
@@ -24,10 +23,20 @@ import ballerina/log;
 import ballerina/sql;
 import ballerina/time;
 import ballerina/uuid;
+import ballerinax/h2.driver as _;
+import ballerinax/java.jdbc as jdbc;
 
 configurable int authServicePort = 9447;
 configurable string authServiceHost = "0.0.0.0";
 configurable string apiKey = "default-api-key";
+
+// Separate H2 database connection for user credentials (default auth backend only)
+// This is a separate database file from the main ICP database
+final sql:Client credentialsDbClient = check new jdbc:Client(
+    "jdbc:h2:file:./database/credentialsdb;MODE=MySQL;AUTO_SERVER=TRUE", 
+    "sa", 
+    ""
+);
 
 listener http:Listener defaultAuthServiceListener = new (authServicePort,
     config = {
@@ -169,8 +178,8 @@ service / on defaultAuthServiceListener {
             return utils:createInternalServerError("Failed to process password");
         }
 
-        // Check if user already exists
-        types:UserCredentials|sql:Error existingUser = storage:dbClient->queryRow(
+        // Check if user already exists in credentials database
+        types:UserCredentials|sql:Error existingUser = credentialsDbClient->queryRow(
             `SELECT user_id, username, display_name FROM user_credentials WHERE username = ${request.username}`
         );
 
@@ -205,8 +214,8 @@ service / on defaultAuthServiceListener {
 
 isolated function authenticateUser(string username, string password) returns types:User|error {
     log:printDebug("Attempting to authenticate user: " + username);
-    // Query user credentials table only (auth backend is independent)
-    types:UserCredentials|sql:Error credentials = storage:dbClient->queryRow(
+    // Query user credentials table from separate credentials database
+    types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
         `SELECT user_id as userId, username, display_name as displayName, 
                 password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
          FROM user_credentials 
@@ -242,7 +251,7 @@ isolated function authenticateUser(string username, string password) returns typ
 
 isolated function getUserCredentialsById(string userId) returns types:UserCredentials|error {
     log:printDebug(string `Fetching credentials for userId: ${userId}`);
-    types:UserCredentials|sql:Error credentials = storage:dbClient->queryRow(
+    types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
         `SELECT user_id as userId, username, display_name as displayName, 
                 password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
          FROM user_credentials 
@@ -260,7 +269,7 @@ isolated function getUserCredentialsById(string userId) returns types:UserCreden
 isolated function updateUserPasswordInDb(string userId, string newPasswordHash) returns error? {
     log:printDebug(string `Updating password for user: ${userId}`);
 
-    sql:ExecutionResult result = check storage:dbClient->execute(
+    sql:ExecutionResult result = check credentialsDbClient->execute(
         `UPDATE user_credentials 
          SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP 
          WHERE user_id = ${userId}`
@@ -274,11 +283,11 @@ isolated function updateUserPasswordInDb(string userId, string newPasswordHash) 
     return ();
 }
 
-// Local helper: create user credentials only (auth backend manages user_credentials table)
+// Local helper: create user credentials only (auth backend manages user_credentials table in separate DB)
 isolated function createUserCredentials(string userId, string username, string displayName, string passwordHash) returns error? {
     log:printDebug(string `Auth backend creating user credentials: ${username} (${userId})`);
 
-    sql:ExecutionResult|error insertError = storage:dbClient->execute(
+    sql:ExecutionResult|error insertError = credentialsDbClient->execute(
         `INSERT INTO user_credentials (user_id, username, display_name, password_hash)
          VALUES (${userId}, ${username}, ${displayName}, ${passwordHash})`
     );

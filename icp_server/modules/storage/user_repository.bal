@@ -278,25 +278,13 @@ public isolated function getUsersByProjectIds(string[] projectIds) returns types
 public isolated function deleteUserById(string userId) returns error? {
     log:printDebug(string `Deleting user: ${userId}`);
 
-    transaction {
-        // Delete from user_credentials table
-        sql:ExecutionResult _ = check dbClient->execute(
-            `DELETE FROM user_credentials WHERE user_id = ${userId}`
-            );
-
-        // Delete from users table (will cascade to user_roles)
-        sql:ExecutionResult _ = check dbClient->execute(
-            `DELETE FROM users WHERE user_id = ${userId}`
-            );
-
-        check commit;
-        log:printInfo(string `Successfully deleted user ${userId}`);
-    } on fail error e {
-        log:printError(string `Transaction failed while deleting user ${userId}`, e);
-        return error(string `Failed to delete user ${userId}`, e);
+    // Delete from users table (will cascade to user_roles)
+    sql:ExecutionResult|error result = check dbClient->execute(`DELETE FROM users WHERE user_id = ${userId}`);
+    if result is sql:Error {
+        log:printError(string `Failed to delete user ${userId}`, result);
+        return result;
     }
-
-    return ();
+    log:printInfo(string `Successfully deleted user ${userId}`);
 }
 
 // Update user profile (display name)
@@ -309,27 +297,15 @@ public isolated function updateUserProfile(string userId, string displayName) re
         return error(string `User not found: ${userId}`);
     }
 
-    transaction {
-        // Update users table
-        sql:ExecutionResult _ = check dbClient->execute(
-            `UPDATE users 
-             SET display_name = ${displayName}, updated_at = CURRENT_TIMESTAMP 
-             WHERE user_id = ${userId}`
-            );
-
-        // Update user_credentials table if exists
-        sql:ExecutionResult _ = check dbClient->execute(
-            `UPDATE user_credentials 
-             SET display_name = ${displayName}, updated_at = CURRENT_TIMESTAMP 
-             WHERE user_id = ${userId}`
-            );
-
-        check commit;
-        log:printInfo(string `Successfully updated profile for user ${userId}`);
-    } on fail error e {
-        log:printError(string `Transaction failed while updating profile for user ${userId}`, e);
-        return error(string `Failed to update profile for user ${userId}`, e);
+    sql:ExecutionResult|error result = check dbClient->execute(
+    `UPDATE users 
+        SET display_name = ${displayName}, updated_at = CURRENT_TIMESTAMP 
+        WHERE user_id = ${userId}`
+    );
+    if result is error {
+        log:printError(string `Failed to update profile for user ${userId}`, result);
+        return result;
     }
 
-    return ();
+    log:printInfo(string `Successfully updated profile for user ${userId}`);
 }

@@ -211,7 +211,7 @@ public isolated function getServicesForRuntime(string runtimeId) returns types:S
 public isolated function getListenersForRuntime(string runtimeId) returns types:Listener[]|error {
     types:Listener[] listenerList = [];
     stream<types:Listener, sql:Error?> listenerStream = dbClient->query(`
-        SELECT listener_name, listener_package, protocol, state 
+        SELECT listener_name, listener_package, protocol, state, listener_host, listener_port 
         FROM runtime_listeners 
         WHERE runtime_id = ${runtimeId}
     `);

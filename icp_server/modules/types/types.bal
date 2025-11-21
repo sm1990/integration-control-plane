@@ -421,14 +421,14 @@ public type Listener record {
     string package = "";
 
     @sql:Column {
-        name: "listener_protocol"
+        name: "protocol"
     }
     string protocol = ""; // "http", "https", "jms", "rabbitmq", "file"
 
     @sql:Column {
         name: "listener_host"
     }
-    string? host?; // "0.0.0.0", "localhost" for network protocols
+    string host?; // "0.0.0.0", "localhost" for network protocols
     @sql:Column {
         name: "listener_port"
     }

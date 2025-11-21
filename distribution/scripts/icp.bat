@@ -35,7 +35,7 @@ cd /d "!SCRIPT_DIR!"
 REM Read ssoEnabled from deployment.toml and update the frontend config file
 set SSO_ENABLED=false
 if exist "!CONFIG_FILE!" (
-    for /f "tokens=2 delims==" %%a in ('findstr /r "^[ ]*ssoEnabled[ ]*=" "!CONFIG_FILE!"') do (
+    for /f "usebackq tokens=2 delims==" %%a in (`findstr /b /r "^ssoEnabled" "!CONFIG_FILE!"`) do (
         REM Trim whitespace from the value
         for /f "tokens=* delims= " %%b in ("%%a") do set SSO_ENABLED=%%b
     )

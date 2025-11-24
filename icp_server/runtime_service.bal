@@ -63,9 +63,7 @@ service /icp on httpListener {
     }
     isolated resource function post heartbeat(@http:Payload json heartbeatJson) returns types:HeartbeatResponse|error? {
         do {
-            // Parse heartbeat directly - SystemInfo will be parsed as an object
             types:Heartbeat heartbeat = check heartbeatJson.cloneWithType(types:Heartbeat);
-
             // Process heartbeat using the repository (handles both registration and updates)
             types:HeartbeatResponse heartbeatResponse = check storage:processHeartbeat(heartbeat);
             log:printInfo(string `Heartbeat processed successfully for ${heartbeat.runtime}`);

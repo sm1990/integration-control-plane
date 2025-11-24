@@ -42,7 +42,7 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
     }
     sql:ParameterizedQuery selectClause = ` SELECT runtime_id, runtime_type, status, environment_id, project_id, component_id, version, 
                  platform_name, platform_version, platform_home, os_name, os_version, 
-                 carbon_home, java_vendor, java_version, memory, os_arch, server_name,
+                 carbon_home, java_vendor, java_version, total_memory, free_memory, max_memory, used_memory, os_arch, server_name,
                  registration_time, last_heartbeat FROM runtimes `;
     sql:ParameterizedQuery orderByClause = ` ORDER BY registration_time DESC `;
     sql:ParameterizedQuery query = sql:queryConcat(selectClause, whereClause, whereConditions, orderByClause);
@@ -66,7 +66,7 @@ public isolated function getRuntimesByAccessibleEnvironments(types:UserContext u
         stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
             SELECT runtime_id, runtime_type, status, environment_id, project_id, component_id, version, 
                    platform_name, platform_version, platform_home, os_name, os_version, 
-                   carbon_home, java_vendor, java_version, memory, os_arch, server_name,
+                   carbon_home, java_vendor, java_version, total_memory, free_memory, max_memory, used_memory, os_arch, server_name,
                    registration_time, last_heartbeat FROM runtimes 
             ORDER BY registration_time DESC
         `);
@@ -124,7 +124,7 @@ public isolated function getRuntimesByAccessibleEnvironments(types:UserContext u
     // Build the complete query
     sql:ParameterizedQuery selectClause = ` SELECT runtime_id, runtime_type, status, environment_id, project_id, component_id, version, 
                  platform_name, platform_version, platform_home, os_name, os_version, 
-                 carbon_home, java_vendor, java_version, memory, os_arch, server_name,
+                 carbon_home, java_vendor, java_version, total_memory, free_memory, max_memory, used_memory, os_arch, server_name,
                  registration_time, last_heartbeat FROM runtimes `;
     sql:ParameterizedQuery orderByClause = ` ORDER BY registration_time DESC`;
     sql:ParameterizedQuery query = sql:queryConcat(selectClause, whereClause, orderByClause);
@@ -146,7 +146,7 @@ public isolated function getRuntimeById(string runtimeId) returns types:Runtime?
     stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
         SELECT runtime_id, runtime_type, status, environment_id, project_id, component_id, version,
                platform_name, platform_version, platform_home, os_name, os_version, 
-               carbon_home, java_vendor, java_version, memory, os_arch, server_name,
+               carbon_home, java_vendor, java_version, total_memory, free_memory, max_memory, used_memory, os_arch, server_name,
                registration_time, last_heartbeat 
         FROM runtimes 
         WHERE runtime_id = ${runtimeId}
@@ -590,7 +590,6 @@ public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) retur
     types:DataSource[] sourceList = [];
     types:Connector[] connectorList = [];
     types:RegistryResource[] resourceList = [];
-    types:SystemInfo? systemInfo = ();
 
     // Get MI artifacts only for MI runtime types
     if runtimeRecord.runtime_type == "MI" {
@@ -609,26 +608,6 @@ public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) retur
         sourceList = check getDataSourcesForRuntime(runtimeRecord.runtime_id);
         connectorList = check getConnectorsForRuntime(runtimeRecord.runtime_id);
         resourceList = check getRegistryResourcesForRuntime(runtimeRecord.runtime_id);
-        
-        // Build system info object from runtime columns
-        types:Memory? memoryInfo = ();
-        if runtimeRecord.memory is string {
-            // Parse memory JSON string back to Memory object
-            json memoryJson = check (<string>runtimeRecord.memory).fromJsonString();
-            memoryInfo = check memoryJson.cloneWithType(types:Memory);
-        }
-        
-        systemInfo = {
-            serverName: runtimeRecord.server_name,
-            version: runtimeRecord.version,
-            carbonHome: runtimeRecord.carbon_home,
-            javaVersion: runtimeRecord.java_version,
-            javaVendor: runtimeRecord.java_vendor,
-            osName: runtimeRecord.os_name,
-            osVersion: runtimeRecord.os_version,
-            osArch: runtimeRecord.os_arch,
-            memory: memoryInfo
-        };
     }
 
     // Convert time values to string format
@@ -675,8 +654,7 @@ public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) retur
             carbonApps: appList,
             dataSources: sourceList,
             connectors: connectorList,
-            registryResources: resourceList,
-            systemInfo: systemInfo
+            registryResources: resourceList
         }
     };
 }

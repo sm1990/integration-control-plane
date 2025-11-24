@@ -387,43 +387,23 @@ isolated function validateResourcesConsistency(types:Resource[] referenceResourc
 
 // Upsert runtime record
 isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error {
-    // Extract system info fields from systemInfo object
-    string? carbonHome = ();
-    string? javaVendor = ();
-    string? javaVersion = ();
-    string? memory = ();
-    string? osArch = ();
-    string? serverName = ();
-    
-    // Extract from systemInfo object if present
-    types:SystemInfo? sysInfo = heartbeat.artifacts.systemInfo;
-    if sysInfo is types:SystemInfo {
-        carbonHome = sysInfo.carbonHome;
-        javaVendor = sysInfo.javaVendor;
-        javaVersion = sysInfo.javaVersion;
-        osArch = sysInfo.osArch;
-        serverName = sysInfo.serverName;
-        
-        // Convert memory object to JSON string for storage
-        if sysInfo.memory is types:Memory {
-            types:Memory memInfo = <types:Memory>sysInfo.memory;
-            memory = string `{"totalMemory":${memInfo.totalMemory},"freeMemory":${memInfo.freeMemory},"maxMemory":${memInfo.maxMemory},"usedMemory":${memInfo.usedMemory}}`;
-        }
-    }
-    
     sql:ExecutionResult result = check dbClient->execute(`
         INSERT INTO runtimes (
             runtime_id, name, runtime_type, status, version,
             environment_id, project_id, component_id,
             platform_name, platform_version, platform_home,
             os_name, os_version,
-            carbon_home, java_vendor, java_version, memory, os_arch, server_name
+            carbon_home, java_vendor, java_version, 
+            total_memory, free_memory, max_memory, used_memory,
+            os_arch, server_name
         ) VALUES (
             ${heartbeat.runtime}, ${heartbeat.runtime}, ${heartbeat.runtimeType}, ${heartbeat.status}, ${heartbeat.version},
             ${heartbeat.environment}, ${heartbeat.project}, ${heartbeat.component},
-            ${heartbeat.nodeInfo.platformName}, ${heartbeat.nodeInfo.platformVersion}, ${heartbeat.nodeInfo.ballerinaHome},
+            ${heartbeat.nodeInfo.platformName}, ${heartbeat.nodeInfo.platformVersion}, ${heartbeat.nodeInfo.platformHome},
             ${heartbeat.nodeInfo.osName}, ${heartbeat.nodeInfo.osVersion},
-            ${carbonHome}, ${javaVendor}, ${javaVersion}, ${memory}, ${osArch}, ${serverName}
+            ${heartbeat.nodeInfo.carbonHome}, ${heartbeat.nodeInfo.javaVendor}, ${heartbeat.nodeInfo.javaVersion}, 
+            ${heartbeat.nodeInfo.totalMemory}, ${heartbeat.nodeInfo.freeMemory}, ${heartbeat.nodeInfo.maxMemory}, ${heartbeat.nodeInfo.usedMemory},
+            ${heartbeat.nodeInfo.osArch}, ${heartbeat.nodeInfo.platformName}
         )
         ON DUPLICATE KEY UPDATE
             name = VALUES(name),
@@ -441,7 +421,10 @@ isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error
             carbon_home = VALUES(carbon_home),
             java_vendor = VALUES(java_vendor),
             java_version = VALUES(java_version),
-            memory = VALUES(memory),
+            total_memory = VALUES(total_memory),
+            free_memory = VALUES(free_memory),
+            max_memory = VALUES(max_memory),
+            used_memory = VALUES(used_memory),
             os_arch = VALUES(os_arch),
             server_name = VALUES(server_name),
             last_heartbeat = CURRENT_TIMESTAMP

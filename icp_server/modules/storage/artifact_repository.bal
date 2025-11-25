@@ -19,6 +19,23 @@ import icp_server.types;
 import ballerina/crypto;
 import ballerina/sql;
 
+// Helper function to get runtime IDs for a specific environment and component
+isolated function getRuntimeIdsByEnvironmentAndComponent(string environmentId, string componentId) returns string[]|error {
+    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
+        SELECT runtime_id 
+        FROM runtimes 
+        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
+    `);
+
+    string[] runtimeIds = [];
+    check from types:RuntimeDBRecord runtime in runtimeStream
+        do {
+            runtimeIds.push(runtime.runtime_id);
+        };
+
+    return runtimeIds;
+}
+
 // Helper function to calculate a hash for a service based on its key properties
 isolated function calculateServiceHash(types:Service 'service) returns string {
     // Create a unique string representation of the service including resources
@@ -71,19 +88,8 @@ public isolated function getServicesByEnvironmentAndComponent(string environment
     types:Service[] serviceList = [];
     map<boolean> seenHashes = {}; // Track unique service hashes
 
-    // First, get all runtimes for this environment and component
-    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id 
-        FROM runtimes 
-        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
-    `);
-
-    // Collect all runtime IDs
-    string[] runtimeIds = [];
-    check from types:RuntimeDBRecord runtime in runtimeStream
-        do {
-            runtimeIds.push(runtime.runtime_id);
-        };
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
 
     // If no runtimes found, return empty array
     if runtimeIds.length() == 0 {
@@ -111,19 +117,8 @@ public isolated function getListenersByEnvironmentAndComponent(string environmen
     types:Listener[] listenerList = [];
     map<boolean> seenHashes = {}; // Track unique listener hashes
 
-    // First, get all runtimes for this environment and component
-    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id 
-        FROM runtimes 
-        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
-    `);
-
-    // Collect all runtime IDs
-    string[] runtimeIds = [];
-    check from types:RuntimeDBRecord runtime in runtimeStream
-        do {
-            runtimeIds.push(runtime.runtime_id);
-        };
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
 
     // If no runtimes found, return empty array
     if runtimeIds.length() == 0 {
@@ -150,19 +145,8 @@ public isolated function getListenersByEnvironmentAndComponent(string environmen
 public isolated function getRestApisByEnvironmentAndComponent(string environmentId, string componentId) returns types:RestApi[]|error {
     types:RestApi[] apiList = [];
 
-    // First, get all runtimes for this environment and component
-    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id 
-        FROM runtimes 
-        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
-    `);
-
-    // Collect all runtime IDs
-    string[] runtimeIds = [];
-    check from types:RuntimeDBRecord runtime in runtimeStream
-        do {
-            runtimeIds.push(runtime.runtime_id);
-        };
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
 
     // If no runtimes found, return empty array
     if runtimeIds.length() == 0 {
@@ -182,19 +166,8 @@ public isolated function getRestApisByEnvironmentAndComponent(string environment
 public isolated function getCarbonAppsByEnvironmentAndComponent(string environmentId, string componentId) returns types:CarbonApp[]|error {
     types:CarbonApp[] appList = [];
 
-    // First, get all runtimes for this environment and component
-    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id 
-        FROM runtimes 
-        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
-    `);
-
-    // Collect all runtime IDs
-    string[] runtimeIds = [];
-    check from types:RuntimeDBRecord runtime in runtimeStream
-        do {
-            runtimeIds.push(runtime.runtime_id);
-        };
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
 
     // If no runtimes found, return empty array
     if runtimeIds.length() == 0 {
@@ -214,19 +187,8 @@ public isolated function getCarbonAppsByEnvironmentAndComponent(string environme
 public isolated function getInboundEndpointsByEnvironmentAndComponent(string environmentId, string componentId) returns types:InboundEndpoint[]|error {
     types:InboundEndpoint[] inboundList = [];
 
-    // First, get all runtimes for this environment and component
-    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id 
-        FROM runtimes 
-        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
-    `);
-
-    // Collect all runtime IDs
-    string[] runtimeIds = [];
-    check from types:RuntimeDBRecord runtime in runtimeStream
-        do {
-            runtimeIds.push(runtime.runtime_id);
-        };
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
 
     // If no runtimes found, return empty array
     if runtimeIds.length() == 0 {
@@ -246,19 +208,8 @@ public isolated function getInboundEndpointsByEnvironmentAndComponent(string env
 public isolated function getEndpointsByEnvironmentAndComponent(string environmentId, string componentId) returns types:Endpoint[]|error {
     types:Endpoint[] endpointList = [];
 
-    // First, get all runtimes for this environment and component
-    stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(`
-        SELECT runtime_id 
-        FROM runtimes 
-        WHERE environment_id = ${environmentId} AND component_id = ${componentId}
-    `);
-
-    // Collect all runtime IDs
-    string[] runtimeIds = [];
-    check from types:RuntimeDBRecord runtime in runtimeStream
-        do {
-            runtimeIds.push(runtime.runtime_id);
-        };
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
 
     // If no runtimes found, return empty array
     if runtimeIds.length() == 0 {
@@ -272,4 +223,172 @@ public isolated function getEndpointsByEnvironmentAndComponent(string environmen
     }
 
     return endpointList;
+}
+
+// Get Sequences for a specific environment and component
+public isolated function getSequencesByEnvironmentAndComponent(string environmentId, string componentId) returns types:Sequence[]|error {
+    types:Sequence[] sequenceList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return sequenceList;
+    }
+
+    // Get all Sequences for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:Sequence[] runtimeSequences = check getSequencesForRuntime(runtimeId);
+        sequenceList.push(...runtimeSequences);
+    }
+
+    return sequenceList;
+}
+
+// Get Proxy Services for a specific environment and component
+public isolated function getProxyServicesByEnvironmentAndComponent(string environmentId, string componentId) returns types:ProxyService[]|error {
+    types:ProxyService[] proxyList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return proxyList;
+    }
+
+    // Get all Proxy Services for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:ProxyService[] runtimeProxies = check getProxyServicesForRuntime(runtimeId);
+        proxyList.push(...runtimeProxies);
+    }
+
+    return proxyList;
+}
+
+// Get Tasks for a specific environment and component
+public isolated function getTasksByEnvironmentAndComponent(string environmentId, string componentId) returns types:Task[]|error {
+    types:Task[] taskList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return taskList;
+    }
+
+    // Get all Tasks for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:Task[] runtimeTasks = check getTasksForRuntime(runtimeId);
+        taskList.push(...runtimeTasks);
+    }
+
+    return taskList;
+}
+
+// Get Templates for a specific environment and component
+public isolated function getTemplatesByEnvironmentAndComponent(string environmentId, string componentId) returns types:Template[]|error {
+    types:Template[] templateList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return templateList;
+    }
+
+    // Get all Templates for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:Template[] runtimeTemplates = check getTemplatesForRuntime(runtimeId);
+        templateList.push(...runtimeTemplates);
+    }
+
+    return templateList;
+}
+
+// Get Message Stores for a specific environment and component
+public isolated function getMessageStoresByEnvironmentAndComponent(string environmentId, string componentId) returns types:MessageStore[]|error {
+    types:MessageStore[] storeList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return storeList;
+    }
+
+    // Get all Message Stores for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:MessageStore[] runtimeStores = check getMessageStoresForRuntime(runtimeId);
+        storeList.push(...runtimeStores);
+    }
+
+    return storeList;
+}
+
+// Get Message Processors for a specific environment and component
+public isolated function getMessageProcessorsByEnvironmentAndComponent(string environmentId, string componentId) returns types:MessageProcessor[]|error {
+    types:MessageProcessor[] processorList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return processorList;
+    }
+
+    // Get all Message Processors for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:MessageProcessor[] runtimeProcessors = check getMessageProcessorsForRuntime(runtimeId);
+        processorList.push(...runtimeProcessors);
+    }
+
+    return processorList;
+}
+
+// Get Local Entries for a specific environment and component
+public isolated function getLocalEntriesByEnvironmentAndComponent(string environmentId, string componentId) returns types:LocalEntry[]|error {
+    types:LocalEntry[] entryList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return entryList;
+    }
+
+    // Get all Local Entries for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:LocalEntry[] runtimeEntries = check getLocalEntriesForRuntime(runtimeId);
+        entryList.push(...runtimeEntries);
+    }
+
+    return entryList;
+}
+
+// Get Data Services for a specific environment and component
+public isolated function getDataServicesByEnvironmentAndComponent(string environmentId, string componentId) returns types:DataService[]|error {
+    types:DataService[] dataServiceList = [];
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return dataServiceList;
+    }
+
+    // Get all Data Services for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:DataService[] runtimeDataServices = check getDataServicesForRuntime(runtimeId);
+        dataServiceList.push(...runtimeDataServices);
+    }
+
+    return dataServiceList;
 }

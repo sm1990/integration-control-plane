@@ -356,6 +356,198 @@ service /graphql on graphqlListener {
         return check storage:getEndpointsByEnvironmentAndComponent(environmentId, componentId);
     }
 
+    // Get Sequences for a specific environment and component
+    isolated resource function get sequencesByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:Sequence[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getSequencesByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Proxy Services for a specific environment and component
+    isolated resource function get proxyServicesByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:ProxyService[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getProxyServicesByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Tasks for a specific environment and component
+    isolated resource function get tasksByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:Task[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getTasksByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Templates for a specific environment and component
+    isolated resource function get templatesByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:Template[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getTemplatesByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Message Stores for a specific environment and component
+    isolated resource function get messageStoresByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:MessageStore[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getMessageStoresByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Message Processors for a specific environment and component
+    isolated resource function get messageProcessorsByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:MessageProcessor[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getMessageProcessorsByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Local Entries for a specific environment and component
+    isolated resource function get localEntriesByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:LocalEntry[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getLocalEntriesByEnvironmentAndComponent(environmentId, componentId);
+    }
+
+    // Get Data Services for a specific environment and component
+    isolated resource function get dataServicesByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:DataService[]|error {
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
+        }
+
+        // Extract user context for RBAC
+        types:UserContext userContext = check utils:extractUserContext(authHeader);
+
+        // Get component to verify access
+        types:Component? component = check storage:getComponentById(componentId);
+        if component is () {
+            return error("Component not found");
+        }
+
+        // Verify user has access to the component's project and environment
+        if !utils:hasAccessToEnvironment(userContext, component.projectId, environmentId) {
+            return error("Access denied to environment");
+        }
+
+        return check storage:getDataServicesByEnvironmentAndComponent(environmentId, componentId);
+    }
+
     // Delete a runtime by ID
     isolated remote function deleteRuntime(graphql:Context context, string runtimeId) returns boolean|error {
         value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");

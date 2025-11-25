@@ -187,19 +187,19 @@ CREATE INDEX idx_user_roles_role_id ON user_roles (role_id);
 -- RBAC V2 - GROUP-BASED AUTHORIZATION
 -- ============================================================================
 
--- Groups table
-CREATE TABLE groups (
+-- User Groups table
+CREATE TABLE user_groups (
     group_id VARCHAR(36) PRIMARY KEY,
     group_name VARCHAR(255) NOT NULL,
     org_uuid INT NOT NULL DEFAULT 1,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_groups_org FOREIGN KEY (org_uuid) REFERENCES organizations(org_id) ON DELETE CASCADE
+    CONSTRAINT fk_user_groups_org FOREIGN KEY (org_uuid) REFERENCES organizations(org_id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_groups_org_uuid ON groups (org_uuid);
-CREATE INDEX idx_groups_group_name ON groups (group_name);
+CREATE INDEX idx_user_groups_org_uuid ON user_groups (org_uuid);
+CREATE INDEX idx_user_groups_group_name ON user_groups (group_name);
 
 -- Roles v2 table (new structure for permission-based RBAC)
 CREATE TABLE roles_v2 (
@@ -242,7 +242,7 @@ CREATE TABLE group_user_mapping (
     group_id VARCHAR(36) NOT NULL,
     user_uuid VARCHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_group_user_group FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+    CONSTRAINT fk_group_user_group FOREIGN KEY (group_id) REFERENCES user_groups(group_id) ON DELETE CASCADE,
     CONSTRAINT fk_group_user_user FOREIGN KEY (user_uuid) REFERENCES users(user_id) ON DELETE CASCADE,
     CONSTRAINT unique_group_user UNIQUE (group_id, user_uuid)
 );
@@ -260,7 +260,7 @@ CREATE TABLE group_role_mapping (
     env_uuid CHAR(36),
     integration_uuid CHAR(36),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_grp_role_group FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+    CONSTRAINT fk_grp_role_group FOREIGN KEY (group_id) REFERENCES user_groups(group_id) ON DELETE CASCADE,
     CONSTRAINT fk_grp_role_role FOREIGN KEY (role_id) REFERENCES roles_v2(role_id) ON DELETE CASCADE,
     CONSTRAINT fk_grp_role_org FOREIGN KEY (org_uuid) REFERENCES organizations(org_id) ON DELETE CASCADE,
     CONSTRAINT fk_grp_role_project FOREIGN KEY (project_uuid) REFERENCES projects(project_id) ON DELETE CASCADE,

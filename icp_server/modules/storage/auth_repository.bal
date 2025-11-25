@@ -43,7 +43,7 @@ public isolated function createGroup(types:GroupInput input) returns string|erro
     log:printDebug(string `Creating group: ${input.groupName} with groupId: ${groupId}`);
 
     sql:ExecutionResult|error result = dbClient->execute(
-        `INSERT INTO groups (group_id, group_name, org_uuid, description) 
+        `INSERT INTO user_groups (group_id, group_name, org_uuid, description) 
          VALUES (${groupId}, ${input.groupName}, ${orgId}, ${input.description})`
     );
 
@@ -62,7 +62,7 @@ public isolated function getGroupById(string groupId) returns types:Group|error 
 
     types:Group group = check dbClient->queryRow(
         `SELECT group_id, group_name, org_uuid, description, created_at, updated_at 
-         FROM groups 
+         FROM user_groups 
          WHERE group_id = ${groupId}`
     );
 
@@ -76,7 +76,7 @@ public isolated function getGroupsByOrgId(int orgId) returns types:Group[]|error
     types:Group[] groups = [];
     stream<types:Group, sql:Error?> groupStream = dbClient->query(
         `SELECT group_id, group_name, org_uuid, description, created_at, updated_at 
-         FROM groups 
+         FROM user_groups 
          WHERE org_uuid = ${orgId}`
     );
 
@@ -93,7 +93,7 @@ public isolated function updateGroup(string groupId, types:GroupInput input) ret
     log:printDebug(string `Updating group: ${groupId}`);
 
     sql:ExecutionResult result = check dbClient->execute(
-        `UPDATE groups 
+        `UPDATE user_groups 
          SET group_name = ${input.groupName}, 
              description = ${input.description}
          WHERE group_id = ${groupId}`
@@ -112,7 +112,7 @@ public isolated function deleteGroup(string groupId) returns error? {
     log:printDebug(string `Deleting group: ${groupId}`);
 
     sql:ExecutionResult result = check dbClient->execute(
-        `DELETE FROM groups WHERE group_id = ${groupId}`
+        `DELETE FROM user_groups WHERE group_id = ${groupId}`
     );
 
     if result.affectedRowCount == 0 {
@@ -491,7 +491,7 @@ public isolated function getUserGroups(string userId) returns types:Group[]|erro
     types:Group[] groups = [];
     stream<types:Group, sql:Error?> groupStream = dbClient->query(
         `SELECT g.group_id, g.group_name, g.org_uuid, g.description, g.created_at, g.updated_at
-         FROM groups g
+         FROM user_groups g
          INNER JOIN group_user_mapping gum ON g.group_id = gum.group_id
          WHERE gum.user_uuid = ${userId}`
     );
@@ -900,7 +900,7 @@ public isolated function getRoleGroups(string roleId) returns types:Group[]|erro
     types:Group[] groups = [];
     stream<types:Group, sql:Error?> groupStream = dbClient->query(
         `SELECT DISTINCT g.group_id, g.group_name, g.org_uuid, g.description, g.created_at, g.updated_at
-         FROM groups g
+         FROM user_groups g
          INNER JOIN group_role_mapping grm ON g.group_id = grm.group_id
          WHERE grm.role_id = ${roleId}
          ORDER BY g.group_name`

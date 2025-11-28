@@ -40,33 +40,6 @@ public enum PermissionDomain {
     USER_MANAGEMENT = "User-Management"
 }
 
-// === Resource Type Enum ===
-
-// Defines the types of resources that can be controlled by permissions
-public enum ResourceType {
-    INTEGRATION = "integration",
-    ENVIRONMENT = "environment",
-    PROJECT = "project",
-    LOGS = "logs",
-    INSIGHTS = "insights",
-    USER = "user",
-    GROUP = "group",
-    ROLE = "role",
-    GROUP_ROLE = "group-role"
-}
-
-// === Action Enum ===
-
-// Defines the actions that can be performed on resources
-// Manage = View + Edit + Create + Delete (full control)
-public enum Action {
-    VIEW = "view",
-    EDIT = "edit",
-    CREATE = "create",
-    DELETE = "delete",
-    MANAGE = "manage" // Full control: view + edit + create + delete
-}
-
 // === Core RBAC V2 Database Record Types ===
 
 // Permission record - represents a fine-grained permission in the system
@@ -81,10 +54,10 @@ public type Permission record {
     PermissionDomain permissionDomain;
     
     @sql:Column {name: "resource_type"}
-    ResourceType resourceType;
+    string resourceType; // Changed from ResourceType enum to string for flexibility
     
     @sql:Column {name: "action"}
-    Action action;
+    string action; // Changed from Action enum to string for flexibility
     
     string description?;
     
@@ -249,6 +222,11 @@ public type RoleV2Input record {
 public type AssignGroupToUserInput record {
     string groupId;
     string userId;
+};
+
+// Input for adding multiple users to a group
+public type AddUsersToGroupInput record {
+    string[] userIds;
 };
 
 // Input for assigning a role to a group with context

@@ -1205,8 +1205,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1258,8 +1258,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1293,8 +1293,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1338,8 +1338,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1378,6 +1378,124 @@ service /auth on httpListener {
     }
 
     // ============================================================================
+    // Group-User Mapping Endpoints (RBAC v2)
+    // ============================================================================
+
+    // POST /auth/orgs/{orgHandle}/groups/{groupId}/users - Add users to group
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function post orgs/[string orgHandle]/groups/[string groupId]/users(types:AddUsersToGroupInput input) returns http:Ok|http:BadRequest|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Adding users to group", orgHandle = orgHandle, groupId = groupId, userCount = input.userIds.length());
+
+        // Validate input
+        if input.userIds.length() == 0 {
+            return <http:BadRequest>{
+                body: {
+                    message: "At least one user ID must be provided"
+                }
+            };
+        }
+
+        // Verify group exists
+        types:Group|error existingGroup = storage:getGroupById(groupId);
+        if existingGroup is error {
+            log:printError("Group not found", existingGroup, groupId = groupId);
+            return <http:NotFound>{
+                body: {
+                    message: "Group not found"
+                }
+            };
+        }
+
+        // Add each user to the group
+        int successCount = 0;
+        int failureCount = 0;
+        string[] errors = [];
+
+        foreach string userId in input.userIds {
+            error? addResult = storage:addUserToGroup(userId, groupId);
+            if addResult is error {
+                failureCount += 1;
+                errors.push(string `Failed to add user ${userId}: ${addResult.message()}`);
+                log:printError(string `Error adding user ${userId} to group ${groupId}`, addResult);
+            } else {
+                successCount += 1;
+            }
+        }
+
+        log:printInfo("Users added to group", groupId = groupId, successCount = successCount, failureCount = failureCount);
+
+        if failureCount > 0 && successCount == 0 {
+            // All operations failed
+            return utils:createInternalServerError(string `Failed to add all users to group: ${errors[0]}`);
+        }
+
+        return <http:Ok>{
+            body: {
+                message: string `Successfully added ${successCount} user(s) to group`,
+                groupId: groupId,
+                successCount: successCount,
+                failureCount: failureCount,
+                errors: errors
+            }
+        };
+    }
+
+    // DELETE /auth/orgs/{orgHandle}/groups/{groupId}/users/{userId} - Remove user from group
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function delete orgs/[string orgHandle]/groups/[string groupId]/users/[string userId]() returns http:Ok|http:BadRequest|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Removing user from group", orgHandle = orgHandle, groupId = groupId, userId = userId);
+
+        // Remove user from group
+        error? removeResult = storage:removeUserFromGroup(userId, groupId);
+        if removeResult is error {
+            log:printError("Error removing user from group", removeResult, userId = userId, groupId = groupId);
+            if removeResult.message().includes("not found") {
+                return <http:NotFound>{
+                    body: {
+                        message: "User not found in group"
+                    }
+                };
+            }
+            return utils:createInternalServerError("Failed to remove user from group");
+        }
+
+        log:printInfo("Successfully removed user from group", userId = userId, groupId = groupId);
+        return <http:Ok>{
+            body: {
+                message: "User removed from group successfully",
+                groupId: groupId,
+                userId: userId
+            }
+        };
+    }
+
+    // ============================================================================
     // Role Management Endpoints (RBAC v2)
     // ============================================================================
 
@@ -1386,8 +1504,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1426,8 +1544,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1479,8 +1597,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1532,8 +1650,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1577,8 +1695,8 @@ service /auth on httpListener {
         auth: [
             {
                 jwtValidatorConfig: {
-                    issuer: jwtIssuer,
-                    audience: jwtAudience,
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
@@ -1612,6 +1730,123 @@ service /auth on httpListener {
             body: {
                 message: "Role deleted successfully",
                 roleId: roleId
+            }
+        };
+    }
+
+    // ============================================================================
+    // Permission Endpoints (RBAC v2)
+    // ============================================================================
+
+    // GET /auth/permissions - List all available permissions
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+                // No specific scopes required - all authenticated users can see available permissions
+            }
+        ]
+    }
+    isolated resource function get permissions() returns http:Ok|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching all available permissions");
+
+        // Fetch all permissions
+        types:Permission[]|error permissions = storage:getAllPermissions();
+        if permissions is error {
+            log:printError("Error fetching permissions", permissions);
+            return utils:createInternalServerError("Failed to fetch permissions");
+        }
+
+        // Group permissions by domain for easier consumption
+        map<types:Permission[]> groupedPermissions = {};
+        foreach types:Permission permission in permissions {
+            string domain = permission.permissionDomain.toString();
+            if !groupedPermissions.hasKey(domain) {
+                groupedPermissions[domain] = [];
+            }
+            types:Permission[]? domainPerms = groupedPermissions[domain];
+            if domainPerms is types:Permission[] {
+                domainPerms.push(permission);
+            }
+        }
+
+        log:printInfo(string `Successfully fetched ${permissions.length()} permissions across ${groupedPermissions.length()} domains`);
+        return <http:Ok>{
+            body: {
+                permissions: permissions,
+                groupedByDomain: groupedPermissions
+            }
+        };
+    }
+
+    // GET /auth/orgs/{orgHandle}/users/{userId}/permissions - Get user's effective permissions
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_users"]
+            }
+        ]
+    }
+    isolated resource function get orgs/[string orgHandle]/users/[string userId]/permissions(
+        string? projectId = (),
+        string? integrationId = (),
+        string? environmentId = ()
+    ) returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching effective permissions for user", 
+            orgHandle = orgHandle, 
+            userId = userId, 
+            projectId = projectId, 
+            integrationId = integrationId, 
+            environmentId = environmentId
+        );
+
+        // Resolve org handle to org ID
+        // TODO: use when multiple tenants are supported
+        // int|error orgId = storage:getOrgIdByHandle(orgHandle);
+        // if orgId is error {
+        //     log:printWarn("Invalid or unknown organization handle", orgHandle = orgHandle, 'error = orgId);
+        //     return utils:createBadRequestError("Invalid or unknown organization");
+        // }
+
+        // Build access scope from query parameters
+        types:AccessScope scope = {
+            orgUuid: storage:DEFAULT_ORG_ID,
+            projectUuid: projectId,
+            integrationUuid: integrationId,
+            envUuid: environmentId
+        };
+
+        // Get user's effective permissions for the given scope
+        types:Permission[]|error permissions = storage:getUserEffectivePermissions(userId, scope);
+        if permissions is error {
+            log:printError("Error fetching user permissions", permissions, userId = userId);
+            return utils:createInternalServerError("Failed to fetch user permissions");
+        }
+
+        // Extract permission names for easier use
+        string[] permissionNames = from types:Permission p in permissions
+            select p.permissionName;
+
+        log:printInfo(string `Successfully fetched ${permissions.length()} effective permissions for user`, userId = userId);
+        return <http:Ok>{
+            body: {
+                userId: userId,
+                scope: scope,
+                permissions: permissions,
+                permissionNames: permissionNames
             }
         };
     }

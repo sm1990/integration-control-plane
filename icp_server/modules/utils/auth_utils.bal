@@ -843,8 +843,7 @@ public isolated function generateJWTTokenV2(
     // Add custom claims
     issuerConfig.customClaims["username"] = username;
     issuerConfig.customClaims["displayName"] = displayName;
-    issuerConfig.customClaims["permissions"] = permissionNames; // Array format
-    issuerConfig.customClaims["scope"] = scopeString; // Space-separated format (OAuth2 standard)
+    issuerConfig.customClaims["scope"] = scopeString; // Space-separated format (OAuth2 standard) - used for declarative validation
 
     string|jwt:Error jwtToken = jwt:issue(issuerConfig);
     if jwtToken is jwt:Error {

@@ -456,6 +456,10 @@ WHERE
 -- RBAC V2 SEED DATA
 -- ============================================================================
 
+-- Insert default organization (required for foreign key constraints)
+INSERT INTO organizations (org_id, org_name, org_handle)
+VALUES (1, 'Default Organization', 'default');
+
 -- Insert pre-defined roles
 INSERT INTO roles_v2 (role_id, role_name, org_id, description) VALUES
 (RANDOM_UUID(), 'Super Admin', 1, 'Full access to all resources and permissions'),
@@ -647,6 +651,31 @@ WHERE
         'observability_mgt:view_logs',
         'observability_mgt:view_insights'
     );
+
+-- Insert default admin user (required for group assignments)
+INSERT INTO users (user_id, username, display_name, is_super_admin)
+VALUES ('550e8400-e29b-41d4-a716-446655440000', 'admin', 'System Administrator', TRUE);
+
+-- Create default groups
+INSERT INTO user_groups (group_id, group_name, org_uuid, description) VALUES
+(RANDOM_UUID(), 'Super Admins', 1, 'Group for super administrators with full access'),
+(RANDOM_UUID(), 'Administrators', 1, 'Group for administrators'),
+(RANDOM_UUID(), 'Developers', 1, 'Group for developers');
+
+-- Assign super admin user to Super Admins group
+INSERT INTO group_user_mapping (group_id, user_uuid)
+VALUES (
+    (SELECT group_id FROM user_groups WHERE group_name = 'Super Admins'),
+    '550e8400-e29b-41d4-a716-446655440000'
+);
+
+-- Map Super Admins group to Super Admin role at org level
+INSERT INTO group_role_mapping (group_id, role_id, org_uuid)
+VALUES (
+    (SELECT group_id FROM user_groups WHERE group_name = 'Super Admins'),
+    (SELECT role_id FROM roles_v2 WHERE role_name = 'Super Admin'),
+    1
+);
 
 -- ============================================================================
 -- RUNTIMES & ARTIFACTS
@@ -1273,16 +1302,9 @@ CREATE INDEX idx_system_config_updated_at ON system_config (updated_at);
 -- SAMPLE DATA FOR TESTING
 -- ============================================================================
 
--- Insert default organization
-INSERT INTO
-    organizations (org_id, org_name, org_handle)
-VALUES (
-        1,
-        'Default Organization',
-        'default'
-    );
+-- Note: Default organization and super admin user are created in RBAC V2 SEED DATA section above
 
--- Insert a default admin user for testing
+-- Insert additional test users
 INSERT INTO
     users (
         user_id,
@@ -1291,12 +1313,6 @@ INSERT INTO
         is_super_admin
     )
 VALUES (
-        '550e8400-e29b-41d4-a716-446655440000',
-        'admin',
-        'System Administrator',
-        TRUE
-    ),
-    (
         '660e8400-e29b-41d4-a716-446655440002',
         'testuser',
         'Test User for Role Management',

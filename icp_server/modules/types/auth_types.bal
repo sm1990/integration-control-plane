@@ -104,6 +104,9 @@ public type RoleV2 record {
     @sql:Column {name: "role_name"}
     string roleName;
     
+    @sql:Column {name: "org_id"}
+    int orgId; // Organization ID (default: 1 for single-tenant mode)
+    
     string description?;
     
     @sql:Column {name: "created_at"}
@@ -238,6 +241,7 @@ public type GroupInput record {
 // Input for creating a new role
 public type RoleV2Input record {
     string roleName;
+    int orgId?; // Optional, defaults to 1
     string description?;
 };
 

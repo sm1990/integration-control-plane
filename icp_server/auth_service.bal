@@ -1157,5 +1157,463 @@ service /auth on httpListener {
             }
         };
     }
+
+    // RBAC v2: Group Management Endpoints
+
+    // Get all groups for an organization
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function get orgs/[string orgHandle]/groups() returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching groups for organization", orgHandle = orgHandle);
+
+        // Resolve org handle to org ID
+        // TODO : use when multiple tenants are supported
+        // int|error orgId = storage:getOrgIdByHandle(orgHandle);
+        // if orgId is error {
+        //     log:printWarn("Invalid or unknown organization handle", orgHandle = orgHandle, 'error = orgId);
+        //     return utils:createBadRequestError("Invalid or unknown organization");
+        // }
+
+        // Fetch all groups for the organization
+        // TODO: use orgId when multiple tenants are supported
+        types:Group[]|error groups = storage:getGroupsByOrgId(storage:DEFAULT_ORG_ID);
+        if groups is error {
+            log:printError("Error fetching groups", groups, orgHandle = orgHandle);
+            return utils:createInternalServerError("Failed to fetch groups");
+        }
+
+        log:printInfo(string `Successfully fetched ${groups.length()} groups`, orgHandle = orgHandle);
+        return <http:Ok>{
+            body: groups
+        };
+    }
+
+    // POST /auth/orgs/{orgHandle}/groups - Create a new group
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function post orgs/[string orgHandle]/groups(@http:Payload types:GroupInput groupInput) returns http:Created|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Creating new group", orgHandle = orgHandle, groupName = groupInput.groupName);
+
+        // Resolve org handle to org ID
+        // TODO: use when multiple tenants are supported
+        // int|error orgId = storage:getOrgIdByHandle(orgHandle);
+        // if orgId is error {
+        //     log:printWarn("Invalid or unknown organization handle", orgHandle = orgHandle, 'error = orgId);
+        //     return utils:createBadRequestError("Invalid or unknown organization");
+        // }
+
+        // Set org ID in the input (default to 1 for now)
+        types:GroupInput inputWithOrg = {
+            groupName: groupInput.groupName,
+            description: groupInput.description,
+            orgUuid: storage:DEFAULT_ORG_ID
+        };
+
+        // Create the group
+        string|error groupId = storage:createGroup(inputWithOrg);
+        if groupId is error {
+            log:printError("Error creating group", groupId, groupName = groupInput.groupName);
+            return utils:createInternalServerError("Failed to create group");
+        }
+
+        // Fetch the created group
+        types:Group|error createdGroup = storage:getGroupById(groupId);
+        if createdGroup is error {
+            log:printError("Error fetching created group", createdGroup, groupId = groupId);
+            return utils:createInternalServerError("Group created but failed to fetch details");
+        }
+
+        log:printInfo("Successfully created group", groupId = groupId, groupName = groupInput.groupName);
+        return <http:Created>{
+            body: createdGroup
+        };
+    }
+
+    // GET /auth/orgs/{orgHandle}/groups/{groupId} - Get group details
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function get orgs/[string orgHandle]/groups/[string groupId]() returns http:Ok|http:BadRequest|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching group details", orgHandle = orgHandle, groupId = groupId);
+
+        // Fetch group by ID
+        types:Group|error group = storage:getGroupById(groupId);
+        if group is error {
+            log:printWarn("Group not found", groupId = groupId, 'error = group);
+            return <http:NotFound>{
+                body: {
+                    message: "Group not found"
+                }
+            };
+        }
+
+        log:printInfo("Successfully fetched group details", groupId = groupId);
+        return <http:Ok>{
+            body: group
+        };
+    }
+
+    // PUT /auth/orgs/{orgHandle}/groups/{groupId} - Update group
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function put orgs/[string orgHandle]/groups/[string groupId](@http:Payload types:GroupInput groupInput) returns http:Ok|http:BadRequest|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Updating group", orgHandle = orgHandle, groupId = groupId);
+
+        // Update the group
+        error? updateResult = storage:updateGroup(groupId, groupInput);
+        if updateResult is error {
+            log:printError("Error updating group", updateResult, groupId = groupId);
+            if updateResult.message().includes("not found") {
+                return <http:NotFound>{
+                    body: {
+                        message: "Group not found"
+                    }
+                };
+            }
+            return utils:createInternalServerError("Failed to update group");
+        }
+
+        // Fetch the updated group
+        types:Group|error updatedGroup = storage:getGroupById(groupId);
+        if updatedGroup is error {
+            log:printError("Error fetching updated group", updatedGroup, groupId = groupId);
+            return utils:createInternalServerError("Group updated but failed to fetch details");
+        }
+
+        log:printInfo("Successfully updated group", groupId = groupId);
+        return <http:Ok>{
+            body: updatedGroup
+        };
+    }
+
+    // DELETE /auth/orgs/{orgHandle}/groups/{groupId} - Delete group
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_groups"]
+            }
+        ]
+    }
+    isolated resource function delete orgs/[string orgHandle]/groups/[string groupId]() returns http:Ok|http:BadRequest|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Deleting group", orgHandle = orgHandle, groupId = groupId);
+
+        // TODO: Check if group has members or role assignments
+        // For now, delete will cascade due to foreign key constraints
+
+        // Delete the group
+        error? deleteResult = storage:deleteGroup(groupId);
+        if deleteResult is error {
+            log:printError("Error deleting group", deleteResult, groupId = groupId);
+            if deleteResult.message().includes("not found") {
+                return <http:NotFound>{
+                    body: {
+                        message: "Group not found"
+                    }
+                };
+            }
+            return utils:createInternalServerError("Failed to delete group");
+        }
+
+        log:printInfo("Successfully deleted group", groupId = groupId);
+        return <http:Ok>{
+            body: {
+                message: "Group deleted successfully",
+                groupId: groupId
+            }
+        };
+    }
+
+    // ============================================================================
+    // Role Management Endpoints (RBAC v2)
+    // ============================================================================
+
+    // GET /auth/orgs/{orgHandle}/roles - List all roles
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_roles"]
+            }
+        ]
+    }
+    isolated resource function get orgs/[string orgHandle]/roles() returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching all roles for organization", orgHandle = orgHandle);
+
+        // Resolve org handle to org ID
+        // TODO: use when multiple tenants are supported
+        // int|error orgId = storage:getOrgIdByHandle(orgHandle);
+        // if orgId is error {
+        //     log:printWarn("Invalid or unknown organization handle", orgHandle = orgHandle, 'error = orgId);
+        //     return utils:createBadRequestError("Invalid or unknown organization");
+        // }
+
+        // Fetch all roles for the organization
+        // TODO: use orgId when multiple tenants are supported
+        types:RoleV2[]|error roles = storage:getAllRolesV2(storage:DEFAULT_ORG_ID);
+        if roles is error {
+            log:printError("Error fetching roles", roles, orgHandle = orgHandle);
+            return utils:createInternalServerError("Failed to fetch roles");
+        }
+
+        log:printInfo(string `Successfully fetched ${roles.length()} roles`, orgHandle = orgHandle);
+        return <http:Ok>{
+            body: roles
+        };
+    }
+
+    // POST /auth/orgs/{orgHandle}/roles - Create a new role
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_roles"]
+            }
+        ]
+    }
+    isolated resource function post orgs/[string orgHandle]/roles(@http:Payload types:RoleV2Input roleInput) returns http:Created|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Creating new role", orgHandle = orgHandle, roleName = roleInput.roleName);
+
+        // Resolve org handle to org ID
+        // TODO: use when multiple tenants are supported
+        // int|error orgId = storage:getOrgIdByHandle(orgHandle);
+        // if orgId is error {
+        //     log:printWarn("Invalid or unknown organization handle", orgHandle = orgHandle, 'error = orgId);
+        //     return utils:createBadRequestError("Invalid or unknown organization");
+        // }
+
+        // Set org ID in the input (default to 1 for now)
+        types:RoleV2Input inputWithOrg = {
+            roleName: roleInput.roleName,
+            description: roleInput.description,
+            orgId: storage:DEFAULT_ORG_ID
+        };
+
+        // Create the role
+        string|error roleId = storage:createRoleV2(inputWithOrg);
+        if roleId is error {
+            log:printError("Error creating role", roleId, roleName = roleInput.roleName);
+            return utils:createInternalServerError("Failed to create role");
+        }
+
+        // Fetch the created role
+        types:RoleV2|error createdRole = storage:getRoleV2ById(roleId);
+        if createdRole is error {
+            log:printError("Error fetching created role", createdRole, roleId = roleId);
+            return utils:createInternalServerError("Role created but failed to fetch details");
+        }
+
+        log:printInfo("Successfully created role", roleId = roleId, roleName = roleInput.roleName);
+        return <http:Created>{
+            body: createdRole
+        };
+    }
+
+    // GET /auth/orgs/{orgHandle}/roles/{roleId} - Get role details with permissions
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_roles"]
+            }
+        ]
+    }
+    isolated resource function get orgs/[string orgHandle]/roles/[string roleId]() returns http:Ok|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching role details", orgHandle = orgHandle, roleId = roleId);
+
+        // Fetch role by ID
+        types:RoleV2|error role = storage:getRoleV2ById(roleId);
+        if role is error {
+            log:printWarn("Role not found", roleId = roleId, 'error = role);
+            return <http:NotFound>{
+                body: {
+                    message: "Role not found"
+                }
+            };
+        }
+
+        // Fetch role permissions
+        types:Permission[]|error permissions = storage:getRolePermissions(roleId);
+        if permissions is error {
+            log:printError("Error fetching role permissions", permissions, roleId = roleId);
+            return utils:createInternalServerError("Failed to fetch role permissions");
+        }
+
+        // Build response with role and permissions
+        types:RoleV2WithPermissions roleWithPermissions = {
+            roleId: role.roleId,
+            roleName: role.roleName,
+            orgId: role.orgId,
+            description: role.description,
+            createdAt: role.createdAt,
+            updatedAt: role.updatedAt,
+            permissions: permissions
+        };
+
+        log:printInfo("Successfully fetched role details", roleId = roleId);
+        return <http:Ok>{
+            body: roleWithPermissions
+        };
+    }
+
+    // PUT /auth/orgs/{orgHandle}/roles/{roleId} - Update role
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_roles"]
+            }
+        ]
+    }
+    isolated resource function put orgs/[string orgHandle]/roles/[string roleId](@http:Payload types:RoleV2Input roleInput) returns http:Ok|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Updating role", orgHandle = orgHandle, roleId = roleId);
+
+        // Update the role
+        error? updateResult = storage:updateRoleV2(roleId, roleInput);
+        if updateResult is error {
+            log:printError("Error updating role", updateResult, roleId = roleId);
+            if updateResult.message().includes("not found") {
+                return <http:NotFound>{
+                    body: {
+                        message: "Role not found"
+                    }
+                };
+            }
+            return utils:createInternalServerError("Failed to update role");
+        }
+
+        // Fetch the updated role
+        types:RoleV2|error updatedRole = storage:getRoleV2ById(roleId);
+        if updatedRole is error {
+            log:printError("Error fetching updated role", updatedRole, roleId = roleId);
+            return utils:createInternalServerError("Role updated but failed to fetch details");
+        }
+
+        log:printInfo("Successfully updated role", roleId = roleId);
+        return <http:Ok>{
+            body: updatedRole
+        };
+    }
+
+    // DELETE /auth/orgs/{orgHandle}/roles/{roleId} - Delete role
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: jwtIssuer,
+                    audience: jwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: ["user_mgt:manage_roles"]
+            }
+        ]
+    }
+    isolated resource function delete orgs/[string orgHandle]/roles/[string roleId]() returns http:Ok|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Deleting role", orgHandle = orgHandle, roleId = roleId);
+
+        // TODO: Check if role is assigned to any groups
+        // For now, delete will cascade due to foreign key constraints
+
+        // Delete the role
+        error? deleteResult = storage:deleteRoleV2(roleId);
+        if deleteResult is error {
+            log:printError("Error deleting role", deleteResult, roleId = roleId);
+            if deleteResult.message().includes("not found") {
+                return <http:NotFound>{
+                    body: {
+                        message: "Role not found"
+                    }
+                };
+            }
+            return utils:createInternalServerError("Failed to delete role");
+        }
+
+        log:printInfo("Successfully deleted role", roleId = roleId);
+        return <http:Ok>{
+            body: {
+                message: "Role deleted successfully",
+                roleId: roleId
+            }
+        };
+    }
 }
 

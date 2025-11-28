@@ -206,13 +206,16 @@ CREATE INDEX idx_user_groups_group_name ON user_groups (group_name);
 CREATE TABLE roles_v2 (
     role_id VARCHAR(36) PRIMARY KEY,
     role_name VARCHAR(255) NOT NULL,
+    org_id INT NOT NULL DEFAULT 1,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT unique_role_name UNIQUE (role_name)
+    CONSTRAINT fk_roles_v2_org FOREIGN KEY (org_id) REFERENCES organizations(org_id) ON DELETE CASCADE,
+    CONSTRAINT unique_role_name_org UNIQUE (role_name, org_id)
 );
 
 CREATE INDEX idx_roles_v2_role_name ON roles_v2 (role_name);
+CREATE INDEX idx_roles_v2_org_id ON roles_v2 (org_id);
 
 -- Permissions table with domain grouping
 CREATE TABLE permissions (
@@ -454,27 +457,10 @@ WHERE
 -- ============================================================================
 
 -- Insert pre-defined roles
-INSERT INTO
-    roles_v2 (
-        role_id,
-        role_name,
-        description
-    )
-VALUES (
-        RANDOM_UUID (),
-        'Super Admin',
-        'Full access to all resources and permissions'
-    ),
-    (
-        RANDOM_UUID (),
-        'Admin',
-        'Administrative access to projects and integrations'
-    ),
-    (
-        RANDOM_UUID (),
-        'Developer',
-        'Development access with limited permissions'
-    );
+INSERT INTO roles_v2 (role_id, role_name, org_id, description) VALUES
+(RANDOM_UUID(), 'Super Admin', 1, 'Full access to all resources and permissions'),
+(RANDOM_UUID(), 'Admin', 1, 'Administrative access to projects and integrations'),
+(RANDOM_UUID(), 'Developer', 1, 'Development access with limited permissions');
 
 -- Insert permissions for all domains
 INSERT INTO

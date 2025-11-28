@@ -192,11 +192,14 @@ CREATE TABLE user_groups (
 CREATE TABLE roles_v2 (
     role_id VARCHAR(36) PRIMARY KEY,
     role_name VARCHAR(255) NOT NULL,
+    org_id INT NOT NULL DEFAULT 1,
     description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    UNIQUE KEY unique_role_name (role_name),
-    INDEX idx_role_name (role_name)
+    CONSTRAINT fk_roles_v2_org FOREIGN KEY (org_id) REFERENCES organizations(org_id) ON DELETE CASCADE,
+    UNIQUE KEY unique_role_name_org (role_name, org_id),
+    INDEX idx_role_name (role_name),
+    INDEX idx_org_id (org_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Permissions table with domain grouping
@@ -401,10 +404,10 @@ WHERE grm.env_uuid IS NOT NULL OR grm.org_uuid IS NOT NULL;
 -- ============================================================================
 
 -- Insert pre-defined roles
-INSERT INTO roles_v2 (role_id, role_name, description) VALUES
-(UUID(), 'Super Admin', 'Full access to all resources and permissions'),
-(UUID(), 'Admin', 'Administrative access to projects and integrations'),
-(UUID(), 'Developer', 'Development access with limited permissions');
+INSERT INTO roles_v2 (role_id, role_name, org_id, description) VALUES
+(UUID(), 'Super Admin', 1, 'Full access to all resources and permissions'),
+(UUID(), 'Admin', 1, 'Administrative access to projects and integrations'),
+(UUID(), 'Developer', 1, 'Development access with limited permissions');
 
 -- Insert permissions for all domains
 INSERT INTO permissions (permission_id, permission_name, permission_domain, resource_type, action, description) VALUES

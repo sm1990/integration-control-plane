@@ -32,6 +32,21 @@ import ballerina/uuid;
 public const int DEFAULT_ORG_ID = 1;
 
 // ============================================================================
+// 3.1 Organization Helper Functions
+// ============================================================================
+
+// Get organization ID by handle
+public isolated function getOrgIdByHandle(string orgHandle) returns int|error {
+    log:printDebug(string `Resolving org handle: ${orgHandle} to org ID`);
+    
+    record {|int org_id;|} result = check dbClient->queryRow(
+        `SELECT org_id FROM organizations WHERE org_handle = ${orgHandle}`
+    );
+    
+    return result.org_id;
+}
+
+// ============================================================================
 // 3.2 Group Management Functions
 // ============================================================================
 
@@ -130,12 +145,13 @@ public isolated function deleteGroup(string groupId) returns error? {
 // Create a new role
 public isolated function createRoleV2(types:RoleV2Input input) returns string|error {
     string roleId = uuid:createType1AsString();
+    int orgId = input.orgId ?: DEFAULT_ORG_ID;
 
     log:printDebug(string `Creating role: ${input.roleName} with roleId: ${roleId}`);
 
     sql:ExecutionResult|error result = dbClient->execute(
-        `INSERT INTO roles_v2 (role_id, role_name, description) 
-         VALUES (${roleId}, ${input.roleName}, ${input.description})`
+        `INSERT INTO roles_v2 (role_id, role_name, org_id, description) 
+         VALUES (${roleId}, ${input.roleName}, ${orgId}, ${input.description})`
     );
 
     if result is error {
@@ -152,7 +168,7 @@ public isolated function getRoleV2ById(string roleId) returns types:RoleV2|error
     log:printDebug(string `Fetching role details for roleId: ${roleId}`);
 
     types:RoleV2 role = check dbClient->queryRow(
-        `SELECT role_id, role_name, description, created_at, updated_at 
+        `SELECT role_id, role_name, org_id, description, created_at, updated_at 
          FROM roles_v2 
          WHERE role_id = ${roleId}`
     );
@@ -160,14 +176,15 @@ public isolated function getRoleV2ById(string roleId) returns types:RoleV2|error
     return role;
 }
 
-// Get all roles
-public isolated function getAllRolesV2() returns types:RoleV2[]|error {
-    log:printDebug("Fetching all roles");
+// Get all roles for an organization
+public isolated function getAllRolesV2(int orgId) returns types:RoleV2[]|error {
+    log:printDebug(string `Fetching all roles for orgId: ${orgId}`);
 
     types:RoleV2[] roles = [];
     stream<types:RoleV2, sql:Error?> roleStream = dbClient->query(
-        `SELECT role_id, role_name, description, created_at, updated_at 
+        `SELECT role_id, role_name, org_id, description, created_at, updated_at 
          FROM roles_v2 
+         WHERE org_id = ${orgId}
          ORDER BY role_name`
     );
 

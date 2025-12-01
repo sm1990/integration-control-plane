@@ -15,8 +15,8 @@
 // under the License.
 
 import icp_server.storage as storage;
+import icp_server.auth as auth;
 import icp_server.types;
-import icp_server.utils;
 
 import ballerina/log;
 import ballerina/test;
@@ -29,10 +29,10 @@ function testStoreRefreshToken() returns error? {
     log:printInfo("Test: Store refresh token");
 
     // Generate test data
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     string userId = "660e8400-e29b-41d4-a716-446655440002"; // testuser from sample data
-    string refreshToken = utils:generateRefreshToken();
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string refreshToken = auth:generateRefreshToken();
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     int expirySeconds = 604800; // 7 days
     string userAgent = "Test User Agent";
     string ipAddress = "192.168.1.100";
@@ -61,10 +61,10 @@ function testStoreRefreshTokenWithOptionalMetadata() returns error? {
     log:printInfo("Test: Store refresh token with optional metadata");
 
     // Generate test data
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     string userId = "660e8400-e29b-41d4-a716-446655440002"; // testuser
-    string refreshToken = utils:generateRefreshToken();
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string refreshToken = auth:generateRefreshToken();
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     int expirySeconds = 604800;
 
     // Store without user agent and IP (both nullable)
@@ -92,10 +92,10 @@ function testValidateRefreshTokenValid() returns error? {
     log:printInfo("Test: Validate valid refresh token");
 
     // Generate and store a valid token
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     string userId = "660e8400-e29b-41d4-a716-446655440002"; // testuser
-    string refreshToken = utils:generateRefreshToken();
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string refreshToken = auth:generateRefreshToken();
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     int expirySeconds = 604800; // 7 days - won't expire during test
 
     // Store the token
@@ -131,10 +131,10 @@ function testValidateRefreshTokenExpired() returns error? {
     log:printInfo("Test: Validate expired refresh token");
 
     // Generate and store an expired token
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     string userId = "660e8400-e29b-41d4-a716-446655440002"; // testuser
-    string refreshToken = utils:generateRefreshToken();
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string refreshToken = auth:generateRefreshToken();
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     int expirySeconds = -1; // Expired 1 second ago
 
     // Store the expired token
@@ -167,10 +167,10 @@ function testValidateRefreshTokenRevoked() returns error? {
     log:printInfo("Test: Validate revoked refresh token");
 
     // Generate and store a valid token
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     string userId = "660e8400-e29b-41d4-a716-446655440002"; // testuser
-    string refreshToken = utils:generateRefreshToken();
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string refreshToken = auth:generateRefreshToken();
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     int expirySeconds = 604800; // 7 days
 
     // Store the token
@@ -207,8 +207,8 @@ function testValidateRefreshTokenNotFound() returns error? {
     log:printInfo("Test: Validate non-existent refresh token");
 
     // Generate a hash that doesn't exist in database
-    string nonExistentToken = utils:generateRefreshToken();
-    string nonExistentHash = utils:hashRefreshToken(nonExistentToken);
+    string nonExistentToken = auth:generateRefreshToken();
+    string nonExistentHash = auth:hashRefreshToken(nonExistentToken);
 
     // Try to validate non-existent token
     types:User|error validationResult = storage:validateRefreshToken(nonExistentHash);
@@ -229,10 +229,10 @@ function testRevokeRefreshToken() returns error? {
     log:printInfo("Test: Revoke specific refresh token");
 
     // Generate and store a valid token
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     string userId = "660e8400-e29b-41d4-a716-446655440002"; // testuser
-    string refreshToken = utils:generateRefreshToken();
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string refreshToken = auth:generateRefreshToken();
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     int expirySeconds = 604800;
 
     // Store the token
@@ -267,10 +267,10 @@ function testRevokeAllUserRefreshTokens() returns error? {
     string userId = "660e8400-e29b-41d4-a716-446655440003"; // targetuser
 
     // Store multiple tokens for the same user
-    string token1 = utils:generateRefreshToken();
-    string tokenHash1 = utils:hashRefreshToken(token1);
+    string token1 = auth:generateRefreshToken();
+    string tokenHash1 = auth:hashRefreshToken(token1);
     error? store1 = storage:storeRefreshToken(
-        utils:generateTokenId(),
+        auth:generateTokenId(),
         userId,
         tokenHash1,
         604800,
@@ -279,10 +279,10 @@ function testRevokeAllUserRefreshTokens() returns error? {
     );
     test:assertFalse(store1 is error, "Should store token 1");
 
-    string token2 = utils:generateRefreshToken();
-    string tokenHash2 = utils:hashRefreshToken(token2);
+    string token2 = auth:generateRefreshToken();
+    string tokenHash2 = auth:hashRefreshToken(token2);
     error? store2 = storage:storeRefreshToken(
-        utils:generateTokenId(),
+        auth:generateTokenId(),
         userId,
         tokenHash2,
         604800,
@@ -291,10 +291,10 @@ function testRevokeAllUserRefreshTokens() returns error? {
     );
     test:assertFalse(store2 is error, "Should store token 2");
 
-    string token3 = utils:generateRefreshToken();
-    string tokenHash3 = utils:hashRefreshToken(token3);
+    string token3 = auth:generateRefreshToken();
+    string tokenHash3 = auth:hashRefreshToken(token3);
     error? store3 = storage:storeRefreshToken(
-        utils:generateTokenId(),
+        auth:generateTokenId(),
         userId,
         tokenHash3,
         604800,
@@ -331,9 +331,9 @@ function testCleanupExpiredRefreshTokens() returns error? {
 
     // Create multiple expired tokens
     foreach int i in 1 ... 3 {
-        string tokenId = utils:generateTokenId();
-        string refreshToken = utils:generateRefreshToken();
-        string tokenHash = utils:hashRefreshToken(refreshToken);
+        string tokenId = auth:generateTokenId();
+        string refreshToken = auth:generateRefreshToken();
+        string tokenHash = auth:hashRefreshToken(refreshToken);
 
         error? storeResult = storage:storeRefreshToken(
             tokenId,
@@ -365,9 +365,9 @@ function testCleanupRevokedRefreshTokens() returns error? {
 
     // Create tokens and revoke them
     foreach int i in 1 ... 3 {
-        string tokenId = utils:generateTokenId();
-        string refreshToken = utils:generateRefreshToken();
-        string tokenHash = utils:hashRefreshToken(refreshToken);
+        string tokenId = auth:generateTokenId();
+        string refreshToken = auth:generateRefreshToken();
+        string tokenHash = auth:hashRefreshToken(refreshToken);
 
         // Store token
         error? storeResult = storage:storeRefreshToken(

@@ -17,7 +17,6 @@
 import icp_server.auth;
 import icp_server.storage;
 import icp_server.types;
-import icp_server.utils;
 
 import ballerina/data.jsondata;
 import ballerina/graphql;

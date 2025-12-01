@@ -56,7 +56,7 @@ function testSuccessfulRefreshToken() returns error? {
     test:assertTrue(refreshBody.token is string, "New access token should be present");
     test:assertTrue(refreshBody.expiresIn is int, "ExpiresIn should be present");
     test:assertTrue(refreshBody.username is string, "Username should be present");
-    test:assertTrue(refreshBody.roles is json[], "Roles should be present");
+    test:assertTrue(refreshBody.permissions is json[], "Permissions should be present");
     
     // Step 4: Verify new access token is valid
     string newAccessToken = check refreshBody.token;
@@ -191,8 +191,8 @@ function testRefreshTokenReturnsUpdatedRoles() returns error? {
     http:Response loginResponse = check authClient->post("/auth/login", loginRequest);
     json loginBody = check loginResponse.getJsonPayload();
     string refreshToken = check loginBody.refreshToken;
-    json originalRolesJson = check loginBody.roles;
-    json[] originalRoles = <json[]>originalRolesJson;
+    json originalPermissionsJson = check loginBody.permissions;
+    json[] originalPermissions = <json[]>originalPermissionsJson;
     
     // Step 2: Use refresh token to get new access token
     json refreshRequest = {
@@ -203,14 +203,14 @@ function testRefreshTokenReturnsUpdatedRoles() returns error? {
     test:assertEquals(refreshResponse.statusCode, 200, "Refresh should succeed");
     
     json refreshBody = check refreshResponse.getJsonPayload();
-    test:assertTrue(refreshBody.roles is json[], "Roles should be present in refresh response");
+    test:assertTrue(refreshBody.permissions is json[], "Permissions should be present in refresh response");
     
-    // Step 3: Verify roles are included in response
-    json refreshedRolesJson = check refreshBody.roles;
-    json[] refreshedRoles = <json[]>refreshedRolesJson;
-    log:printInfo("Test passed: Refreshed token includes user roles", 
-        originalRoleCount = originalRoles.length(), 
-        refreshedRoleCount = refreshedRoles.length()
+    // Step 3: Verify permissions are included in response
+    json refreshedPermissionsJson = check refreshBody.permissions;
+    json[] refreshedPermissions = <json[]>refreshedPermissionsJson;
+    log:printInfo("Test passed: Refreshed token includes user permissions", 
+        originalPermissionCount = originalPermissions.length(), 
+        refreshedPermissionCount = refreshedPermissions.length()
     );
 }
 

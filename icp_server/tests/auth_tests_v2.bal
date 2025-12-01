@@ -25,6 +25,26 @@ const string AUTH_V2_SERVICE_URL = "https://localhost:9445";
 const string SUPER_ADMIN_USERNAME = "admin";
 const string SUPER_ADMIN_PASSWORD = "admin";
 const string DEFAULT_ORG_HANDLE = "default";
+const string SUPER_ADMIN_USER_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+// v1
+const string AUTH_SERVICE_URL = "https://localhost:9445";
+const string TEST_USERNAME = "admin";
+const string TEST_PASSWORD = "admin";
+const string INVALID_USERNAME = "nonexistent";
+const string INVALID_PASSWORD = "wrongpassword";
+const string NEW_USER_USERNAME = "newuser";
+const string NEW_USER_PASSWORD = "newuser123";
+
+// HTTP client for testing
+final http:Client authClient = check new (AUTH_SERVICE_URL,
+    secureSocket = {
+        cert: {
+            path: truststorePath,
+            password: truststorePassword
+        }
+    }
+);
 
 // HTTP client for testing
 final http:Client authV2Client = check new (AUTH_V2_SERVICE_URL,

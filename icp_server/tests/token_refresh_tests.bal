@@ -45,9 +45,7 @@ function testSuccessfulTokenRenewal() returns error? {
     test:assertTrue(responseBody.expiresIn is int, "ExpiresIn should be present in response");
     test:assertTrue(responseBody.username is string, "Username should be present in response");
     test:assertTrue(responseBody.displayName is string, "Display name should be present in response");
-    test:assertTrue(responseBody.roles is json[], "Roles should be present in response");
-    test:assertTrue(responseBody.isSuperAdmin is boolean, "isSuperAdmin should be present in response");
-    test:assertTrue(responseBody.isProjectAuthor is boolean, "isProjectAuthor should be present in response");
+    test:assertTrue(responseBody.permissions is json[], "Permissions should be present in response");
     
     // Validate new JWT token
     string newToken = check responseBody.token;
@@ -60,43 +58,6 @@ function testSuccessfulTokenRenewal() returns error? {
     test:assertEquals(payload["username"], "admin", "Username should match");
     
     log:printInfo("Test passed: Successful token renewal");
-}
-
-// Test: Token refresh returns updated roles from database
-@test:Config {
-    groups: ["token-renew"],
-    dependsOn: [testSuccessfulTokenRenewal]
-}
-function testRenewTokenWithUpdatedRoles() returns error? {
-    log:printInfo("Test: Renew token with updated roles from DB");
-    
-    // Use the pre-generated admin token
-    string authHeader = createAuthHeader(adminToken);
-    
-    // Renew token - should fetch current roles from DB
-    http:Response response = check authClient->post("/auth/renew-token", {}, {
-        "Authorization": authHeader
-    });
-    
-    assertStatusCode(response.statusCode, 200, "Expected successful token renewal");
-    
-    json responseBody = check response.getJsonPayload();
-    json roles = check responseBody.roles;
-    test:assertTrue(roles is json[], "Roles should be an array");
-    json[] rolesArray = check roles.ensureType();
-    
-    // The admin user in seed data might have roles
-    // Just verify that roles is an array (can be empty or populated)
-    test:assertTrue(rolesArray.length() >= 0, "Roles should be an array");
-    
-    // Decode new token and verify roles are present
-    string newToken = check responseBody.token;
-    [jwt:Header, jwt:Payload] [_, payload] = check jwt:decode(newToken);
-    
-    anydata rolesInToken = payload["roles"];
-    test:assertTrue(rolesInToken is json[], "Roles should be in new token");
-    
-    log:printInfo("Test passed: Renew token contains updated roles");
 }
 
 // Test: Token refresh fails without authorization header

@@ -17,7 +17,7 @@
 import ballerina/log;
 import ballerina/regex;
 import ballerina/test;
-import icp_server.utils;
+import icp_server.auth;
 
 // Test: Generate refresh token returns non-empty string
 @test:Config {
@@ -26,7 +26,7 @@ import icp_server.utils;
 function testGenerateRefreshToken() returns error? {
     log:printInfo("Test: Generate refresh token");
     
-    string refreshToken = utils:generateRefreshToken();
+    string refreshToken = auth:generateRefreshToken();
     
     // Assert token is not empty
     test:assertTrue(refreshToken.length() > 0, "Refresh token should not be empty");
@@ -45,9 +45,9 @@ function testGenerateRefreshTokenUniqueness() returns error? {
     log:printInfo("Test: Generate refresh token uniqueness");
     
     // Generate multiple tokens
-    string token1 = utils:generateRefreshToken();
-    string token2 = utils:generateRefreshToken();
-    string token3 = utils:generateRefreshToken();
+    string token1 = auth:generateRefreshToken();
+    string token2 = auth:generateRefreshToken();
+    string token3 = auth:generateRefreshToken();
     
     // Assert all tokens are different (uniqueness)
     test:assertNotEquals(token1, token2, "Token 1 and Token 2 should be different");
@@ -64,7 +64,7 @@ function testGenerateRefreshTokenUniqueness() returns error? {
 function testGenerateTokenId() returns error? {
     log:printInfo("Test: Generate token ID");
     
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     
     // Assert token ID is not empty
     test:assertTrue(tokenId.length() > 0, "Token ID should not be empty");
@@ -85,9 +85,9 @@ function testGenerateTokenIdUniqueness() returns error? {
     log:printInfo("Test: Generate token ID uniqueness");
     
     // Generate multiple token IDs
-    string id1 = utils:generateTokenId();
-    string id2 = utils:generateTokenId();
-    string id3 = utils:generateTokenId();
+    string id1 = auth:generateTokenId();
+    string id2 = auth:generateTokenId();
+    string id3 = auth:generateTokenId();
     
     // Assert all IDs are different (uniqueness)
     test:assertNotEquals(id1, id2, "ID 1 and ID 2 should be different");
@@ -107,9 +107,9 @@ function testHashRefreshTokenConsistency() returns error? {
     string testToken = "test-refresh-token-12345";
     
     // Hash the same token multiple times
-    string hash1 = utils:hashRefreshToken(testToken);
-    string hash2 = utils:hashRefreshToken(testToken);
-    string hash3 = utils:hashRefreshToken(testToken);
+    string hash1 = auth:hashRefreshToken(testToken);
+    string hash2 = auth:hashRefreshToken(testToken);
+    string hash3 = auth:hashRefreshToken(testToken);
     
     // Assert all hashes are identical (deterministic hashing)
     test:assertEquals(hash1, hash2, "Hash 1 and Hash 2 should be identical");
@@ -134,9 +134,9 @@ function testHashRefreshTokenUniqueness() returns error? {
     string token3 = "test-token-3";
     
     // Hash different tokens
-    string hash1 = utils:hashRefreshToken(token1);
-    string hash2 = utils:hashRefreshToken(token2);
-    string hash3 = utils:hashRefreshToken(token3);
+    string hash1 = auth:hashRefreshToken(token1);
+    string hash2 = auth:hashRefreshToken(token2);
+    string hash3 = auth:hashRefreshToken(token3);
     
     // Assert all hashes are different (collision resistance)
     test:assertNotEquals(hash1, hash2, "Hash 1 and Hash 2 should be different");
@@ -154,7 +154,7 @@ function testHashRefreshTokenLength() returns error? {
     log:printInfo("Test: Hash refresh token length");
     
     string testToken = "test-refresh-token";
-    string hash = utils:hashRefreshToken(testToken);
+    string hash = auth:hashRefreshToken(testToken);
     
     // SHA-256 hash in base64 should be 44 characters (with padding)
     // Or 43 characters without padding, depending on implementation
@@ -172,7 +172,7 @@ function testHashRefreshTokenEmptyString() returns error? {
     log:printInfo("Test: Hash refresh token with empty string");
     
     string emptyToken = "";
-    string hash = utils:hashRefreshToken(emptyToken);
+    string hash = auth:hashRefreshToken(emptyToken);
     
     // Even empty string should produce a valid hash
     test:assertTrue(hash.length() > 0, "Hash of empty string should not be empty");
@@ -188,13 +188,13 @@ function testHashRefreshTokenSpecialCharacters() returns error? {
     log:printInfo("Test: Hash refresh token with special characters");
     
     string specialToken = "token!@#$%^&*()_+-=[]{}|;':\",./<>?";
-    string hash = utils:hashRefreshToken(specialToken);
+    string hash = auth:hashRefreshToken(specialToken);
     
     // Assert hash is generated successfully
     test:assertTrue(hash.length() > 0, "Hash should be generated for special characters");
     
     // Hash should be consistent
-    string hash2 = utils:hashRefreshToken(specialToken);
+    string hash2 = auth:hashRefreshToken(specialToken);
     test:assertEquals(hash, hash2, "Hash should be consistent for special characters");
     
     log:printInfo("Test passed: Special characters handled correctly");
@@ -208,24 +208,24 @@ function testRefreshTokenWorkflow() returns error? {
     log:printInfo("Test: Complete refresh token workflow");
     
     // Step 1: Generate token ID
-    string tokenId = utils:generateTokenId();
+    string tokenId = auth:generateTokenId();
     test:assertTrue(tokenId.length() > 0, "Token ID should be generated");
     
     // Step 2: Generate refresh token
-    string refreshToken = utils:generateRefreshToken();
+    string refreshToken = auth:generateRefreshToken();
     test:assertTrue(refreshToken.length() > 0, "Refresh token should be generated");
     
     // Step 3: Hash refresh token
-    string tokenHash = utils:hashRefreshToken(refreshToken);
+    string tokenHash = auth:hashRefreshToken(refreshToken);
     test:assertTrue(tokenHash.length() > 0, "Token hash should be generated");
     
     // Step 4: Verify hashing is consistent (for validation)
-    string tokenHash2 = utils:hashRefreshToken(refreshToken);
+    string tokenHash2 = auth:hashRefreshToken(refreshToken);
     test:assertEquals(tokenHash, tokenHash2, "Hash should be consistent for validation");
     
     // Step 5: Verify different token produces different hash
-    string differentToken = utils:generateRefreshToken();
-    string differentHash = utils:hashRefreshToken(differentToken);
+    string differentToken = auth:generateRefreshToken();
+    string differentHash = auth:hashRefreshToken(differentToken);
     test:assertNotEquals(tokenHash, differentHash, "Different tokens should produce different hashes");
     
     log:printInfo("Test passed: Complete workflow executed successfully");

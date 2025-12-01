@@ -15,33 +15,6 @@
 # under the License.
 
 services:
-  mysql-db:
-    build:
-      context: ./resources/db
-      dockerfile: Dockerfile
-    ports:
-      - "3307:3306"
-    container_name: icp-mysql-local
-    environment:
-      MYSQL_ROOT_PASSWORD: my-secret-pw
-      MYSQL_DATABASE: icp_database
-
-  icp-server-local:
-    image: wso2/icp_server
-    container_name: icp-server-local
-    build:
-      context: .
-      dockerfile: build.Dockerfile
-    ports:
-      - "9445:9445"
-      - "9446:9446"
-      - "9447:9447"
-      - "9448:9448"
-    depends_on:
-      mysql-db:
-        condition: service_started
-    command: bal run
-
   opensearch:
     image: opensearchproject/opensearch:latest
     container_name: opensearch

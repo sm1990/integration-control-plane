@@ -95,7 +95,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // If specific componentId (integration) is provided, check access and return filtered
         if componentId is string {
@@ -168,7 +168,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Fetch the runtime to get its context
         types:Runtime? runtime = check storage:getRuntimeById(runtimeId);
@@ -207,7 +207,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -241,7 +241,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // First, fetch the runtime to verify access to its environment
         types:Runtime? runtime = check storage:getRuntimeById(runtimeId);
@@ -274,7 +274,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -306,7 +306,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // First, fetch the runtime to verify access to its environment
         types:Runtime? runtime = check storage:getRuntimeById(runtimeId);
@@ -339,7 +339,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -371,7 +371,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -403,7 +403,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -435,7 +435,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -467,7 +467,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -499,7 +499,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -531,7 +531,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -563,7 +563,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -595,7 +595,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -627,7 +627,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -659,7 +659,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -691,7 +691,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -723,7 +723,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to verify access
         types:Component? component = check storage:getComponentById(componentId);
@@ -755,7 +755,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Fetch the runtime to get its context
         types:Runtime? runtime = check storage:getRuntimeById(runtimeId);
@@ -789,7 +789,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Build org-level scope for permission check
         types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
@@ -826,7 +826,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get user's accessible environments (filtered by role mappings)
         // If user has any role mapping, they can see environments within their scope
@@ -889,7 +889,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Fetch environment to check its production status
         types:Environment? env = check storage:getEnvironmentById(environmentId);
@@ -927,7 +927,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Fetch current environment to check its production status
         types:Environment? currentEnv = check storage:getEnvironmentById(environmentId);
@@ -969,7 +969,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Verify environment exists
         types:Environment? env = check storage:getEnvironmentById(environmentId);
@@ -998,7 +998,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Check permission at org level - requires project_mgt:manage
         boolean canManage = check auth:canManageProject(userContext.userId);
@@ -1018,7 +1018,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get accessible projects via access resolver
         // This returns all projects where user has ANY role assignment (any permission domain)
@@ -1047,7 +1047,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Use access resolver to check project access (handles ANY role assignment)
         auth:ProjectAccessInfo accessInfo = check auth:resolveProjectAccess(userContext.userId, projectId);
@@ -1104,7 +1104,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Check permission at project level - requires project_mgt:manage (higher bar than edit)
         boolean canManage = check auth:canManageProject(userContext.userId, projectId);
@@ -1137,7 +1137,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Check permission at project level - requires project_mgt:edit or project_mgt:manage
         boolean canEdit = check auth:canEditProject(userContext.userId, project.id);
@@ -1162,7 +1162,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Build scope at project level (creating integration in a project)
         types:AccessScope scope = auth:buildScopeFromContext(component.projectId);
@@ -1201,7 +1201,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get accessible integrations (with optional project filter)
         // This returns integrations where user has ANY role assignment (permission-agnostic)
@@ -1227,7 +1227,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         types:Component? component = ();
 
@@ -1270,7 +1270,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // 1. Check if component exists and belongs to the specified project
         types:Component? component = check storage:getComponentById(componentId);
@@ -1357,7 +1357,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Extract values from ComponentUpdateInput
         string targetComponentId = component.id;
@@ -1393,7 +1393,7 @@ service /graphql on graphqlListener {
         }
 
         // Extract user context V2 for RBAC
-        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Get component to check access and type
         types:Component? component = check storage:getComponentById(componentId);

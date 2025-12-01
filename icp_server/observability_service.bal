@@ -16,7 +16,7 @@
 
 import icp_server.storage as storage;
 import icp_server.types as types;
-import icp_server.utils;
+import icp_server.auth;
 
 import ballerina/http;
 import ballerina/log;
@@ -79,8 +79,8 @@ service /icp/observability on observabilityListener {
             return error("Authorization header is required for fetching logs");
         }
 
-        // Extract user context for RBAC
-        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        // Extract user context V2 for RBAC
+        types:UserContextV2 userContext = check auth:extractUserContextV2(authHeader);
 
         // Build the base OpenSearch query filters
         map<json> baseQuery = check buildBaseQuery(logRequest, userContext);
@@ -100,7 +100,7 @@ service /icp/observability on observabilityListener {
 }
 
 // Build base OpenSearch query with common filters
-isolated function buildBaseQuery(types:LogEntryRequest logRequest, types:UserContext userContext) returns map<json>|error {
+isolated function buildBaseQuery(types:LogEntryRequest logRequest, types:UserContextV2 userContext) returns map<json>|error {
     map<json> query = {
         "query": {
             "bool": {
@@ -155,19 +155,28 @@ isolated function buildBaseQuery(types:LogEntryRequest logRequest, types:UserCon
         filters.push(environmentFilter);
     } else {
         // If no environment is specified, filter by user's accessible environments
-        if (!userContext.isSuperAdmin) {
-            string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
-            string[] allAccessibleEnvironmentIds = [];
-            foreach string projectId in accessibleProjectIds {
-                string[] accessibleEnvironmentIds = utils:getAccessibleEnvironmentIds(userContext, projectId);
-                allAccessibleEnvironmentIds.push(...accessibleEnvironmentIds);
+        // Get all accessible integrations which contain environment info
+        types:UserIntegrationAccess[] accessibleIntegrations = 
+            check storage:getUserAccessibleIntegrations(userContext.userId);
+        
+        // Extract unique environment IDs
+        string[] accessibleEnvironmentIds = [];
+        foreach types:UserIntegrationAccess integration in accessibleIntegrations {
+            string? envUuid = integration.envUuid;
+            if envUuid is string && accessibleEnvironmentIds.indexOf(envUuid) is () {
+                accessibleEnvironmentIds.push(envUuid);
             }
-            string[] accessibleEnvironments = [];
-            foreach string envId in allAccessibleEnvironmentIds {
-                types:Environment env = check storage:getEnvironmentById(envId);
-                accessibleEnvironments.push(env.name);
-            }
+        }
+        
+        // Convert environment IDs to names for filtering
+        string[] accessibleEnvironments = [];
+        foreach string envId in accessibleEnvironmentIds {
+            types:Environment env = check storage:getEnvironmentById(envId);
+            accessibleEnvironments.push(env.name);
+        }
 
+        // Only add filter if user has limited access
+        if accessibleEnvironments.length() > 0 {
             json environmentAccessFilter = {
                 "terms": {
                     "environment.keyword": accessibleEnvironments
@@ -187,14 +196,16 @@ isolated function buildBaseQuery(types:LogEntryRequest logRequest, types:UserCon
         filters.push(projectFilter);
     } else {
         // If no project is specified, filter by user's accessible projects
-        if (!userContext.isSuperAdmin) {
-            string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
-            string[] accessibleProjects = [];
-            foreach string projectId in accessibleProjectIds {
-                types:Project project = check storage:getProjectById(projectId);
-                accessibleProjects.push(project.name);
-            }
+        types:UserProjectAccess[] accessibleProjectAccess = 
+            check storage:getUserAccessibleProjects(userContext.userId);
+        
+        string[] accessibleProjects = [];
+        foreach types:UserProjectAccess projectAccess in accessibleProjectAccess {
+            accessibleProjects.push(projectAccess.projectName);
+        }
 
+        // Only add filter if user has limited access
+        if accessibleProjects.length() > 0 {
             json projectAccessFilter = {
                 "terms": {
                     "project.keyword": accessibleProjects

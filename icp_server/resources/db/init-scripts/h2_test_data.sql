@@ -24,6 +24,10 @@ VALUES ('770e8400-e29b-41d4-a716-446655440003', 'integrationviewer', 'Integratio
 INSERT INTO users (user_id, username, display_name, is_super_admin)
 VALUES ('770e8400-e29b-41d4-a716-446655440004', 'devonly', 'Dev Only User', FALSE);
 
+-- User with read-only viewer role (view permission only, no edit/manage)
+INSERT INTO users (user_id, username, display_name, is_super_admin)
+VALUES ('770e8400-e29b-41d4-a716-446655440005', 'readonlyviewer', 'Read Only Viewer', FALSE);
+
 -- ============================================================================
 -- ADDITIONAL COMPONENTS FOR TESTING
 -- ============================================================================
@@ -254,6 +258,17 @@ VALUES (
     '770e8400-e29b-41d4-a716-446655440004'
 );
 
+-- Create a separate group for readonlyviewer (to avoid inheriting org-level Developer permissions)
+INSERT INTO user_groups (group_id, group_name, org_uuid, description)
+VALUES (RANDOM_UUID(), 'Read-Only Viewers', 1, 'Users with view-only access to specific integrations');
+
+-- Assign readonlyviewer to Read-Only Viewers group
+INSERT INTO group_user_mapping (group_id, user_uuid)
+VALUES (
+    (SELECT group_id FROM user_groups WHERE group_name = 'Read-Only Viewers'),
+    '770e8400-e29b-41d4-a716-446655440005'
+);
+
 -- ============================================================================
 -- RBAC V2 GROUP-ROLE MAPPINGS WITH DIFFERENT SCOPES
 -- ============================================================================
@@ -302,6 +317,19 @@ FROM group_user_mapping gum
 WHERE gum.user_uuid = '770e8400-e29b-41d4-a716-446655440004'
 FETCH FIRST 1 ROWS ONLY;
 
+-- readonlyviewer: Viewer role with integration-level access (view-only Component 1 in Project 1)
+INSERT INTO group_role_mapping (group_id, role_id, org_uuid, project_uuid, integration_uuid)
+SELECT 
+    gum.group_id,
+    (SELECT role_id FROM roles_v2 WHERE role_name = 'Viewer'),
+    1,
+    '650e8400-e29b-41d4-a716-446655440001',
+    '640e8400-e29b-41d4-a716-446655440001'
+FROM group_user_mapping gum
+WHERE gum.user_uuid = '770e8400-e29b-41d4-a716-446655440005'
+FETCH FIRST 1 ROWS ONLY;
+
+
 -- ============================================================================
 -- TEST DATA SUMMARY
 -- ============================================================================
@@ -311,6 +339,7 @@ FETCH FIRST 1 ROWS ONLY;
 --   - projectadmin (770e8400-e29b-41d4-a716-446655440002): Project 1 Admin - full access to Project 1
 --   - integrationviewer (770e8400-e29b-41d4-a716-446655440003): Component 1 viewer - read-only Component 1
 --   - devonly (770e8400-e29b-41d4-a716-446655440004): Dev env only - access only dev environment
+--   - readonlyviewer (770e8400-e29b-41d4-a716-446655440005): Read-only viewer - view-only Component 1
 --
 -- Projects:
 --   - Sample Project (650e8400-e29b-41d4-a716-446655440001)

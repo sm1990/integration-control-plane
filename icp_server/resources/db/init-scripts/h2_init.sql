@@ -246,7 +246,7 @@ CREATE INDEX idx_permissions_name ON permissions (permission_name);
 
 -- Group-User mapping (Many-to-Many)
 CREATE TABLE group_user_mapping (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     group_id VARCHAR(36) NOT NULL,
     user_uuid VARCHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -261,7 +261,7 @@ CREATE INDEX idx_group_user_group_id ON group_user_mapping (group_id);
 
 -- Group-Role mapping with context (Many-to-Many with hierarchical scoping)
 CREATE TABLE group_role_mapping (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     group_id VARCHAR(36) NOT NULL,
     role_id VARCHAR(36) NOT NULL,
     org_uuid INT,
@@ -307,7 +307,7 @@ CREATE INDEX idx_grp_role_group_env ON group_role_mapping (group_id, env_uuid);
 
 -- Role-Permission mapping (Many-to-Many)
 CREATE TABLE role_permission_mapping (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
     role_id VARCHAR(36) NOT NULL,
     permission_id VARCHAR(36) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -464,7 +464,9 @@ VALUES (1, 'Default Organization', 'default');
 INSERT INTO roles_v2 (role_id, role_name, org_id, description) VALUES
 (RANDOM_UUID(), 'Super Admin', 1, 'Full access to all resources and permissions'),
 (RANDOM_UUID(), 'Admin', 1, 'Administrative access to projects and integrations'),
-(RANDOM_UUID(), 'Developer', 1, 'Development access with limited permissions');
+(RANDOM_UUID(), 'Developer', 1, 'Development access with limited permissions'),
+(RANDOM_UUID(), 'Project Admin', 1, 'Administrative access to a specific project'),
+(RANDOM_UUID(), 'Viewer', 1, 'Read-only access with view permissions only');
 
 -- Insert permissions for all domains
 INSERT INTO
@@ -641,16 +643,40 @@ SELECT (
             role_name = 'Developer'
     ), permission_id
 FROM permissions
-WHERE
-    permission_name IN (
-        'integration_mgt:view',
-        'integration_mgt:edit',
-        'environment_mgt:manage_nonprod',
-        'project_mgt:view',
-        'project_mgt:edit',
-        'observability_mgt:view_logs',
-        'observability_mgt:view_insights'
-    );
+WHERE permission_name IN (
+    'integration_mgt:view',
+    'integration_mgt:edit',
+    'environment_mgt:manage_nonprod',
+    'project_mgt:view',
+    'project_mgt:edit',
+    'observability_mgt:view_logs',
+    'observability_mgt:view_insights'
+);
+
+-- Map Project Admin to project-specific admin permissions
+INSERT INTO role_permission_mapping (role_id, permission_id)
+SELECT 
+    (SELECT role_id FROM roles_v2 WHERE role_name = 'Project Admin'),
+    permission_id
+FROM permissions
+WHERE permission_name IN (
+    'project_mgt:manage',
+    'integration_mgt:manage',
+    'user_mgt:update_group_roles'
+);
+
+-- Map Viewer to view-only permissions
+INSERT INTO role_permission_mapping (role_id, permission_id)
+SELECT 
+    (SELECT role_id FROM roles_v2 WHERE role_name = 'Viewer'),
+    permission_id
+FROM permissions
+WHERE permission_name IN (
+    'integration_mgt:view',
+    'project_mgt:view',
+    'observability_mgt:view_logs',
+    'observability_mgt:view_insights'
+);
 
 -- Insert default admin user (required for group assignments)
 INSERT INTO users (user_id, username, display_name, is_super_admin)

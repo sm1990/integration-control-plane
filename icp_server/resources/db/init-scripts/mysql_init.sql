@@ -416,7 +416,8 @@ VALUES (
 INSERT INTO roles_v2 (role_id, role_name, org_id, description) VALUES
 (UUID(), 'Super Admin', 1, 'Full access to all resources and permissions'),
 (UUID(), 'Admin', 1, 'Administrative access to projects and integrations'),
-(UUID(), 'Developer', 1, 'Development access with limited permissions');
+(UUID(), 'Developer', 1, 'Development access with limited permissions'),
+(UUID(), 'Project Admin', 1, 'Administrative access to a specific project');
 
 -- Insert permissions for all domains
 INSERT INTO permissions (permission_id, permission_name, permission_domain, resource_type, action, description) VALUES
@@ -474,6 +475,18 @@ WHERE permission_name IN (
     'project_mgt:edit',
     'observability_mgt:view_logs',
     'observability_mgt:view_insights'
+);
+
+-- Map Project Admin to project-specific admin permissions
+INSERT INTO role_permission_mapping (role_id, permission_id)
+SELECT 
+    (SELECT role_id FROM roles_v2 WHERE role_name = 'Project Admin'),
+    permission_id
+FROM permissions
+WHERE permission_name IN (
+    'project_mgt:manage',
+    'integration_mgt:manage',
+    'user_mgt:update_group_roles'
 );
 
 -- Insert default admin user (required for group assignments)

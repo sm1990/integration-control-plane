@@ -864,50 +864,51 @@ service /graphql on graphqlListener {
     //------------- Project Resources
     // Create a new project
     isolated remote function createProject(graphql:Context context, types:ProjectInput project) returns types:Project|error? {
-        // Extract user context to get the creating user's information
-        // value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
         value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
         if authHeader !is string {
             return error("Authorization header missing in request");
         }
 
-        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        // Extract user context V2 for RBAC
+        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
 
-        // Check if user is super admin or project author
-        if !userContext.isSuperAdmin && !userContext.isProjectAuthor {
-            return error("Project author access required to create projects");
+        // Check permission at org level - requires project_mgt:manage
+        boolean canManage = check auth:canManageProject(userContext.userId);
+        if !canManage {
+            return error("Insufficient permissions to create projects");
         }
 
-        // Create project and auto-assign admin roles to creating user
+        // Create project and auto-assign creator to project admin group
         return check storage:createProject(project, userContext);
     }
 
-    // Get all projects (filtered by user's accessible projects via RBAC)
+    // Get all projects (filtered by user's accessible projects via RBAC v2)
     isolated resource function get projects(graphql:Context context, int? orgId) returns types:Project[]|error {
-        // value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
-        // if authHeader !is string {
-        //     return error("Authorization header missing in request");
-        // }
-
-        // Extract user context for RBAC
-        // types:UserContext userContext = check utils:extractUserContext(authHeader);
-        // string[] accessibleProjectIds = utils:getAccessibleProjectIds(userContext);
-
-        // Get projects filtered by user's access
-        types:Project[] allProjects = check storage:getProjects();
-
-        // Filter by orgId if provided
-        if orgId is int {
-            types:Project[] filteredProjects = [];
-            foreach types:Project project in allProjects {
-                if project.orgId == orgId {
-                    filteredProjects.push(project);
-                }
-            }
-            return filteredProjects;
+        value:Cloneable|error|isolated object {} authHeader = context.get("Authorization");
+        if authHeader !is string {
+            return error("Authorization header missing in request");
         }
 
-        return allProjects;
+        // Extract user context V2 for RBAC
+        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
+
+        // Get accessible projects via access resolver
+        // This returns all projects where user has ANY role assignment (any permission domain)
+        // Includes users who only have observability_mgt:view_logs or other non-project permissions
+        types:UserProjectAccess[] accessibleProjects = 
+            check auth:getAccessibleProjects(userContext.userId);
+        
+        if accessibleProjects.length() == 0 {
+            return []; // User has no project access
+        }
+
+        string[] accessibleProjectIds = accessibleProjects.map(p => p.projectUuid);
+
+        // Fetch only accessible projects with SQL IN clause (efficient DB filtering)
+        types:Project[] filteredProjects = 
+            check storage:getProjectsByIds(accessibleProjectIds, orgId);
+
+        return filteredProjects;
     }
 
     // Get a specific project by ID with optional orgId filter
@@ -917,12 +918,14 @@ service /graphql on graphqlListener {
             return error("Authorization header missing in request");
         }
 
-        // Extract user context for RBAC
-        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        // Extract user context V2 for RBAC
+        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
 
-        // Verify user has access to this project
-        if !utils:hasAccessToProject(userContext, projectId) {
-            return error("Access denied to project");
+        // Use access resolver to check project access (handles ANY role assignment)
+        auth:ProjectAccessInfo accessInfo = check auth:resolveProjectAccess(userContext.userId, projectId);
+        
+        if !accessInfo.hasAccess {
+            return (); // No access - return null (404 pattern for queries)
         }
 
         types:Project? project = check storage:getProjectById(projectId);
@@ -972,11 +975,13 @@ service /graphql on graphqlListener {
             return error("Authorization header missing in request");
         }
 
-        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        // Extract user context V2 for RBAC
+        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
 
-        // Check if user is super admin or project author
-        if !userContext.isSuperAdmin && !userContext.isProjectAuthor {
-            return error("Project author access required to delete projects");
+        // Check permission at project level - requires project_mgt:manage (higher bar than edit)
+        boolean canManage = check auth:canManageProject(userContext.userId, projectId);
+        if !canManage {
+            return error("Insufficient permissions to delete project");
         }
 
         // Check if the project has any components
@@ -1003,11 +1008,13 @@ service /graphql on graphqlListener {
             return error("Authorization header missing in request");
         }
 
-        types:UserContext userContext = check utils:extractUserContext(authHeader);
+        // Extract user context V2 for RBAC
+        types:UserContextV2 userContext = check utils:extractUserContextV2(authHeader);
 
-        // Check if user is super admin or project author
-        if !userContext.isSuperAdmin && !userContext.isProjectAuthor {
-            return error("Project author access required to update projects");
+        // Check permission at project level - requires project_mgt:edit or project_mgt:manage
+        boolean canEdit = check auth:canEditProject(userContext.userId, project.id);
+        if !canEdit {
+            return error("Insufficient permissions to update project");
         }
 
         check storage:updateProjectWithInput(project);

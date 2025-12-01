@@ -708,7 +708,7 @@ public type Project record {
     int orgId;
 
     string name;
-    string version;
+    string? version;
 
     @sql:Column {
         name: "created_date"

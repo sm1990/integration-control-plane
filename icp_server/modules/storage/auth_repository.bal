@@ -644,7 +644,7 @@ public isolated function getUserAccessibleProjects(string userId) returns types:
 
     types:UserProjectAccess[] projects = [];
     stream<types:UserProjectAccess, sql:Error?> projectStream = dbClient->query(
-        `SELECT user_uuid, project_uuid, project_name, group_id, group_name, role_id, role_name, org_uuid
+        `SELECT user_uuid, project_uuid, project_name, role_id, org_uuid, access_level
          FROM v_user_project_access
          WHERE user_uuid = ${userId}
          ORDER BY project_name`

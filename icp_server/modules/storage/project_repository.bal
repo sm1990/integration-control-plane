@@ -20,8 +20,24 @@ import ballerina/log;
 import ballerina/sql;
 import ballerina/uuid;
 
-// Create a new project in the projects table
-public isolated function createProject(types:ProjectInput project, types:UserContext userContext) returns types:Project|error? {
+// Helper function to get Project Admin role ID
+isolated function getProjectAdminRoleId() returns string|error {
+    sql:ParameterizedQuery query = `SELECT role_id FROM roles_v2 WHERE role_name = 'Project Admin' LIMIT 1`;
+    
+    stream<record {|string role_id;|}, sql:Error?> roleStream = dbClient->query(query);
+    
+    record {|string role_id;|}[] roles = check from record {|string role_id;|} role in roleStream
+        select role;
+    
+    if roles.length() == 0 {
+        return error("Project Admin role not found in database");
+    }
+    
+    return roles[0].role_id;
+}
+
+// Create a new project in the projects table (RBAC v2)
+public isolated function createProject(types:ProjectInput project, types:UserContextV2 userContext) returns types:Project|error? {
     string projectId = uuid:createType1AsString();
     string userId = userContext.userId;
     string displayName = userContext.displayName;
@@ -62,33 +78,42 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
                 ownerId = userId,
                 createdBy = displayName);
 
-        // Auto-assign admin roles to the creating user for both environment types
-        // Skip role assignment if user is super admin
-        if !userContext.isSuperAdmin {
-            // Assign admin role for production environment type
-            string prodRoleId = check getOrCreateRole(projectId, types:PROD, types:ADMIN);
-            sql:ExecutionResult _ = check dbClient->execute(
-                `INSERT INTO user_roles (user_id, role_id, assigned_by)
-                 VALUES (${userId}, ${prodRoleId}, ${userId})`
-                );
-            log:printInfo(string `Assigned production admin role to project creator`,
-                    userId = userId,
-                    projectId = projectId);
+        // RBAC v2: Create project-specific admin group and assign Project Admin role
+        // 1. Create project admin group
+        string adminGroupId = uuid:createType1AsString();
+        string groupName = string `${project.name} Admins`;
+        string groupDescription = string `Admin group for project: ${project.name}`;
+        
+        sql:ExecutionResult _ = check dbClient->execute(`
+            INSERT INTO user_groups (group_id, group_name, org_uuid, description)
+            VALUES (${adminGroupId}, ${groupName}, 1, ${groupDescription})
+        `);
+        log:printInfo(string `Created project admin group: ${groupName}`,
+                groupId = adminGroupId,
+                projectId = projectId);
 
-            // Assign admin role for non-production environment type
-            string nonProdRoleId = check getOrCreateRole(projectId, types:NON_PROD, types:ADMIN);
-            sql:ExecutionResult _ = check dbClient->execute(
-                `INSERT INTO user_roles (user_id, role_id, assigned_by)
-                 VALUES (${userId}, ${nonProdRoleId}, ${userId})`
-                );
-            log:printInfo(string `Assigned non-production admin role to project creator`,
-                    userId = userId,
-                    projectId = projectId);
-        } else {
-            log:printInfo(string `Skipping role assignment for super admin user`,
-                    userId = userId,
-                    projectId = projectId);
-        }
+        // 2. Get Project Admin role ID
+        string projectAdminRoleId = check getProjectAdminRoleId();
+
+        // 3. Map group to Project Admin role (project-scoped, all environments)
+        sql:ExecutionResult _ = check dbClient->execute(`
+            INSERT INTO group_role_mapping (group_id, role_id, org_uuid, project_uuid)
+            VALUES (${adminGroupId}, ${projectAdminRoleId}, 1, ${projectId})
+        `);
+        log:printInfo(string `Mapped group to Project Admin role for project`,
+                groupId = adminGroupId,
+                roleId = projectAdminRoleId,
+                projectId = projectId);
+
+        // 4. Add creator to admin group
+        sql:ExecutionResult _ = check dbClient->execute(`
+            INSERT INTO group_user_mapping (group_id, user_uuid)
+            VALUES (${adminGroupId}, ${userId})
+        `);
+        log:printInfo(string `Added project creator to admin group`,
+                userId = userId,
+                groupId = adminGroupId,
+                projectId = projectId);
 
         check commit;
         log:printInfo(string `Successfully created project and assigned admin roles`,
@@ -124,11 +149,16 @@ public isolated function getProjects() returns types:Project[]|error {
     return projects;
 }
 
-// Get projects by specific project IDs (for admin project filtering)
-public isolated function getProjectsByIds(string[] projectIds) returns types:Project[]|error {
+// Get projects by specific project IDs with optional org filter (for RBAC v2 filtering)
+public isolated function getProjectsByIds(string[] projectIds, int? orgId = ()) returns types:Project[]|error {
     // Return empty array if no project IDs provided
     if projectIds.length() == 0 {
         return [];
+    }
+
+    // Safety check: log warning if project ID list is unexpectedly large
+    if projectIds.length() > 5000 {
+        log:printWarn(string `Large project ID list: ${projectIds.length()} projects - consider pagination`);
     }
 
     types:Project[] projects = [];
@@ -149,19 +179,28 @@ public isolated function getProjectsByIds(string[] projectIds) returns types:Pro
         query = sql:queryConcat(query, `${projectIds[i]}`);
     }
 
-    query = sql:queryConcat(query, `) ORDER BY name ASC`);
+    query = sql:queryConcat(query, `)`);
+
+    // Add orgId filter if provided
+    if orgId is int {
+        query = sql:queryConcat(query, ` AND org_id = ${orgId}`);
+    }
+
+    query = sql:queryConcat(query, ` ORDER BY name ASC`);
 
     stream<types:Project, sql:Error?> projectStream = dbClient->query(query);
 
     check from types:Project projectRecord in projectStream
         do {
-
             projects.push({
                 ...projectRecord
             });
         };
 
-    log:printInfo("Retrieved projects by IDs", projectCount = projects.length());
+    log:printInfo("Retrieved projects by IDs", 
+        projectCount = projects.length(), 
+        requestedIds = projectIds.length(),
+        orgIdFilter = orgId);
 
     return projects;
 }

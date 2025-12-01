@@ -457,7 +457,7 @@ isolated function mapToComponent(types:ComponentInDB component) returns types:Co
             id: component.project_id,
             orgId: component.project_org_id,
             name: component.project_name,
-            version: <string>component.project_version,
+            version: component.project_version,
             createdDate: component.project_created_date,
             handler: component.project_handler,
             region: component.project_region,

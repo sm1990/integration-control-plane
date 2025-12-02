@@ -19,7 +19,6 @@ import ballerina/jwt;
 import ballerina/log;
 import ballerina/test;
 
-// TODO Update to work with new tokens
 // Test: Successful token refresh with valid JWT
 @test:Config {
     groups: ["token-renew"]

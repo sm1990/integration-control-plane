@@ -1523,14 +1523,6 @@ public type UserCredentials record {
     string? updatedAt?;
 };
 
-// Simplified role info extracted from JWT for authorization checks
-// Contains only the minimal information needed for authorization decisions
-public type RoleInfo record {
-    string projectId;
-    string environmentType;
-    string privilegeLevel;
-};
-
 // UserContext V2 - RBAC V2 permission-based authorization
 // Used with new permission-based JWT tokens
 public type UserContextV2 record {

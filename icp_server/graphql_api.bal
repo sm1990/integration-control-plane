@@ -87,63 +87,61 @@ service /graphql on graphqlListener {
 
     // ----------- Runtime Resources
     // Get all runtimes with optional filtering
-    isolated resource function get runtimes(graphql:Context context, string? status, string? runtimeType, string? environmentId, string? projectId, string? componentId) returns types:Runtime[]|error {
+    // Note: componentId is required (always provided by frontend)
+    isolated resource function get runtimes(graphql:Context context, string? status, string? runtimeType, string? environmentId, string? projectId, string componentId) returns types:Runtime[]|error {
         types:UserContextV2 userContext = check extractUserContext(context);
 
-        // If specific componentId (integration) is provided, check access and return filtered
-        if componentId is string {
-            // TODO need to check integration access with the environment as well
-            boolean hasAccess = check storage:hasAccessToIntegration(userContext.userId, componentId);
-            if !hasAccess {
-                return []; // No access to this specific integration
+        // Step 1: Get projectId if not provided (infer from componentId)
+        string actualProjectId = projectId ?: "";
+        if actualProjectId == "" {
+            types:Component? component = check storage:getComponentById(componentId);
+            if component is () {
+                return []; // Component not found
             }
-            return check storage:getRuntimes(status, runtimeType, environmentId, projectId, componentId);
+            actualProjectId = component.projectId;
         }
 
-        // If projectId is provided, filter by accessible integrations in that project
-        if projectId is string {
-            boolean hasProjectAccess = check storage:hasAccessToProject(userContext.userId, projectId);
-            if !hasProjectAccess {
-                return []; // No access to this project
+        // Step 2: If environmentId is specified, check access to that specific environment
+        if environmentId is string {
+            // Build scope with project, integration, and environment
+            types:AccessScope scope = auth:buildScopeFromContext(actualProjectId, integrationId = componentId, envId = environmentId);
+            
+            // Check if user has permission to view this integration in this environment
+            if !check auth:hasAnyPermission(userContext.userId, 
+                ["integration_mgt:view", "integration_mgt:edit", "integration_mgt:manage"], scope) {
+                return []; // No access to this integration in this environment
             }
-
-            // Get all accessible integrations for this project
-            types:UserIntegrationAccess[] accessibleIntegrations = 
-                check storage:getUserAccessibleIntegrations(userContext.userId, projectId, environmentId);
-
-            // If no accessible integrations in this project, return empty
-            if accessibleIntegrations.length() == 0 {
-                return [];
-            }
-
-            // Extract integration IDs and fetch all runtimes in a single batch query
-            string[] integrationIds = accessibleIntegrations.map(i => i.integrationUuid);
-            return check storage:getRuntimesByIntegrationIds(
-                integrationIds,
-                status,
-                runtimeType,
-                environmentId,
-                projectId
-            );
+            
+            // Fetch runtimes for the specified environment
+            return check storage:getRuntimes(status, runtimeType, environmentId, actualProjectId, componentId);
         }
 
-        // No specific filters - return runtimes for all accessible integrations
-        types:UserIntegrationAccess[] accessibleIntegrations = 
-            check storage:getUserAccessibleIntegrations(userContext.userId, (), environmentId);
+        // Step 3: If environmentId is NOT specified, resolve accessible environments
+        auth:EnvironmentAccessInfo envAccess = check auth:resolveEnvironmentAccess(
+            userContext.userId, 
+            projectId = actualProjectId, 
+            integrationId = componentId
+        );
 
-        if accessibleIntegrations.length() == 0 {
+        // If no restriction, user can access all environments - fetch all runtimes
+        if !envAccess.hasRestriction {
+            return check storage:getRuntimes(status, runtimeType, (), actualProjectId, componentId);
+        }
+
+        // If blocked (empty allowed list), return empty
+        string[]? allowedEnvs = envAccess.allowedEnvironments;
+        if allowedEnvs is () || allowedEnvs.length() == 0 {
             return [];
         }
 
-        // Extract integration IDs and fetch all runtimes in a single batch query
-        string[] integrationIds = accessibleIntegrations.map(i => i.integrationUuid);
-        return check storage:getRuntimesByIntegrationIds(
-            integrationIds,
-            status,
-            runtimeType,
-            environmentId,
-            () // no project filter since we're querying across projects
-        );
+        // Fetch runtimes for each allowed environment and combine
+        types:Runtime[] allRuntimes = [];
+        foreach string envId in allowedEnvs {
+            types:Runtime[] envRuntimes = check storage:getRuntimes(status, runtimeType, envId, actualProjectId, componentId);
+            allRuntimes.push(...envRuntimes);
+        }
+
+        return allRuntimes;
     }
 
     // Get a specific runtime by ID

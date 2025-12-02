@@ -20,7 +20,7 @@ import ballerina/file;
 
 // Server configuration
 configurable int serverPort = 9445;
-configurable string serverHost = "0.0.0.0";
+configurable string serverHost = "localhost";
 configurable string organization = "WSO2 Inc.";
 configurable int graphqlPort = 9446;
 configurable int observabilityServerPort = 9448;

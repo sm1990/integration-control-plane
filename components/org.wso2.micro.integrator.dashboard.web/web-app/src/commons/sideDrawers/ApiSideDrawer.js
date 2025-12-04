@@ -51,7 +51,7 @@ export default function ApiSideDrawer(props) {
                         nodeId={nodeId}
                         designContent={<>
                             <Paper className={classes.paper} elevation={0} square>
-                                <ApiDetailTable nodeData={nodeData} retrieveUpdatedArtifact = {retrieveUpdatedArtifact}/>
+                                <ApiDetailTable nodeData={nodeData} retrieveUpdatedArtifact={retrieveUpdatedArtifact} />
                             </Paper>
                             <Box pl={2}>
                                 <Typography variant="h6" color="inherit" noWrap>
@@ -89,7 +89,7 @@ function ApiDetailTable(props) {
             <TableCell>URL</TableCell>
             <TableCell>
                 <Table>
-                    {urls.map(url =>
+                    {urls && urls.map(url =>
                         <CopyToClipboardRow text={url} />
                     )}
                 </Table>
@@ -99,13 +99,13 @@ function ApiDetailTable(props) {
             <TableCell>Statistics</TableCell>
             <TableCell>{nodeData.details.stats}</TableCell>
         </TableRow>
-        <TracingRow pageId={pageId} artifactName={artifactName} nodeId={nodeData.nodeId} tracing={nodeData.details.tracing} retrieveUpdatedArtifact={retrieveUpdatedArtifact}/>
+        <TracingRow pageId={pageId} artifactName={artifactName} nodeId={nodeData.nodeId} tracing={nodeData.details.tracing} retrieveUpdatedArtifact={retrieveUpdatedArtifact} />
     </Table>
 }
 
 function ResourcesDetailTable(props) {
     const resources = props.resources;
-    return (resources.map(resource => (
+    return (resources && resources.map(resource => (
         <ExpansionPanel>
             <ExpansionPanelSummary
                 expandIcon={<ExpandMoreIcon />}

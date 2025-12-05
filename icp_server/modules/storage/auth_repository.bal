@@ -584,47 +584,65 @@ public isolated function getRolePermissions(string roleId) returns types:Permiss
 // Get user's effective permissions in a given scope
 // This computes: user → groups → roles (in scope) → permissions
 public isolated function getUserEffectivePermissions(string userId, types:AccessScope scope) returns types:Permission[]|error {
-    log:printDebug(string `Computing effective permissions for user ${userId} in scope`);
+    log:printDebug(string `Computing effective permissions for user ${userId} in scope: ${scope.toString()}`);
 
     types:Permission[] permissions = [];
-    
-    // Query that resolves the full chain: user → groups → roles → permissions
-    // Filters roles by scope context (org, project, env, integration)
-    sql:ParameterizedQuery query = `
-        SELECT DISTINCT p.permission_id, p.permission_name, p.permission_domain, p.resource_type, p.action, p.description, p.created_at, p.updated_at
-        FROM permissions p
-        INNER JOIN role_permission_mapping rpm ON p.permission_id = rpm.permission_id
-        INNER JOIN group_role_mapping grm ON rpm.role_id = grm.role_id
-        INNER JOIN group_user_mapping gum ON grm.group_id = gum.group_id
-        WHERE gum.user_uuid = ${userId}
-          AND grm.org_uuid = ${scope.orgUuid}`;
 
-    // Apply hierarchical scope filters
-    // Project scope: include org-wide roles OR project-specific roles
+    // Base EXISTS-style query that checks for existence of a (group -> role -> permission)
+    // mapping for the user within the provided scope. We'll append scope-specific clauses
+    // (project, env, integration) to match current semantics exactly.
+    sql:ParameterizedQuery query = `
+        SELECT DISTINCT
+            p.permission_id,
+            p.permission_name,
+            p.permission_domain,
+            p.resource_type,
+            p.action,
+            p.description,
+            p.created_at,
+            p.updated_at
+        FROM permissions p
+        WHERE EXISTS (
+            SELECT 1
+            FROM role_permission_mapping rpm
+            INNER JOIN group_role_mapping grm ON grm.role_id = rpm.role_id
+            INNER JOIN group_user_mapping gum ON gum.group_id = grm.group_id
+            WHERE rpm.permission_id = p.permission_id
+              AND gum.user_uuid = ${userId}
+              AND grm.org_uuid = ${scope.orgUuid}
+    `;
+
+    // Project scope: if projectUuid provided, include org-wide OR project-specific roles.
+    // If not provided, restrict to org-wide only (grm.project_uuid IS NULL).
     if scope.projectUuid is string {
         query = sql:queryConcat(query, ` AND (grm.project_uuid IS NULL OR grm.project_uuid = ${scope.projectUuid})`);
     } else {
-        // Org-wide only
         query = sql:queryConcat(query, ` AND grm.project_uuid IS NULL`);
     }
 
-    // Environment filter: include all-env roles OR specific-env roles
+    // Environment filter: include roles that apply to all envs OR the specific env when given.
     if scope.envUuid is string {
         query = sql:queryConcat(query, ` AND (grm.env_uuid IS NULL OR grm.env_uuid = ${scope.envUuid})`);
     }
 
-    // Integration scope: include project-wide roles OR integration-specific roles
+    // Integration scope: if integrationUuid provided include project-wide OR integration-specific roles.
+    // If no integration but project scope present, exclude integration-specific roles.
     if scope.integrationUuid is string {
         query = sql:queryConcat(query, ` AND (grm.integration_uuid IS NULL OR grm.integration_uuid = ${scope.integrationUuid})`);
     } else if scope.projectUuid is string {
-        // If project scope without integration, exclude integration-specific roles
+        // project scope without integration: do not include integration-specific role mappings
         query = sql:queryConcat(query, ` AND grm.integration_uuid IS NULL`);
     }
 
-    query = sql:queryConcat(query, ` ORDER BY p.permission_domain, p.permission_name`);
+    // Close the EXISTS and apply ordering
+    query = sql:queryConcat(query, `
+        ) -- end EXISTS
+        ORDER BY p.permission_domain, p.permission_name
+    `);
 
     stream<types:Permission, sql:Error?> permissionStream = dbClient->query(query);
 
+    // Collect results
     check from types:Permission permission in permissionStream
         do {
             permissions.push(permission);

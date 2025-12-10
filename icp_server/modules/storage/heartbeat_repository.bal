@@ -143,24 +143,26 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
         WHERE runtime_id = ${deltaHeartbeat.runtime}
     `);
 
+    boolean runtimeExists = true;
     if timestampResult is error {
         log:printError(string `Failed to update timestamp for runtime ${deltaHeartbeat.runtime}`, timestampResult);
-        // Continue processing - timestamp update failure shouldn't block command retrieval
+        // Determine if runtime is missing; in that case, avoid FK violations when auditing
+        runtimeExists = false;
+    } else {
+        // If no rows were updated, runtime may have been deleted concurrently
+        runtimeExists = (timestampResult.affectedRowCount ?: 0) > 0;
     }
 
     // Handle control commands and audit logging in a transaction
-    // This ensures commands are marked as 'sent' atomically with audit log creation
+    // Commands are marked as 'sent' atomically with audit log creation
     transaction {
-        // Retrieve pending control commands for this runtime
-        // Lock pending commands for this runtime to avoid concurrent modifications
-        // Use FOR UPDATE so rows cannot be changed by other transactions while we process them
+        // Retrieve pending control commands for this runtime (no DB-specific locks)
         stream<types:ControlCommand, sql:Error?> commandStream = dbClient->query(`
             SELECT command_id, runtime_id, target_artifact, action, issued_at, status
             FROM control_commands
             WHERE runtime_id = ${deltaHeartbeat.runtime}
             AND status = 'pending'
             ORDER BY issued_at ASC
-            FOR UPDATE
         `);
 
         check from types:ControlCommand command in commandStream
@@ -180,15 +182,28 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
         }
 
         // Create audit log entry
-        _ = check dbClient->execute(`
-            INSERT INTO audit_logs (
-                runtime_id, action, details, timestamp
-            ) VALUES (
-                ${deltaHeartbeat.runtime}, 'DELTA_HEARTBEAT',
-                ${string `Delta heartbeat processed with hash ${deltaHeartbeat.runtimeHash}`},
-                ${currentTimeStr}
-            )
-        `);
+        if runtimeExists {
+            _ = check dbClient->execute(`
+                INSERT INTO audit_logs (
+                    runtime_id, action, details, timestamp
+                ) VALUES (
+                    ${deltaHeartbeat.runtime}, 'DELTA_HEARTBEAT',
+                    ${string `Delta heartbeat processed with hash ${deltaHeartbeat.runtimeHash}`},
+                    ${currentTimeStr}
+                )
+            `);
+        } else {
+            // Runtime was deleted or not yet created; log without FK reference to avoid integrity violation
+            _ = check dbClient->execute(`
+                INSERT INTO audit_logs (
+                    action, details, timestamp
+                ) VALUES (
+                    'DELTA_HEARTBEAT',
+                    ${string `Delta heartbeat received for missing runtime ${deltaHeartbeat.runtime} with hash ${deltaHeartbeat.runtimeHash}`},
+                    ${currentTimeStr}
+                )
+            `);
+        }
 
         check commit;
         log:printInfo(string `Successfully processed delta heartbeat for runtime ${deltaHeartbeat.runtime}`);
@@ -394,7 +409,7 @@ isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error
     string runtimeHostname = heartbeat.runtimeHostname ?: "";
     string runtimePort = heartbeat.runtimePort ?: "";
 
-    sql:ExecutionResult result = check dbClient->execute(`
+    sql:ExecutionResult|error insertRes = dbClient->execute(`
         INSERT INTO runtimes (
             runtime_id, name, runtime_type, status, version,
             runtime_hostname, runtime_port,
@@ -403,7 +418,7 @@ isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error
             os_name, os_version,
             carbon_home, java_vendor, java_version, 
             total_memory, free_memory, max_memory, used_memory,
-            os_arch, server_name
+            os_arch, server_name, last_heartbeat
         ) VALUES (
             ${heartbeat.runtime}, ${heartbeat.runtime}, ${heartbeat.runtimeType}, ${heartbeat.status}, ${heartbeat.version},
             ${runtimeHostname}, ${runtimePort},
@@ -412,37 +427,45 @@ isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error
             ${heartbeat.nodeInfo.osName}, ${heartbeat.nodeInfo.osVersion},
             ${heartbeat.nodeInfo.carbonHome}, ${heartbeat.nodeInfo.javaVendor}, ${heartbeat.nodeInfo.javaVersion}, 
             ${heartbeat.nodeInfo.totalMemory}, ${heartbeat.nodeInfo.freeMemory}, ${heartbeat.nodeInfo.maxMemory}, ${heartbeat.nodeInfo.usedMemory},
-            ${heartbeat.nodeInfo.osArch}, ${heartbeat.nodeInfo.platformName}
+            ${heartbeat.nodeInfo.osArch}, ${heartbeat.nodeInfo.platformName}, CURRENT_TIMESTAMP
         )
-        ON DUPLICATE KEY UPDATE
-            name = VALUES(name),
-            runtime_type = VALUES(runtime_type),
-            status = VALUES(status),
-            version = VALUES(version),
-            runtime_hostname = VALUES(runtime_hostname),
-            runtime_port = VALUES(runtime_port),
-            environment_id = VALUES(environment_id),
-            project_id = VALUES(project_id),
-            component_id = VALUES(component_id),
-            platform_name = VALUES(platform_name),
-            platform_version = VALUES(platform_version),
-            platform_home = VALUES(platform_home),
-            os_name = VALUES(os_name),
-            os_version = VALUES(os_version),
-            carbon_home = VALUES(carbon_home),
-            java_vendor = VALUES(java_vendor),
-            java_version = VALUES(java_version),
-            total_memory = VALUES(total_memory),
-            free_memory = VALUES(free_memory),
-            max_memory = VALUES(max_memory),
-            used_memory = VALUES(used_memory),
-            os_arch = VALUES(os_arch),
-            server_name = VALUES(server_name),
-            last_heartbeat = CURRENT_TIMESTAMP
     `);
 
-    int? affectedRows = result.affectedRowCount;
-    return affectedRows == 1;
+    if insertRes is sql:ExecutionResult {
+        int? rows = insertRes.affectedRowCount;
+        return rows == 1;
+    }
+
+    _ = check dbClient->execute(`
+        UPDATE runtimes SET
+            name = ${heartbeat.runtime},
+            runtime_type = ${heartbeat.runtimeType},
+            status = ${heartbeat.status},
+            version = ${heartbeat.version},
+            runtime_hostname = ${runtimeHostname},
+            runtime_port = ${runtimePort},
+            environment_id = ${heartbeat.environment},
+            project_id = ${heartbeat.project},
+            component_id = ${heartbeat.component},
+            platform_name = ${heartbeat.nodeInfo.platformName},
+            platform_version = ${heartbeat.nodeInfo.platformVersion},
+            platform_home = ${heartbeat.nodeInfo.platformHome},
+            os_name = ${heartbeat.nodeInfo.osName},
+            os_version = ${heartbeat.nodeInfo.osVersion},
+            carbon_home = ${heartbeat.nodeInfo.carbonHome},
+            java_vendor = ${heartbeat.nodeInfo.javaVendor},
+            java_version = ${heartbeat.nodeInfo.javaVersion},
+            total_memory = ${heartbeat.nodeInfo.totalMemory},
+            free_memory = ${heartbeat.nodeInfo.freeMemory},
+            max_memory = ${heartbeat.nodeInfo.maxMemory},
+            used_memory = ${heartbeat.nodeInfo.usedMemory},
+            os_arch = ${heartbeat.nodeInfo.osArch},
+            server_name = ${heartbeat.nodeInfo.platformName},
+            last_heartbeat = CURRENT_TIMESTAMP
+        WHERE runtime_id = ${heartbeat.runtime}
+    `);
+
+    return false;
 }
 
 // Insert all runtime artifacts

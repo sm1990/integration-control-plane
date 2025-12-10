@@ -1,13 +1,6 @@
--- ============================================================================
--- ICP Server MySQL Database Schema (Full Rewrite, MySQL 8.0+)
--- ============================================================================
 
-DROP DATABASE IF EXISTS icp_database;
 
 CREATE DATABASE icp_database CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
-USE icp_database;
-
 -- ============================================================================
 -- ORGANIZATIONS
 -- ============================================================================
@@ -687,7 +680,6 @@ CREATE TABLE runtime_proxy_services (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     runtime_id CHAR(36) NOT NULL,
     proxy_name VARCHAR(200) NOT NULL,
-    wsdl TEXT NULL,
     transports JSON NULL,
     state ENUM(
         'ENABLED',

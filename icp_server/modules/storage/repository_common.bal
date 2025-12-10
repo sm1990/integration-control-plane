@@ -61,7 +61,6 @@ isolated function retrieveAndMarkCommandsAsSent(string runtimeId) returns types:
         WHERE runtime_id = ${runtimeId}
         AND status = 'pending'
         ORDER BY issued_at ASC
-        FOR UPDATE
     `);
 
     check from types:ControlCommand command in commandStream

@@ -71,8 +71,8 @@ export default class HTTPClient {
         return this.get("/configs/super-admin")
     }
 
-    static isJdbcUserStoreEnabled() {
-        return this.get("/configs/jdbc-userstore-enabled")
+    static isJdbcUserStoreConfigured() {
+        return this.get("/configs/is-jdbc-userstore")
     }
 
     static getGroups() {

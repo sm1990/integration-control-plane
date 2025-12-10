@@ -14,17 +14,17 @@ const ICP_NAME = window.icp.name;
 export default function GroupSelector() {
 
   const [groupList, setGroupList] = React.useState([]);
-  const [jdbcUserStoreEnabled, setJdbcUserStoreEnabled] = React.useState(false);
+  const [isJdbcUserStore, setIsJdbcUserStore] = React.useState(false);
   const dispatch = useDispatch();
   const location = useLocation();
 
   React.useEffect(() => {
-    // Check if JDBC user store is enabled
-    HTTPClient.isJdbcUserStoreEnabled().then(response => {
-      setJdbcUserStoreEnabled(response.data.jdbcUserStoreEnabled);
+    // Check if external user store (JDBC/LDAP) is configured
+    HTTPClient.isJdbcUserStoreConfigured().then(response => {
+      setIsJdbcUserStore(response.data.isJdbcUserStore);
     }).catch(error => {
-      console.error("Error fetching JDBC user store status:", error);
-      setJdbcUserStoreEnabled(false);
+      console.error("Error checking external user store configuration:", error);
+      setIsJdbcUserStore(false);
     });
 
     let groups = [];
@@ -49,16 +49,15 @@ export default function GroupSelector() {
       const filteredGroups = prevGroups.filter(
         (group) => group.label !== ICP_NAME
       );
-      const isSpecialPage = location.pathname.startsWith("/users") ||
+      const shouldShowICP = (location.pathname.startsWith("/users") ||
         location.pathname.startsWith("/roles") ||
-        location.pathname.startsWith("/update-password");
+        location.pathname.startsWith("/update-password")) && isJdbcUserStore;
 
-      // Only add ICP_NAME if on special pages AND JDBC user store is enabled
-      return isSpecialPage && jdbcUserStoreEnabled
+      return shouldShowICP
         ? [...filteredGroups, { label: ICP_NAME, value: ICP_NAME }]
         : filteredGroups;
     });
-  }, [location, jdbcUserStoreEnabled]);
+  }, [location, isJdbcUserStore]);
 
   return (
     <SelectComponent groupList={groupList} />

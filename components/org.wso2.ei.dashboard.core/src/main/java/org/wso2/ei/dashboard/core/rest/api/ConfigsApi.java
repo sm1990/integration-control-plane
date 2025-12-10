@@ -29,18 +29,10 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Response;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-
-import java.util.Map;
-import java.util.List;
-import javax.validation.constraints.*;
-import javax.validation.Valid;
 
 @Path("/configs")
 
@@ -63,18 +55,17 @@ public class ConfigsApi {
     }
 
     @GET
-    @Path("/jdbc-userstore-enabled")
+    @Path("/is-jdbc-userstore")
     @Produces({ "application/json" })
-    @Operation(summary = "Check if JDBC user store is enabled", description = "", tags = { "configs" })
+    @Operation(summary = "Check if JDBC user store is configured", description = "", tags = { "configs" })
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Returns whether JDBC user store is enabled"),
+            @ApiResponse(responseCode = "200", description = "Returns whether JDBC user store is configured"),
             @ApiResponse(responseCode = "500", description = "Unexpected error", content = @Content(schema = @Schema(implementation = Error.class)))
     })
-    public Response isJdbcUserStoreEnabled() {
+    public Response isJdbcUserStoreConfigured() {
         ConfigsDelegate configsDelegate = new ConfigsDelegate();
-        boolean jdbcEnabled = configsDelegate.isJdbcUserStoreEnabled();
-        Response.ResponseBuilder responseBuilder = Response.ok()
-                .entity("{\"jdbcUserStoreEnabled\": " + jdbcEnabled + "}");
+        boolean isJdbc = configsDelegate.isJdbcUserStoreConfigured();
+        Response.ResponseBuilder responseBuilder = Response.ok().entity("{\"isJdbcUserStore\": " + isJdbc + "}");
         HttpUtils.setHeaders(responseBuilder);
         return responseBuilder.build();
     }

@@ -109,23 +109,10 @@ public final class InMemoryDataManager implements DataManager {
                 }
             }
 
-            // Add ICP group if JDBC user store is enabled
-            if (!UserStoreManagerUtils.isFileBasedUserStoreEnabled()) {
-                String icpGroupName = getIcpGroupName();
-                if (!groupList.contains(icpGroupName)) {
-                    groupList.add(icpGroupName);
-                }
-            }
-
             return groupList;
         } catch (DashboardServerException e) {
             throw new DashboardServerException("Error occurred fetching groups.", e);
         }
-    }
-
-    private String getIcpGroupName() {
-        Object icpName = ConfigParser.getParsedConfigs().get("mi_control_plane.name");
-        return icpName != null ? icpName.toString() : "icp";
     }
 
     @Override

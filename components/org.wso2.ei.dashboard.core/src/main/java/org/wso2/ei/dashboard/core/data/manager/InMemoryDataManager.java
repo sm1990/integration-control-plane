@@ -22,8 +22,6 @@ package org.wso2.ei.dashboard.core.data.manager;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.wso2.config.mapper.ConfigParser;
-import org.wso2.dashboard.security.user.core.UserStoreManagerUtils;
 import org.wso2.ei.dashboard.core.commons.Constants.Product;
 import org.wso2.ei.dashboard.core.exception.DashboardServerException;
 import org.wso2.ei.dashboard.core.rest.delegates.heartbeat.HeartbeatObject;

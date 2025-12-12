@@ -74,7 +74,7 @@ function ApiDetailTable(props) {
     const { nodeData, retrieveUpdatedArtifact } = props;
     const artifactName = nodeData.details.name
     const pageId = "apis";
-    const urls = nodeData.details.urlList;
+    const urls = nodeData.details.urlList || [];
 
     return <Table>
         <TableRow>
@@ -104,8 +104,8 @@ function ApiDetailTable(props) {
 }
 
 function ResourcesDetailTable(props) {
-    const resources = props.resources;
-    return (resources && resources.map(resource => (
+    const resources = props.resources || [];
+    return (resources.map(resource => (
         <ExpansionPanel>
             <ExpansionPanelSummary
                 expandIcon={<ExpandMoreIcon />}

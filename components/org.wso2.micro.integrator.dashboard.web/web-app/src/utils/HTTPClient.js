@@ -20,7 +20,7 @@
 import axios from 'axios';
 import { AsgardeoSPAClient } from "@asgardeo/auth-react";
 import AuthManager from '../auth/AuthManager';
-import {Constants} from './Constants';
+import { Constants } from './Constants';
 
 export default class HTTPClient {
 
@@ -42,7 +42,7 @@ export default class HTTPClient {
         }
     }
 
-    static get(path, params={}) {
+    static get(path, params = {}) {
         return this.httpCall("GET", path, params, null)
     }
 
@@ -71,6 +71,10 @@ export default class HTTPClient {
         return this.get("/configs/super-admin")
     }
 
+    static isJdbcUserStoreConfigured() {
+        return this.get("/configs/is-jdbc-userstore")
+    }
+
     static getGroups() {
         return this.getResource()
     }
@@ -93,7 +97,7 @@ export default class HTTPClient {
     static deleteUser(groupId, userId) {
         var resourcePath = `/${Constants.PREFIX_GROUPS}/${groupId}/${Constants.PREFIX_USERS}/`
         const parts = userId.split("/")
-        if(parts.length===1) {
+        if (parts.length === 1) {
             resourcePath = resourcePath.concat(parts[0]);
         } else {
             resourcePath = resourcePath.concat(parts[1]).concat("?domain=").concat(parts[0]);
@@ -129,7 +133,7 @@ export default class HTTPClient {
     static deleteRole(groupId, roleName) {
         var resourcePath = `/${Constants.PREFIX_GROUPS}/${groupId}/${Constants.PREFIX_ROLES}/`;
         const parts = roleName.split("/");
-        if(parts.length===1) {
+        if (parts.length === 1) {
             resourcePath = resourcePath.concat(parts[0])
         } else {
             resourcePath = resourcePath.concat(parts[1]).concat("?domain=").concat(parts[0]);
@@ -170,28 +174,28 @@ export default class HTTPClient {
         return this.getResource(resourcePath)
     }
 
-    static getRegistryProperty(groupId, registryPath){
+    static getRegistryProperty(groupId, registryPath) {
         const resourcePath = `${groupId}/registry-resources/properties?path=${registryPath}`
         return this.getResource(resourcePath)
     }
 
-    static getPaginatedUsersAndRoles(searchKey, lowerLimit, upperLimit, resourceType,order, orderBy, groupId, isUpdate) {
+    static getPaginatedUsersAndRoles(searchKey, lowerLimit, upperLimit, resourceType, order, orderBy, groupId, isUpdate) {
         const resourcePath = `${groupId}/${resourceType}?searchKey=${searchKey}&lowerLimit=${lowerLimit}&upperLimit=${upperLimit}&order=${order}&orderBy=${orderBy}&isUpdate=${isUpdate}`;
         return this.getResource(resourcePath)
     }
 
     static getPaginatedResults(searchKey, lowerLimit, upperLimit, resourceType, order, orderBy, groupId, nodeList, isUpdate) {
         var resourcePath = `${groupId}/${resourceType}?`;
-    
-        if(resourceType == Constants.PREFIX_LOG_CONFIGS && nodeList == 'All') {
+
+        if (resourceType == Constants.PREFIX_LOG_CONFIGS && nodeList == 'All') {
             resourcePath = `${resourcePath}nodes=all&searchKey=${searchKey}&lowerLimit=${lowerLimit}&upperLimit=${upperLimit}&order=${order}&orderBy=${orderBy}&isUpdate=${isUpdate}`;
-        } else if(resourceType == Constants.PREFIX_LOG_CONFIGS){//one specific node is selected
+        } else if (resourceType == Constants.PREFIX_LOG_CONFIGS) {//one specific node is selected
             resourcePath = `${resourcePath}nodes=${this.getNodeListAsQueryParams([nodeList])}&searchKey=${searchKey}&lowerLimit=${lowerLimit}&upperLimit=${upperLimit}&order=${order}&orderBy=${orderBy}&isUpdate=${isUpdate}`;
         } else {
             resourcePath = `${resourcePath}nodes=${this.getNodeListAsQueryParams(nodeList)}&searchKey=${searchKey}&lowerLimit=${lowerLimit}&upperLimit=${upperLimit}&order=${order}&orderBy=${orderBy}&isUpdate=${isUpdate}`;
         }
 
-        if(resourceType === Constants.PREFIX_LOGS || resourceType === Constants.PREFIX_LOG_CONFIGS) {
+        if (resourceType === Constants.PREFIX_LOGS || resourceType === Constants.PREFIX_LOG_CONFIGS) {
             return this.getResource(resourcePath);
         }
 
@@ -208,7 +212,7 @@ export default class HTTPClient {
 
     }
 
-    static getPaginatedRegistryArtifacts(searchKey, lowerLimit, upperLimit,order, orderBy, groupId, path) {
+    static getPaginatedRegistryArtifacts(searchKey, lowerLimit, upperLimit, order, orderBy, groupId, path) {
         const resourcePath = `${groupId}/registry-resources?path=${path}&searchKey=${searchKey}&lowerLimit=${lowerLimit}&upperLimit=${upperLimit}&order=${order}&orderBy=${orderBy}`;
         return this.getResource(resourcePath)
     }

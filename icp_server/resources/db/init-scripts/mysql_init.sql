@@ -989,27 +989,18 @@ CREATE TABLE runtime_registry_resources (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     runtime_id VARCHAR(100) NOT NULL,
     resource_name VARCHAR(200) NOT NULL,
-    path VARCHAR(1000) NOT NULL,
     resource_type VARCHAR(100) NULL,
-    state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     CONSTRAINT fk_runtime_registry_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     UNIQUE KEY uk_runtime_registry_resource (
         runtime_id,
         resource_name,
-        path (255)
+        resource_type
     ),
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_resource_name (resource_name),
-    INDEX idx_resource_type (resource_type),
-    INDEX idx_state (state)
+    INDEX idx_resource_type (resource_type)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ============================================================================

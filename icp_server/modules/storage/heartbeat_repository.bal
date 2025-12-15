@@ -717,10 +717,9 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
     foreach types:RegistryResource registryResource in <types:RegistryResource[]>heartbeat.artifacts.registryResources {
         _ = check dbClient->execute(`
             INSERT INTO runtime_registry_resources (
-                runtime_id, resource_name, path, resource_type, state
+                runtime_id, resource_name, resource_type
             ) VALUES (
-                ${heartbeat.runtime}, ${registryResource.name}, ${registryResource.path},
-                ${registryResource.'type}, ${registryResource.state}
+                ${heartbeat.runtime}, ${registryResource.name}, ${registryResource.'type}
             )
         `);
     }

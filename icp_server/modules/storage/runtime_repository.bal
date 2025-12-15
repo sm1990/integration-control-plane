@@ -558,7 +558,7 @@ public isolated function getConnectorsForRuntime(string runtimeId) returns types
 public isolated function getRegistryResourcesForRuntime(string runtimeId) returns types:RegistryResource[]|error {
     types:RegistryResource[] resourceList = [];
     stream<types:RegistryResourceRecordInDB, sql:Error?> resourceStream = dbClient->query(`
-        SELECT resource_name, path, resource_type, state 
+        SELECT resource_name, resource_type
         FROM runtime_registry_resources 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -567,9 +567,7 @@ public isolated function getRegistryResourcesForRuntime(string runtimeId) return
         do {
             types:RegistryResource registryResource = {
                 name: resourceRecord.resource_name,
-                path: resourceRecord.path,
-                'type: resourceRecord.resource_type,
-                state: resourceRecord.state
+                'type: resourceRecord.resource_type
             };
             resourceList.push(registryResource);
         };

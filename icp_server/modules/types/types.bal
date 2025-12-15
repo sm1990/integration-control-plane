@@ -401,10 +401,7 @@ public type CarbonAppRecordInDB record {
 
 public type RegistryResourceRecordInDB record {
     string resource_name;
-    string resource_path;
     string resource_type = "";
-    ArtifactState state;
-    string path = "";
 };
 
 public type ResourceRecord record {
@@ -703,15 +700,12 @@ public type RegistryResource record {
         name: "resource_name"
     }
     string name;
-    string path = "";
     @sql:Column {
         name: "resource_type"
     }
     string 'type = "";
-    @sql:Column {
-        name: "registryresource_state"
-    }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    // Populated at query time to indicate runtimes containing this resource
+    string[] runtimeIds = [];
 };
 
 // === Project & Component Types ===

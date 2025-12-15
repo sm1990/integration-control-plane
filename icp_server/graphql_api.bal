@@ -597,6 +597,30 @@ service /graphql on graphqlListener {
         return check storage:getDataServicesByEnvironmentAndComponent(environmentId, componentId);
     }
 
+    // Get Registry Resources for a specific environment and component
+    isolated resource function get registryResourcesByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:RegistryResource[]|error {
+        types:UserContextV2 userContext = check extractUserContext(context);
+
+        // Get project ID for the component (lightweight query for access control)
+        string projectId = check storage:getProjectIdByComponentId(componentId);
+
+        // Build scope with project, integration, and environment
+        types:AccessScope scope = {
+            orgUuid: 1,
+            projectUuid: projectId,
+            integrationUuid: componentId,
+            envUuid: environmentId
+        };
+
+        // Verify user has view, edit, or manage permission
+        if !check auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_INTEGRATION_VIEW, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], scope) {
+            log:printWarn("Attempt to access component registry resources without permission", userId = userContext.userId, environmentId = environmentId, componentId = componentId);
+            return [];
+        }
+
+        return check storage:getRegistryResourcesByEnvironmentAndComponent(environmentId, componentId);
+    }
+
     // Delete a runtime by ID
     isolated remote function deleteRuntime(graphql:Context context, string runtimeId) returns boolean|error {
         types:UserContextV2 userContext = check extractUserContext(context);

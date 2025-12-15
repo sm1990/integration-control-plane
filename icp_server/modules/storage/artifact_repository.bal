@@ -625,3 +625,40 @@ public isolated function getDataServicesByEnvironmentAndComponent(string environ
 
     return dataServiceList;
 }
+
+// Get Registry Resources for a specific environment and component
+public isolated function getRegistryResourcesByEnvironmentAndComponent(string environmentId, string componentId) returns types:RegistryResource[]|error {
+    types:RegistryResource[] resourceList = [];
+    map<string[]> resourceRuntimeMap = {};
+
+    // Get all runtime IDs for this environment and component
+    string[] runtimeIds = check getRuntimeIdsByEnvironmentAndComponent(environmentId, componentId);
+
+    // If no runtimes found, return empty array
+    if runtimeIds.length() == 0 {
+        return resourceList;
+    }
+
+    // Get all Registry Resources for these runtimes
+    foreach string runtimeId in runtimeIds {
+        types:RegistryResource[] runtimeResources = check getRegistryResourcesForRuntime(runtimeId);
+        foreach types:RegistryResource res in runtimeResources {
+            string key = res.name;
+            string[] existing = resourceRuntimeMap[key] ?: [];
+            if existing.length() == 0 {
+                resourceRuntimeMap[key] = [runtimeId];
+                resourceList.push(res);
+            } else {
+                existing.push(runtimeId);
+                resourceRuntimeMap[key] = existing;
+            }
+        }
+    }
+    foreach int i in 0..<(resourceList.length()) {
+        types:RegistryResource res = resourceList[i];
+        res.runtimeIds = resourceRuntimeMap[res.name] ?: [];
+        resourceList[i] = res;
+    }
+
+    return resourceList;
+}

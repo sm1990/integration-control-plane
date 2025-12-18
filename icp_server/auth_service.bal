@@ -178,6 +178,7 @@ service /auth on httpListener {
         log:printInfo("Login successful for user", username = username, permissionCount = userPermissions.length());
         return <http:Ok>{
             body: {
+                userId: userDetails.userId,
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
                 refreshToken: refreshToken,
@@ -321,6 +322,7 @@ service /auth on httpListener {
         log:printInfo("OIDC login successful", username = userInfo.username, permissionCount = userPermissions.length());
         return <http:Ok>{
             body: {
+                userId: userDetails.userId,
                 token: jwtToken,
                 expiresIn: defaultTokenExpiryTime,
                 refreshToken: refreshToken,

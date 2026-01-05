@@ -963,6 +963,117 @@ service /auth on httpListener {
         };
     }
 
+    // PUT /auth/orgs/{orgHandle}/users/{userId}/groups - Replace user's group memberships
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS]
+            }
+        ]
+    }
+    isolated resource function put orgs/[string orgHandle]/users/[string userId]/groups(@http:Payload types:UpdateUserGroupsInput input) returns http:Ok|http:BadRequest|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Updating groups for user", orgHandle = orgHandle, userId = userId);
+
+        // Fetch current group memberships
+        types:Group[]|error currentGroups = storage:getUserGroups(userId);
+        if currentGroups is error {
+            log:printError("Failed to fetch current user groups", currentGroups, userId = userId);
+            return utils:createInternalServerError("Failed to fetch current user groups");
+        }
+
+        string[] currentIds = [];
+        foreach types:Group g in currentGroups {
+            currentIds.push(g.groupId);
+        }
+
+        string[] desiredIds = input.groupIds;
+
+        // Compute differences
+        string[] toAdd = [];
+        foreach string gid in desiredIds {
+            boolean exists = false;
+            foreach string cid in currentIds {
+                if cid == gid {
+                    exists = true;
+                    break;
+                }
+            }
+            if !exists {
+                toAdd.push(gid);
+            }
+        }
+
+        string[] toRemove = [];
+        foreach string cid in currentIds {
+            boolean keep = false;
+            foreach string gid in desiredIds {
+                if gid == cid {
+                    keep = true;
+                    break;
+                }
+            }
+            if !keep {
+                toRemove.push(cid);
+            }
+        }
+
+        int added = 0;
+        int removed = 0;
+        string[] errors = [];
+
+        // Apply removals first
+        foreach string gid in toRemove {
+            error? rem = storage:removeUserFromGroup(userId, gid);
+            if rem is error {
+                errors.push(string `Failed removing from ${gid}: ${rem.message()}`);
+                log:printError("Error removing user from group", rem, userId = userId, groupId = gid);
+            } else {
+                removed += 1;
+            }
+        }
+
+        // Apply additions
+        foreach string gid in toAdd {
+            error? add = storage:addUserToGroup(userId, gid);
+            if add is error {
+                errors.push(string `Failed adding to ${gid}: ${add.message()}`);
+                log:printError("Error adding user to group", add, userId = userId, groupId = gid);
+            } else {
+                added += 1;
+            }
+        }
+
+        // Fetch final groups
+        types:Group[]|error finalGroups = storage:getUserGroups(userId);
+        if finalGroups is error {
+            log:printError("Failed to fetch final user groups", finalGroups, userId = userId);
+            return utils:createInternalServerError("Failed to fetch final user groups");
+        }
+
+        string[] finalIds = [];
+        foreach types:Group g in <types:Group[]>finalGroups {
+            finalIds.push(g.groupId);
+        }
+
+        return <http:Ok>{
+            body: {
+                message: string `User groups updated. Added: ${added}, Removed: ${removed}`,
+                userId: userId,
+                addedCount: added,
+                removedCount: removed,
+                errors: errors,
+                groupIds: finalIds
+            }
+        };
+    }
+
     // ============================================================================
     // Group-Role Mapping Endpoints (RBAC v2)
     // ============================================================================

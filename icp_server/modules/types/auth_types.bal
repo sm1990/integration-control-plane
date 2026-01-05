@@ -229,6 +229,11 @@ public type AddUsersToGroupInput record {
     string[] userIds;
 };
 
+// Input for updating groups of a user
+public type UpdateUserGroupsInput record {
+    string[] groupIds;
+};
+
 // Input for assigning a role to a group with context (used by storage layer)
 // This is how permissions are granted to users (via groups)
 public type AssignRoleToGroupInput record {

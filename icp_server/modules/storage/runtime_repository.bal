@@ -255,21 +255,15 @@ isolated function getApiResourcesForRuntime(string runtimeId, string apiName) re
 public isolated function getProxyServicesForRuntime(string runtimeId) returns types:ProxyService[]|error {
     types:ProxyService[] proxyList = [];
     stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(`
-        SELECT proxy_name, transports, state 
+        SELECT proxy_name, state 
         FROM runtime_proxy_services 
         WHERE runtime_id = ${runtimeId}
     `);
 
     check from types:ProxyServiceRecordInDB proxyRecord in proxyStream
         do {
-            // Parse transports JSON string to array
-            string[]? transports = ();
-            json transportsJson = check proxyRecord.transports.fromJsonString();
-            transports = check transportsJson.cloneWithType();
-
             types:ProxyService proxy = {
                 name: proxyRecord.proxy_name,
-                transports: transports,
                 state: proxyRecord.state
             };
             proxyList.push(proxy);

@@ -31,6 +31,34 @@ listener graphql:Listener graphqlListener = new (graphqlPort);
 
 const string ICP_ARTIFACTS_PATH = "/icp/artifacts";
 
+// Reusable: pick a runtime from a list with optional runtimeId
+isolated function selectRuntime(types:Runtime[] runtimes, string componentId, string? environmentId, string? runtimeId) returns types:Runtime|error {
+    if runtimes.length() == 0 {
+        return error("No runtimes found for this component");
+    }
+    types:Runtime runtime = runtimes[0];
+    if runtimeId is string {
+        foreach types:Runtime r in runtimes {
+            if r.runtimeId == runtimeId {
+                return r;
+            }
+        }
+        return error(string `Runtime ${runtimeId} not found for component ${componentId}${environmentId is string ? string ` in environment ${environmentId}` : ""}`);
+    }
+    return runtime;
+}
+
+isolated function buildManagementBaseUrl(string? managementHost, string? managementPort) returns string|error {
+    if managementHost is () {
+        return error("Management hostname not configured for this runtime");
+    }
+    string baseUrl = string `https://${<string>managementHost}`;
+    if managementPort is string {
+        baseUrl = string `${baseUrl}:${managementPort}`;
+    }
+    return baseUrl;
+}
+
 isolated function contextInit(http:RequestContext reqCtx, http:Request request) returns graphql:Context {
     string|error authorization = request.getHeader("Authorization");
     graphql:Context context = new;
@@ -1259,42 +1287,12 @@ service /graphql on graphqlListener {
             return error("Insufficient permissions to view component artifacts");
         }
 
-        // Get runtimes for this component (optionally filtered by environment if environmentId !is ())
+        // Get runtimes and select one using shared helper
         types:Runtime[] runtimes = check storage:getRuntimes((), (), environmentId, component.projectId, componentId);
-
-        if runtimes.length() == 0 {
-            return error("No runtimes found for this component");
-        }
-
-        // Select runtime: if runtimeId provided, use matching runtime; otherwise first available
-        types:Runtime runtime = runtimes[0];
-        if runtimeId is string {
-            boolean found = false;
-            foreach types:Runtime r in runtimes {
-                if r.runtimeId == runtimeId {
-                    runtime = r;
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                return error(string `Runtime ${runtimeId} not found for component ${componentId}${environmentId is string ? string ` in environment ${environmentId}` : ""}`);
-            }
-        }
-
-        // Check if management endpoint is configured
-        string? managementHost = runtime.managementHostname;
-        string? managementPort = runtime.managementPort;
-
-        if managementHost is () {
-            return error("Management hostname not configured for this runtime");
-        }
+        types:Runtime runtime = check selectRuntime(runtimes, componentId, environmentId, runtimeId);
 
         // Build management API base URL
-        string baseUrl = string `https://${managementHost}`;
-        if managementPort is string {
-            baseUrl = string `${baseUrl}:${managementPort}`;
-        }
+        string baseUrl = check buildManagementBaseUrl(runtime.managementHostname, runtime.managementPort);
 
         log:printInfo("Fetching artifact from runtime management API",
                 runtimeId = runtime.runtimeId,
@@ -1399,34 +1397,11 @@ service /graphql on graphqlListener {
             return error("No runtimes found for this component");
         }
 
-        // Select runtime: if runtimeId provided, use matching runtime; otherwise first available
-        types:Runtime runtime = runtimes[0];
-        if runtimeId is string {
-            boolean found = false;
-            foreach types:Runtime r in runtimes {
-                if r.runtimeId == runtimeId {
-                    runtime = r;
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                return error(string `Runtime ${runtimeId} not found for component ${componentId}${environmentId is string ? string ` in environment ${environmentId}` : ""}`);
-            }
-        }
-
-        // Check if management endpoint is configured
-        string? managementHost = runtime.managementHostname;
-        string? managementPort = runtime.managementPort;
-        if managementHost is () {
-            return error("Management hostname not configured for this runtime");
-        }
+        // Select runtime using shared helper
+        types:Runtime runtime = check selectRuntime(runtimes, componentId, environmentId, runtimeId);
 
         // Build management API base URL
-        string baseUrl = string `https://${managementHost}`;
-        if managementPort is string {
-            baseUrl = string `${baseUrl}:${managementPort}`;
-        }
+        string baseUrl = check buildManagementBaseUrl(runtime.managementHostname, runtime.managementPort);
 
         // Normalize artifact type
         string t = artifactType.toLowerAscii();
@@ -1539,36 +1514,9 @@ service /graphql on graphqlListener {
         if runtimes.length() == 0 {
             return error("No runtimes found for this component");
         }
-
-        // Select runtime: if runtimeId provided, use matching runtime; otherwise first available
-        types:Runtime runtime = runtimes[0];
-        if runtimeId is string {
-            boolean found = false;
-            foreach types:Runtime r in runtimes {
-                if r.runtimeId == runtimeId {
-                    runtime = r;
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                return error(string `Runtime ${runtimeId} not found for component ${componentId}${environmentId is string ? string ` in environment ${environmentId}` : ""}`);
-            }
-        }
-
-        // Check if management endpoint is configured
-        string? managementHost = runtime.managementHostname;
-        string? managementPort = runtime.managementPort;
-
-        if managementHost is () {
-            return error("Management hostname not configured for this runtime");
-        }
-
+        types:Runtime runtime = check selectRuntime(runtimes, componentId, environmentId, runtimeId);
         // Build management API base URL
-        string baseUrl = string `https://${managementHost}`;
-        if managementPort is string {
-            baseUrl = string `${baseUrl}:${managementPort}`;
-        }
+        string baseUrl = check buildManagementBaseUrl(runtime.managementHostname, runtime.managementPort);
 
         log:printInfo("Fetching local entry from runtime management API",
                 runtimeId = runtime.runtimeId,
@@ -1621,45 +1569,9 @@ service /graphql on graphqlListener {
                     response = errPayload);
             return error(string `ICP internal API local entry fetch failed with status ${leResponse.statusCode}: ${errPayload}`);
         }
-
-        // Attempt to parse JSON and extract `value` field; fallback to text body
-        string? result = ();
-        json|error payload = leResponse.getJsonPayload();
-        if payload is json {
-            if payload is map<json> {
-                json v = payload["value"];
-                if v is string {
-                    result = v;
-                } else if v is () {
-                    // No `value` field; if body has `configuration` like other artifacts, use it
-                    json cfg = payload["configuration"];
-                    if cfg is string {
-                        result = cfg;
-                    }
-                } else {
-                    // Convert complex JSON to string
-                    result = v.toJsonString();
-                }
-            } else if payload is string {
-                result = payload;
-            }
-        }
-
-        if result is () {
-            // Fallback to raw text payload
-            string|error text = leResponse.getTextPayload();
-            if text is error {
-                log:printError("Failed to read local entry text payload", text);
-                return error("Failed to read local entry text payload");
-            }
-            result = text;
-        }
-
-        log:printInfo("Successfully fetched local entry value",
-                runtimeId = runtime.runtimeId,
-                entryName = entryName,
-                valueLength = (<string>result).length());
-        return <string>result;
+        json payloadJson = check leResponse.getJsonPayload();
+        types:LocalEntryValue payload = check jsondata:parseAsType(payloadJson);
+        return payload.value;
     }
 
     // Get Inbound Endpoint parameters from management API via ICP internal API
@@ -1691,31 +1603,11 @@ service /graphql on graphqlListener {
             return error("No runtimes found for this component");
         }
 
-        types:Runtime runtime = runtimes[0];
-        if runtimeId is string {
-            boolean found = false;
-            foreach types:Runtime r in runtimes {
-                if r.runtimeId == runtimeId {
-                    runtime = r;
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                return error(string `Runtime ${runtimeId} not found for component ${componentId}${environmentId is string ? string ` in environment ${environmentId}` : ""}`);
-            }
-        }
+        // Select runtime using shared helper
+        types:Runtime runtime = check selectRuntime(runtimes, componentId, environmentId, runtimeId);
 
-        string? managementHost = runtime.managementHostname;
-        string? managementPort = runtime.managementPort;
-        if managementHost is () {
-            return error("Management hostname not configured for this runtime");
-        }
-
-        string baseUrl = string `https://${managementHost}`;
-        if managementPort is string {
-            baseUrl = string `${baseUrl}:${managementPort}`;
-        }
+        // Build management API base URL
+        string baseUrl = check buildManagementBaseUrl(runtime.managementHostname, runtime.managementPort);
 
         log:printInfo("Fetching inbound endpoint parameters from management API",
                 runtimeId = runtime.runtimeId,
@@ -1841,34 +1733,11 @@ service /graphql on graphqlListener {
             return error("No runtimes found for this component");
         }
 
-        // Select runtime: if runtimeId provided, use matching runtime; otherwise first available
-        types:Runtime runtime = runtimes[0];
-        if runtimeId is string {
-            boolean found = false;
-            foreach types:Runtime r in runtimes {
-                if r.runtimeId == runtimeId {
-                    runtime = r;
-                    found = true;
-                    break;
-                }
-            }
-            if !found {
-                return error(string `Runtime ${runtimeId} not found for component ${componentId}${environmentId is string ? string ` in environment ${environmentId}` : ""}`);
-            }
-        }
-
-        // Check if management endpoint is configured
-        string? managementHost = runtime.managementHostname;
-        string? managementPort = runtime.managementPort;
-        if managementHost is () {
-            return error("Management hostname not configured for this runtime");
-        }
+        // Select runtime using shared helper
+        types:Runtime runtime = check selectRuntime(runtimes, componentId, environmentId, runtimeId);
 
         // Build management API base URL
-        string baseUrl = string `https://${managementHost}`;
-        if managementPort is string {
-            baseUrl = string `${baseUrl}:${managementPort}`;
-        }
+        string baseUrl = check buildManagementBaseUrl(runtime.managementHostname, runtime.managementPort);
 
         log:printInfo("Fetching artifact parameters from management API",
                 runtimeId = runtime.runtimeId,

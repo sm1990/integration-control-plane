@@ -12,11 +12,29 @@ Monitor, troubleshoot and control integration deployments
 
 1. Install Node.js [14.X.X](https://nodejs.org/en/download/releases/).
 2. Clone the [WSO2 Integration Control Plane repository](https://github.com/wso2/integration-control-plane).
-5. Run the following Apache Maven command to build the product.
+3. Run the following Apache Maven command to build the product.
 ```mvn clean install```
-6. wso2-integration-control-plane-<version>.zip can be found in
+4. wso2-integration-control-plane-<version>.zip can be found in
  `./distribution/target`.
- 
+
+#### Build in Windows
+
+1. Change executable and argument configuration values to support windows build as follows in _exec-npm-install_, _create-target-dir_ and _exec-npm-build_ executions:
+```
+<!-- For Windows Build -->
+<executable>cmd</executable>
+<arguments>
+    <argument>/c</argument>
+    <argument>npm</argument>
+    <argument>install</argument>
+    <argument>--legacy-peer-deps</argument>
+</arguments>
+```
+2. Change build script as follows in components/org.wso2.micro.integrator.dashboard.web/web-app/package.json:
+```
+"build": "react-scripts build && move build ..\\target\\www",
+```
+
 ### Running
 
 - Extract the generated distribution archive to a preferred location.

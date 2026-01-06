@@ -44,6 +44,14 @@
                             <argument>ci</argument>
                             <argument>--legacy-peer-deps</argument>
                         </arguments>
+                        <!-- For Windows Build -->
+                        <!--<executable>cmd</executable>
+                        <arguments>
+                            <argument>/c</argument>
+                            <argument>npm</argument>
+                            <argument>install</argument>
+                            <argument>&#45;&#45;legacy-peer-deps</argument>
+                        </arguments>-->
                     </configuration>
                     <goals>
                         <goal>exec</goal>
@@ -58,38 +66,57 @@
                             <argument>-p</argument>
                             <argument>${project.basedir}/target</argument>
                         </arguments>
-                    </configuration>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                </execution>
-                <!-- <execution>
-                    <id>exec-npm-test</id>
-                    <phase>generate-sources</phase>
-                    <configuration>
-                        <workingDirectory>${project.basedir}/web-app</workingDirectory>
-                        <executable>npm</executable>
+                        <!-- For Windows Build -->
+                        <!--<executable>cmd</executable>
                         <arguments>
-                            <argument>test</argument>
-                        </arguments>
-                    </configuration>
-                    <goals>
-                        <goal>exec</goal>
-                    </goals>
-                </execution> -->
+                            <argument>/c</argument>
+                            <argument>if</argument>
+                            <argument>not</argument>
+                            <argument>exist</argument>
+                            <argument>${project.basedir}\target</argument>
+                            <argument>mkdir</argument>
+                            <argument>${project.basedir}\target</argument>
+                        </arguments>-->
+            </configuration>
+            <goals>
+                <goal>exec</goal>
+            </goals>
+        </execution>
+        <!-- <execution>
+            <id>exec-npm-test</id>
+            <phase>generate-sources</phase>
+            <configuration>
+                <workingDirectory>${project.basedir}/web-app</workingDirectory>
+                <executable>npm</executable>
+                <arguments>
+                    <argument>test</argument>
+                </arguments>
+            </configuration>
+            <goals>
+                <goal>exec</goal>
+            </goals>
+        </execution> -->
                 <execution>
                     <id>exec-npm-build</id>
                     <phase>generate-sources</phase>
                     <configuration>
                         <workingDirectory>${project.basedir}/web-app</workingDirectory>
                         <executable>npm</executable>
-                        <environmentVariables>
-                            <CI>false</CI>
-                        </environmentVariables>
                         <arguments>
                             <argument>run</argument>
                             <argument>build</argument>
                         </arguments>
+                        <!-- For Windows Build -->
+                        <!-- <executable>cmd</executable>
+                        <arguments>
+                            <argument>/c</argument>
+                            <argument>npm</argument>
+                            <argument>run</argument>
+                            <argument>build</argument>
+                        </arguments>-->
+                        <environmentVariables>
+                            <CI>false</CI>
+                        </environmentVariables>
                     </configuration>
                     <goals>
                         <goal>exec</goal>

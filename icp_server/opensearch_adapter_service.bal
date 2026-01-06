@@ -19,6 +19,57 @@ import icp_server.types as types;
 import ballerina/http;
 import ballerina/log;
 
+// OpenSearch response types
+type OpenSearchShards record {
+    int total;
+    int successful;
+    int skipped;
+    int failed;
+};
+
+type OpenSearchHitsTotal record {
+    int value;
+    string relation;
+};
+
+type LogSource record {
+    string? app_module?;
+    string? spanId?;
+    string? app_name?;
+    string? time?;
+    string? log_file_path?;
+    string? module?;
+    string? level?;
+    string? message?;
+    string? service_type?;
+    string? product?;
+    string? icp_runtimeId?;
+    string? deployment?;
+    string? app?;
+    string? traceId?;
+};
+
+type OpenSearchHit record {
+    string _index;
+    string _id;
+    decimal? _score;
+    LogSource _source;
+    int[]? sort?;
+};
+
+type OpenSearchHits record {
+    OpenSearchHitsTotal total;
+    decimal? max_score;
+    OpenSearchHit[] hits;
+};
+
+type OpenSearchResponse record {
+    int took;
+    boolean timed_out;
+    OpenSearchShards _shards;
+    OpenSearchHits hits;
+};
+
 // HTTP client for OpenSearch with SSL verification disabled
 final http:Client opensearchClient = check new (opensearchUrl,
     config = {
@@ -87,11 +138,8 @@ service /observability on openSerachObservabilityListener {
         log:printDebug("OpenSearch query: " + searchRequest.toJsonString());
 
         // Call OpenSearch
-        json searchResponse = check opensearchClient->post("/ballerina-application-logs-*/_search", searchRequest);
-
-        // Extract hits from response
-        json hits = check searchResponse.hits;
-        json[] hitArray = <json[]>check hits.hits;
+        OpenSearchResponse searchResponse = check opensearchClient->post("/ballerina-application-logs-*/_search", searchRequest);
+        log:printDebug("Search returned " + searchResponse.hits.total.value.toString() + " results");
 
         // Build response columns
         types:LogColumn[] columns = [
@@ -105,18 +153,16 @@ service /observability on openSerachObservabilityListener {
 
         // Build response rows
         json[][] rows = [];
-        foreach json hit in hitArray {
-            map<json> hitMap = check hit.cloneWithType();
-            map<json> sourceData = check hitMap["_source"].cloneWithType();
+        foreach OpenSearchHit hit in searchResponse.hits.hits {
+            LogSource sourceData = hit._source;
 
             // Extract fields from the log entry
-            json timestampJson = sourceData["@timestamp"] ?: "";
-            string timestamp = timestampJson is string ? timestampJson : timestampJson.toString();
-            json levelJson = sourceData["level"] ?: "INFO";
-            string level = levelJson is string ? levelJson : "INFO";
+            anydata timestampData = sourceData["@timestamp"];
+            string timestamp = timestampData is string ? timestampData : timestampData.toString();
+            string level = sourceData?.level ?: "INFO";
 
             // Construct the full log entry string
-            string logEntry = check constructLogEntry(sourceData);
+            string logEntry = constructLogEntry(sourceData);
 
             json[] row = [
                 timestamp,
@@ -208,37 +254,21 @@ function buildLogQuery(types:LogEntryRequest logRequest) returns json {
 }
 
 // Helper function to construct log entry string from OpenSearch document
-function constructLogEntry(map<json> sourceData) returns string|error {
-    json timeJson = check sourceData.time;
-    string time = timeJson is string ? timeJson : "";
-
-    json levelJson = check sourceData.level;
-    string level = levelJson is string ? levelJson : "";
-
-    json moduleJson = check sourceData.module;
-    string module = moduleJson is string ? moduleJson : "";
-
-    json messageJson = check sourceData.message;
-    string message = messageJson is string ? messageJson : "";
+function constructLogEntry(LogSource sourceData) returns string {
+    string time = sourceData?.time ?: "";
+    string level = sourceData?.level ?: "";
+    string module = sourceData?.module ?: "";
+    string message = sourceData?.message ?: "";
 
     // Additional fields that might be present
-    string traceId = "";
-    json traceIdJson = sourceData["traceId"] ?: ();
-    if (traceIdJson is string) {
-        traceId = " traceId=\"" + traceIdJson + "\"";
-    }
+    string? traceIdValue = sourceData?.traceId;
+    string traceId = traceIdValue is string ? " traceId=\"" + traceIdValue + "\"" : "";
 
-    string spanId = "";
-    json spanIdJson = sourceData["spanId"] ?: ();
-    if (spanIdJson is string) {
-        spanId = " spanId=\"" + spanIdJson + "\"";
-    }
+    string? spanIdValue = sourceData?.spanId;
+    string spanId = spanIdValue is string ? " spanId=\"" + spanIdValue + "\"" : "";
 
-    string runtimeId = "";
-    json runtimeIdJson = sourceData["icp_runtimeId"] ?: ();
-    if (runtimeIdJson is string) {
-        runtimeId = " icp.runtimeId=\"" + runtimeIdJson + "\"";
-    }
+    string? runtimeIdValue = sourceData?.icp_runtimeId;
+    string runtimeId = runtimeIdValue is string ? " icp.runtimeId=\"" + runtimeIdValue + "\"" : "";
 
     // Construct the log entry in logfmt style
     return string `time=${time} level=${level} module=${module} message="${message}"${traceId}${spanId}${runtimeId}`;

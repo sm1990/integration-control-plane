@@ -687,7 +687,6 @@ CREATE TABLE runtime_proxy_services (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name VARCHAR(200) NOT NULL,
-    transports JSON NULL,
     state ENUM(
         'ENABLED',
         'DISABLED',

@@ -570,10 +570,9 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
     foreach types:ProxyService proxy in <types:ProxyService[]>heartbeat.artifacts.proxyServices {
         _ = check dbClient->execute(`
             INSERT INTO runtime_proxy_services (
-                runtime_id, proxy_name, transports, state
+                runtime_id, proxy_name, state
             ) VALUES (
-                ${heartbeat.runtime}, ${proxy.name},
-                ${()}, ${proxy.state}
+                ${heartbeat.runtime}, ${proxy.name}, ${proxy.state}
             )
         `);
 

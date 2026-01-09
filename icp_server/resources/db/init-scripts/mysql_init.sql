@@ -752,6 +752,8 @@ CREATE TABLE runtime_inbound_endpoints (
     inbound_name VARCHAR(200) NOT NULL,
     protocol VARCHAR(50) NOT NULL,
     sequence VARCHAR(200) NULL,
+    statistics VARCHAR(20) NULL,
+    on_error VARCHAR(200) NULL,
     state ENUM(
         'ENABLED',
         'DISABLED',

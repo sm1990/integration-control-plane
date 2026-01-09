@@ -545,6 +545,14 @@ public type InboundEndpoint record {
     string protocol;
     string sequence?;
     @sql:Column {
+        name: "statistics"
+    }
+    string statistics?;
+    @sql:Column {
+        name: "on_error"
+    }
+    string onError?;
+    @sql:Column {
         name: "inbound_state"
     }
     string state = "ENABLED"; // "ENABLED", "DISABLED"

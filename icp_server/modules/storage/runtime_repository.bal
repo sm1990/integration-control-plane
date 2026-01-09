@@ -315,7 +315,7 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
 public isolated function getInboundEndpointsForRuntime(string runtimeId) returns types:InboundEndpoint[]|error {
     types:InboundEndpoint[] inboundList = [];
     stream<types:InboundEndpoint, sql:Error?> inboundStream = dbClient->query(`
-        SELECT inbound_name, protocol, sequence, state 
+        SELECT inbound_name, protocol, sequence, state, statistics, on_error 
         FROM runtime_inbound_endpoints 
         WHERE runtime_id = ${runtimeId}
     `);

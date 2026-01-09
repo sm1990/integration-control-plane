@@ -607,10 +607,10 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
     foreach types:InboundEndpoint inbound in <types:InboundEndpoint[]>heartbeat.artifacts.inboundEndpoints {
         _ = check dbClient->execute(`
             INSERT INTO runtime_inbound_endpoints (
-                runtime_id, inbound_name, protocol, sequence, state
+                runtime_id, inbound_name, protocol, sequence, state, statistics, on_error
             ) VALUES (
                 ${heartbeat.runtime}, ${inbound.name}, ${inbound.protocol},
-                ${inbound.sequence}, ${inbound.state}
+                ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}
             )
         `);
     }

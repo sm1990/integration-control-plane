@@ -1715,10 +1715,10 @@ public type DeleteComponentV2Response record {
 };
 
 // Available artifact types for a component
-public type ArtifactTypeCount record {|
+public type ArtifactTypeCount record {
     ArtifactType artifactType;
     int artifactCount;
-|};
+};
 
 public type ArtifactResponse record {|
     string name;

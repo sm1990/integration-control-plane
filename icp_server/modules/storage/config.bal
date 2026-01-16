@@ -14,6 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import icp_server.types;
+
 // Database configuration
 configurable string dbHost = "localhost";
 configurable int dbPort = 5432;
@@ -28,3 +30,6 @@ configurable DatabaseType dbType = "mysql";
 
 // Heartbeat timeout in seconds
 configurable int heartbeatTimeoutSeconds = 300;
+
+// Deployment type
+configurable types:DeploymentType deploymentType = "VM";

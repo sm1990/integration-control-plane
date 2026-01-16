@@ -16,9 +16,9 @@
 
 import icp_server.types as types;
 
+import ballerina/lang.value as value;
 import ballerina/log;
 import ballerina/sql;
-import ballerina/lang.value as value;
 import ballerina/time;
 
 // Get filtered runtimes based on criteria
@@ -61,11 +61,11 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
 // Get runtimes for multiple integrations in a single batch query (optimized for RBAC v2)
 // This eliminates N+1 query pattern by using SQL IN clause
 public isolated function getRuntimesByIntegrationIds(
-    string[] integrationIds,
-    string? status = (),
-    string? runtimeType = (),
-    string? environmentId = (),
-    string? projectId = ()
+        string[] integrationIds,
+        string? status = (),
+        string? runtimeType = (),
+        string? environmentId = (),
+        string? projectId = ()
 ) returns types:Runtime[]|error {
     // Return empty array if no integration IDs provided
     if integrationIds.length() == 0 {
@@ -73,11 +73,11 @@ public isolated function getRuntimesByIntegrationIds(
     }
 
     types:Runtime[] runtimeList = [];
-    
+
     // Build WHERE clause with IN condition for component_id
     sql:ParameterizedQuery whereClause = ` WHERE 1=1 `;
     sql:ParameterizedQuery whereConditions = ` `;
-    
+
     // Add component_id IN clause
     sql:ParameterizedQuery inClause = ` AND component_id IN (`;
     foreach int i in 0 ..< integrationIds.length() {
@@ -88,7 +88,7 @@ public isolated function getRuntimesByIntegrationIds(
     }
     inClause = sql:queryConcat(inClause, `) `);
     whereConditions = sql:queryConcat(whereConditions, inClause);
-    
+
     // Add optional filters
     if status is string {
         whereConditions = sql:queryConcat(whereConditions, ` AND status = ${status} `);
@@ -102,7 +102,7 @@ public isolated function getRuntimesByIntegrationIds(
     if projectId is string {
         whereConditions = sql:queryConcat(whereConditions, ` AND project_id = ${projectId} `);
     }
-    
+
     sql:ParameterizedQuery selectClause = ` SELECT runtime_id, runtime_type, status, environment_id, project_id, component_id, version, 
                  runtime_hostname, runtime_port,
                  platform_name, platform_version, platform_home, os_name, os_version, 
@@ -110,7 +110,7 @@ public isolated function getRuntimesByIntegrationIds(
                  registration_time, last_heartbeat FROM runtimes `;
     sql:ParameterizedQuery orderByClause = ` ORDER BY registration_time DESC `;
     sql:ParameterizedQuery query = sql:queryConcat(selectClause, whereClause, whereConditions, orderByClause);
-    
+
     stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(query);
 
     check from types:RuntimeDBRecord runtime in runtimeStream
@@ -155,22 +155,41 @@ public isolated function deleteRuntime(string runtimeId) returns error? {
 }
 
 // Mark runtimes as offline if they haven't sent heartbeat within timeout
+// For K8S deployments, delete OFFLINE runtimes instead of marking them
 public isolated function markOfflineRuntimes() returns error? {
 
     // Use database native timestamp functions for reliable comparison
     // TIMESTAMPDIFF and DATE_SUB work in both H2 (in MySQL mode) and MySQL
-    sql:ParameterizedQuery updateQuery = `
-        UPDATE runtimes
-        SET status = 'OFFLINE'
-        WHERE status != 'OFFLINE'
-        AND last_heartbeat IS NOT NULL
-        AND TIMESTAMPDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}
-    `;
-    sql:ExecutionResult result = check dbClient->execute(updateQuery);
 
-    int? affectedCount = result.affectedRowCount;
-    if affectedCount is int && affectedCount > 0 {
-        log:printInfo(string `Successfully marked ${affectedCount} runtime(s) as OFFLINE`);
+    if deploymentType == "K8S" {
+        // For K8S deployments, delete runtimes that should be marked offline
+        sql:ParameterizedQuery deleteQuery = `
+            DELETE FROM runtimes
+            WHERE status != 'OFFLINE'
+            AND last_heartbeat IS NOT NULL
+            AND TIMESTAMPDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}
+        `;
+        sql:ExecutionResult result = check dbClient->execute(deleteQuery);
+
+        int? affectedCount = result.affectedRowCount;
+        if affectedCount is int && affectedCount > 0 {
+            log:printInfo(string `Successfully deleted ${affectedCount} offline runtime(s) in K8S deployment`);
+        }
+    } else {
+        // For VM deployments, mark runtimes as offline
+        sql:ParameterizedQuery updateQuery = `
+            UPDATE runtimes
+            SET status = 'OFFLINE'
+            WHERE status != 'OFFLINE'
+            AND last_heartbeat IS NOT NULL
+            AND TIMESTAMPDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}
+        `;
+        sql:ExecutionResult result = check dbClient->execute(updateQuery);
+
+        int? affectedCount = result.affectedRowCount;
+        if affectedCount is int && affectedCount > 0 {
+            log:printInfo(string `Successfully marked ${affectedCount} runtime(s) as OFFLINE`);
+        }
     }
 }
 
@@ -233,13 +252,13 @@ public isolated function getApisForRuntime(string runtimeId) returns types:RestA
 isolated function getApiResourcesForRuntime(string runtimeId, string apiName) returns types:ApiResource[]|error {
     types:ApiResource[] resourceList = [];
 
-    stream<record {| string resource_path; string methods; |}, sql:Error?> resourceStream = dbClient->query(`
+    stream<record {|string resource_path; string methods;|}, sql:Error?> resourceStream = dbClient->query(`
         SELECT resource_path, methods
         FROM runtime_api_resources
         WHERE runtime_id = ${runtimeId} AND api_name = ${apiName}
     `);
 
-    check from record {| string resource_path; string methods; |} resourceRecord in resourceStream
+    check from record {|string resource_path; string methods;|} resourceRecord in resourceStream
         do {
             types:ApiResource apiResource = {
                 path: resourceRecord.resource_path,
@@ -256,12 +275,12 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
     types:ProxyService[] proxyList = [];
     // Load endpoints for all proxies in this runtime
     map<string[]> endpointMap = {};
-    stream<record {| string proxy_name; string endpoint_url; |}, sql:Error?> epStream = dbClient->query(`
+    stream<record {|string proxy_name; string endpoint_url;|}, sql:Error?> epStream = dbClient->query(`
         SELECT proxy_name, endpoint_url
         FROM runtime_proxy_service_endpoints
         WHERE runtime_id = ${runtimeId}
     `);
-    check from record {| string proxy_name; string endpoint_url; |} ep in epStream
+    check from record {|string proxy_name; string endpoint_url;|} ep in epStream
         do {
             string[] existing = endpointMap[ep.proxy_name] ?: [];
             existing.push(ep.endpoint_url);
@@ -308,7 +327,7 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
         };
 
     // Attach attributes per endpoint
-    foreach int i in 0..<(endpointList.length()) {
+    foreach int i in 0 ..< (endpointList.length()) {
         types:Endpoint ep = endpointList[i];
         stream<types:EndpointAttribute, sql:Error?> attrStream = dbClient->query(`
             SELECT attribute_name, attribute_value
@@ -538,7 +557,7 @@ isolated function parseCarbonAppArtifacts(json j) returns types:CarbonAppArtifac
                 string? name = <string?>item["name"];
                 string? typ = <string?>item["type"];
                 if name is string && typ is string {
-                    types:CarbonAppArtifact art = { name: name, 'type: typ };
+                    types:CarbonAppArtifact art = {name: name, 'type: typ};
                     result.push(art);
                 }
             }

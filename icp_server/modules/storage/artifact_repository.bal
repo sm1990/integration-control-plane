@@ -17,6 +17,7 @@
 import icp_server.types;
 
 import ballerina/crypto;
+import ballerina/log;
 import ballerina/sql;
 
 // Helper function to get runtime IDs for a specific environment and component
@@ -75,6 +76,7 @@ isolated function calculateServiceHash(types:Service 'service) returns string {
 
     // Calculate SHA-256 hash
     byte[] hashBytes = crypto:hashSha256(serviceKey.toBytes());
+    log:printDebug("Service Key: " + serviceKey + " | Hash: " + hashBytes.toBase16());
     return hashBytes.toBase16();
 }
 
@@ -107,13 +109,13 @@ isolated function calculateListenerHash(types:Listener listenerRecord) returns s
 
     // Calculate SHA-256 hash
     byte[] hashBytes = crypto:hashSha256(listenerKey.toBytes());
+    log:printDebug("Listener Key: " + listenerKey + " | Hash: " + hashBytes.toBase16());
     return hashBytes.toBase16();
 }
 
 // Get services for a specific environment and component
 public isolated function getServicesByEnvironmentAndComponent(string environmentId, string componentId) returns types:Service[]|error {
     types:Service[] serviceList = [];
-    map<boolean> seenHashes = {}; // Track unique service hashes
     map<string[]> serviceRuntimeMap = {};
 
     // Get all runtime IDs for this environment and component
@@ -129,14 +131,11 @@ public isolated function getServicesByEnvironmentAndComponent(string environment
         types:Service[] runtimeServices = check getServicesForRuntime(runtimeId);
         foreach types:Service 'service in runtimeServices {
             string hash = calculateServiceHash('service);
-            string[] existing = serviceRuntimeMap[hash] ?: [];
-            if existing.length() == 0 {
+            if !serviceRuntimeMap.hasKey(hash) {
                 serviceRuntimeMap[hash] = [runtimeId];
-                if !seenHashes.hasKey(hash) {
-                    serviceList.push('service);
-                    seenHashes[hash] = true;
-                }
+                serviceList.push('service);
             } else {
+                string[] existing = serviceRuntimeMap[hash] ?: [];
                 existing.push(runtimeId);
                 serviceRuntimeMap[hash] = existing;
             }
@@ -146,7 +145,7 @@ public isolated function getServicesByEnvironmentAndComponent(string environment
     // Build status map once
     map<string> statusMap = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(serviceList.length()) {
+    foreach int i in 0 ..< (serviceList.length()) {
         types:Service s = serviceList[i];
         string hash = calculateServiceHash(s);
         string[] rids = serviceRuntimeMap[hash] ?: [];
@@ -159,7 +158,7 @@ public isolated function getServicesByEnvironmentAndComponent(string environment
         s.runtimes = infos;
         serviceList[i] = s;
     }
-
+    log:printDebug("Services processed: " + serviceList.length().toString());
     return serviceList;
 }
 
@@ -194,12 +193,13 @@ public isolated function getListenersByEnvironmentAndComponent(string environmen
                 listenerRuntimeMap[hash] = existing;
             }
         }
+
     }
 
     // Build status map once
     map<string> statusMapL = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(listenerList.length()) {
+    foreach int i in 0 ..< (listenerList.length()) {
         types:Listener l = listenerList[i];
         string hash = calculateListenerHash(l);
         string[] rids = listenerRuntimeMap[hash] ?: [];
@@ -212,7 +212,7 @@ public isolated function getListenersByEnvironmentAndComponent(string environmen
         l.runtimes = infos;
         listenerList[i] = l;
     }
-
+    log:printDebug("Listeners processed: " + listenerList.length().toString());
     return listenerList;
 }
 
@@ -249,7 +249,7 @@ public isolated function getRestApisByEnvironmentAndComponent(string environment
     // Build status map once
     map<string> statusMapApi = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(apiList.length()) {
+    foreach int i in 0 ..< (apiList.length()) {
         types:RestApi api = apiList[i];
         string[] rids = apiRuntimeMap[api.name] ?: [];
         api.runtimeIds = rids;
@@ -297,7 +297,7 @@ public isolated function getCarbonAppsByEnvironmentAndComponent(string environme
     // Build status map once
     map<string> statusMapApp = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(appList.length()) {
+    foreach int i in 0 ..< (appList.length()) {
         types:CarbonApp app = appList[i];
         string[] rids = appRuntimeMap[app.name] ?: [];
         app.runtimeIds = rids;
@@ -345,7 +345,7 @@ public isolated function getInboundEndpointsByEnvironmentAndComponent(string env
     // Build status map once
     map<string> statusMapInbound = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(inboundList.length()) {
+    foreach int i in 0 ..< (inboundList.length()) {
         types:InboundEndpoint inbound = inboundList[i];
         string[] rids = inboundRuntimeMap[inbound.name] ?: [];
         inbound.runtimeIds = rids;
@@ -393,7 +393,7 @@ public isolated function getEndpointsByEnvironmentAndComponent(string environmen
     // Build status map once
     map<string> statusMapEndpoint = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(endpointList.length()) {
+    foreach int i in 0 ..< (endpointList.length()) {
         types:Endpoint endpoint = endpointList[i];
         string[] rids = endpointRuntimeMap[endpoint.name] ?: [];
         endpoint.runtimeIds = rids;
@@ -441,7 +441,7 @@ public isolated function getSequencesByEnvironmentAndComponent(string environmen
     // Build status map once
     map<string> statusMapSeq = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(sequenceList.length()) {
+    foreach int i in 0 ..< (sequenceList.length()) {
         types:Sequence sequence = sequenceList[i];
         string[] rids = sequenceRuntimeMap[sequence.name] ?: [];
         sequence.runtimeIds = rids;
@@ -497,8 +497,18 @@ public isolated function getProxyServicesByEnvironmentAndComponent(string enviro
                     // Union
                     map<boolean> seen = {};
                     string[] merged = [];
-                    foreach string ep in existingEndpoints { if !seen.hasKey(ep) { seen[ep] = true; merged.push(ep); } }
-                    foreach string ep in newEndpoints { if !seen.hasKey(ep) { seen[ep] = true; merged.push(ep); } }
+                    foreach string ep in existingEndpoints {
+                        if !seen.hasKey(ep) {
+                            seen[ep] = true;
+                            merged.push(ep);
+                        }
+                    }
+                    foreach string ep in newEndpoints {
+                        if !seen.hasKey(ep) {
+                            seen[ep] = true;
+                            merged.push(ep);
+                        }
+                    }
                     existingProxy.endpoints = merged;
                     proxyList[idx] = existingProxy;
                 }
@@ -509,7 +519,7 @@ public isolated function getProxyServicesByEnvironmentAndComponent(string enviro
     // Build status map once
     map<string> statusMapProxy = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(proxyList.length()) {
+    foreach int i in 0 ..< (proxyList.length()) {
         types:ProxyService proxy = proxyList[i];
         string[] rids = proxyRuntimeMap[proxy.name] ?: [];
         proxy.runtimeIds = rids;
@@ -557,7 +567,7 @@ public isolated function getTasksByEnvironmentAndComponent(string environmentId,
     // Build status map once
     map<string> statusMapTask = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(taskList.length()) {
+    foreach int i in 0 ..< (taskList.length()) {
         types:Task task = taskList[i];
         string[] rids = taskRuntimeMap[task.name] ?: [];
         task.runtimeIds = rids;
@@ -605,7 +615,7 @@ public isolated function getTemplatesByEnvironmentAndComponent(string environmen
     // Build status map once
     map<string> statusMapTpl = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(templateList.length()) {
+    foreach int i in 0 ..< (templateList.length()) {
         types:Template template = templateList[i];
         string[] rids = templateRuntimeMap[template.name] ?: [];
         template.runtimeIds = rids;
@@ -653,7 +663,7 @@ public isolated function getMessageStoresByEnvironmentAndComponent(string enviro
     // Build status map once
     map<string> statusMapStore = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(storeList.length()) {
+    foreach int i in 0 ..< (storeList.length()) {
         types:MessageStore store = storeList[i];
         string[] rids = storeRuntimeMap[store.name] ?: [];
         store.runtimeIds = rids;
@@ -701,7 +711,7 @@ public isolated function getMessageProcessorsByEnvironmentAndComponent(string en
     // Build status map once
     map<string> statusMapProc = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(processorList.length()) {
+    foreach int i in 0 ..< (processorList.length()) {
         types:MessageProcessor proc = processorList[i];
         string[] rids = processorRuntimeMap[proc.name] ?: [];
         proc.runtimeIds = rids;
@@ -749,7 +759,7 @@ public isolated function getLocalEntriesByEnvironmentAndComponent(string environ
     // Build status map once
     map<string> statusMapEntry = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(entryList.length()) {
+    foreach int i in 0 ..< (entryList.length()) {
         types:LocalEntry entry = entryList[i];
         string[] rids = entryRuntimeMap[entry.name] ?: [];
         entry.runtimeIds = rids;
@@ -797,7 +807,7 @@ public isolated function getDataServicesByEnvironmentAndComponent(string environ
     // Build status map once
     map<string> statusMapDsvc = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(dataServiceList.length()) {
+    foreach int i in 0 ..< (dataServiceList.length()) {
         types:DataService ds = dataServiceList[i];
         string[] rids = dsRuntimeMap[ds.name] ?: [];
         ds.runtimeIds = rids;
@@ -845,7 +855,7 @@ public isolated function getDataSourcesByEnvironmentAndComponent(string environm
     // Build status map once
     map<string> statusMapDs = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(sourceList.length()) {
+    foreach int i in 0 ..< (sourceList.length()) {
         types:DataSource ds = sourceList[i];
         string[] rids = sourceRuntimeMap[ds.name] ?: [];
         ds.runtimeIds = rids;
@@ -892,7 +902,7 @@ public isolated function getRegistryResourcesByEnvironmentAndComponent(string en
     // Build status map once
     map<string> statusMapRes = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(resourceList.length()) {
+    foreach int i in 0 ..< (resourceList.length()) {
         types:RegistryResource res = resourceList[i];
         string[] rids = resourceRuntimeMap[res.name] ?: [];
         res.runtimeIds = rids;
@@ -941,7 +951,7 @@ public isolated function getConnectorsByEnvironmentAndComponent(string environme
     // Build status map once
     map<string> statusMapConn = check getRuntimeStatusMap(runtimeIds);
 
-    foreach int i in 0..<(connectorList.length()) {
+    foreach int i in 0 ..< (connectorList.length()) {
         types:Connector conn = connectorList[i];
         string key = string `${conn.name}|${conn.'package}|${conn.version ?: ""}`;
         string[] rids = connectorRuntimeMap[key] ?: [];

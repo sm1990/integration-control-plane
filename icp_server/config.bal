@@ -56,7 +56,7 @@ configurable int defaultTokenExpiryTime = 3600; // 1 hour (in seconds)
 configurable string defaultRuntimeJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256";
 
 // Refresh token configuration
-configurable int refreshTokenExpiryTime = 604800; // 7 days (in seconds)
+configurable int refreshTokenExpiryTime = 86400; // 1 day (in seconds)
 configurable boolean enableRefreshTokenRotation = true; // Rotate refresh token on each use
 configurable int maxRefreshTokensPerUser = 10; // Maximum number of active refresh tokens per user (0 = unlimited)
 

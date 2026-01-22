@@ -232,7 +232,7 @@ public isolated function getListenersForRuntime(string runtimeId) returns types:
 public isolated function getApisForRuntime(string runtimeId) returns types:RestApi[]|error {
     types:RestApi[] apiList = [];
     stream<types:RestApi, sql:Error?> apiStream = dbClient->query(`
-        SELECT api_name, url, context, version, state 
+        SELECT api_name, url, context, version, state, tracing
         FROM runtime_apis 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -288,7 +288,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
         };
 
     stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(`
-        SELECT proxy_name, state 
+        SELECT proxy_name, state, tracing
         FROM runtime_proxy_services 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -297,7 +297,8 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
         do {
             types:ProxyService proxy = {
                 name: proxyRecord.proxy_name,
-                state: proxyRecord.state
+                state: proxyRecord.state,
+                tracing: proxyRecord.tracing
             };
             string[] eps = endpointMap[proxyRecord.proxy_name] ?: [];
             proxy.endpoints = eps;
@@ -311,7 +312,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
 public isolated function getEndpointsForRuntime(string runtimeId) returns types:Endpoint[]|error {
     types:Endpoint[] endpointList = [];
     stream<types:EndpointRecordInDB, sql:Error?> endpointStream = dbClient->query(`
-        SELECT endpoint_name, endpoint_type, state 
+        SELECT endpoint_name, endpoint_type, state, tracing
         FROM runtime_endpoints 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -321,7 +322,8 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
             types:Endpoint endpoint = {
                 name: endpointRecord.endpoint_name,
                 'type: endpointRecord.endpoint_type,
-                state: endpointRecord.state
+                state: endpointRecord.state,
+                tracing: endpointRecord.tracing
             };
             endpointList.push(endpoint);
         };
@@ -352,7 +354,7 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
 public isolated function getInboundEndpointsForRuntime(string runtimeId) returns types:InboundEndpoint[]|error {
     types:InboundEndpoint[] inboundList = [];
     stream<types:InboundEndpoint, sql:Error?> inboundStream = dbClient->query(`
-        SELECT inbound_name, protocol, sequence, state, statistics, on_error 
+        SELECT inbound_name, protocol, sequence, state, statistics, on_error, tracing
         FROM runtime_inbound_endpoints 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -369,7 +371,7 @@ public isolated function getInboundEndpointsForRuntime(string runtimeId) returns
 public isolated function getSequencesForRuntime(string runtimeId) returns types:Sequence[]|error {
     types:Sequence[] sequenceList = [];
     stream<types:SequenceRecordInDB, sql:Error?> sequenceStream = dbClient->query(`
-        SELECT sequence_name, sequence_type, container, state 
+        SELECT sequence_name, sequence_type, container, state, tracing
         FROM runtime_sequences 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -380,7 +382,8 @@ public isolated function getSequencesForRuntime(string runtimeId) returns types:
                 name: sequenceRecord.sequence_name,
                 'type: sequenceRecord.sequence_type,
                 container: sequenceRecord.container,
-                state: sequenceRecord.state
+                state: sequenceRecord.state,
+                tracing: sequenceRecord.tracing
             };
             sequenceList.push(sequence);
         };

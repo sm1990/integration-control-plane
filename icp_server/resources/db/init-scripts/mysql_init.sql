@@ -645,6 +645,7 @@ CREATE TABLE runtime_apis (
         'STOPPING',
         'FAILED'
     ) NOT NULL DEFAULT 'ENABLED',
+    tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, api_name),
@@ -680,6 +681,7 @@ CREATE TABLE runtime_proxy_services (
         'STOPPING',
         'FAILED'
     ) NOT NULL DEFAULT 'ENABLED',
+    tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, proxy_name),
@@ -714,6 +716,7 @@ CREATE TABLE runtime_endpoints (
         'STOPPING',
         'FAILED'
     ) NOT NULL DEFAULT 'ENABLED',
+    tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, endpoint_name),
@@ -754,6 +757,7 @@ CREATE TABLE runtime_inbound_endpoints (
         'STOPPING',
         'FAILED'
     ) NOT NULL DEFAULT 'ENABLED',
+    tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, inbound_name),
@@ -777,6 +781,7 @@ CREATE TABLE runtime_sequences (
         'STOPPING',
         'FAILED'
     ) NOT NULL DEFAULT 'ENABLED',
+    tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, sequence_name),

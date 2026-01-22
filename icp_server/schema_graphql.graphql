@@ -52,6 +52,7 @@ type Mutation {
 
   # Artifact Control Mutations
   changeArtifactStatus(input: ArtifactStatusChangeInput!): ArtifactStatusChangeResponse!
+  changeArtifactTracing(input: ArtifactTracingChangeInput!): ArtifactTracingChangeResponse!
 }
 
 # ============================================
@@ -80,6 +81,11 @@ type Runtime {
 type Artifacts {
   listeners: [Listener!]!
   services: [Service!]!
+  apis: [RestApi!]!
+  proxyServices: [ProxyService!]!
+  endpoints: [MIEndpoint!]!
+  inboundEndpoints: [InboundEndpoint!]!
+  sequences: [Sequence!]!
 }
 
 # ============================================
@@ -109,6 +115,80 @@ type Listener {
 type Resource {
   methods: [String!]!
   url: String!
+}
+
+# ============================================
+# RestApi Type - MI REST API Artifacts
+# ============================================
+type RestApi {
+  name: String!
+  url: String!
+  context: String!
+  version: String
+  state: ArtifactState!
+  tracing: String!
+  resources: [ApiResource!]!
+}
+
+# ============================================
+# ApiResource Type - API Resource Path and Methods
+# ============================================
+type ApiResource {
+  path: String!
+  methods: String!
+}
+
+# ============================================
+# ProxyService Type - MI Proxy Service Artifacts
+# ============================================
+type ProxyService {
+  name: String!
+  state: ArtifactState!
+  tracing: String!
+  endpoints: [String!]
+}
+
+# ============================================
+# MIEndpoint Type - MI Endpoint Artifacts
+# ============================================
+type MIEndpoint {
+  name: String!
+  type: String!
+  state: ArtifactState!
+  tracing: String!
+  attributes: [EndpointAttribute!]
+}
+
+# ============================================
+# EndpointAttribute Type - Endpoint Attribute Key-Value
+# ============================================
+type EndpointAttribute {
+  name: String!
+  value: String
+}
+
+# ============================================
+# InboundEndpoint Type - MI Inbound Endpoint Artifacts
+# ============================================
+type InboundEndpoint {
+  name: String!
+  protocol: String!
+  sequence: String
+  state: ArtifactState!
+  statistics: String
+  onError: String
+  tracing: String!
+}
+
+# ============================================
+# Sequence Type - MI Sequence Artifacts
+# ============================================
+type Sequence {
+  name: String!
+  type: String
+  container: String
+  state: ArtifactState!
+  tracing: String!
 }
 
 # ============================================
@@ -648,6 +728,23 @@ input ArtifactStatusChangeInput {
 
 # Response for artifact status change
 type ArtifactStatusChangeResponse {
+  status: String!
+  message: String!
+  successCount: Int!
+  failedCount: Int!
+  details: [String!]!
+}
+
+# Input for artifact tracing change
+input ArtifactTracingChangeInput {
+  componentId: String!
+  artifactType: String!
+  artifactName: String!
+  trace: String!
+}
+
+# Response for artifact tracing change
+type ArtifactTracingChangeResponse {
   status: String!
   message: String!
   successCount: Int!

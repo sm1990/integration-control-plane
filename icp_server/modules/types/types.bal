@@ -346,12 +346,14 @@ public type ListenerRecordInDB record {
 public type ProxyServiceRecordInDB record {
     string proxy_name;
     string state;
+    string tracing;
 };
 
 public type EndpointRecordInDB record {
     string endpoint_name;
     string endpoint_type;
     string state;
+    string tracing;
 };
 
 public type SequenceRecordInDB record {
@@ -359,6 +361,7 @@ public type SequenceRecordInDB record {
     string sequence_type?;
     string container?;
     string state;
+    string tracing;
 };
 
 public type TaskRecordInDB record {
@@ -493,6 +496,7 @@ public type RestApi record {
         name: "api_state"
     }
     string state = "ENABLED"; // "ENABLED", "DISABLED"
+    string tracing = "disabled"; // "enabled", "disabled"
     ApiResource[] resources = []; // API resources (path + methods)
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -516,6 +520,7 @@ public type ProxyService record {
         name: "proxy_state"
     }
     string state = "ENABLED"; // "ENABLED", "DISABLED"
+    string tracing = "disabled"; // "enabled", "disabled"
     string[] endpoints?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -531,6 +536,7 @@ public type Endpoint record {
         name: "endpoint_state"
     }
     string state; // "enabled", "disabled"
+    string tracing = "disabled"; // "enabled", "disabled"
     EndpointAttribute[]? attributes?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -567,6 +573,7 @@ public type InboundEndpoint record {
         name: "inbound_state"
     }
     string state = "ENABLED"; // "ENABLED", "DISABLED"
+    string tracing = "disabled"; // "enabled", "disabled"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -582,6 +589,7 @@ public type Sequence record {
         name: "sequence_state"
     }
     string state = "ENABLED"; // "ENABLED", "DISABLED"
+    string tracing = "disabled"; // "enabled", "disabled"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -1746,6 +1754,23 @@ public type ArtifactStatusChangeInput record {|
 
 // Response for artifact status change
 public type ArtifactStatusChangeResponse record {|
+    string status; // "success" or "failed"
+    string message;
+    int successCount; // Number of runtimes successfully updated
+    int failedCount; // Number of runtimes that failed
+    string[] details; // Detailed status per runtime
+|};
+
+// Input type for changing artifact tracing
+public type ArtifactTracingChangeInput record {|
+    string componentId;
+    string artifactType; // e.g., "proxy-service"
+    string artifactName;
+    string trace; // "enable" or "disable"
+|};
+
+// Response for artifact tracing change
+public type ArtifactTracingChangeResponse record {|
     string status; // "success" or "failed"
     string message;
     int successCount; // Number of runtimes successfully updated

@@ -559,16 +559,17 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
     foreach types:RestApi api in <types:RestApi[]>heartbeat.artifacts.apis {
         _ = check dbClient->execute(`
             INSERT INTO runtime_apis (
-                runtime_id, api_name, url, context, version, state
+                runtime_id, api_name, url, context, version, state, tracing
             ) VALUES (
                 ${heartbeat.runtime}, ${api.name}, ${api.url},
-                ${api.context}, ${api.version}, ${api.state}
+                ${api.context}, ${api.version}, ${api.state}, ${api.tracing}
             )
             ON DUPLICATE KEY UPDATE
                 url = VALUES(url),
                 context = VALUES(context),
                 version = VALUES(version),
                 state = VALUES(state),
+                tracing = VALUES(tracing),
                 updated_at = CURRENT_TIMESTAMP
         `);
 
@@ -592,12 +593,13 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
     foreach types:ProxyService proxy in <types:ProxyService[]>heartbeat.artifacts.proxyServices {
         _ = check dbClient->execute(`
             INSERT INTO runtime_proxy_services (
-                runtime_id, proxy_name, state
+                runtime_id, proxy_name, state, tracing
             ) VALUES (
-                ${heartbeat.runtime}, ${proxy.name}, ${proxy.state}
+                ${heartbeat.runtime}, ${proxy.name}, ${proxy.state}, ${proxy.tracing}
             )
             ON DUPLICATE KEY UPDATE
                 state = VALUES(state),
+                tracing = VALUES(tracing),
                 updated_at = CURRENT_TIMESTAMP
         `);
 
@@ -620,14 +622,15 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
     foreach types:Endpoint endpoint in <types:Endpoint[]>heartbeat.artifacts.endpoints {
         _ = check dbClient->execute(`
             INSERT INTO runtime_endpoints (
-                runtime_id, endpoint_name, endpoint_type, state
+                runtime_id, endpoint_name, endpoint_type, state, tracing
             ) VALUES (
                 ${heartbeat.runtime}, ${endpoint.name}, ${endpoint.'type},
-                ${endpoint.state}
+                ${endpoint.state}, ${endpoint.tracing}
             )
             ON DUPLICATE KEY UPDATE
                 endpoint_type = VALUES(endpoint_type),
                 state = VALUES(state),
+                tracing = VALUES(tracing),
                 updated_at = CURRENT_TIMESTAMP
         `);
 
@@ -655,10 +658,10 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
     foreach types:InboundEndpoint inbound in <types:InboundEndpoint[]>heartbeat.artifacts.inboundEndpoints {
         _ = check dbClient->execute(`
             INSERT INTO runtime_inbound_endpoints (
-                runtime_id, inbound_name, protocol, sequence, state, statistics, on_error
+                runtime_id, inbound_name, protocol, sequence, state, statistics, on_error, tracing
             ) VALUES (
                 ${heartbeat.runtime}, ${inbound.name}, ${inbound.protocol},
-                ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}
+                ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}
             )
             ON DUPLICATE KEY UPDATE
                 protocol = VALUES(protocol),
@@ -666,6 +669,7 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 state = VALUES(state),
                 statistics = VALUES(statistics),
                 on_error = VALUES(on_error),
+                tracing = VALUES(tracing),
                 updated_at = CURRENT_TIMESTAMP
         `);
     }
@@ -673,15 +677,16 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
     foreach types:Sequence sequence in <types:Sequence[]>heartbeat.artifacts.sequences {
         _ = check dbClient->execute(`
             INSERT INTO runtime_sequences (
-                runtime_id, sequence_name, sequence_type, container, state
+                runtime_id, sequence_name, sequence_type, container, state, tracing
             ) VALUES (
                 ${heartbeat.runtime}, ${sequence.name}, ${sequence.'type},
-                ${sequence.container}, ${sequence.state}
+                ${sequence.container}, ${sequence.state}, ${sequence.tracing}
             )
             ON DUPLICATE KEY UPDATE
                 sequence_type = VALUES(sequence_type),
                 container = VALUES(container),
                 state = VALUES(state),
+                tracing = VALUES(tracing),
                 updated_at = CURRENT_TIMESTAMP
         `);
     }

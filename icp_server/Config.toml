@@ -109,9 +109,9 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 [icp_server.storage]
 # heartbeatTimeoutSeconds = 30
 # Primary database connection settings
-# Database type: h2 (in-memory), mysql, or mssql default is h2
+# Database type: h2 (in-memory), mysql, mssql, or postgresql. Default is h2
 
-# MySQL Configuration (commented out)
+# MySQL Configuration
 # dbHost = "mysql-db"
 # dbPort = 3306
 # dbName = "icp_database"
@@ -120,6 +120,18 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 # maxOpenConnections = 10
 # minIdleConnections = 5
 # maxConnectionLifeTime = 1800.0  # 30 minutes
+# dbType = "mysql"
+
+# PostgreSQL Configuration (commented out)
+# dbHost = "localhost"
+# dbPort = 5432
+# dbName = "icp_database"
+# dbUser = "postgres"
+# dbPassword = "my-secret-pw"
+# maxOpenConnections = 10
+# minIdleConnections = 5
+# maxConnectionLifeTime = 1800.0  # 30 minutes
+# dbType = "postgresql"
 
 # Microsoft SQL Server (MSSQL) Configuration
 # dbHost = "localhost"
@@ -131,6 +143,7 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 # minIdleConnections = 5
 # maxConnectionLifeTime = 1800.0
 # dbType = "mssql"
+
 
 [[ballerina.log.modules]]
 name = "wso2/icp_server"

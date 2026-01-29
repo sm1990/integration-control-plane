@@ -86,41 +86,7 @@ task testICP {
     }
 }
 
-task buildDocker {
-    description = 'Build Docker image using docker-compose'
-    doLast {
-        logger.info('Building Docker image...')
-        exec {
-            workingDir 'icp_server'
-            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'up', '--build'
-        }
-        logger.info('Docker build complete')
-    }
-}
 
-task testDocker {
-    description = 'Run tests using Docker Compose'
-    doLast {
-        logger.info('Running tests with Docker Compose...')
-        exec {
-            workingDir 'icp_server'
-            commandLine 'docker-compose', '-f', 'docker-compose.test.yml', 'up', '--build'
-        }
-        logger.info('Docker tests complete')
-    }
-}
-
-task stopDocker {
-    description = 'Stop Docker containers'
-    doLast {
-        logger.info('Stopping Docker containers...')
-        exec {
-            workingDir 'icp_server'
-            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'down'
-        }
-        logger.info('Docker containers stopped')
-    }
-}
 
 task packageICP {
     description = 'Package the ICP executable JAR into a zip file'
@@ -324,11 +290,6 @@ task helpICP {
         Execution Tasks:
         - gradle run             : Run the ICP Server locally
         - gradle testICP         : Run unit tests
-        
-        Docker Tasks:
-        - gradle buildDocker     : Build and run with Docker Compose
-        - gradle testDocker      : Run tests with Docker Compose
-        - gradle stopDocker      : Stop Docker containers
         
         Other Tasks:
         - gradle checkICP        : Run checks and tests

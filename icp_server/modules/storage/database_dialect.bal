@@ -49,11 +49,33 @@ public isolated function convertUtcToMySQLDateTime(time:Utc utcTime) returns str
     return string `${civilTime.year}-${civilTime.month.toString().padStart(2, "0")}-${civilTime.day.toString().padStart(2, "0")} ${civilTime.hour.toString().padStart(2, "0")}:${civilTime.minute.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${microSeconds.toString().padStart(6, "0")}`;
 }
 
+public isolated function convertUtcToPostgreSQLDateTime(time:Utc utcTime) returns string|error {
+    time:Civil civilTime = time:utcToCivil(utcTime);
+    int seconds = <int>civilTime.second;
+
+    // Clamp seconds to valid range (0-59)
+    if seconds > 59 {
+        seconds = 59;
+    }
+
+    // Extract nanoseconds from the original UTC tuple (second element)
+    decimal nanoSecondDecimal = utcTime[1];
+    int nanoSeconds = <int>nanoSecondDecimal;
+
+    // Convert nanoseconds to microseconds (PostgreSQL supports up to 6 decimal places for microseconds)
+    int microSeconds = nanoSeconds / 1000;
+
+    // Format: YYYY-MM-DD HH:MM:SS.mmmmmm (6 digit microseconds)
+    return string `${civilTime.year}-${civilTime.month.toString().padStart(2, "0")}-${civilTime.day.toString().padStart(2, "0")} ${civilTime.hour.toString().padStart(2, "0")}:${civilTime.minute.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${microSeconds.toString().padStart(6, "0")}`;
+}
+
 public isolated function convertUtcToDbDateTime(time:Utc utcTime) returns string|error {
     if dbType == H2 {
         return convertUtcToH2DateTime(utcTime);
     } else if dbType == MSSQL {
         return convertUtcToMySQLDateTime(utcTime); // MSSQL DATETIME2 supports same format as MySQL
+    } else if dbType == POSTGRESQL {
+        return convertUtcToPostgreSQLDateTime(utcTime);
     } else {
         return convertUtcToMySQLDateTime(utcTime);
     }
@@ -62,9 +84,12 @@ public isolated function convertUtcToDbDateTime(time:Utc utcTime) returns string
 // Get database-specific TIMESTAMPDIFF function
 // MySQL: TIMESTAMPDIFF(unit, start, end)
 // MSSQL: DATEDIFF(unit, start, end)
+// PostgreSQL: EXTRACT(EPOCH FROM (end - start))
 public isolated function getTimestampDiffSeconds(string startColumn, string endTimestamp) returns string {
     if dbType == MSSQL {
         return string `DATEDIFF(SECOND, ${startColumn}, ${endTimestamp})`;
+    } else if dbType == POSTGRESQL {
+        return string `EXTRACT(EPOCH FROM (${endTimestamp} - ${startColumn}))`;
     } else {
         return string `TIMESTAMPDIFF(SECOND, ${startColumn}, ${endTimestamp})`;
     }
@@ -94,6 +119,8 @@ public isolated function isMSSQL() returns boolean => dbType == MSSQL;
 public isolated function isMySQL() returns boolean => dbType == MYSQL;
 
 public isolated function isH2() returns boolean => dbType == H2;
+
+public isolated function isPostgreSQL() returns boolean => dbType == POSTGRESQL;
 
 // Get database-specific LIMIT clause
 // MySQL/H2: LIMIT n

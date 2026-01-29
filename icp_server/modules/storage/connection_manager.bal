@@ -13,7 +13,6 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
 import ballerina/log;
 import ballerina/sql;
 import ballerinax/h2.driver as _;
@@ -22,11 +21,14 @@ import ballerinax/mssql;
 import ballerinax/mssql.driver as _;
 import ballerinax/mysql;
 import ballerinax/mysql.driver as _;
+import ballerinax/postgresql;
+import ballerinax/postgresql.driver as _;
 
 enum DatabaseType {
     MYSQL = "mysql",
     H2 = "h2",
-    MSSQL = "mssql"
+    MSSQL = "mssql",
+    POSTGRESQL = "postgresql"
 }
 
 public client class DatabaseConnectionManager {
@@ -50,6 +52,11 @@ public client class DatabaseConnectionManager {
             log:printInfo(string `Connecting to MSSQL: ${dbHost}:${dbPort}/${dbName}`);
             self.dbClient = check new mssql:Client(host = dbHost, user = dbUser, password = dbPassword, database = dbName, port = dbPort, connectionPool = pool);
             log:printInfo("MSSQL Database initialized successfully.");
+        } else if dbType == POSTGRESQL {
+            log:printInfo("Initializing PostgreSQL Database...");
+            log:printInfo(string `Connecting to PostgreSQL: ${dbHost}:${dbPort}/${dbName}`);
+            self.dbClient = check new postgresql:Client(host = dbHost, username = dbUser, password = dbPassword, database = dbName, port = dbPort, connectionPool = pool);
+            log:printInfo("PostgreSQL Database initialized successfully.");
         } else {
             log:printInfo("Initializing H2 Database...");
             self.dbClient = check new jdbc:Client("jdbc:h2:file:./database/icpdb;MODE=MySQL;AUTO_SERVER=TRUE", "sa", "");

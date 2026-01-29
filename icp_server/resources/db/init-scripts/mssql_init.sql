@@ -1005,13 +1005,10 @@ CREATE TABLE runtime_services (
     service_name NVARCHAR (100) NOT NULL,
     service_package NVARCHAR (200) NOT NULL,
     base_path NVARCHAR (500) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
@@ -1086,13 +1083,10 @@ CREATE TABLE runtime_listeners (
     protocol NVARCHAR (20) NULL DEFAULT 'HTTP',
     listener_host NVARCHAR (100),
     listener_port INT,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
@@ -1132,13 +1126,10 @@ CREATE TABLE runtime_apis (
     url NVARCHAR (500) NOT NULL,
     context NVARCHAR (500) NOT NULL,
     version NVARCHAR (50) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
@@ -1206,13 +1197,10 @@ CREATE TABLE runtime_proxy_services (
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name NVARCHAR (150) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
@@ -1280,13 +1268,10 @@ CREATE TABLE runtime_endpoints (
     endpoint_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
     endpoint_type NVARCHAR (100) NOT NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
@@ -1360,13 +1345,10 @@ CREATE TABLE runtime_inbound_endpoints (
     sequence NVARCHAR (200) NULL,
     [statistics] NVARCHAR (20) NULL,
     on_error NVARCHAR (200) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
@@ -1403,13 +1385,10 @@ CREATE TABLE runtime_sequences (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     sequence_type NVARCHAR (100) NULL,
     container NVARCHAR (200) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
@@ -1446,15 +1425,12 @@ CREATE TABLE runtime_tasks (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     task_class NVARCHAR (500) NULL,
     task_group NVARCHAR (200) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
-    ),
+    ),  
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, task_name),
@@ -1546,13 +1522,10 @@ CREATE TABLE runtime_message_processors (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     processor_type NVARCHAR (100) NOT NULL,
     processor_class NVARCHAR (500) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
@@ -1588,13 +1561,10 @@ CREATE TABLE runtime_local_entries (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     entry_type NVARCHAR (100) NOT NULL,
     entry_value NVARCHAR (MAX) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
@@ -1630,13 +1600,10 @@ CREATE TABLE runtime_data_services (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     description NVARCHAR (MAX) NULL,
     wsdl NVARCHAR (MAX) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
@@ -1703,13 +1670,10 @@ CREATE TABLE runtime_data_sources (
     driver NVARCHAR (500) NULL,
     url NVARCHAR (1000) NULL,
     username NVARCHAR (255) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
@@ -1744,13 +1708,10 @@ CREATE TABLE runtime_connectors (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     package NVARCHAR (200) NOT NULL,
     version NVARCHAR (50) NULL,
-    state NVARCHAR (20) NOT NULL DEFAULT 'ENABLED' CHECK (
+    state NVARCHAR (20) NOT NULL DEFAULT 'enabled' CHECK (
         state IN (
-            'ENABLED',
-            'DISABLED',
-            'STARTING',
-            'STOPPING',
-            'FAILED'
+            'enabled',
+            'disabled'
         )
     ),
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),

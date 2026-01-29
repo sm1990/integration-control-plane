@@ -31,10 +31,7 @@ public enum DeploymentType {
 
 public enum RuntimeStatus {
     RUNNING,
-    FAILED,
-    DISABLED,
-    OFFLINE,
-    STOPPED
+    OFFLINE
 }
 
 public enum DeploymentState {
@@ -43,9 +40,8 @@ public enum DeploymentState {
 }
 
 public enum ArtifactState {
-    ENABLED,
-    DISABLED,
-    FAILED
+    ENABLED = "enabled",
+    DISABLED = "disabled"
 }
 
 public enum ArtifactType {
@@ -439,7 +435,7 @@ public type ServiceRecordInDB record {
     string service_name;
     string service_package;
     string base_path;
-    string state;
+    ArtifactState state;
     string service_type;
 };
 
@@ -447,7 +443,7 @@ public type ListenerRecordInDB record {
     string listener_name;
     string listener_package;
     string protocol;
-    string state;
+    ArtifactState state;
     string port?;
     string destination?;
     string queue?;
@@ -457,14 +453,14 @@ public type ListenerRecordInDB record {
 // Database record types for MI artifacts
 public type ProxyServiceRecordInDB record {
     string proxy_name;
-    string state;
+    ArtifactState state;
     string tracing;
 };
 
 public type EndpointRecordInDB record {
     string endpoint_name;
     string endpoint_type;
-    string state;
+    ArtifactState state;
     string tracing;
 };
 
@@ -472,7 +468,7 @@ public type SequenceRecordInDB record {
     string sequence_name;
     string sequence_type?;
     string container?;
-    string state;
+    ArtifactState state;
     string tracing;
 };
 
@@ -480,7 +476,7 @@ public type TaskRecordInDB record {
     string task_name;
     string task_class?;
     string task_group?;
-    string state;
+    ArtifactState state;
 };
 
 public type MessageStoreRecordInDB record {
@@ -493,20 +489,20 @@ public type MessageProcessorRecordInDB record {
     string processor_name;
     string processor_type;
     string processor_class?;
-    string state;
+    ArtifactState state;
 };
 
 public type LocalEntryRecordInDB record {
     string entry_name;
     string entry_type;
     string entry_value?;
-    string state;
+    ArtifactState state;
 };
 
 public type CarbonAppRecordInDB record {
     string app_name;
     string version = "";
-    string state;
+    ArtifactState state;
 };
 
 public type RegistryResourceRecordInDB record {
@@ -537,7 +533,7 @@ public type Service record {
     @sql:Column {
         name: "service_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     @sql:Column {
         name: "service_type"
     }
@@ -590,7 +586,7 @@ public type Listener record {
     @sql:Column {
         name: "state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -607,7 +603,7 @@ public type RestApi record {
     @sql:Column {
         name: "api_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
     ApiResource[] resources = []; // API resources (path + methods)
     string[] runtimeIds?;
@@ -631,7 +627,7 @@ public type ProxyService record {
     @sql:Column {
         name: "proxy_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
     string[] endpoints?;
     string[] runtimeIds?;
@@ -647,7 +643,7 @@ public type Endpoint record {
     @sql:Column {
         name: "endpoint_state"
     }
-    string state; // "enabled", "disabled"
+    ArtifactState state; // "enabled", "disabled"
     string tracing = "disabled"; // "enabled", "disabled"
     EndpointAttribute[]? attributes?;
     string[] runtimeIds?;
@@ -684,7 +680,7 @@ public type InboundEndpoint record {
     @sql:Column {
         name: "inbound_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -700,7 +696,7 @@ public type Sequence record {
     @sql:Column {
         name: "sequence_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -716,7 +712,7 @@ public type Task record {
     @sql:Column {
         name: "task_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -744,7 +740,7 @@ public type MessageStore record {
     @sql:Column {
         name: "store_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -759,7 +755,7 @@ public type MessageProcessor record {
     @sql:Column {
         name: "processor_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -774,7 +770,7 @@ public type LocalEntry record {
     @sql:Column {
         name: "entry_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -789,7 +785,7 @@ public type DataService record {
     @sql:Column {
         name: "dataservice_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -832,7 +828,7 @@ public type DataSource record {
     @sql:Column {
         name: "datasource_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -847,7 +843,7 @@ public type Connector record {
     @sql:Column {
         name: "connector_state"
     }
-    string state = "ENABLED"; // "ENABLED", "DISABLED"
+    ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -1284,7 +1280,7 @@ public type ApiVersion record {
     string proxyName?;
     string proxyUrl?;
     string proxyId?;
-    string state;
+    ArtifactState state;
     boolean latest;
     string branch?;
     string accessibility?;

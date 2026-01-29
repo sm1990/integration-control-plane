@@ -121,11 +121,11 @@ isolated function sendMIControlCommand(string runtimeId, string artifactType, st
         }
 
         log:printDebug("Sending MI control command (fire and forget)",
-            runtimeId = runtimeId,
-            url = string `${baseUrl}${artifactPath}`,
-            artifactType = artifactType,
-            artifactName = artifactName,
-            action = action);
+                runtimeId = runtimeId,
+                url = string `${baseUrl}${artifactPath}`,
+                artifactType = artifactType,
+                artifactName = artifactName,
+                action = action);
 
         http:Response|error resp = mgmtClient->post(artifactPath, payload, {
             "Authorization": string `Bearer ${hmacToken}`,
@@ -138,9 +138,9 @@ isolated function sendMIControlCommand(string runtimeId, string artifactType, st
             string|error errPayload = resp.getTextPayload();
             string errMsg = errPayload is string ? errPayload : "Unknown error";
             log:printError("MI control command failed",
-                runtimeId = runtimeId,
-                statusCode = resp.statusCode,
-                response = errMsg);
+                    runtimeId = runtimeId,
+                    statusCode = resp.statusCode,
+                    response = errMsg);
         } else {
             log:printDebug("MI control command sent successfully", runtimeId = runtimeId);
         }
@@ -263,14 +263,14 @@ isolated function sendPendingMIControlCommands(string runtimeId) returns types:M
     foreach types:MIRuntimeControlCommandDBRecord dbCommand in pendingCommands {
         // Look up artifact info (name and type) for the API call
         ArtifactInfoRecord? artifactInfo = check getArtifactInfoById(dbCommand.artifact_id);
-        
+
         if artifactInfo is ArtifactInfoRecord {
             // Fire the API call asynchronously (fire and forget)
             sendMIControlCommand(
-                dbCommand.runtime_id,
-                artifactInfo.artifact_type,
-                artifactInfo.artifact_name,
-                dbCommand.action
+                    dbCommand.runtime_id,
+                    artifactInfo.artifact_type,
+                    artifactInfo.artifact_name,
+                    dbCommand.action
             );
         } else {
             log:printWarn(string `Artifact info not found for artifact_id ${dbCommand.artifact_id}, skipping API call`);
@@ -430,6 +430,19 @@ public isolated function upsertBIArtifactIntendedState(string componentId, strin
                 INSERT (component_id, target_artifact, action, issued_by)
                 VALUES (source.component_id, source.target_artifact, source.action, source.issued_by);
         `);
+    } else if dbType == POSTGRESQL {
+        _ = check dbClient->execute(`
+            INSERT INTO bi_artifact_intended_state (
+                component_id, target_artifact, action, issued_by
+            ) VALUES (
+                ${componentId}, ${targetArtifact}, ${action}, ${issuedBy}
+            )
+            ON CONFLICT (component_id, target_artifact) DO UPDATE SET
+                action = EXCLUDED.action,
+                issued_at = CURRENT_TIMESTAMP,
+                issued_by = EXCLUDED.issued_by,
+                updated_at = CURRENT_TIMESTAMP
+        `);
     } else {
         _ = check dbClient->execute(`
             INSERT INTO bi_artifact_intended_state (
@@ -574,7 +587,7 @@ public isolated function getArtifactIdByNameAndType(string componentId, string a
     if result is record {|record {|string artifact_id;|} value;|} {
         return result.value.artifact_id;
     }
-    
+
     return ();
 }
 

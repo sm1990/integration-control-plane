@@ -111,7 +111,11 @@ public final string TRUE_LITERAL = getBooleanLiteral(true);
 public final string FALSE_LITERAL = getBooleanLiteral(false);
 
 // Create a ParameterizedQuery from a raw SQL string using string:`` template
-public isolated function sqlQueryFromString(string sqlString) returns sql:ParameterizedQuery => `${sqlString}`;
+public isolated function sqlQueryFromString(string sqlString) returns sql:ParameterizedQuery {
+    sql:ParameterizedQuery query = ``;
+    query.strings = [sqlString];
+    return query;
+}
 
 // Database type helper functions
 public isolated function isMSSQL() returns boolean => dbType == MSSQL;
@@ -142,3 +146,12 @@ public isolated function appendLimitClause(sql:ParameterizedQuery query, int row
     }
 }
 
+// Cast string to timestamp for PostgreSQL (no-op for other databases)
+// PostgreSQL requires explicit ::timestamp cast, others handle it automatically
+public isolated function timestampCast(string timestampStr) returns string {
+    if dbType == POSTGRESQL {
+        return string `'${timestampStr}'::timestamp`;
+    } else {
+        return string `'${timestampStr}'`;
+    }
+}

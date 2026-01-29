@@ -61,7 +61,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
         if isNewRegistration {
             check processIntendedStates(heartbeat.runtime, heartbeat.component, heartbeat.artifacts, componentType);
         }
-        
+
         if componentType == "BI" {
             // Retrieve pending BI control commands (works for both new and existing runtimes)
             types:ControlCommand[] existingCommands = check sendPendingBIControlCommands(heartbeat.runtime);
@@ -190,26 +190,26 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
 
         // Create audit log entry
         if runtimeExists {
-            _ = check dbClient->execute(`
-                INSERT INTO audit_logs (
+            sql:ParameterizedQuery auditQuery = sql:queryConcat(
+                    `INSERT INTO audit_logs (
                     runtime_id, action, details, timestamp
                 ) VALUES (
                     ${deltaHeartbeat.runtime}, 'DELTA_HEARTBEAT',
                     ${string `Delta heartbeat processed with hash ${deltaHeartbeat.runtimeHash}`},
-                    ${currentTimeStr}
-                )
-            `);
+                    `, sql:queryConcat(sqlQueryFromString(timestampCast(currentTimeStr)), `)`)
+            );
+            _ = check dbClient->execute(auditQuery);
         } else {
             // Runtime was deleted or not yet created; log without FK reference to avoid integrity violation
-            _ = check dbClient->execute(`
-                INSERT INTO audit_logs (
+            sql:ParameterizedQuery auditQuery = sql:queryConcat(
+                    `INSERT INTO audit_logs (
                     action, details, timestamp
                 ) VALUES (
                     'DELTA_HEARTBEAT',
                     ${string `Delta heartbeat received for missing runtime ${deltaHeartbeat.runtime} with hash ${deltaHeartbeat.runtimeHash}`},
-                    ${currentTimeStr}
-                )
-            `);
+                    `, sql:queryConcat(sqlQueryFromString(timestampCast(currentTimeStr)), `)`)
+            );
+            _ = check dbClient->execute(auditQuery);
         }
 
         check commit;
@@ -652,7 +652,7 @@ isolated function processMIControlCommand(
         int currentCommandCount
 ) returns int|error {
     int commandCount = currentCommandCount;
-    
+
     // Determine if command is needed
     boolean needsCommand = false;
     types:MIControlAction? actionToIssue = ();
@@ -676,7 +676,7 @@ isolated function processMIControlCommand(
             log:printWarn(string `Failed to insert MI control command for ${artifactType} ${artifactName}`, insertResult);
         }
     }
-    
+
     return commandCount;
 }
 
@@ -763,6 +763,20 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
                     INSERT (runtime_id, service_name, service_package, base_path, state)
                     VALUES (source.runtime_id, source.service_name, source.service_package, source.base_path, source.state);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_services (
+                    runtime_id, service_name, service_package, base_path, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${serviceDetail.name},
+                    ${serviceDetail.package}, ${serviceDetail.basePath},
+                    ${serviceDetail.state}
+                )
+                ON CONFLICT (runtime_id, service_name, service_package) DO UPDATE SET
+                    base_path = EXCLUDED.base_path,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_services (
@@ -788,14 +802,25 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
         // Insert new resources
         foreach types:Resource resourceDetail in serviceDetail.resources {
             string methodsJson = resourceDetail.methods.toJsonString();
-            _ = check dbClient->execute(`
-                INSERT INTO service_resources (
-                    runtime_id, service_name, resource_url, methods
-                ) VALUES (
-                    ${heartbeat.runtime}, ${serviceDetail.name},
-                    ${resourceDetail.url}, ${methodsJson}
-                )
-            `);
+            if dbType == POSTGRESQL {
+                _ = check dbClient->execute(`
+                    INSERT INTO service_resources (
+                        runtime_id, service_name, resource_url, methods
+                    ) VALUES (
+                        ${heartbeat.runtime}, ${serviceDetail.name},
+                        ${resourceDetail.url}, ${methodsJson}::jsonb
+                    )
+                `);
+            } else {
+                _ = check dbClient->execute(`
+                    INSERT INTO service_resources (
+                        runtime_id, service_name, resource_url, methods
+                    ) VALUES (
+                        ${heartbeat.runtime}, ${serviceDetail.name},
+                        ${resourceDetail.url}, ${methodsJson}
+                    )
+                `);
+            }
         }
     }
 
@@ -818,6 +843,24 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
                     INSERT (runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state)
                     VALUES (source.runtime_id, source.listener_name, source.listener_package, source.protocol,
                             source.listener_host, source.listener_port, source.state);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_listeners (
+                    runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${listenerDetail.name},
+                    ${listenerDetail.package}, ${listenerDetail.protocol},
+                    ${host}, ${port},
+                    ${listenerDetail.state}
+                )
+                ON CONFLICT (runtime_id, listener_name) DO UPDATE SET
+                    listener_package = EXCLUDED.listener_package,
+                    protocol = EXCLUDED.protocol,
+                    listener_host = EXCLUDED.listener_host,
+                    listener_port = EXCLUDED.listener_port,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -887,6 +930,22 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                     INSERT (runtime_id, api_name, artifact_id, url, context, version, state, tracing)
                     VALUES (source.runtime_id, source.api_name, source.artifact_id, source.url, source.context, source.version, source.state, source.tracing);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_apis (
+                    runtime_id, api_name, url, context, version, state, tracing
+                ) VALUES (
+                    ${heartbeat.runtime}, ${api.name}, ${api.url},
+                    ${api.context}, ${api.version}, ${api.state}, ${api.tracing}
+                )
+                ON CONFLICT (runtime_id, api_name) DO UPDATE SET
+                    url = EXCLUDED.url,
+                    context = EXCLUDED.context,
+                    version = EXCLUDED.version,
+                    state = EXCLUDED.state,
+                    tracing = EXCLUDED.tracing,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_apis (
@@ -921,6 +980,18 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                         INSERT (runtime_id, api_name, resource_path, methods)
                         VALUES (source.runtime_id, source.api_name, source.resource_path, source.methods);
                 `);
+            } else if dbType == POSTGRESQL {
+                _ = check dbClient->execute(`
+                    INSERT INTO runtime_api_resources (
+                        runtime_id, api_name, resource_path, methods
+                    ) VALUES (
+                        ${heartbeat.runtime}, ${api.name},
+                        ${apiResource.path}, ${apiResource.methods}
+                    )
+                    ON CONFLICT (runtime_id, api_name, resource_path) DO UPDATE SET
+                        methods = EXCLUDED.methods,
+                        updated_at = CURRENT_TIMESTAMP
+                `);
             } else {
                 _ = check dbClient->execute(`
                     INSERT INTO runtime_api_resources (
@@ -951,6 +1022,18 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                     INSERT (runtime_id, proxy_name, artifact_id, state, tracing)
                     VALUES (source.runtime_id, source.proxy_name, source.artifact_id, source.state, source.tracing);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_proxy_services (
+                    runtime_id, proxy_name, state, tracing
+                ) VALUES (
+                    ${heartbeat.runtime}, ${proxy.name}, ${proxy.state}, ${proxy.tracing}
+                )
+                ON CONFLICT (runtime_id, proxy_name) DO UPDATE SET
+                    state = EXCLUDED.state,
+                    tracing = EXCLUDED.tracing,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_proxy_services (
@@ -980,6 +1063,16 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                             INSERT (runtime_id, proxy_name, endpoint_url)
                             VALUES (source.runtime_id, source.proxy_name, source.endpoint_url);
                     `);
+                } else if dbType == POSTGRESQL {
+                    _ = check dbClient->execute(`
+                        INSERT INTO runtime_proxy_service_endpoints (
+                            runtime_id, proxy_name, endpoint_url
+                        ) VALUES (
+                            ${heartbeat.runtime}, ${proxy.name}, ${ep}
+                        )
+                        ON CONFLICT (runtime_id, proxy_name, endpoint_url) DO UPDATE SET
+                            updated_at = CURRENT_TIMESTAMP
+                    `);
                 } else {
                     _ = check dbClient->execute(`
                         INSERT INTO runtime_proxy_service_endpoints (
@@ -1008,6 +1101,20 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing)
                     VALUES (source.runtime_id, source.endpoint_name, source.artifact_id, source.endpoint_type, source.state, source.tracing);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_endpoints (
+                    runtime_id, endpoint_name, endpoint_type, state, tracing
+                ) VALUES (
+                    ${heartbeat.runtime}, ${endpoint.name}, ${endpoint.'type},
+                    ${endpoint.state}, ${endpoint.tracing}
+                )
+                ON CONFLICT (runtime_id, endpoint_name) DO UPDATE SET
+                    endpoint_type = EXCLUDED.endpoint_type,
+                    state = EXCLUDED.state,
+                    tracing = EXCLUDED.tracing,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -1041,6 +1148,17 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                             INSERT (runtime_id, endpoint_name, attribute_name, attribute_value)
                             VALUES (source.runtime_id, source.endpoint_name, source.attribute_name, source.attribute_value);
                     `);
+                } else if dbType == POSTGRESQL {
+                    _ = check dbClient->execute(`
+                        INSERT INTO runtime_endpoint_attributes (
+                            runtime_id, endpoint_name, attribute_name, attribute_value
+                        ) VALUES (
+                            ${heartbeat.runtime}, ${endpoint.name}, ${attr.name}, ${attr?.value}
+                        )
+                        ON CONFLICT (runtime_id, endpoint_name, attribute_name) DO UPDATE SET
+                            attribute_value = EXCLUDED.attribute_value,
+                            updated_at = CURRENT_TIMESTAMP
+                    `);
                 } else {
                     _ = check dbClient->execute(`
                         INSERT INTO runtime_endpoint_attributes (
@@ -1073,6 +1191,23 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, inbound_name, artifact_id, protocol, sequence, state, [statistics], on_error, tracing)
                     VALUES (source.runtime_id, source.inbound_name, source.artifact_id, source.protocol, source.sequence, source.state, source.[statistics], source.on_error, source.tracing);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_inbound_endpoints (
+                    runtime_id, inbound_name, protocol, sequence, state, statistics, on_error, tracing
+                ) VALUES (
+                    ${heartbeat.runtime}, ${inbound.name}, ${inbound.protocol},
+                    ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}
+                )
+                ON CONFLICT (runtime_id, inbound_name) DO UPDATE SET
+                    protocol = EXCLUDED.protocol,
+                    sequence = EXCLUDED.sequence,
+                    state = EXCLUDED.state,
+                    statistics = EXCLUDED.statistics,
+                    on_error = EXCLUDED.on_error,
+                    tracing = EXCLUDED.tracing,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -1108,6 +1243,21 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     INSERT (runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing)
                     VALUES (source.runtime_id, source.sequence_name, source.artifact_id, source.sequence_type, source.container, source.state, source.tracing);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_sequences (
+                    runtime_id, sequence_name, sequence_type, container, state, tracing
+                ) VALUES (
+                    ${heartbeat.runtime}, ${sequence.name}, ${sequence.'type},
+                    ${sequence.container}, ${sequence.state}, ${sequence.tracing}
+                )
+                ON CONFLICT (runtime_id, sequence_name) DO UPDATE SET
+                    sequence_type = EXCLUDED.sequence_type,
+                    container = EXCLUDED.container,
+                    state = EXCLUDED.state,
+                    tracing = EXCLUDED.tracing,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_sequences (
@@ -1140,6 +1290,20 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     INSERT (runtime_id, task_name, artifact_id, task_class, task_group, state)
                     VALUES (source.runtime_id, source.task_name, source.artifact_id, source.task_class, source.task_group, source.state);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_tasks (
+                    runtime_id, task_name, task_class, task_group, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${task.name}, ${task.'class},
+                    ${task.group}, ${task.state}
+                )
+                ON CONFLICT (runtime_id, task_name) DO UPDATE SET
+                    task_class = EXCLUDED.task_class,
+                    task_group = EXCLUDED.task_group,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_tasks (
@@ -1170,6 +1334,17 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     INSERT (runtime_id, template_name, template_type)
                     VALUES (source.runtime_id, source.template_name, source.template_type);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_templates (
+                    runtime_id, template_name, template_type
+                ) VALUES (
+                    ${heartbeat.runtime}, ${template.name}, ${template.'type}
+                )
+                ON CONFLICT (runtime_id, template_name) DO UPDATE SET
+                    template_type = EXCLUDED.template_type,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_templates (
@@ -1196,6 +1371,18 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, store_name, store_type, size)
                     VALUES (source.runtime_id, source.store_name, source.store_type, source.size);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_message_stores (
+                    runtime_id, store_name, store_type, size
+                ) VALUES (
+                    ${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}
+                )
+                ON CONFLICT (runtime_id, store_name) DO UPDATE SET
+                    store_type = EXCLUDED.store_type,
+                    size = EXCLUDED.size,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -1225,6 +1412,20 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, processor_name, artifact_id, processor_type, processor_class, state)
                     VALUES (source.runtime_id, source.processor_name, source.artifact_id, source.processor_type, source.processor_class, source.state);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_message_processors (
+                    runtime_id, processor_name, processor_type, processor_class, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${processor.name}, ${processor.'type},
+                    ${processor.'class}, ${processor.state}
+                )
+                ON CONFLICT (runtime_id, processor_name) DO UPDATE SET
+                    processor_type = EXCLUDED.processor_type,
+                    processor_class = EXCLUDED.processor_class,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -1257,6 +1458,20 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     INSERT (runtime_id, entry_name, artifact_id, entry_type, entry_value, state)
                     VALUES (source.runtime_id, source.entry_name, source.artifact_id, source.entry_type, source.entry_value, source.state);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_local_entries (
+                    runtime_id, entry_name, entry_type, entry_value, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${entry.name}, ${entry.'type},
+                    ${entry.value}, ${entry.state}
+                )
+                ON CONFLICT (runtime_id, entry_name) DO UPDATE SET
+                    entry_type = EXCLUDED.entry_type,
+                    entry_value = EXCLUDED.entry_value,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_local_entries (
@@ -1287,6 +1502,20 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, service_name, artifact_id, description, wsdl, state)
                     VALUES (source.runtime_id, source.service_name, source.artifact_id, source.description, source.wsdl, source.state);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_data_services (
+                    runtime_id, service_name, description, wsdl, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${dataService.name}, ${dataService.description},
+                    ${dataService.wsdl}, ${dataService.state}
+                )
+                ON CONFLICT (runtime_id, service_name) DO UPDATE SET
+                    description = EXCLUDED.description,
+                    wsdl = EXCLUDED.wsdl,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -1321,6 +1550,19 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     INSERT (runtime_id, app_name, version, state, artifacts)
                     VALUES (source.runtime_id, source.app_name, source.version, source.state, source.artifacts);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_carbon_apps (
+                    runtime_id, app_name, version, state, artifacts
+                ) VALUES (
+                    ${heartbeat.runtime}, ${app.name}, ${app.version}, ${app.state}, ${artifactsJson}
+                )
+                ON CONFLICT (runtime_id, app_name) DO UPDATE SET
+                    version = EXCLUDED.version,
+                    state = EXCLUDED.state,
+                    artifacts = EXCLUDED.artifacts,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_carbon_apps (
@@ -1349,6 +1591,22 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, datasource_name, datasource_type, driver, url, username, state)
                     VALUES (source.runtime_id, source.datasource_name, source.datasource_type, source.driver, source.url, source.username, source.state);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_data_sources (
+                    runtime_id, datasource_name, datasource_type, driver, url, username, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${dataSource.name}, ${dataSource.'type}, ${dataSource.driver},
+                    ${dataSource.url}, ${dataSource.username}, ${dataSource.state}
+                )
+                ON CONFLICT (runtime_id, datasource_name) DO UPDATE SET
+                    datasource_type = EXCLUDED.datasource_type,
+                    driver = EXCLUDED.driver,
+                    url = EXCLUDED.url,
+                    username = EXCLUDED.username,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
@@ -1383,6 +1641,19 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     INSERT (runtime_id, connector_name, artifact_id, package, version, state)
                     VALUES (source.runtime_id, source.connector_name, source.artifact_id, source.package, source.version, source.state);
             `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_connectors (
+                    runtime_id, connector_name, package, version, state
+                ) VALUES (
+                    ${heartbeat.runtime}, ${connector.name}, ${connector.package},
+                    ${connector.version}, ${connector.state}
+                )
+                ON CONFLICT (runtime_id, connector_name, package) DO UPDATE SET
+                    version = EXCLUDED.version,
+                    state = EXCLUDED.state,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_connectors (
@@ -1411,6 +1682,16 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                 WHEN NOT MATCHED THEN
                     INSERT (runtime_id, resource_name, resource_type)
                     VALUES (source.runtime_id, source.resource_name, source.resource_type);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO runtime_registry_resources (
+                    runtime_id, resource_name, resource_type
+                ) VALUES (
+                    ${heartbeat.runtime}, ${registryResource.name}, ${registryResource.'type}
+                )
+                ON CONFLICT (runtime_id, resource_name) DO UPDATE SET
+                    updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`

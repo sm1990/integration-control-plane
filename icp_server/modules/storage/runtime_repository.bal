@@ -159,16 +159,17 @@ public isolated function deleteRuntime(string runtimeId) returns error? {
 public isolated function markOfflineRuntimes() returns error? {
 
     // Use database native timestamp functions for reliable comparison
-    // TIMESTAMPDIFF and DATE_SUB work in both H2 (in MySQL mode) and MySQL
 
     if deploymentType == "K8S" {
         // For K8S deployments, delete runtimes that should be marked offline
-        sql:ParameterizedQuery deleteQuery = `
-            DELETE FROM runtimes
+        sql:ParameterizedQuery deleteQuery = sql:queryConcat(
+                `DELETE FROM runtimes
             WHERE status != 'OFFLINE'
             AND last_heartbeat IS NOT NULL
-            AND TIMESTAMPDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}
-        `;
+            AND `,
+                sqlQueryFromString(getTimestampDiffSeconds("last_heartbeat", "CURRENT_TIMESTAMP")),
+                ` > ${heartbeatTimeoutSeconds}`
+        );
         sql:ExecutionResult result = check dbClient->execute(deleteQuery);
 
         int? affectedCount = result.affectedRowCount;
@@ -177,21 +178,15 @@ public isolated function markOfflineRuntimes() returns error? {
         }
     } else {
         // For VM deployments, mark runtimes as offline
-        // Build the appropriate SQL based on database type
-        sql:ParameterizedQuery updateQuery;
-        if dbType == MSSQL {
-            updateQuery = `UPDATE runtimes
-                SET status = 'OFFLINE'
-                WHERE status != 'OFFLINE'
-                AND last_heartbeat IS NOT NULL
-                AND DATEDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}`;
-        } else {
-            updateQuery = `UPDATE runtimes
-                SET status = 'OFFLINE'
-                WHERE status != 'OFFLINE'
-                AND last_heartbeat IS NOT NULL
-                AND TIMESTAMPDIFF(SECOND, last_heartbeat, CURRENT_TIMESTAMP) > ${heartbeatTimeoutSeconds}`;
-        }
+        sql:ParameterizedQuery updateQuery = sql:queryConcat(
+                `UPDATE runtimes
+            SET status = 'OFFLINE'
+            WHERE status != 'OFFLINE'
+            AND last_heartbeat IS NOT NULL
+            AND `,
+                sqlQueryFromString(getTimestampDiffSeconds("last_heartbeat", "CURRENT_TIMESTAMP")),
+                ` > ${heartbeatTimeoutSeconds}`
+        );
         sql:ExecutionResult result = check dbClient->execute(updateQuery);
 
         int? affectedCount = result.affectedRowCount;
@@ -768,7 +763,7 @@ public isolated function mapToService(types:ServiceRecordInDB serviceRecord, str
         name: serviceRecord.service_name,
         package: serviceRecord.service_package,
         basePath: serviceRecord.base_path,
-        state: "ENABLED", // Default state
+        state: "enabled", // Default state
         'type: "API", // Default type
         resources: resourceList,
         listeners: [] // Empty listeners array

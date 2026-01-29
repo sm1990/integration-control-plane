@@ -605,7 +605,7 @@ CREATE TABLE runtime_services (
     service_name VARCHAR(100) NOT NULL,
     service_package VARCHAR(200) NOT NULL,
     base_path VARCHAR(500) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, service_name, service_package),
@@ -622,7 +622,7 @@ CREATE TRIGGER update_runtime_services_updated_at BEFORE UPDATE ON runtime_servi
 
 -- Resources inside a service (HTTP resources etc.)
 CREATE TABLE service_resources (
-    runtime_id CHAR(36) NOT NULL,
+    runtime_id VARCHAR(100) NOT NULL,
     service_name VARCHAR(100) NOT NULL,
     resource_url VARCHAR(1000) NOT NULL,
     methods JSONB NOT NULL,  -- Array of HTTP methods
@@ -648,7 +648,7 @@ CREATE TABLE runtime_listeners (
     protocol VARCHAR(20) NULL DEFAULT 'HTTP',
     listener_host VARCHAR(100),
     listener_port INT,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, listener_name),
@@ -674,7 +674,7 @@ CREATE TABLE runtime_apis (
     url VARCHAR(500) NOT NULL,
     context VARCHAR(500) NOT NULL,
     version VARCHAR(50) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -712,7 +712,8 @@ CREATE TRIGGER update_runtime_api_resources_updated_at BEFORE UPDATE ON runtime_
 CREATE TABLE runtime_proxy_services (
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name VARCHAR(200) NOT NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    artifact_id CHAR(36) NOT NULL UNIQUE,
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -722,6 +723,7 @@ CREATE TABLE runtime_proxy_services (
 
 CREATE INDEX idx_rps_runtime_id ON runtime_proxy_services(runtime_id);
 CREATE INDEX idx_rps_proxy_name ON runtime_proxy_services(proxy_name);
+CREATE INDEX idx_rps_artifact_id ON runtime_proxy_services(artifact_id);
 CREATE INDEX idx_rps_state ON runtime_proxy_services(state);
 
 CREATE TRIGGER update_runtime_proxy_services_updated_at BEFORE UPDATE ON runtime_proxy_services
@@ -748,8 +750,9 @@ CREATE TRIGGER update_runtime_proxy_service_endpoints_updated_at BEFORE UPDATE O
 CREATE TABLE runtime_endpoints (
     runtime_id VARCHAR(100) NOT NULL,
     endpoint_name VARCHAR(200) NOT NULL,
+    artifact_id CHAR(36) NOT NULL UNIQUE,
     endpoint_type VARCHAR(100) NOT NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -759,6 +762,7 @@ CREATE TABLE runtime_endpoints (
 
 CREATE INDEX idx_re_runtime_id ON runtime_endpoints(runtime_id);
 CREATE INDEX idx_re_endpoint_name ON runtime_endpoints(endpoint_name);
+CREATE INDEX idx_re_artifact_id ON runtime_endpoints(artifact_id);
 CREATE INDEX idx_re_endpoint_type ON runtime_endpoints(endpoint_type);
 CREATE INDEX idx_re_state ON runtime_endpoints(state);
 
@@ -792,7 +796,7 @@ CREATE TABLE runtime_inbound_endpoints (
     sequence VARCHAR(200) NULL,
     statistics VARCHAR(20) NULL,
     on_error VARCHAR(200) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -814,7 +818,7 @@ CREATE TABLE runtime_sequences (
     sequence_name VARCHAR(200) NOT NULL,
     sequence_type VARCHAR(100) NULL,
     container VARCHAR(200) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -836,7 +840,7 @@ CREATE TABLE runtime_tasks (
     task_name VARCHAR(200) NOT NULL,
     task_class VARCHAR(500) NULL,
     task_group VARCHAR(200) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, task_name),
@@ -893,7 +897,7 @@ CREATE TABLE runtime_message_processors (
     processor_name VARCHAR(200) NOT NULL,
     processor_type VARCHAR(100) NOT NULL,
     processor_class VARCHAR(500) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, processor_name),
@@ -914,7 +918,7 @@ CREATE TABLE runtime_local_entries (
     entry_name VARCHAR(200) NOT NULL,
     entry_type VARCHAR(100) NOT NULL,
     entry_value TEXT NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, entry_name),
@@ -935,7 +939,7 @@ CREATE TABLE runtime_data_services (
     service_name VARCHAR(200) NOT NULL,
     description TEXT NULL,
     wsdl TEXT NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, service_name),
@@ -977,7 +981,7 @@ CREATE TABLE runtime_data_sources (
     driver VARCHAR(500) NULL,
     url VARCHAR(1000) NULL,
     username VARCHAR(255) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, datasource_name),
@@ -998,7 +1002,7 @@ CREATE TABLE runtime_connectors (
     connector_name VARCHAR(200) NOT NULL,
     package VARCHAR(200) NOT NULL,
     version VARCHAR(50) NULL,
-    state VARCHAR(20) NOT NULL DEFAULT 'ENABLED' CHECK (state IN ('ENABLED', 'DISABLED', 'STARTING', 'STOPPING', 'FAILED')),
+    state VARCHAR(20) NOT NULL DEFAULT 'enabled' CHECK (state IN ('enabled', 'disabled')),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, connector_name, package),

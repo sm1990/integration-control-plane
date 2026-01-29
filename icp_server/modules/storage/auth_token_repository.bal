@@ -31,10 +31,11 @@ public isolated function storeRefreshToken(string tokenId, string userId, string
     time:Utc expiryUtc = [<int>expiryEpoch, currentTime[1]];
     string expiryUtcStr = check convertUtcToDbDateTime(expiryUtc);
 
-    sql:ExecutionResult|sql:Error result = dbClient->execute(
-        `INSERT INTO refresh_tokens (token_id, user_id, token_hash, expires_at, user_agent, ip_address) 
-         VALUES (${tokenId}, ${userId}, ${tokenHash}, ${expiryUtcStr}, ${userAgent}, ${ipAddress})`
-        );
+    sql:ParameterizedQuery insertQuery = sql:queryConcat(
+            `INSERT INTO refresh_tokens (token_id, user_id, token_hash, expires_at, user_agent, ip_address) 
+         VALUES (${tokenId}, ${userId}, ${tokenHash}, `, sql:queryConcat(sqlQueryFromString(timestampCast(expiryUtcStr)), `, ${userAgent}, ${ipAddress})`)
+    );
+    sql:ExecutionResult|sql:Error result = dbClient->execute(insertQuery);
 
     if result is sql:Error {
         log:printError(string `Failed to store refresh token for user ${userId}`, result);

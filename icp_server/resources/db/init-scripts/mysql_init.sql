@@ -758,12 +758,9 @@ CREATE TABLE runtime_inbound_endpoints (
     statistics VARCHAR(20) NULL,
     on_error VARCHAR(200) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -784,12 +781,9 @@ CREATE TABLE runtime_sequences (
     sequence_type VARCHAR(100) NULL,
     container VARCHAR(200) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -810,12 +804,9 @@ CREATE TABLE runtime_tasks (
     task_class VARCHAR(500) NULL,
     task_group VARCHAR(200) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, task_name),
@@ -863,12 +854,9 @@ CREATE TABLE runtime_message_processors (
     processor_type VARCHAR(100) NOT NULL,
     processor_class VARCHAR(500) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, processor_name),
@@ -888,12 +876,9 @@ CREATE TABLE runtime_local_entries (
     entry_type VARCHAR(100) NOT NULL,
     entry_value TEXT NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, entry_name),
@@ -913,11 +898,8 @@ CREATE TABLE runtime_data_services (
     description TEXT NULL,
     wsdl TEXT NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
+        'enabled',
+        'disabled'
     ) NOT NULL DEFAULT 'ENABLED',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -954,12 +936,9 @@ CREATE TABLE runtime_data_sources (
     url VARCHAR(1000) NULL,
     username VARCHAR(255) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, datasource_name),
@@ -978,12 +957,9 @@ CREATE TABLE runtime_connectors (
     package VARCHAR(200) NOT NULL,
     version VARCHAR(50) NULL,
     state ENUM(
-        'ENABLED',
-        'DISABLED',
-        'STARTING',
-        'STOPPING',
-        'FAILED'
-    ) NOT NULL DEFAULT 'ENABLED',
+        'enabled',
+        'disabled'
+    ) NOT NULL DEFAULT 'enabled',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, connector_name, package),

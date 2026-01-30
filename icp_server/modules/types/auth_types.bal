@@ -216,6 +216,7 @@ public type RoleV2Input record {
     string roleName;
     int orgId?; // Optional, defaults to 1
     string description?;
+    string[] permissionIds?; // Optional: permissions to assign/update
 };
 
 // Input for assigning a user to a group

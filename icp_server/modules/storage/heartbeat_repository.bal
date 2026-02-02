@@ -684,9 +684,9 @@ isolated function processMIControlCommand(
 
         if insertResult is () {
             commandCount += 1;
-            log:printInfo(string `\u2713 Successfully inserted MI control command for ${artifactType} '${artifactName}' : ${actionToIssue} (intended=${intendedAction}, currentState=${currentState}, currentTracing=${currentTracingState ?: "N/A"})`);
+            log:printInfo(string `Successfully inserted MI control command for ${artifactType} '${artifactName}' : ${actionToIssue} (intended=${intendedAction}, currentState=${currentState}, currentTracing=${currentTracingState ?: "N/A"})`);
         } else {
-            log:printError(string `\u2717 Failed to insert MI control command for ${artifactType} '${artifactName}'`, insertResult);
+            log:printError(string `Failed to insert MI control command for ${artifactType} '${artifactName}'`, insertResult);
         }
     }
 

@@ -600,29 +600,23 @@ type ArtifactTableMetadata record {|
 // Resolve artifact type aliases to table metadata (single source of truth for artifact type → table mapping)
 isolated function resolveArtifactTableMetadata(string artifactType) returns ArtifactTableMetadata? {
     string normalizedType = artifactType.toLowerAscii().trim();
-
     if normalizedType == "api" || normalizedType == "apis" {
         return {tableName: "runtime_apis", nameColumn: "api_name", hasTracing: true, stateColumn: "state"};
-    } else if normalizedType == "proxy service" || normalizedType == "proxy-service" || normalizedType == "proxyservice"
-               || normalizedType == "proxy services" || normalizedType == "proxy-services" {
+    } else if normalizedType == "proxy-service" || normalizedType == "proxy-services" {
         return {tableName: "runtime_proxy_services", nameColumn: "proxy_name", hasTracing: true, stateColumn: "state"};
     } else if normalizedType == "endpoint" || normalizedType == "endpoints" {
         return {tableName: "runtime_endpoints", nameColumn: "endpoint_name", hasTracing: true, stateColumn: "state"};
-    } else if normalizedType == "inbound endpoint" || normalizedType == "inbound-endpoint" || normalizedType == "inboundendpoint"
-               || normalizedType == "inbound endpoints" || normalizedType == "inbound-endpoints" {
+    } else if normalizedType == "inbound-endpoint" || normalizedType == "inbound-endpoints" {
         return {tableName: "runtime_inbound_endpoints", nameColumn: "inbound_name", hasTracing: true, stateColumn: "state"};
     } else if normalizedType == "sequence" || normalizedType == "sequences" {
         return {tableName: "runtime_sequences", nameColumn: "sequence_name", hasTracing: true, stateColumn: "state"};
     } else if normalizedType == "task" || normalizedType == "tasks" {
         return {tableName: "runtime_tasks", nameColumn: "task_name", hasTracing: false, stateColumn: "state"};
-    } else if normalizedType == "message processor" || normalizedType == "message-processor" || normalizedType == "messageprocessor"
-               || normalizedType == "message processors" || normalizedType == "message-processors" {
+    } else if normalizedType == "message-processor" || normalizedType == "message-processors" {
         return {tableName: "runtime_message_processors", nameColumn: "processor_name", hasTracing: false, stateColumn: "state"};
-    } else if normalizedType == "local entry" || normalizedType == "local-entry" || normalizedType == "localentry"
-               || normalizedType == "local entries" || normalizedType == "local-entries" {
+    } else if normalizedType == "local-entry" || normalizedType == "local-entries" {
         return {tableName: "runtime_local_entries", nameColumn: "entry_name", hasTracing: false, stateColumn: "state"};
-    } else if normalizedType == "data service" || normalizedType == "data-service" || normalizedType == "dataservice"
-               || normalizedType == "data services" || normalizedType == "data-services" {
+    } else if normalizedType == "data-service" || normalizedType == "data-services" {
         return {tableName: "runtime_data_services", nameColumn: "service_name", hasTracing: false, stateColumn: "state"};
     } else if normalizedType == "connector" || normalizedType == "connectors" {
         return {tableName: "runtime_connectors", nameColumn: "connector_name", hasTracing: false, stateColumn: "status"};

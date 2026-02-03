@@ -41,10 +41,7 @@ public enum DeploymentState {
 
 public enum ArtifactState {
     ENABLED = "enabled",
-    DISABLED = "disabled",
-    // Support uppercase variants for BI runtime compatibility
-    ENABLED_UPPER = "ENABLED",
-    DISABLED_UPPER = "DISABLED"
+    DISABLED = "disabled"
 }
 
 public enum ArtifactType {

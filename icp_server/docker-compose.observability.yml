@@ -93,6 +93,11 @@ services:
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/scripts:/fluent-bit/scripts
       - ./resources/observability/opensearch-observability-dashboard/logs/ballerina:/var/log/ballerina:ro
+      - ${MI_LOG_FILE_PATH}/${MI_LOG_FILE_NAME}:/var/log/mi/${MI_RUNTIME}/${MI_LOG_FILE_NAME}:ro
+      # Persist position database
+      -  fluent-bit-db:/fluent-bit/db
+      # Persist buffer storage
+      - fluent-bit-buffer:/fluent-bit/buffer
     depends_on:
       opensearch:
         condition: service_healthy
@@ -155,3 +160,5 @@ services:
 volumes:
   opensearch_data:
   data_prepper_config:
+  fluent-bit-db:
+  fluent-bit-buffer:

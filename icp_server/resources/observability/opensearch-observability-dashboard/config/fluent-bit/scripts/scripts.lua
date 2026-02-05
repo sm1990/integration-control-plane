@@ -94,3 +94,42 @@ function enrich_bal_logs(tag, timestamp, record)
     
     return 1, timestamp, record
 end
+
+function enrich_mi_logs(tag, timestamp, record)
+    -- Add common fields for all MI logs
+    record["product"] = "Micro integrator"
+
+    -- Set module: use artifact_container if present, otherwise use app_name
+    if record["artifact_container"] and record["artifact_container"] ~= "" then
+        record["module"] = record["artifact_container"]
+        record["artifact_container"] = nil
+    else
+        record["module"] = record["app_name"] or ""
+    end
+
+    -- Extract icp.runtimeId from [icp.runtimeId=...] at the very end of message, then remove it
+    if record["message"] then
+        -- Pattern matches [icp.runtimeId=value] at the end of the message (even after stack traces)
+        local runtimeId = string.match(record["message"], '%[icp%.runtimeId=([^%]]+)%]%s*$')
+        if runtimeId then
+            record["icp_runtimeId"] = runtimeId
+            -- Remove icp.runtimeId suffix from the message
+            record["message"] = string.gsub(record["message"], '%s*%[icp%.runtimeId=[^%]]+%]%s*$', '')
+        else
+            record["icp_runtimeId"] = ""
+        end
+    else
+        record["icp_runtimeId"] = ""
+    end
+
+    return 1, timestamp, record
+end
+
+function construct_mi_app_name(tag, timestamp, record)
+    local deployment = record["app_name"] or "unknown"
+
+    record["app"] = deployment
+    record["deployment"] = deployment
+
+    return 1, timestamp, record
+end

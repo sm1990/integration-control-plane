@@ -639,7 +639,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -679,7 +679,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -732,7 +732,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -767,7 +767,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -812,7 +812,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -860,7 +860,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -932,7 +932,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -988,7 +988,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1030,7 +1030,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS]
+                scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1145,7 +1145,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1287,7 +1287,7 @@ service /auth on httpListener {
     // DELETE /auth/orgs/{orgHandle}/groups/{groupId}/roles/{mappingId} - Remove role from group
     @http:ResourceConfig {
         auth: {
-            scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS]
+            scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
         }
     }
     resource function delete orgs/[string orgHandle]/groups/[string groupId]/roles/[int mappingId](http:Request req)
@@ -1427,7 +1427,7 @@ service /auth on httpListener {
     // GET /auth/orgs/{orgHandle}/groups/{groupId}/roles - List group's role assignments
     @http:ResourceConfig {
         auth: {
-            scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS]
+            scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
         }
     }
     resource function get orgs/[string orgHandle]/groups/[string groupId]/roles()
@@ -1671,7 +1671,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1711,7 +1711,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1777,7 +1777,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1830,7 +1830,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1924,7 +1924,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -1968,7 +1968,7 @@ service /auth on httpListener {
                         secret: defaultJwtHMACSecret
                     }
                 },
-                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES]
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
             }
         ]
     }
@@ -2095,23 +2095,46 @@ service /auth on httpListener {
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
-                },
-                scopes: [auth:PERMISSION_USER_MANAGE_USERS]
+                }
             }
         ]
     }
     isolated resource function get orgs/[string orgHandle]/users/[string userId]/permissions(
+        http:Request req,
         string? projectId = (),
         string? integrationId = (),
         string? environmentId = ()
-    ) returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError {
-        log:printInfo("Fetching effective permissions for user", 
-            orgHandle = orgHandle, 
-            userId = userId, 
-            projectId = projectId, 
-            integrationId = integrationId, 
+    ) returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:InternalServerError {
+        log:printInfo("Fetching effective permissions for user",
+            orgHandle = orgHandle,
+            userId = userId,
+            projectId = projectId,
+            integrationId = integrationId,
             environmentId = environmentId
         );
+
+        // Extract user context from token to verify access
+        types:UserContextV2|error userContext = extractUserContextFromRequest(req);
+        if userContext is error {
+            log:printError("Failed to extract user context", userContext);
+            return utils:createUnauthorizedError("Invalid or missing authentication token");
+        }
+
+        // Check if user is fetching their own permissions or has admin privileges
+        boolean isSelfAccess = userContext.userId == userId;
+        boolean hasAdminAccess = userContext.permissions.indexOf(auth:PERMISSION_USER_MANAGE_USERS) != ();
+
+        if !isSelfAccess && !hasAdminAccess {
+            log:printWarn("User attempted to fetch permissions for another user without admin privileges",
+                requestingUserId = userContext.userId,
+                targetUserId = userId
+            );
+            return <http:Forbidden>{
+                body: {
+                    message: "You can only view your own permissions unless you have user management privileges"
+                }
+            };
+        }
 
         // Resolve org handle to org ID
         // TODO: use when multiple tenants are supported

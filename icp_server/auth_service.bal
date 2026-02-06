@@ -1957,6 +1957,83 @@ service /auth on httpListener {
         };
     }
 
+    // GET /auth/orgs/{orgHandle}/roles/{roleId}/groups - List groups that have this role
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                },
+                scopes: [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES]
+            }
+        ]
+    }
+    isolated resource function get orgs/[string orgHandle]/roles/[string roleId]/groups() returns http:Ok|http:NotFound|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Fetching group assignments for role", orgHandle = orgHandle, roleId = roleId);
+
+        // Verify role exists
+        types:RoleV2|error existingRole = storage:getRoleV2ById(roleId);
+        if existingRole is error {
+            log:printWarn("Role not found", roleId = roleId, 'error = existingRole);
+            return <http:NotFound>{
+                body: {
+                    message: string `Role not found: ${roleId}`
+                }
+            };
+        }
+
+        // Get all group mappings for this role
+        types:GroupRoleMapping[]|error mappings = storage:getRoleMappings(roleId);
+        if mappings is error {
+            log:printError(string `Failed to fetch group mappings for role ${roleId}`, mappings);
+            return utils:createInternalServerError(string `Failed to fetch group assignments: ${mappings.message()}`);
+        }
+
+        // Enrich mappings with group details
+        json[] enrichedMappings = [];
+        foreach types:GroupRoleMapping mapping in mappings {
+            // Get group details
+            types:Group|error group = storage:getGroupById(mapping.groupId);
+            if group is error {
+                log:printWarn(string `Group not found for mapping ${mapping.id}`, groupId = mapping.groupId);
+                // Skip this mapping if group doesn't exist (orphaned mapping)
+                continue;
+            }
+
+            // Build enriched mapping with group name
+            json enrichedMapping = {
+                id: mapping.id,
+                groupId: mapping.groupId,
+                groupName: group.groupName,
+                groupDescription: group.description,
+                roleId: mapping.roleId,
+                // Scope information
+                orgUuid: mapping.orgUuid,
+                projectUuid: mapping.projectUuid,
+                envUuid: mapping.envUuid,
+                integrationUuid: mapping.integrationUuid,
+                createdAt: mapping.createdAt
+            };
+
+            enrichedMappings.push(enrichedMapping);
+        }
+
+        log:printInfo(string `Found ${enrichedMappings.length()} group assignments for role ${roleId}`);
+
+        return <http:Ok>{
+            body: {
+                roleId: roleId,
+                roleName: existingRole.roleName,
+                mappings: enrichedMappings,
+                count: enrichedMappings.length()
+            }
+        };
+    }
+
     // ============================================================================
     // Permission Endpoints (RBAC v2)
     // ============================================================================

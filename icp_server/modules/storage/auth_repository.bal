@@ -998,6 +998,27 @@ public isolated function getGroupRoleMappings(string groupId) returns types:Grou
     return mappings;
 }
 
+// Get all group-role mappings for a specific role (shows which groups have this role)
+public isolated function getRoleMappings(string roleId) returns types:GroupRoleMapping[]|error {
+    log:printDebug(string `Fetching group mappings for role: ${roleId}`);
+
+    types:GroupRoleMapping[] mappings = [];
+    stream<types:GroupRoleMapping, sql:Error?> mappingStream = dbClient->query(
+        `SELECT id, group_id, role_id, org_uuid, project_uuid, env_uuid, integration_uuid, created_at
+         FROM group_role_mapping
+         WHERE role_id = ${roleId}
+         ORDER BY created_at DESC`
+    );
+
+    check from types:GroupRoleMapping mapping in mappingStream
+        do {
+            mappings.push(mapping);
+        };
+
+    log:printDebug(string `Found ${mappings.length()} group mappings for role ${roleId}`);
+    return mappings;
+}
+
 // Get user count in a group
 public isolated function getGroupUserCount(string groupId) returns int|error {
     log:printDebug(string `Counting users in group: ${groupId}`);

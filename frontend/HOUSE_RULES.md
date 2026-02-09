@@ -1,0 +1,9 @@
+- When loading, show a loading state.
+- When isError, show an error state with retry.
+- When loading is done and a required single entity is null/undefined, show a not found ui.
+- When loading is done and a listing returns an empty array, show empty listing state ui.
+- Never reach the main view until data is ready, early return.
+- Always handle loading, error, not-found, and empty-listing explicitly.
+- Don't spam Box. Use correct react components for the job or just get rid of it altogether.
+- No string URLs/paths anywhere except in paths.ts
+- Don't trivially ignore empty/null/undefined cases. eg `name ?? ""`, `x ? .. : null`, `x!.y`. Try to make it impossible by redefining the type or adding a guards.

@@ -1,5 +1,5 @@
-import { Avatar, Button, Card, CardContent, Grid, IconButton, PageContent, PageTitle, Stack, Typography, CircularProgress } from '@wso2/oxygen-ui';
-import { Clock, Folder, Plus, Settings } from '@wso2/oxygen-ui-icons-react';
+import { Avatar, Button, Card, CardContent, Grid, IconButton, PageContent, PageTitle, Stack, ToggleButton, ToggleButtonGroup, Typography, CircularProgress } from '@wso2/oxygen-ui';
+import { Clock, Folder, LayoutGrid, List, Plus, RefreshCw, Settings } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useNavigate, useParams } from 'react-router';
 import { useState, type JSX } from 'react';
@@ -38,23 +38,40 @@ export default function Projects(): JSX.Element {
   const navigate = useNavigate();
   const { orgHandler = 'default' } = useParams();
   const [query, setQuery] = useState('');
-  const { data: projects, isLoading } = useProjects();
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const { data: projects, isLoading, refetch } = useProjects();
 
   const filtered = (projects ?? []).filter((p) => !query || p.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <PageContent>
       <PageTitle>
-        <PageTitle.Header>Projects</PageTitle.Header>
-        <PageTitle.SubHeader>Manage your projects and workflows</PageTitle.SubHeader>
+        <PageTitle.Header>
+          <Stack direction="row" alignItems="center" gap={1}>
+            All Projects
+            <IconButton size="small" onClick={() => refetch()}>
+              <RefreshCw size={18} />
+            </IconButton>
+          </Stack>
+        </PageTitle.Header>
         <PageTitle.Actions>
-          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newProjectUrl(orgHandler))}>
-            New Project
-          </Button>
+          <ToggleButtonGroup value={view} exclusive onChange={(_, v) => v && setView(v)} size="small">
+            <ToggleButton value="grid">
+              <LayoutGrid size={18} />
+            </ToggleButton>
+            <ToggleButton value="list">
+              <List size={18} />
+            </ToggleButton>
+          </ToggleButtonGroup>
         </PageTitle.Actions>
       </PageTitle>
 
-      <SearchField value={query} onChange={setQuery} placeholder="Search projects" fullWidth sx={{ mb: 3 }} />
+      <Stack direction="row" gap={2} alignItems="center" sx={{ mb: 3 }}>
+        <SearchField value={query} onChange={setQuery} placeholder="Search projects" fullWidth />
+        <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newProjectUrl(orgHandler))} sx={{ whiteSpace: 'nowrap' }}>
+          Create
+        </Button>
+      </Stack>
 
       {isLoading ? (
         <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />

@@ -1,5 +1,5 @@
-import { Avatar, Badge, Card, CardContent, Chip, CircularProgress, Grid, List, ListItemButton, ListItemText, ListingTable, PageContent, Stack, Tab, Tabs, Typography } from '@wso2/oxygen-ui';
-import { ChevronRight } from '@wso2/oxygen-ui-icons-react';
+import { Avatar, Badge, Button, Card, CardContent, Chip, CircularProgress, Grid, IconButton, List, ListItemButton, ListItemText, ListingTable, PageContent, Stack, Tab, Tabs, Typography } from '@wso2/oxygen-ui';
+import { ChevronRight, RefreshCw } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useParams } from 'react-router';
 import { useState, type JSX } from 'react';
@@ -158,9 +158,17 @@ function EnvironmentCard({ env, projectId, componentId }: { env: GqlEnvironment;
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
-        <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, textTransform: 'capitalize' }}>
-          {env.name}
-        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+            {env.name}
+          </Typography>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <IconButton size="small">
+              <RefreshCw size={16} />
+            </IconButton>
+            <Button variant="contained">Configure Runtime</Button>
+          </Stack>
+        </Stack>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
           <Tab label="Runtimes" />
           <Tab label="Artifacts" />

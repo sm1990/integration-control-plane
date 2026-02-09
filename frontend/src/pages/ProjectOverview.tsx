@@ -38,52 +38,9 @@ import { Clock, Plus, RefreshCw, Info, Link as LinkIcon } from '@wso2/oxygen-ui-
 import type { JSX } from 'react'
 import { Link as NavigateLink, useNavigate, useParams } from 'react-router'
 import { mockProjects } from '../mock-data/mockProjects'
-import type { Component } from '../mock-data/types'
+import { mockComponents } from '../mock-data/mockComponents'
+import { mockMcpServers as mockActivity } from '../mock-data/mockMcpServers'
 
-type McpServer = {
-  id: string
-  action: string
-  user: string
-  timestamp: string
-}
-
-const mockComponents: Component[] = [
-  {
-    id: '1',
-    name: 'User Authentication API',
-    type: 'HTTP',
-    status: 'active',
-    lastModified: '2 months ago',
-  },
-  {
-    id: '2',
-    name: 'Order Management API',
-    type: 'HTTP',
-    status: 'active',
-    lastModified: '3 months ago',
-  },
-  {
-    id: '3',
-    name: 'Product Catalog API',
-    type: 'HTTP',
-    status: 'active',
-    lastModified: '3 months ago',
-  },
-  {
-    id: '4',
-    name: 'Payment Processing API',
-    type: 'HTTP',
-    status: 'inactive',
-    lastModified: '5 months ago',
-  },
-]
-
-const mockActivity: McpServer[] = [
-  { id: '1', action: 'Customer Support MCP', user: 'System', timestamp: '2 months ago' },
-  { id: '2', action: 'Order Processing MCP', user: 'System', timestamp: '3 months ago' },
-  { id: '3', action: 'Fraud Detection MCP', user: 'System', timestamp: '5 months ago' },
-  { id: '4', action: 'Notification Dispatcher MCP', user: 'System', timestamp: '7 months ago' },
-]
 
 const uData = [4000, 3000, 2000, 2780, 1890, 2390, 3490]
 const pData = [2400, 1398, 9800, 3908, 4800, 3800, 4300]

@@ -222,7 +222,10 @@ export interface Component {
   id: string
   name: string
   type: string
-  status: 'active' | 'inactive'
+  category: string
+  status: 'active' | 'inactive' | 'draft'
+  author: string
+  description: string
   lastModified: string
 }
 

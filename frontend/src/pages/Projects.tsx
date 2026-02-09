@@ -1,120 +1,44 @@
-/**
- * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
- *
- * WSO2 LLC. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-import { Box, Button, Card, CardContent, CardActions, Grid, PageContent, PageTitle, Typography, TextField, InputAdornment, Chip, IconButton } from '@wso2/oxygen-ui';
-import { Search, Plus, MoreVertical, Folder } from '@wso2/oxygen-ui-icons-react';
+import { Avatar, Button, Card, CardContent, Grid, IconButton, PageContent, PageTitle, Stack, TextField, InputAdornment, Typography, CircularProgress } from '@wso2/oxygen-ui';
+import { Clock, Folder, Plus, Search, Settings } from '@wso2/oxygen-ui-icons-react';
 import { useNavigate, useParams } from 'react-router';
 import { useState, type JSX } from 'react';
-import { mockProjects } from '../mock-data/mockProjects';
-import type { Project } from '../mock-data/types';
-import { getStatusColor } from '../config/statusColors';
+import { useProjects, type GqlProject } from '../api/queries';
 import EmptyListing from '../components/EmptyListing';
+import { formatDistanceToNow } from '../utils/time';
 
-const ProjectCard = ({ project, onNavigate }: { project: Project; onNavigate: (id: string) => void }) => (
-  <Card
-    variant="outlined"
-    sx={{
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'all 0.3s ease-in-out',
-      pb: 2,
-    }}>
-    <CardContent sx={{ flexGrow: 1, p: 3 }}>
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'start',
-          mb: 2,
-        }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-            }}>
-            <Folder size={20} />
-          </Box>
-          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-            {project.name}
-          </Typography>
-        </Box>
-        <IconButton size="small" sx={{ mt: -0.5 }}>
-          <MoreVertical size={18} />
+function ProjectCard({ project, onClick }: { project: GqlProject; onClick: () => void }) {
+  return (
+    <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { boxShadow: 2 } }} onClick={onClick}>
+      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+        <Avatar sx={{ bgcolor: 'action.hover', color: 'text.secondary', width: 48, height: 48 }}>{project.name[0].toUpperCase()}</Avatar>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+          {project.name}
+        </Typography>
+      </CardContent>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, pb: 2 }}>
+        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+          <Clock size={14} />
+          {formatDistanceToNow(project.updatedAt)}
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={(e) => {
+            e.stopPropagation();
+          }}>
+          <Settings size={16} />
         </IconButton>
-      </Box>
-      <Typography
-        variant="body2"
-        color="text.secondary"
-        sx={{
-          mb: 3,
-          minHeight: 40,
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          lineHeight: 1.6,
-        }}>
-        {project.description ?? 'No description'}
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
-        <Chip label={project.status} size="small" color={getStatusColor(project.status || 'archived')} sx={{ fontWeight: 500, textTransform: 'capitalize' }} />
-        <Chip label={`${project.componentsCount} components`} size="small" variant="outlined" sx={{ fontWeight: 500 }} />
-      </Box>
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 0.5,
-          fontWeight: 500,
-        }}>
-        Updated {project.lastUpdated}
-      </Typography>
-    </CardContent>
-    <CardActions sx={{ p: 2, pt: 0, gap: 1 }}>
-      <Button size="small" variant="contained" fullWidth onClick={() => onNavigate(project.id)}>
-        View Details
-      </Button>
-      <Button size="small" variant="outlined" fullWidth>
-        Edit
-      </Button>
-    </CardActions>
-  </Card>
-);
+      </Stack>
+    </Card>
+  );
+}
 
 export default function Projects(): JSX.Element {
   const navigate = useNavigate();
-  const { orgId } = useParams<{ orgId: string }>() || 'default-org';
+  const { orgHandler = 'default' } = useParams();
   const [query, setQuery] = useState('');
+  const { data: projects, isLoading } = useProjects();
 
-  const projects = mockProjects.filter((p) => {
-    const q = query.toLowerCase();
-    return !q || p.name.toLowerCase().includes(q) || (p.description ?? '').toLowerCase().includes(q);
-  });
+  const filtered = (projects ?? []).filter((p) => !query || p.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <PageContent>
@@ -122,44 +46,46 @@ export default function Projects(): JSX.Element {
         <PageTitle.Header>Projects</PageTitle.Header>
         <PageTitle.SubHeader>Manage your projects and workflows</PageTitle.SubHeader>
         <PageTitle.Actions>
-          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(`/o/${orgId}/projects/new`)}>
+          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(`/organizations/${orgHandler}/projects/new`)}>
             New Project
           </Button>
         </PageTitle.Actions>
       </PageTitle>
 
-      <Box sx={{ mb: 3 }}>
-        <TextField
-          fullWidth
-          placeholder="Search projects..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          slotProps={{
-            input: {
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search size={20} />
-                </InputAdornment>
-              ),
-            },
-          }}
-        />
-      </Box>
+      <TextField
+        fullWidth
+        placeholder="Search projects"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        size="small"
+        sx={{ mb: 3 }}
+        slotProps={{
+          input: {
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search size={18} />
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
-      {projects.length === 0 ? (
+      {isLoading ? (
+        <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
+      ) : filtered.length === 0 ? (
         <EmptyListing
           icon={<Folder size={48} />}
           title="No projects found"
           description={query ? 'Try adjusting your search' : 'Create your first project to get started'}
           showAction={!query}
           actionLabel="Create Project"
-          onAction={() => navigate(`/o/${orgId}/projects/new`)}
+          onAction={() => navigate(`/organizations/${orgHandler}/projects/new`)}
         />
       ) : (
-        <Grid container spacing={3}>
-          {projects.map((p) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={p.id}>
-              <ProjectCard project={p} onNavigate={(id) => navigate(`/o/${orgId}/projects/${id}`)} />
+        <Grid container spacing={2}>
+          {filtered.map((p) => (
+            <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
+              <ProjectCard project={p} onClick={() => navigate(`/organizations/${orgHandler}/projects/${p.id}/home`)} />
             </Grid>
           ))}
         </Grid>

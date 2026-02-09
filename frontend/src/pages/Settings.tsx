@@ -46,7 +46,6 @@ import {
 import { Save, Building2, Bell, Shield, Key, Trash2, Palette, Users, CreditCard } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX, type ReactNode } from 'react';
 
-// --- Types ---
 type Theme = 'light' | 'dark' | 'system';
 type Language = 'en' | 'es' | 'fr' | 'de' | 'ja' | 'zh';
 type Timezone = 'utc' | 'est' | 'pst' | 'cet' | 'jst' | 'ist';
@@ -82,7 +81,6 @@ interface SettingsState {
   };
 }
 
-// --- Components ---
 const Section = ({ title, children, variant = 'outlined', titleColor }: { title: string; children: ReactNode; variant?: any; titleColor?: string }) => (
   <Card variant={variant} sx={{ borderColor: titleColor ? `${titleColor}.main` : undefined }}>
     <CardContent sx={{ p: 3 }}>
@@ -124,7 +122,6 @@ const Option = ({ label, val, onChange, opts }: { label: string; val: string; on
   </FormControl>
 );
 
-// --- Page ---
 export default function SettingsPage(): JSX.Element {
   const [tab, setTab] = useState(0);
   const [dirty, setDirty] = useState(false);

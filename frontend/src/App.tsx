@@ -23,8 +23,8 @@ import './App.css';
 function App() {
   return (
     <Routes>
-      {routes.map((route) => (
-        <Route key={route.path} path={route.path} element={route.element}>
+      {routes.map((route, index) => (
+        <Route key={route.path ?? `layout-${index}`} path={route.path} element={route.element}>
           {route.children?.map((child, index) => (
             <Route key={child.path || `index-${index}`} index={child.index} path={child.path} element={child.element} />
           ))}

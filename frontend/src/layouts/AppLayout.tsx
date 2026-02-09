@@ -19,200 +19,145 @@
 import {
   AppShell,
   Badge,
+  Button,
   ColorSchemeToggle,
   ComplexSelect,
-  Footer,
-  Divider,
-  Header,
-  IconButton,
-  Sidebar,
-  Tooltip,
-  UserMenu,
-  Link,
-  NotificationPanel,
-  formatRelativeTime,
   Dialog,
-  DialogTitle,
+  DialogActions,
   DialogContent,
   DialogContentText,
-  DialogActions,
-  Button,
+  DialogTitle,
+  Divider,
+  Footer,
+  formatRelativeTime,
+  Header,
+  IconButton,
+  Link,
+  NotificationPanel,
+  Sidebar,
+  Stack,
+  Tooltip,
+  UserMenu,
   useAppShell,
   useNotifications,
-  version as OXYGEN_UI_VERSION,
 } from '@wso2/oxygen-ui';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import type { JSX } from 'react';
-import { useNavigate, useLocation, Outlet, Link as NavigateLink, useParams } from 'react-router';
+import { useNavigate, Outlet, Link as NavLink, useParams } from 'react-router';
 import Logo from '../components/Logo';
-import { BarChart3, Bell, Building, CircleDollarSign, Database, FolderOpen, Globe, HelpCircle, Home, Key, Layers, Lock, Settings, Shield, UserCog, Users, User as UserIcon, CreditCard, LogOut } from '@wso2/oxygen-ui-icons-react';
+import { BarChart3, Bell, Building, ChevronRight, LayoutDashboard, LogOut, ScrollText, Settings, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
+import { useProject, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
-import { mockOrganizations } from '../mock-data/mockOrganizations';
-import { mockProjects } from '../mock-data/mockProjects';
-import { mockUser } from '../mock-data/mockUser';
-import type { Organization, Project } from '../mock-data/types';
 
 export default function AppLayout(): JSX.Element {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { orgId, projectId } = useParams<{
-    orgId?: string;
-    projectId?: string;
-  }>();
+  const { orgHandler = 'default', projectId, componentHandler } = useParams();
 
-  // Shell layout state (sidebar, menu, panel visibility)
-  const { state: shellState, actions: shellActions } = useAppShell({
-    initialCollapsed: true,
-  });
-
-  // Determine initial sidebar active item based on route
-  const getInitialActiveMenuItem = useCallback((): string => {
-    const path = location.pathname;
-    if (path.includes('/analytics')) return 'analytics';
-    if (path.includes('/projects/')) return 'projects';
-    if (path.includes('/projects')) return 'projects';
-    if (path.includes('/organizations')) return 'dashboard';
-    if (path.includes('/settings')) return 'settings';
-    return 'dashboard';
-  }, [location.pathname]);
-
-  // Notification state (separate concern)
-  const {
-    notifications,
-    actions: notifActions,
-    unreadCount,
-    unreadNotifications,
-  } = useNotifications({
-    initialNotifications: [...mockNotifications],
-  });
-
-  // App-specific state managed locally
-  const orgFromUrl = mockOrganizations.find((org) => org.orgId === orgId);
-  const [selectedOrg, setOrganization] = useState<Organization>(orgFromUrl || mockOrganizations[0]);
-  const projectFromUrl = mockProjects.find((project) => project.id === projectId);
-  const [selectedProject, setProject] = useState<Project>(projectFromUrl || mockProjects[0]);
+  const { state: shell, actions } = useAppShell({ initialCollapsed: true });
+  const [activeItem, setActiveItem] = useState('overview');
+  const [tabIndex, setTabIndex] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
-  // Sync selected org with URL
-  useEffect(() => {
-    if (orgId) {
-      const org = mockOrganizations.find((o) => o.orgId === orgId);
-      if (org && org.id !== selectedOrg.id) {
-        setOrganization(org);
-      }
-    }
-  }, [orgId, selectedOrg.id]);
-
-  // Sync selected project with URL
-  useEffect(() => {
-    if (projectId) {
-      const project = mockProjects.find((p) => p.id === projectId);
-      if (project && project.id !== selectedProject.id) {
-        setProject(project);
-      }
-    }
-  }, [projectId, selectedProject.id]);
-
-  const [tabIndex, setTabIndex] = useState(0);
-  const [initialActiveItem, setInitialActiveItem] = useState<string>(getInitialActiveMenuItem());
-
-  // Update active menu item when route changes
-  useEffect(() => {
-    const activeItem = getInitialActiveMenuItem();
-    setInitialActiveItem(activeItem);
-    shellActions.setActiveMenuItem(activeItem);
-  }, [getInitialActiveMenuItem, location.pathname, shellActions]);
+  const { notifications, actions: notifActions, unreadCount, unreadNotifications } = useNotifications({ initialNotifications: [...mockNotifications] });
   const alertNotifications = notifications.filter((n) => n.type === 'warning' || n.type === 'error');
-
   const getFilteredNotifications = () => {
-    switch (tabIndex) {
-      case 1:
-        return unreadNotifications;
-      case 2:
-        return alertNotifications;
-      default:
-        return notifications;
-    }
+    if (tabIndex === 1) return unreadNotifications;
+    if (tabIndex === 2) return alertNotifications;
+    return notifications;
   };
 
-  // Check if current path matches /o/:orgId/projects/:id or any subpaths
-  const isProject = /^\/o\/[^/]+\/projects\/[^/]+/.test(location.pathname);
-  const isOrganization = /^\/o\/[^/]+/.test(location.pathname);
+  const { data: project } = useProject(projectId ?? '');
+  const { data: projects = [] } = useProjects();
+  const { data: components = [] } = useComponents(orgHandler, projectId ?? '');
+
+  const inProject = !!projectId;
+  const inComponent = !!componentHandler;
+
+  const handleSelect = (id: string) => {
+    setActiveItem(id);
+    if (!inProject) return;
+    const base = `/organizations/${orgHandler}/projects/${projectId}`;
+    if (id === 'overview') navigate(inComponent ? `${base}/components/${componentHandler}/overview` : `${base}/home`);
+  };
 
   return (
     <AppShell>
       <AppShell.Navbar>
         <Header>
-          <Header.Toggle collapsed={false} onToggle={shellActions.toggleSidebar} />
+          <Header.Toggle collapsed={shell.sidebarCollapsed} onToggle={actions.toggleSidebar} />
           <Header.Brand>
             <Header.BrandLogo>
               <Logo />
             </Header.BrandLogo>
-            <Header.BrandTitle>Developer</Header.BrandTitle>
           </Header.Brand>
           <Header.Switchers showDivider={false}>
-            {isOrganization && (
-              <ComplexSelect
-                value={selectedOrg?.id || ''}
-                onChange={(e) => {
-                  const org = mockOrganizations.find((o) => o.id === e.target.value);
-                  if (org) {
-                    setOrganization(org);
-                    // Navigate to the new organization, preserving the rest of the path
-                    const pathAfterOrgId = location.pathname.split(/\/o\/[^/]+/)[1] || '';
-                    navigate(`/o/${org.orgId}${pathAfterOrgId}`);
-                  }
-                }}
-                size="small"
-                sx={{ minWidth: 180 }}
-                renderValue={() => (
-                  <>
-                    <ComplexSelect.MenuItem.Icon>
-                      <Building />
-                    </ComplexSelect.MenuItem.Icon>
-                    <ComplexSelect.MenuItem.Text primary={selectedOrg?.name} secondary={selectedOrg?.description} />
-                  </>
-                )}
-                label="Organizations">
-                {mockOrganizations.map((org) => (
-                  <ComplexSelect.MenuItem key={org.id} value={org.id}>
-                    <ComplexSelect.MenuItem.Icon>
-                      <Building />
-                    </ComplexSelect.MenuItem.Icon>
-                    <ComplexSelect.MenuItem.Text primary={org.name} secondary={org.description} />
-                  </ComplexSelect.MenuItem>
-                ))}
-              </ComplexSelect>
+            <ComplexSelect
+              value={orgHandler}
+              onChange={() => {}}
+              size="small"
+              sx={{ minWidth: 180 }}
+              renderValue={() => (
+                <>
+                  <ComplexSelect.MenuItem.Icon>
+                    <Building />
+                  </ComplexSelect.MenuItem.Icon>
+                  <ComplexSelect.MenuItem.Text primary="Default Organization" secondary="Organization" />
+                </>
+              )}
+              label="Organizations">
+              <ComplexSelect.MenuItem value="default">
+                <ComplexSelect.MenuItem.Icon>
+                  <Building />
+                </ComplexSelect.MenuItem.Icon>
+                <ComplexSelect.MenuItem.Text primary="Default Organization" secondary="Organization" />
+              </ComplexSelect.MenuItem>
+            </ComplexSelect>
+            {inProject && (
+              <Stack direction="row" alignItems="center" gap={0.5}>
+                <ComplexSelect
+                  value={projectId}
+                  onChange={(e) => navigate(`/organizations/${orgHandler}/projects/${e.target.value}/home`)}
+                  size="small"
+                  sx={{ minWidth: 160 }}
+                  renderValue={() => <ComplexSelect.MenuItem.Text primary={project?.name ?? projectId} secondary="Project" />}
+                  label="Projects">
+                  {projects.map((p) => (
+                    <ComplexSelect.MenuItem key={p.id} value={p.id}>
+                      <ComplexSelect.MenuItem.Text primary={p.name} secondary={p.description} />
+                    </ComplexSelect.MenuItem>
+                  ))}
+                </ComplexSelect>
+                <IconButton size="small" onClick={() => navigate(`/organizations/${orgHandler}/home`)}>
+                  <X size={14} />
+                </IconButton>
+              </Stack>
             )}
-            {isProject && (
-              <ComplexSelect
-                value={selectedProject?.id || ''}
-                onChange={(e) => {
-                  const project = mockProjects.find((p) => p.id === e.target.value);
-                  if (project) {
-                    setProject(project);
-                    // Navigate to the new project, preserving the rest of the path
-                    const pathAfterProjectId = location.pathname.split(/\/projects\/[^/]+/)[1] || '';
-                    navigate(`/o/${selectedOrg?.orgId}/projects/${project.id}${pathAfterProjectId}`);
-                  }
-                }}
-                size="small"
-                sx={{ minWidth: 160 }}
-                renderValue={() => <ComplexSelect.MenuItem.Text primary={selectedProject?.name} secondary={selectedProject?.description} />}
-                label="Projects">
-                {mockProjects.map((project) => (
-                  <ComplexSelect.MenuItem key={project.id} value={project.id}>
-                    <ComplexSelect.MenuItem.Text primary={project.name} secondary={project.description} />
-                  </ComplexSelect.MenuItem>
-                ))}
-              </ComplexSelect>
+            {inComponent && (
+              <Stack direction="row" alignItems="center" gap={0.5}>
+                <ComplexSelect
+                  value={componentHandler}
+                  onChange={(e) => navigate(`/organizations/${orgHandler}/projects/${projectId}/components/${e.target.value}/overview`)}
+                  size="small"
+                  sx={{ minWidth: 160 }}
+                  renderValue={() => <ComplexSelect.MenuItem.Text primary={componentHandler} secondary="Integration" />}
+                  label="Integrations">
+                  {components.map((c) => (
+                    <ComplexSelect.MenuItem key={c.id} value={c.handler}>
+                      <ComplexSelect.MenuItem.Text primary={c.displayName} secondary={c.componentType} />
+                    </ComplexSelect.MenuItem>
+                  ))}
+                </ComplexSelect>
+                <IconButton size="small" onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectId}/home`)}>
+                  <X size={14} />
+                </IconButton>
+              </Stack>
             )}
           </Header.Switchers>
           <Header.Spacer />
           <Header.Actions>
             <ColorSchemeToggle />
             <Tooltip title="Notifications">
-              <IconButton onClick={shellActions.toggleNotificationPanel} size="small" sx={{ color: 'text.secondary' }}>
+              <IconButton onClick={actions.toggleNotificationPanel} size="small" sx={{ color: 'text.secondary' }}>
                 <Badge badgeContent={unreadCount ?? 0} color="error" max={99} invisible={(unreadCount ?? 0) === 0}>
                   <Bell size={20} />
                 </Badge>
@@ -220,11 +165,10 @@ export default function AppLayout(): JSX.Element {
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ mx: 1, display: { xs: 'none', sm: 'block' } }} />
             <UserMenu>
-              <UserMenu.Trigger name={mockUser.name} avatar={mockUser.avatar} />
-              <UserMenu.Header name={mockUser.name} email={mockUser.email} avatar={mockUser.avatar} role={mockUser.role} />
-              <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" onClick={() => console.log('Profile clicked')} />
-              <UserMenu.Item icon={<Settings size={18} />} label="Settings" onClick={() => console.log('Settings clicked')} />
-              <UserMenu.Item icon={<CreditCard size={18} />} label="Billing" onClick={() => console.log('Billing clicked')} />
+              <UserMenu.Trigger name="Admin" />
+              <UserMenu.Header name="System Administrator" email="admin" role="Admin" />
+              <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" />
+              <UserMenu.Item icon={<Settings size={18} />} label="Settings" />
               <UserMenu.Divider />
               <UserMenu.Logout icon={<LogOut size={18} />} onClick={() => setConfirmDialogOpen(true)} />
             </UserMenu>
@@ -233,156 +177,59 @@ export default function AppLayout(): JSX.Element {
       </AppShell.Navbar>
 
       <AppShell.Sidebar>
-        <Sidebar collapsed={shellState.sidebarCollapsed} activeItem={initialActiveItem} expandedMenus={shellState.expandedMenus} onSelect={shellActions.setActiveMenuItem} onToggleExpand={shellActions.toggleMenu}>
+        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={activeItem} expandedMenus={shell.expandedMenus} onSelect={handleSelect} onToggleExpand={actions.toggleMenu}>
           <Sidebar.Nav>
-            {/* Global Navigation */}
-            {!isOrganization && (
-              <Sidebar.Category>
-                <Link component={NavigateLink} to="/organizations">
-                  <Sidebar.Item id="dashboard">
-                    <Sidebar.ItemIcon>
-                      <Home size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Organizations</Sidebar.ItemLabel>
-                  </Sidebar.Item>
-                </Link>
-                <Sidebar.Item id="account">
+            <Sidebar.Category>
+              <Link component={NavLink} to={inProject ? `/organizations/${orgHandler}/projects/${projectId}/home` : `/organizations/${orgHandler}/home`}>
+                <Sidebar.Item id="overview">
                   <Sidebar.ItemIcon>
-                    <UserCog size={20} />
+                    <LayoutDashboard size={20} />
                   </Sidebar.ItemIcon>
-                  <Sidebar.ItemLabel>Account</Sidebar.ItemLabel>
+                  <Sidebar.ItemLabel>Overview</Sidebar.ItemLabel>
                 </Sidebar.Item>
-                <Sidebar.Item id="billing">
-                  <Sidebar.ItemIcon>
-                    <CircleDollarSign size={20} />
-                  </Sidebar.ItemIcon>
-                  <Sidebar.ItemLabel>Billing</Sidebar.ItemLabel>
-                </Sidebar.Item>
-              </Sidebar.Category>
-            )}
+              </Link>
+            </Sidebar.Category>
 
-            {isOrganization && (
+            {inProject && (
               <>
-                {/* Main Navigation */}
                 <Sidebar.Category>
-                  <Link component={NavigateLink} to="/organizations">
-                    <Sidebar.Item id="dashboard">
-                      <Sidebar.ItemIcon>
-                        <Home size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Organizations</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                  <Link component={NavigateLink} to={`/o/${selectedOrg?.orgId}/analytics`}>
-                    <Sidebar.Item id="analytics">
-                      <Sidebar.ItemIcon>
-                        <BarChart3 size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Analytics</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                </Sidebar.Category>
-
-                {/* Management */}
-                <Sidebar.Category>
-                  <Sidebar.CategoryLabel>Management</Sidebar.CategoryLabel>
-                  <Sidebar.Item id="users">
+                  <Sidebar.CategoryLabel>Observability</Sidebar.CategoryLabel>
+                  <Sidebar.Item id="logs">
                     <Sidebar.ItemIcon>
-                      <Users size={20} />
+                      <ScrollText size={20} />
                     </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Users</Sidebar.ItemLabel>
-                    <Sidebar.ItemBadge>3</Sidebar.ItemBadge>
-                    <Sidebar.Item id="users-list">
-                      <Sidebar.ItemIcon>
-                        <Users size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>All Users</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                    <Sidebar.Item id="users-roles">
-                      <Sidebar.ItemIcon>
-                        <UserCog size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Roles</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                    <Sidebar.Item id="users-permissions">
-                      <Sidebar.ItemIcon>
-                        <Lock size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Permissions</Sidebar.ItemLabel>
-                    </Sidebar.Item>
+                    <Sidebar.ItemLabel>Logs</Sidebar.ItemLabel>
                   </Sidebar.Item>
-                  <Link component={NavigateLink} to={`/o/${selectedOrg?.orgId}/projects`}>
-                    <Sidebar.Item id="projects">
-                      <Sidebar.ItemIcon>
-                        <FolderOpen size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Projects</Sidebar.ItemLabel>
-                      <Sidebar.ItemBadge>5</Sidebar.ItemBadge>
-                    </Sidebar.Item>
-                  </Link>
-                  <Sidebar.Item id="integrations">
+                  <Sidebar.Item id="metrics">
                     <Sidebar.ItemIcon>
-                      <Layers size={20} />
+                      <BarChart3 size={20} />
                     </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Integrations</Sidebar.ItemLabel>
+                    <Sidebar.ItemLabel>Metrics</Sidebar.ItemLabel>
                   </Sidebar.Item>
                 </Sidebar.Category>
 
-                {/* Infrastructure */}
                 <Sidebar.Category>
-                  <Sidebar.CategoryLabel>Infrastructure</Sidebar.CategoryLabel>
-                  <Sidebar.Item id="security">
+                  <Sidebar.Item id="admin">
                     <Sidebar.ItemIcon>
-                      <Shield size={20} />
+                      <Settings size={20} />
                     </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Security</Sidebar.ItemLabel>
-                    <Sidebar.Item id="security-overview">
-                      <Sidebar.ItemIcon>
-                        <Shield size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Overview</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                    <Sidebar.Item id="security-api-keys">
-                      <Sidebar.ItemIcon>
-                        <Key size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>API Keys</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Sidebar.Item>
-                  <Sidebar.Item id="databases">
-                    <Sidebar.ItemIcon>
-                      <Database size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Databases</Sidebar.ItemLabel>
-                  </Sidebar.Item>
-                  <Sidebar.Item id="domains">
-                    <Sidebar.ItemIcon>
-                      <Globe size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Domains</Sidebar.ItemLabel>
+                    <Sidebar.ItemLabel>Admin</Sidebar.ItemLabel>
                   </Sidebar.Item>
                 </Sidebar.Category>
               </>
             )}
           </Sidebar.Nav>
 
-          {/* Settings Footer */}
           <Sidebar.Footer>
             <Sidebar.Category>
-              <Link component={NavigateLink} to={`/settings`}>
-                <Sidebar.Item id="settings">
+              <Button variant="text" fullWidth onClick={actions.toggleSidebar} sx={{ minHeight: 'auto', py: 1, justifyContent: 'flex-start' }}>
+                <Sidebar.Item id="expand">
                   <Sidebar.ItemIcon>
-                    <Settings size={20} />
+                    <ChevronRight size={20} style={{ transform: shell.sidebarCollapsed ? 'none' : 'rotate(180deg)' }} />
                   </Sidebar.ItemIcon>
-                  <Sidebar.ItemLabel>Settings</Sidebar.ItemLabel>
+                  <Sidebar.ItemLabel>Expand</Sidebar.ItemLabel>
                 </Sidebar.Item>
-              </Link>
-              <Sidebar.Item id="help">
-                <Sidebar.ItemIcon>
-                  <HelpCircle size={20} />
-                </Sidebar.ItemIcon>
-                <Sidebar.ItemLabel>Help & Support</Sidebar.ItemLabel>
-              </Sidebar.Item>
+              </Button>
             </Sidebar.Category>
           </Sidebar.Footer>
         </Sidebar>
@@ -394,16 +241,16 @@ export default function AppLayout(): JSX.Element {
 
       <AppShell.Footer>
         <Footer>
-          <Footer.Copyright>© {new Date().getFullYear()} WSO2 LLC. All rights reserved.</Footer.Copyright>
-          <Footer.Divider />
-          <Footer.Version>oxygen-ui-v{OXYGEN_UI_VERSION}</Footer.Version>
-          <Footer.Link href="#terms">Terms & Conditions</Footer.Link>
           <Footer.Link href="#privacy">Privacy Policy</Footer.Link>
+          <Footer.Link href="#cookies">Cookie Policy</Footer.Link>
+          <Footer.Link href="#support">Support</Footer.Link>
+          <Footer.Divider />
+          <Footer.Copyright>&copy; {new Date().getFullYear()}, WSO2 LLC.</Footer.Copyright>
         </Footer>
       </AppShell.Footer>
 
       <AppShell.NotificationPanel>
-        <NotificationPanel open={shellState.notificationPanelOpen} onClose={shellActions.toggleNotificationPanel}>
+        <NotificationPanel open={shell.notificationPanelOpen} onClose={actions.toggleNotificationPanel}>
           <NotificationPanel.Header>
             <NotificationPanel.HeaderIcon>
               <Bell size={20} />

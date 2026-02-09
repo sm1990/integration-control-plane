@@ -1534,24 +1534,28 @@ public type ComponentInDB record {
     string project_updated_by?;
 };
 
-// === Observability Related Types ===
-
-public enum LogEntryRequestSort {
-    asc,
-    desc
-}
-
 // Lightweight runtime reference for artifact availability
 public type ArtifactRuntimeInfo record {
     string runtimeId;
     string status;
 };
 
-public type ICPLogEntryRequest record {
+// === Observability Related Types ===
+
+public type IntegrationDetails record {|
     string componentId?;
     string[] componentIdList?;
     string environmentId?;
     string[] environmentList?;
+|};
+
+public enum LogEntryRequestSort {
+    asc,
+    desc
+}
+
+public type ICPLogEntryRequest record {
+    * IntegrationDetails;
     string[] logLevels?;
     string region?;
     string searchPhrase?;
@@ -1601,6 +1605,44 @@ public type LogColumn record {
 public type LogEntriesResponse record {
     LogColumn[] columns;
     json[][] rows;
+};
+
+public type ICPMetricEntryRequest record {
+    * IntegrationDetails;
+    string region?;
+    string startTime;
+    string endTime;
+    string resolutionInterval;
+};
+
+public type MetricEntryRequest record {
+    string[] runtimeIdList = [];
+    string region?;
+    string startTime;
+    string endTime;
+    string resolutionInterval;
+};
+
+public type MetricEntry record {
+    map<string> tags;
+    Metric requests_total;
+    Metric response_time_seconds_avg;
+    Metric response_time_seconds_min;
+    Metric response_time_seconds_max;
+    Metric response_time_seconds_percentile_33;
+    Metric response_time_seconds_percentile_50;
+    Metric response_time_seconds_percentile_66;
+    Metric response_time_seconds_percentile_95;
+    Metric response_time_seconds_percentile_99;
+};
+
+public type Metric record {
+    string name;
+    map<decimal|int> timeSeriesData;
+};
+
+public type MetricEntriesResponse record {
+    MetricEntry[] metrics;
 };
 
 // === Auth Related Types ===

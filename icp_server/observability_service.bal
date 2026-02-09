@@ -69,7 +69,10 @@ service /icp/observability on observabilityListener {
         log:printInfo("Received log request: " + logRequest.toString());
 
         // Transform ICPLogEntryRequest to LogEntryRequest by resolving component/environment filters to runtime IDs
-        string[] runtimeIdList = check resolveRuntimeIds(logRequest);
+        string[] runtimeIdList = check resolveRuntimeIds({componentId: logRequest.componentId,
+                                                          componentIdList: logRequest.componentIdList,
+                                                          environmentId: logRequest.environmentId,
+                                                          environmentList: logRequest.environmentList});
 
         // If component/environment filters were provided but no runtimes found, return empty result
         boolean hasFilters = logRequest.componentId is string ||
@@ -103,28 +106,66 @@ service /icp/observability on observabilityListener {
         // Invoke observability adapter service
         return check observabilityClient->post("/observability/logs/", adaptorRequest);
     }
+
+    resource function post metrics(http:Request request, types:ICPMetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
+        
+        log:printInfo("Received metric request: " + metricRequest.toString());
+
+        // Transform ICPMetricEntryRequest to MetricEntryRequest by resolving component/environment filters to runtime IDs
+        string[] runtimeIdList = check resolveRuntimeIds({componentId: metricRequest.componentId,
+                                                          componentIdList: metricRequest.componentIdList,
+                                                          environmentId: metricRequest.environmentId,
+                                                          environmentList: metricRequest.environmentList});
+
+        // If component/environment filters were provided but no runtimes found, return empty result
+        boolean hasFilters = metricRequest.componentId is string ||
+                            (metricRequest.componentIdList is string[] && (<string[]>metricRequest.componentIdList).length() > 0) ||
+                            metricRequest.environmentId is string ||
+                            (metricRequest.environmentList is string[] && (<string[]>metricRequest.environmentList).length() > 0);
+
+        if (hasFilters && runtimeIdList.length() == 0) {
+            log:printInfo("No runtimes found for the given component/environment filters. Returning empty result.");
+            return {
+                metrics: []
+            };
+        }
+
+        // Construct MetricEntryRequest with resolved runtime IDs and copy other filter fields
+        types:MetricEntryRequest adaptorRequest = {
+            runtimeIdList: runtimeIdList,
+            region: metricRequest.region,
+            startTime: metricRequest.startTime,
+            endTime: metricRequest.endTime,
+            resolutionInterval: metricRequest.resolutionInterval
+        };
+
+        log:printInfo("Invoking observability adapter with " + runtimeIdList.length().toString() + " runtime IDs");
+
+        // Invoke observability adapter service
+        return check observabilityClient->post("/observability/metrics/", adaptorRequest);
+    }
 }
 
 // Resolve component/environment filters to runtime IDs by querying the storage layer
-isolated function resolveRuntimeIds(types:ICPLogEntryRequest logRequest) returns string[]|error {
+isolated function resolveRuntimeIds(types:IntegrationDetails integrationDetails) returns string[]|error { 
     string[] runtimeIds = [];
 
     // Build list of component IDs to query
     string[] componentIds = [];
-    if logRequest.componentId is string {
-        componentIds.push(<string>logRequest.componentId);
+    if integrationDetails.componentId is string {
+        componentIds.push(<string>integrationDetails.componentId);
     }
-    if logRequest.componentIdList is string[] {
-        componentIds.push(...<string[]>logRequest.componentIdList);
+    if integrationDetails.componentIdList is string[] {
+        componentIds.push(...<string[]>integrationDetails.componentIdList);
     }
 
     // Build list of environment IDs to query
     string[] environmentIds = [];
-    if logRequest.environmentId is string {
-        environmentIds.push(<string>logRequest.environmentId);
+    if integrationDetails.environmentId is string {
+        environmentIds.push(<string>integrationDetails.environmentId);
     }
-    if logRequest.environmentList is string[] {
-        environmentIds.push(...<string[]>logRequest.environmentList);
+    if integrationDetails.environmentList is string[] {
+        environmentIds.push(...<string[]>integrationDetails.environmentList);
     }
 
     // Query runtimes based on filters

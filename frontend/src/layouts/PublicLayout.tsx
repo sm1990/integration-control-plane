@@ -20,7 +20,7 @@ import { Outlet } from 'react-router'
 import { Box, ColorSchemeToggle, Layout, ParticleBackground, Stack, ThemeSwitcher } from '@wso2/oxygen-ui'
 import type { JSX } from 'react'
 
-export default function GateLayout(): JSX.Element {
+export default function PublicLayout(): JSX.Element {
   return (
     <Layout.Content>
       <ParticleBackground opacity={0.5} />

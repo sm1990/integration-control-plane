@@ -20,7 +20,7 @@ import { useState } from 'react'
 import { Fab, Menu, MenuItem, Box } from '@wso2/oxygen-ui'
 import { Menu as MenuIcon } from '@wso2/oxygen-ui-icons-react'
 import { useNavigate } from 'react-router'
-import appRoutes from '../config/appRoutes'
+import routes from '../config/routes'
 
 export default function FloatingNavMenu() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -40,7 +40,7 @@ export default function FloatingNavMenu() {
     handleClose();
   };
 
-  const navItems = appRoutes
+  const navItems = routes
     .flatMap((route) => {
       // Include top-level routes with showInNav
       if (route.showInNav && route.path) {

@@ -35,7 +35,7 @@ import {
 import { Eye, EyeOff, GitHub, Google } from '@wso2/oxygen-ui-icons-react'
 import {useNavigate} from 'react-router';
 
-export default function LoginBox(): JSX.Element {
+export default function LoginForm(): JSX.Element {
   const [error] = useState(false);
   const navigate = useNavigate();
 

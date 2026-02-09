@@ -22,7 +22,7 @@ import { Link as NavigateLink } from 'react-router'
 import reactLogo from '/react.svg'
 import viteLogo from '/vite.svg'
 import { Lightbulb, WSO2 } from '@wso2/oxygen-ui-icons-react'
-import appRoutes from '../config/appRoutes'
+import routes from '../config/routes'
 
 export default function Home(): JSX.Element {
   const [count, setCount] = useState(0)
@@ -48,7 +48,7 @@ export default function Home(): JSX.Element {
       <Box sx={{ my: 8 }}>
         <Typography sx={{ mb: 2 }}>Example layouts:</Typography>
         <Stack direction="row" spacing={2} divider={<Divider orientation="vertical" flexItem />} justifyContent="center" alignItems="center">
-          {appRoutes
+          {routes
             .flatMap(r => r.children || [])
             .filter(c => c.showInNav)
             .map(c => (

@@ -17,13 +17,13 @@
  */
 
 import { Route, Routes } from 'react-router'
-import appRoutes from './config/appRoutes'
+import routes from './config/routes'
 import './App.css'
 
 function App() {
   return (
     <Routes>
-      {appRoutes.map((route) => (
+      {routes.map((route) => (
         <Route key={route.path} path={route.path} element={route.element}>
           {route.children?.map((child, index) => (
             <Route

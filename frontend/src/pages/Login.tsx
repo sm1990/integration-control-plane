@@ -18,7 +18,7 @@
 
 import { Box, ColorSchemeImage, Divider, Grid, Link, Paper, Stack, Typography, useThemeContent } from '@wso2/oxygen-ui'
 import { type JSX } from 'react'
-import LoginBox from '../components/LoginBox'
+import LoginForm from '../components/LoginForm'
 import { AppWindow, Cloud, Cog, FlaskConical, ShieldCheck, TerminalSquare, Zap } from '@wso2/oxygen-ui-icons-react'
 
 type ThemeItem = {
@@ -119,7 +119,7 @@ export default function Login(): JSX.Element {
         <Grid size={{ xs: 12, md: 4 }}>
           <Paper sx={{ display: 'flex', padding: 4, width: '100%', height: '100%', flexDirection: 'column', position: 'relative', textAlign: 'left' }}>
             <Box sx={{ alignItems: 'center', justifyContent: 'center', padding: 4, width: '100%', maxWidth: 500, margin: 'auto' }}>
-              <LoginBox />
+              <LoginForm />
               <Footer />
             </Box>
           </Paper>

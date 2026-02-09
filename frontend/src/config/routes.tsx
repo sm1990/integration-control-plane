@@ -20,7 +20,7 @@ import { type RouteProps, Navigate } from 'react-router'
 import DefaultLayout from '../layouts/DefaultLayout'
 import Home from '../pages/Home'
 import Login from '../pages/Login'
-import GateLayout from '../layouts/GateLayout'
+import PublicLayout from '../layouts/PublicLayout'
 import Project from '../pages/Project'
 import CreateComponent from '../pages/CreateComponent'
 import Components from '../pages/Components'
@@ -39,13 +39,13 @@ export interface AppRoute extends Omit<RouteProps, 'children'> {
   showInNav?: boolean
 }
 
-const appRoutes: AppRoute[] = [
+const routes: AppRoute[] = [
   {
     path: '/',
     element: <Navigate to="/login" replace />,
   },
   {
-    element: <GateLayout />,
+    element: <PublicLayout />,
     children: [
       {
         path: '/login',
@@ -139,4 +139,4 @@ const appRoutes: AppRoute[] = [
   },
 ]
 
-export default appRoutes
+export default routes

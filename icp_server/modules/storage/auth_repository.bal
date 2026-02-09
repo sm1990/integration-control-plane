@@ -652,6 +652,49 @@ public isolated function getUserEffectivePermissions(string userId, types:Access
     return permissions;
 }
 
+// Get ALL permissions for a user across ALL scopes (org, project, integration levels)
+// This is used for JWT token generation at login - returns complete permission set
+// regardless of where the permissions are assigned (org-wide, project-specific, or integration-specific)
+public isolated function getAllUserPermissions(string userId) returns types:Permission[]|error {
+    log:printDebug(string `Fetching all permissions for user ${userId} across all scopes`);
+
+    types:Permission[] permissions = [];
+
+    // Query that gets all unique permissions for a user regardless of scope
+    // Joins through: user -> groups -> role mappings (any scope) -> roles -> permissions
+    sql:ParameterizedQuery query = `
+        SELECT DISTINCT
+            p.permission_id,
+            p.permission_name,
+            p.permission_domain,
+            p.resource_type,
+            p.action,
+            p.description,
+            p.created_at,
+            p.updated_at
+        FROM permissions p
+        WHERE EXISTS (
+            SELECT 1
+            FROM role_permission_mapping rpm
+            INNER JOIN group_role_mapping grm ON grm.role_id = rpm.role_id
+            INNER JOIN group_user_mapping gum ON gum.group_id = grm.group_id
+            WHERE rpm.permission_id = p.permission_id
+              AND gum.user_uuid = ${userId}
+        )
+        ORDER BY p.permission_domain, p.permission_name
+    `;
+
+    stream<types:Permission, sql:Error?> permissionStream = dbClient->query(query);
+
+    check from types:Permission permission in permissionStream
+        do {
+            permissions.push(permission);
+        };
+
+    log:printDebug(string `Found ${permissions.length()} total permissions for user ${userId}`);
+    return permissions;
+}
+
 // ============================================================================
 // 3.7 Access Query Functions (Using Views)
 // ============================================================================

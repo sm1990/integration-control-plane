@@ -1206,8 +1206,14 @@ service /auth on httpListener {
             scope.projectUuid = projectUuid;
         } 
 
+        string[] permissionsList = [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS];
+        if scope.integrationUuid is string {
+            permissionsList.push(auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE);
+        } else if scope.projectUuid is string {
+            permissionsList.push(auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE);
+        }
         boolean|error canAssign = auth:hasAnyPermission(userContext.userId, 
-            [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS], 
+            permissionsList, 
             scope
         );
         if canAssign is error {

@@ -98,11 +98,10 @@ public isolated function buildUserAuthzContext(string userId, types:AccessScope?
 public isolated function getUserPermissionNames(string userId) returns string[]|error {
     log:printDebug(string `Getting all permission names for user ${userId}`);
 
-    // Get permissions at org level (most permissive scope)
-    types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
-    types:Permission[] permissions = check storage:getUserEffectivePermissions(userId, orgScope);
+    // Get all permissions across all scopes (org, project, integration levels)
+    types:Permission[] permissions = check storage:getAllUserPermissions(userId);
 
-    // Deduplicate and extract names
+    // Extract unique permission names
     map<boolean> permissionNameMap = {};
     foreach types:Permission permission in permissions {
         permissionNameMap[permission.permissionName] = true;
@@ -110,7 +109,7 @@ public isolated function getUserPermissionNames(string userId) returns string[]|
 
     string[] permissionNames = permissionNameMap.keys();
     log:printDebug(string `User ${userId} has ${permissionNames.length()} unique permissions`);
-    
+
     return permissionNames;
 }
 

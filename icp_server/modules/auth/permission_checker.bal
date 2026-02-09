@@ -397,14 +397,16 @@ public isolated function canAssignRolesAtProjectScope(string userId, string proj
     }
 
     // Check if user has any of the required permissions at project scope
+    // Includes user management permissions and project management permissions
     types:AccessScope scope = {
         orgUuid: storage:DEFAULT_ORG_ID,
         projectUuid: projectId
     };
-    
+
     return check hasAnyPermission(
-        userId, 
-        [PERMISSION_USER_MANAGE_GROUPS, PERMISSION_USER_UPDATE_GROUP_ROLES, PERMISSION_USER_MANAGE_USERS], 
+        userId,
+        [PERMISSION_USER_MANAGE_GROUPS, PERMISSION_USER_UPDATE_GROUP_ROLES, PERMISSION_USER_MANAGE_USERS,
+         PERMISSION_PROJECT_EDIT, PERMISSION_PROJECT_MANAGE],
         scope
     );
 }
@@ -422,15 +424,17 @@ public isolated function canAssignRolesAtIntegrationScope(string userId, string 
     }
 
     // Check if user has any of the required permissions at integration scope
+    // Includes user management permissions and integration management permissions
     types:AccessScope scope = {
         orgUuid: storage:DEFAULT_ORG_ID,
         projectUuid: projectId,
         integrationUuid: integrationId
     };
-    
+
     return check hasAnyPermission(
-        userId, 
-        [PERMISSION_USER_MANAGE_GROUPS, PERMISSION_USER_UPDATE_GROUP_ROLES, PERMISSION_USER_MANAGE_USERS], 
+        userId,
+        [PERMISSION_USER_MANAGE_GROUPS, PERMISSION_USER_UPDATE_GROUP_ROLES, PERMISSION_USER_MANAGE_USERS,
+         PERMISSION_INTEGRATION_EDIT, PERMISSION_INTEGRATION_MANAGE],
         scope
     );
 }

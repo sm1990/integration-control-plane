@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.20",
     "@wso2/oxygen-ui": "^0.5.0",
     "@wso2/oxygen-ui-charts-react": "^0.5.0",
     "@wso2/oxygen-ui-icons-react": "^0.5.0",

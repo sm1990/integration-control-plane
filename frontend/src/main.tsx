@@ -17,15 +17,14 @@
  */
 
 import { OxygenUIThemeProvider, AcrylicOrangeTheme, AcrylicPurpleTheme, ChoreoTheme, ClassicTheme, HighContrastTheme, PaleGrayTheme, PaleIndigoTheme } from '@wso2/oxygen-ui';
-import { HashRouter, BrowserRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Use HashRouter for production builds (for static hosting in Storybook)
-// Use BrowserRouter for development
-const Router = import.meta.env.PROD ? HashRouter : BrowserRouter;
+const queryClient = new QueryClient();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -56,9 +55,11 @@ createRoot(document.getElementById('root')!).render(
         },
       ]}
       initialTheme="acrylicOrange">
-      <Router>
-        <App />
-      </Router>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
     </OxygenUIThemeProvider>
   </StrictMode>,
 );

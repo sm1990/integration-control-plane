@@ -54,7 +54,8 @@ import {
   Users,
   CreditCard,
 } from '@wso2/oxygen-ui-icons-react'
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
+import type { JSX } from 'react'
 
 export default function SettingsPage(): JSX.Element {
   const [activeTab, setActiveTab] = useState(0)

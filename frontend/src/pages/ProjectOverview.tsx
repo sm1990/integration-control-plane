@@ -37,7 +37,7 @@ import { LineChart } from '@wso2/oxygen-ui-charts-react'
 import { Clock, Plus, RefreshCw, Info, Link as LinkIcon } from '@wso2/oxygen-ui-icons-react'
 import type { JSX } from 'react'
 import { Link as NavigateLink, useNavigate, useParams } from 'react-router'
-import { mockProjects } from '../mock-data'
+import { mockProjects } from '../mock-data/mockProjects'
 
 interface Component {
   id: string

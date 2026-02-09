@@ -41,7 +41,8 @@ import {
   useNotifications,
   version as OXYGEN_UI_VERSION
 } from '@wso2/oxygen-ui'
-import { useState, useEffect, type JSX, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import type { JSX } from 'react'
 import { useNavigate, useLocation, Outlet, Link as NavigateLink, useParams } from 'react-router'
 import Logo from '../components/Logo';
 import {
@@ -65,8 +66,11 @@ import {
   CreditCard,
   LogOut,
 } from '@wso2/oxygen-ui-icons-react';
-import { mockNotifications, mockOrganizations, mockProjects, mockUser } from '../mock-data';
-import type { Organization, Project } from '../mock-data/types';
+import { mockNotifications } from '../mock-data/mockNotifications'
+import { mockOrganizations } from '../mock-data/mockOrganizations'
+import { mockProjects } from '../mock-data/mockProjects'
+import { mockUser } from '../mock-data/mockUser'
+import type { Organization, Project } from '../mock-data/types'
 
 export default function AppLayout(): JSX.Element {
   const navigate = useNavigate();

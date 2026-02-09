@@ -29,7 +29,7 @@ import {
 import { HashRouter, BrowserRouter } from 'react-router'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App.tsx'
+import App from './App'
 import './index.css'
 
 // Use HashRouter for production builds (for static hosting in Storybook)

@@ -37,7 +37,8 @@ import {
 import { LineChart, BarChart, PieChart } from '@wso2/oxygen-ui-charts-react'
 import { Activity, FileText, Users, Clock, Logs } from '@wso2/oxygen-ui-icons-react'
 import { useNavigate, useParams } from 'react-router'
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
+import type { JSX } from 'react'
 
 interface Component {
   id: string

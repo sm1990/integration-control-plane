@@ -46,7 +46,8 @@ import {
   Info,
 } from '@wso2/oxygen-ui-icons-react'
 import { Link as NavigateLink, useParams } from 'react-router'
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
+import type { JSX } from 'react'
 
 interface LogEntry {
   id: string

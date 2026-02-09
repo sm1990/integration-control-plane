@@ -33,8 +33,9 @@ import {
 } from '@wso2/oxygen-ui'
 import { Search, Plus, MoreVertical, Folder } from '@wso2/oxygen-ui-icons-react'
 import { useNavigate, useParams } from 'react-router'
-import { useState, type JSX } from 'react'
-import { mockProjects } from '../mock-data'
+import { useState } from 'react'
+import type { JSX } from 'react'
+import { mockProjects } from '../mock-data/mockProjects'
 
 interface Project {
   id: string

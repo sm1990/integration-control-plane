@@ -17,15 +17,14 @@
  */
 
 import { Button, Divider, Form, PageTitle, PageContent, Stack } from '@wso2/oxygen-ui'
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
+import type { JSX } from 'react'
 import { Link as NavigateLink, useParams } from 'react-router'
 import { ExternalLinkIcon, Import, Network, WSO2 } from '@wso2/oxygen-ui-icons-react'
-import {
-  IntegrationTypeCard,
-  IntegrationWizard,
-  SampleAppCard,
-  SampleIntegrationsSection,
-} from '../components/ComponentCreate'
+import IntegrationTypeCard from '../components/ComponentCreate/IntegrationTypeCard'
+import IntegrationWizard from '../components/ComponentCreate/IntegrationWizard'
+import SampleAppCard from '../components/ComponentCreate/SampleAppCard'
+import SampleIntegrationsSection from '../components/ComponentCreate/SampleIntegrationsSection'
 
 export default function ComponentCreate(): JSX.Element {
   const { orgId, id } = useParams<{ orgId: string; id?: string }>()

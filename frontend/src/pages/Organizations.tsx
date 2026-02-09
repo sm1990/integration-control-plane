@@ -44,8 +44,10 @@ import {
   ArrowRight,
 } from '@wso2/oxygen-ui-icons-react'
 import { useNavigate } from 'react-router'
-import { useMemo, useState, type JSX } from 'react'
-import { mockOrganizations, mockExploreMoreSections } from '../mock-data'
+import { useMemo, useState } from 'react'
+import type { JSX } from 'react'
+import { mockOrganizations } from '../mock-data/mockOrganizations'
+import { mockExploreMoreSections } from '../mock-data/mockExploreMoreSections'
 
 interface Organization {
   id: string

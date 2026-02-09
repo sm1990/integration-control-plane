@@ -17,7 +17,8 @@
  */
 
 import { Badge, Box, Button, Divider, Link, Stack, Typography } from '@wso2/oxygen-ui'
-import { useState, type JSX } from 'react'
+import { useState } from 'react'
+import type { JSX } from 'react'
 import { Link as NavigateLink } from 'react-router'
 import reactLogo from '/react.svg'
 import viteLogo from '/vite.svg'

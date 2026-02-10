@@ -18,7 +18,7 @@
 
 import { Box, Button, Form, Stack, Typography } from '@wso2/oxygen-ui';
 import { ExternalLinkIcon } from '@wso2/oxygen-ui-icons-react';
-import type { JSX } from 'react';
+import React, { type JSX } from 'react';
 
 export interface SampleAppCardProps {
   icon?: React.ReactNode;

@@ -9,14 +9,14 @@ export interface CreateProjectInput {
   orgHandler: string;
 }
 
-const CREATE_PROJECT = (input: CreateProjectInput) => `
-  mutation {
+const CREATE_PROJECT = `
+  mutation CreateProject($name: String!, $description: String!, $projectHandler: String!, $orgHandler: String!) {
     createProject(project: {
-      name: "${input.name}",
-      description: "${input.description}",
-      projectHandler: "${input.handler}",
+      name: $name,
+      description: $description,
+      projectHandler: $projectHandler,
       orgId: 1,
-      orgHandler: "${input.orgHandler}",
+      orgHandler: $orgHandler,
       version: "1.0.0"
     }) {
       id, orgId, name, version, createdDate, handler, region,
@@ -29,7 +29,12 @@ export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateProjectInput) =>
-      gql<{ createProject: GqlProject }>(CREATE_PROJECT(input)).then((d) => d.createProject),
+      gql<{ createProject: GqlProject }>(CREATE_PROJECT, {
+        name: input.name,
+        description: input.description,
+        projectHandler: input.handler,
+        orgHandler: input.orgHandler,
+      }).then((d) => d.createProject),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
   });
 }

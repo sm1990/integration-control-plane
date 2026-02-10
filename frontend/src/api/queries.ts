@@ -37,20 +37,22 @@ const PROJECTS_QUERY = `{
   }
 }`;
 
-const PROJECT_QUERY = (projectId: string) => `{
-  project(orgId: 1, projectId: "${projectId}") {
-    id, orgId, name, handler, description, version,
-    createdDate, updatedAt, region, type
-  }
-}`;
+const PROJECT_QUERY = `
+  query GetProject($projectId: String!) {
+    project(orgId: 1, projectId: $projectId) {
+      id, orgId, name, handler, description, version,
+      createdDate, updatedAt, region, type
+    }
+  }`;
 
-const COMPONENTS_QUERY = (orgHandler: string, projectId: string) => `{
-  components(orgHandler: "${orgHandler}", projectId: "${projectId}") {
-    projectId, id, name, handler, displayName, displayType,
-    description, status, componentType, componentSubType,
-    version, createdAt, lastBuildDate
-  }
-}`;
+const COMPONENTS_QUERY = `
+  query GetComponents($orgHandler: String!, $projectId: String!) {
+    components(orgHandler: $orgHandler, projectId: $projectId) {
+      projectId, id, name, handler, displayName, displayType,
+      description, status, componentType, componentSubType,
+      version, createdAt, lastBuildDate
+    }
+  }`;
 
 export function useProjects() {
   return useQuery({
@@ -62,7 +64,7 @@ export function useProjects() {
 export function useProject(projectId: string) {
   return useQuery({
     queryKey: ['project', projectId],
-    queryFn: () => gql<{ project: GqlProject }>(PROJECT_QUERY(projectId)).then((d) => d.project),
+    queryFn: () => gql<{ project: GqlProject }>(PROJECT_QUERY, { projectId }).then((d) => d.project),
     enabled: !!projectId,
   });
 }
@@ -70,7 +72,7 @@ export function useProject(projectId: string) {
 export function useComponents(orgHandler: string, projectId: string) {
   return useQuery({
     queryKey: ['components', orgHandler, projectId],
-    queryFn: () => gql<{ components: GqlComponent[] }>(COMPONENTS_QUERY(orgHandler, projectId)).then((d) => d.components),
+    queryFn: () => gql<{ components: GqlComponent[] }>(COMPONENTS_QUERY, { orgHandler, projectId }).then((d) => d.components),
     enabled: !!orgHandler && !!projectId,
   });
 }
@@ -79,18 +81,19 @@ export interface GqlComponentDetail extends GqlComponent {
   orgHandler: string;
 }
 
-const COMPONENT_BY_HANDLER_QUERY = (projectId: string, handler: string) => `{
-  component(projectId: "${projectId}", componentHandler: "${handler}") {
-    projectId, id, name, handler, displayName, displayType,
-    description, status, componentType, componentSubType,
-    version, createdAt, lastBuildDate, orgHandler
-  }
-}`;
+const COMPONENT_BY_HANDLER_QUERY = `
+  query GetComponent($projectId: String!, $componentHandler: String!) {
+    component(projectId: $projectId, componentHandler: $componentHandler) {
+      projectId, id, name, handler, displayName, displayType,
+      description, status, componentType, componentSubType,
+      version, createdAt, lastBuildDate, orgHandler
+    }
+  }`;
 
 export function useComponentByHandler(projectId: string, handler: string) {
   return useQuery({
     queryKey: ['component', projectId, handler],
-    queryFn: () => gql<{ component: GqlComponentDetail }>(COMPONENT_BY_HANDLER_QUERY(projectId, handler)).then((d) => d.component),
+    queryFn: () => gql<{ component: GqlComponentDetail }>(COMPONENT_BY_HANDLER_QUERY, { projectId, componentHandler: handler }).then((d) => d.component),
     enabled: !!projectId && !!handler,
   });
 }
@@ -102,16 +105,17 @@ export interface GqlEnvironment {
   critical: boolean;
 }
 
-const ENVIRONMENTS_QUERY = (projectId: string) => `{
-  environments(orgUuid: "default-org-uuid", type: "external", projectId: "${projectId}") {
-    id, name, choreoEnv, critical
-  }
-}`;
+const ENVIRONMENTS_QUERY = `
+  query GetEnvironments($projectId: String!) {
+    environments(orgUuid: "default-org-uuid", type: "external", projectId: $projectId) {
+      id, name, choreoEnv, critical
+    }
+  }`;
 
 export function useEnvironments(projectId: string) {
   return useQuery({
     queryKey: ['environments', projectId],
-    queryFn: () => gql<{ environments: GqlEnvironment[] }>(ENVIRONMENTS_QUERY(projectId)).then((d) => d.environments),
+    queryFn: () => gql<{ environments: GqlEnvironment[] }>(ENVIRONMENTS_QUERY, { projectId }).then((d) => d.environments),
     enabled: !!projectId,
   });
 }
@@ -130,18 +134,19 @@ export interface GqlRuntime {
   lastHeartbeat: string;
 }
 
-const RUNTIMES_QUERY = (envId: string, projectId: string, componentId: string) => `{
-  runtimes(environmentId: "${envId}", projectId: "${projectId}", componentId: "${componentId}") {
-    runtimeId, runtimeType, status, version,
-    platformName, platformVersion, platformHome,
-    osName, osVersion, registrationTime, lastHeartbeat
-  }
-}`;
+const RUNTIMES_QUERY = `
+  query GetRuntimes($environmentId: String!, $projectId: String!, $componentId: String!) {
+    runtimes(environmentId: $environmentId, projectId: $projectId, componentId: $componentId) {
+      runtimeId, runtimeType, status, version,
+      platformName, platformVersion, platformHome,
+      osName, osVersion, registrationTime, lastHeartbeat
+    }
+  }`;
 
 export function useRuntimes(envId: string, projectId: string, componentId: string) {
   return useQuery({
     queryKey: ['runtimes', envId, projectId, componentId],
-    queryFn: () => gql<{ runtimes: GqlRuntime[] }>(RUNTIMES_QUERY(envId, projectId, componentId)).then((d) => d.runtimes),
+    queryFn: () => gql<{ runtimes: GqlRuntime[] }>(RUNTIMES_QUERY, { environmentId: envId, projectId, componentId }).then((d) => d.runtimes),
     enabled: !!envId && !!projectId && !!componentId,
   });
 }
@@ -156,11 +161,12 @@ export function useArtifactTypes(componentId: string, envId: string) {
     queryKey: ['artifactTypes', componentId, envId],
     queryFn: () =>
       gql<{ componentArtifactTypes: GqlArtifactType[] }>(
-        `query ComponentArtifactTypes {
-        componentArtifactTypes(componentId: "${componentId}", environmentId: "${envId}") {
-          artifactType, artifactCount
-        }
-      }`,
+        `query ComponentArtifactTypes($componentId: String!, $environmentId: String!) {
+          componentArtifactTypes(componentId: $componentId, environmentId: $environmentId) {
+            artifactType, artifactCount
+          }
+        }`,
+        { componentId, environmentId: envId },
       ).then((d) => d.componentArtifactTypes),
     enabled: !!componentId && !!envId,
   });
@@ -193,7 +199,10 @@ export function useArtifacts(artifactType: string, envId: string, componentId: s
     queryKey: ['artifacts', artifactType, envId, componentId],
     queryFn: async () => {
       if (!mapping) return [];
-      const data = await gql<Record<string, GqlArtifact[]>>(`query { ${mapping.field}(environmentId: "${envId}", componentId: "${componentId}") { ${mapping.fields} } }`);
+      const data = await gql<Record<string, GqlArtifact[]>>(`query ArtifactQuery($environmentId: String!, $componentId: String!) { ${mapping.field}(environmentId: $environmentId, componentId: $componentId) { ${mapping.fields} } }`, {
+        environmentId: envId,
+        componentId,
+      });
       return data[mapping.field] ?? [];
     },
     enabled: !!artifactType && !!envId && !!componentId && !!mapping,

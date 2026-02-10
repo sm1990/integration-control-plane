@@ -97,15 +97,8 @@ end
 
 function enrich_mi_logs(tag, timestamp, record)
     -- Add common fields for all MI logs
-    record["product"] = "Micro integrator"
-
-    -- Set module: use artifact_container if present, otherwise use app_name
-    if record["artifact_container"] and record["artifact_container"] ~= "" then
-        record["module"] = record["artifact_container"]
-        record["artifact_container"] = nil
-    else
-        record["module"] = record["app_name"] or ""
-    end
+    record["product"] = "Micro Integrator"
+    record["service_type"] = "MI"
 
     -- Extract icp.runtimeId from [icp.runtimeId=...] at the very end of message, then remove it
     if record["message"] then
@@ -121,15 +114,6 @@ function enrich_mi_logs(tag, timestamp, record)
     else
         record["icp_runtimeId"] = ""
     end
-
-    return 1, timestamp, record
-end
-
-function construct_mi_app_name(tag, timestamp, record)
-    local deployment = record["app_name"] or "unknown"
-
-    record["app"] = deployment
-    record["deployment"] = deployment
 
     return 1, timestamp, record
 end

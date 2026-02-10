@@ -63,6 +63,9 @@
                 "class": {
                     "type": "keyword"
                 },
+                "artifact_container": {
+                    "type": "keyword"
+                },
                 "icp_runtimeId": {
                     "type": "keyword"
                 }

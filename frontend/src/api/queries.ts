@@ -180,17 +180,19 @@ export interface GqlArtifact {
 }
 
 // Maps artifactType to its GraphQL query field name and useful display fields
-const ARTIFACT_QUERY_MAP: Record<string, { queryName: string; field: string; fields: string }> = {
-  RestApi: { queryName: 'restApisByEnvironmentAndComponent', field: 'restApisByEnvironmentAndComponent', fields: 'name, context, version, state' },
-  ProxyService: { queryName: 'proxyServicesByEnvironmentAndComponent', field: 'proxyServicesByEnvironmentAndComponent', fields: 'name, wsdlUrl' },
-  Endpoint: { queryName: 'endpointsByEnvironmentAndComponent', field: 'endpointsByEnvironmentAndComponent', fields: 'name, type, method, uriTemplate' },
-  InboundEndpoint: { queryName: 'inboundEndpointsByEnvironmentAndComponent', field: 'inboundEndpointsByEnvironmentAndComponent', fields: 'name, protocol, type' },
-  Sequence: { queryName: 'sequencesByEnvironmentAndComponent', field: 'sequencesByEnvironmentAndComponent', fields: 'name, mediator' },
-  Task: { queryName: 'tasksByEnvironmentAndComponent', field: 'tasksByEnvironmentAndComponent', fields: 'name, triggerType, triggerInterval' },
-  LocalEntry: { queryName: 'localEntriesByEnvironmentAndComponent', field: 'localEntriesByEnvironmentAndComponent', fields: 'name, type' },
-  CarbonApp: { queryName: 'carbonAppsByEnvironmentAndComponent', field: 'carbonAppsByEnvironmentAndComponent', fields: 'name, version' },
-  Connector: { queryName: 'connectorsByEnvironmentAndComponent', field: 'connectorsByEnvironmentAndComponent', fields: 'name, version, status' },
-  RegistryResource: { queryName: 'registryResourcesByEnvironmentAndComponent', field: 'registryResourcesByEnvironmentAndComponent', fields: 'name, mediaType' },
+// `fields` = flat scalar fields, `gqlFields` = full GraphQL selection (including nested)
+// fields = card columns, gqlFields = full GraphQL selection (including nested)
+const ARTIFACT_QUERY_MAP: Record<string, { queryName: string; field: string; fields: string; gqlFields: string }> = {
+  RestApi: { queryName: 'restApisByEnvironmentAndComponent', field: 'restApisByEnvironmentAndComponent', fields: 'name, context, version, state', gqlFields: 'name, context, version, state, tracing, url, runtimes { runtimeId, status }, resources { path, methods }' },
+  ProxyService: { queryName: 'proxyServicesByEnvironmentAndComponent', field: 'proxyServicesByEnvironmentAndComponent', fields: 'name, state', gqlFields: 'name, state, tracing, endpoints, runtimes { runtimeId, status }' },
+  Endpoint: { queryName: 'endpointsByEnvironmentAndComponent', field: 'endpointsByEnvironmentAndComponent', fields: 'name, type, state', gqlFields: 'name, type, state, tracing, attributes { name, value }, runtimes { runtimeId, status }' },
+  InboundEndpoint: { queryName: 'inboundEndpointsByEnvironmentAndComponent', field: 'inboundEndpointsByEnvironmentAndComponent', fields: 'name, protocol', gqlFields: 'name, protocol, sequence, onError, state, tracing, runtimes { runtimeId, status }' },
+  Sequence: { queryName: 'sequencesByEnvironmentAndComponent', field: 'sequencesByEnvironmentAndComponent', fields: 'name, type, container, state', gqlFields: 'name, type, container, state, tracing, runtimes { runtimeId, status }' },
+  Task: { queryName: 'tasksByEnvironmentAndComponent', field: 'tasksByEnvironmentAndComponent', fields: 'name, group, state', gqlFields: 'name, class, group, state, runtimes { runtimeId, status }' },
+  LocalEntry: { queryName: 'localEntriesByEnvironmentAndComponent', field: 'localEntriesByEnvironmentAndComponent', fields: 'name, type', gqlFields: 'name, type, value, state, runtimes { runtimeId, status }' },
+  CarbonApp: { queryName: 'carbonAppsByEnvironmentAndComponent', field: 'carbonAppsByEnvironmentAndComponent', fields: 'name, version', gqlFields: 'name, version, state, artifacts { name, type }, runtimes { runtimeId, status }' },
+  Connector: { queryName: 'connectorsByEnvironmentAndComponent', field: 'connectorsByEnvironmentAndComponent', fields: 'name, package, state', gqlFields: 'name, package, version, state, runtimes { runtimeId, status }' },
+  RegistryResource: { queryName: 'registryResourcesByEnvironmentAndComponent', field: 'registryResourcesByEnvironmentAndComponent', fields: 'name, type', gqlFields: 'name, type, runtimes { runtimeId, status }' },
 };
 
 export function useArtifacts(artifactType: string, envId: string, componentId: string) {
@@ -199,7 +201,7 @@ export function useArtifacts(artifactType: string, envId: string, componentId: s
     queryKey: ['artifacts', artifactType, envId, componentId],
     queryFn: async () => {
       if (!mapping) return [];
-      const data = await gql<Record<string, GqlArtifact[]>>(`query ArtifactQuery($environmentId: String!, $componentId: String!) { ${mapping.field}(environmentId: $environmentId, componentId: $componentId) { ${mapping.fields} } }`, {
+      const data = await gql<Record<string, GqlArtifact[]>>(`query ArtifactQuery($environmentId: String!, $componentId: String!) { ${mapping.field}(environmentId: $environmentId, componentId: $componentId) { ${mapping.gqlFields} } }`, {
         environmentId: envId,
         componentId,
       });
@@ -210,3 +212,38 @@ export function useArtifacts(artifactType: string, envId: string, componentId: s
 }
 
 export { ARTIFACT_QUERY_MAP };
+
+// ── Artifact detail panel queries ──
+
+const ARTIFACT_SOURCE_QUERY = `
+  query GetArtifactSource($environmentId: String!, $componentId: String!, $artifactType: String!, $artifactName: String!) {
+    artifactSourceByComponent(environmentId: $environmentId, componentId: $componentId, artifactType: $artifactType, artifactName: $artifactName)
+  }`;
+
+export function useArtifactSource(envId: string, componentId: string, artifactType: string, artifactName: string) {
+  return useQuery({
+    queryKey: ['artifactSource', envId, componentId, artifactType, artifactName],
+    queryFn: () =>
+      gql<{ artifactSourceByComponent: string }>(ARTIFACT_SOURCE_QUERY, {
+        environmentId: envId,
+        componentId,
+        artifactType,
+        artifactName,
+      }).then((d) => d.artifactSourceByComponent),
+    enabled: !!envId && !!componentId && !!artifactType && !!artifactName,
+  });
+}
+
+// Maps display artifactType to the backend "type" param used in artifactSourceByComponent
+export const ARTIFACT_TYPE_TO_SOURCE_TYPE: Record<string, string> = {
+  RestApi: 'api',
+  ProxyService: 'proxyServices',
+  Endpoint: 'endpoints',
+  InboundEndpoint: 'inbound-endpoints',
+  Sequence: 'sequences',
+  Task: 'tasks',
+  LocalEntry: 'local-entries',
+  CarbonApp: 'carbon-apps',
+  Connector: 'connectors',
+  RegistryResource: 'registry-resources',
+};

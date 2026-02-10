@@ -1,124 +1,420 @@
-import { Avatar, Badge, Button, Card, CardContent, Chip, CircularProgress, Grid, IconButton, List, ListItemButton, ListItemText, ListingTable, PageContent, Stack, Tab, Tabs, Typography } from '@wso2/oxygen-ui';
-import { ChevronRight, RefreshCw } from '@wso2/oxygen-ui-icons-react';
+import {
+  Avatar,
+  Badge,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Drawer,
+  Grid,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  PageContent,
+  Stack,
+  Switch,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TablePagination,
+  TableRow,
+  Tabs,
+  Typography,
+} from '@wso2/oxygen-ui';
+import { ChevronRight, Maximize2, RefreshCw, X } from '@wso2/oxygen-ui-icons-react';
+import { Globe, Link2, ArrowRightLeft, Inbox, ListOrdered, Clock, FolderArchive, Package, Plug, FileText } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useParams } from 'react-router';
-import { useState, type JSX } from 'react';
-import { useComponentByHandler, useEnvironments, useRuntimes, useArtifactTypes, useArtifacts, type GqlEnvironment, type GqlRuntime, type GqlArtifact, ARTIFACT_QUERY_MAP } from '../api/queries';
+import { useEffect, useState, type JSX } from 'react';
+import { useComponentByHandler, useEnvironments, useArtifactTypes, useArtifacts, useArtifactSource, ARTIFACT_TYPE_TO_SOURCE_TYPE, type GqlEnvironment, type GqlArtifact, ARTIFACT_QUERY_MAP } from '../api/queries';
 import NotFound from '../components/NotFound';
 import { projectUrl } from '../paths';
 
-function RuntimesTable({ envId, projectId, componentId }: { envId: string; projectId: string; componentId: string }) {
-  const { data: runtimes = [], isLoading } = useRuntimes(envId, projectId, componentId);
-  const [query, setQuery] = useState('');
+const ARTIFACT_ICONS: Record<string, JSX.Element> = {
+  RestApi: <Globe size={18} />,
+  ProxyService: <ArrowRightLeft size={18} />,
+  Endpoint: <Link2 size={18} />,
+  InboundEndpoint: <Inbox size={18} />,
+  Sequence: <ListOrdered size={18} />,
+  Task: <Clock size={18} />,
+  LocalEntry: <FileText size={18} />,
+  CarbonApp: <Package size={18} />,
+  Connector: <Plug size={18} />,
+  RegistryResource: <FolderArchive size={18} />,
+};
 
-  const filtered = runtimes.filter((r) => !query || r.runtimeId.toLowerCase().includes(query.toLowerCase()) || r.runtimeType.toLowerCase().includes(query.toLowerCase()) || r.status.toLowerCase().includes(query.toLowerCase()));
+const ARTIFACT_TABS: Record<string, string[]> = {
+  RestApi: ['Overview', 'Source', 'API definition', 'Runtimes'],
+  ProxyService: ['Overview', 'Endpoints', 'WSDL', 'Runtimes'],
+  Task: ['Runtimes'],
+  LocalEntry: ['Value', 'Runtimes'],
+  CarbonApp: ['Artifacts', 'Runtimes'],
+  Connector: ['Runtimes'],
+  RegistryResource: ['Runtimes'],
+};
+const DEFAULT_ARTIFACT_TABS = ['Overview', 'Source', 'Runtimes'];
 
-  if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
-  if (runtimes.length === 0)
-    return (
-      <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-        No runtimes found for this environment.
-      </Typography>
-    );
+interface SelectedArtifact {
+  artifact: GqlArtifact;
+  artifactType: string;
+  envId: string;
+  componentId: string;
+  projectId: string;
+}
 
+const cellSx = { borderBottom: '1px solid', borderColor: 'divider' };
+const labelSx = { ...cellSx, fontWeight: 600, textTransform: 'capitalize', width: 180 };
+const preSx = { p: 2, bgcolor: 'action.hover', borderRadius: 1, overflow: 'auto', fontSize: 12, fontFamily: 'monospace', maxHeight: 500 };
+const emptySx = { color: 'text.secondary', py: 2 };
+
+function Toggle({ checked }: { checked: boolean }) {
   return (
-    <section>
-      <SearchField value={query} onChange={setQuery} placeholder="Search by Runtime ID, Type, Status..." sx={{ mb: 2, maxWidth: 400 }} />
-      <ListingTable.Container disablePaper>
-        <ListingTable density="compact">
-          <ListingTable.Head>
-            <ListingTable.Row>
-              <ListingTable.Cell>Runtime ID</ListingTable.Cell>
-              <ListingTable.Cell>Type</ListingTable.Cell>
-              <ListingTable.Cell>Status</ListingTable.Cell>
-              <ListingTable.Cell>Version</ListingTable.Cell>
-              <ListingTable.Cell>Platform</ListingTable.Cell>
-              <ListingTable.Cell>OS</ListingTable.Cell>
-              <ListingTable.Cell>Registration Time</ListingTable.Cell>
-            </ListingTable.Row>
-          </ListingTable.Head>
-          <ListingTable.Body>
-            {filtered.map((r: GqlRuntime) => (
-              <ListingTable.Row key={r.runtimeId}>
-                <ListingTable.Cell>
-                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
-                    {r.runtimeId}
-                  </Typography>
-                </ListingTable.Cell>
-                <ListingTable.Cell>{r.runtimeType}</ListingTable.Cell>
-                <ListingTable.Cell>
-                  <Chip label={r.status} size="small" color={r.status === 'RUNNING' ? 'success' : 'default'} />
-                </ListingTable.Cell>
-                <ListingTable.Cell>{r.version}</ListingTable.Cell>
-                <ListingTable.Cell>
-                  <Typography variant="body2">
-                    {r.platformName} {r.platformVersion}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {r.platformHome}
-                  </Typography>
-                </ListingTable.Cell>
-                <ListingTable.Cell>
-                  {r.osName} {r.osVersion}
-                </ListingTable.Cell>
-                <ListingTable.Cell>{new Date(r.registrationTime).toLocaleString()}</ListingTable.Cell>
-              </ListingTable.Row>
-            ))}
-          </ListingTable.Body>
-        </ListingTable>
-      </ListingTable.Container>
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'right' }}>
-        1 – {filtered.length} of {filtered.length}
+    <Stack direction="row" alignItems="center" gap={1}>
+      <Switch size="small" checked={checked} />
+      <Typography variant="body2" color="text.secondary">
+        {checked ? 'Enabled' : 'Disabled'}
       </Typography>
-    </section>
+    </Stack>
   );
 }
 
-function ArtifactDetail({ artifacts, artifactType, query }: { artifacts: GqlArtifact[]; artifactType: string; query: string }) {
-  const mapping = ARTIFACT_QUERY_MAP[artifactType];
-  if (!mapping) return null;
+function DataTable({ headers, rows, emptyMsg }: { headers?: string[]; rows: (string | JSX.Element)[][]; emptyMsg?: string }) {
+  if (rows.length === 0) return <Typography sx={emptySx}>{emptyMsg ?? 'No data available.'}</Typography>;
+  return (
+    <Table size="small">
+      {headers && (
+        <TableHead>
+          <TableRow>
+            {headers.map((h) => (
+              <TableCell key={h} sx={{ fontWeight: 600 }}>
+                {h}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
+      )}
+      <TableBody>
+        {rows.map((row, i) => (
+          <TableRow key={i}>
+            {row.map((cell, j) => (
+              <TableCell key={j} sx={headers ? undefined : cellSx}>
+                {cell}
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
 
-  const columns = mapping.fields.split(', ').filter((f) => f !== 'state');
-  const filtered = artifacts.filter((a) => !query || a.name?.toString().toLowerCase().includes(query.toLowerCase()));
+function ArtifactOverview({ artifact, artifactType }: { artifact: GqlArtifact; artifactType: string }) {
+  const artifactMapping = ARTIFACT_QUERY_MAP[artifactType];
+  if (!artifactMapping) return null;
+  const isProxyService = artifactType === 'ProxyService';
+  const fields = artifactMapping.fields.split(', ');
+  const tracing = (artifact.tracing ?? 'disabled').toString().toLowerCase();
+  const artifactState = (artifact.state ?? '').toString().toLowerCase();
+  const endpoints = (artifact.endpoints as string[] | undefined) ?? [];
+  const attributes = (artifact.attributes as Array<{ name: string; value?: string }> | undefined) ?? [];
+
+  const formatFieldValue = (f: string) => {
+    const val = artifact[f];
+    return f === 'version' && !val ? 'N/A' : (val ?? 'N/A').toString();
+  };
 
   return (
-    <Stack gap={1.5}>
-      {filtered.map((a, i) => (
-        <Card key={i} variant="outlined" sx={{ '&:hover': { boxShadow: 1 } }}>
-          <CardContent sx={{ display: 'flex', alignItems: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Grid container spacing={2} sx={{ flex: 1 }}>
-              {columns.map((col) => (
-                <Grid key={col} size={{ xs: 12 / columns.length }}>
-                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                    {col}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                    {String(a[col] ?? '—')}
-                  </Typography>
-                </Grid>
-              ))}
-            </Grid>
-            <ChevronRight size={18} style={{ color: 'var(--oxygen-palette-text-secondary)' }} />
-          </CardContent>
-        </Card>
+    <Stack gap={2}>
+      <Table size="small">
+        <TableBody>
+          {fields.map((f) => (
+            <TableRow key={f}>
+              <TableCell sx={labelSx}>{f}</TableCell>
+              <TableCell sx={cellSx}>{isProxyService && f === 'state' ? <Chip label={formatFieldValue(f).toUpperCase()} size="small" color={artifactState === 'enabled' ? 'success' : 'default'} /> : formatFieldValue(f)}</TableCell>
+            </TableRow>
+          ))}
+          {isProxyService && (
+            <TableRow>
+              <TableCell sx={labelSx}>Enable/Disable</TableCell>
+              <TableCell sx={cellSx}>
+                <Toggle checked={artifactState === 'enabled'} />
+              </TableCell>
+            </TableRow>
+          )}
+          <TableRow>
+            <TableCell sx={labelSx}>Tracing</TableCell>
+            <TableCell sx={cellSx}>
+              <Toggle checked={tracing === 'enabled'} />
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      {isProxyService && endpoints.length > 0 && (
+        <>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            Endpoints
+          </Typography>
+          <DataTable
+            rows={endpoints.map((ep) => [
+              <Typography key={ep} variant="body2" sx={{ fontFamily: 'monospace' }}>
+                {ep}
+              </Typography>,
+            ])}
+          />
+        </>
+      )}
+      {attributes.length > 0 && (
+        <>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+            Attributes
+          </Typography>
+          <DataTable headers={['Name', 'Value']} rows={attributes.map((a) => [a.name.toString(), (a.value ?? '').toString()])} />
+        </>
+      )}
+    </Stack>
+  );
+}
+
+function ArtifactSource({ envId, componentId, artifactType, artifactName }: { envId: string; componentId: string; artifactType: string; artifactName: string }) {
+  const sourceType = ARTIFACT_TYPE_TO_SOURCE_TYPE[artifactType] ?? artifactType.toLowerCase();
+  const { data: source, isLoading, error } = useArtifactSource(envId, componentId, sourceType, artifactName);
+  if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
+  if (error || !source) return <Typography sx={emptySx}>No source content available.</Typography>;
+  return (
+    <Box component="pre" sx={preSx}>
+      {source}
+    </Box>
+  );
+}
+
+function ArtifactApiDefinition({ artifact }: { artifact: GqlArtifact }) {
+  const resources = (artifact.resources as Array<{ path?: string; methods?: string }> | undefined) ?? [];
+  const context = (artifact.context ?? '/*').toString();
+  const items = resources.length === 0 ? [{ methods: 'POST', path: context }] : resources;
+  return (
+    <Stack gap={1}>
+      {items.map((r, i) => (
+        <Box key={i} sx={{ bgcolor: '#e8f5e9', p: 1.5, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Chip label={(r.methods ?? 'GET').toString().toUpperCase()} size="small" sx={{ bgcolor: '#4caf50', color: 'white', fontWeight: 700 }} />
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+            {r.path ?? context}
+          </Typography>
+        </Box>
       ))}
     </Stack>
   );
 }
 
-function ArtifactsPanel({ envId, componentId }: { envId: string; componentId: string }) {
+function ArtifactEndpoints({ artifact }: { artifact: GqlArtifact }) {
+  const endpoints = (artifact.endpoints as string[] | undefined) ?? [];
+  return (
+    <DataTable
+      rows={endpoints.map((ep) => [
+        <Typography key={ep} variant="body2" sx={{ fontFamily: 'monospace' }}>
+          {ep}
+        </Typography>,
+      ])}
+      emptyMsg="No endpoints available."
+    />
+  );
+}
+
+function ArtifactWsdl() {
+  return <Typography sx={emptySx}>No WSDL content available.</Typography>;
+}
+
+function ArtifactValue({ artifact }: { artifact: GqlArtifact }) {
+  const value = (artifact.value ?? '').toString();
+  if (!value) return <Typography sx={emptySx}>No value available.</Typography>;
+  return (
+    <>
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+        Value: {artifact.name?.toString()}
+      </Typography>
+      <Box component="pre" sx={preSx}>
+        {value}
+      </Box>
+    </>
+  );
+}
+
+function ArtifactCarbonArtifacts({ artifact }: { artifact: GqlArtifact }) {
+  const artifacts = (artifact.artifacts as Array<{ name: string; type: string }> | undefined) ?? [];
+  return <DataTable headers={['Artifact Name', 'Artifact Type']} rows={artifacts.map((a) => [a.name, a.type])} emptyMsg="No artifacts found." />;
+}
+
+function ArtifactRuntimes({ artifact }: { artifact: GqlArtifact }) {
+  const runtimes = (artifact.runtimes as Array<{ runtimeId: string; status: string }> | undefined) ?? [];
+  return (
+    <DataTable
+      headers={['Runtime ID', 'Status']}
+      rows={runtimes.map((r) => [
+        <Typography key="id" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+          {r.runtimeId}
+        </Typography>,
+        <Typography key="status" variant="body2" color={r.status === 'RUNNING' ? 'success.main' : 'error.main'} sx={{ fontWeight: 600 }}>
+          {r.status}
+        </Typography>,
+      ])}
+      emptyMsg="No runtimes found."
+    />
+  );
+}
+
+const drawerSx = { '& .MuiDrawer-paper': { width: '60%', maxWidth: 700, minWidth: 400, position: 'fixed', top: 64, height: 'calc(100% - 64px)', borderLeft: '1px solid', borderColor: 'divider' } };
+const headerSx = { px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' };
+
+function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | null; onClose: () => void }) {
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const artifactKey = selected ? `${selected.artifactType}-${selected.artifact.name}` : '';
+  useEffect(() => {
+    setActiveTabIndex(0);
+  }, [artifactKey]);
+
+  if (!selected) return null;
+
+  const { artifact, artifactType, envId, componentId } = selected;
+  const tabs = ARTIFACT_TABS[artifactType] ?? DEFAULT_ARTIFACT_TABS;
+  const validTabIndex = Math.min(activeTabIndex, tabs.length - 1);
+  const activeTab = tabs[validTabIndex];
+
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'Overview':
+        return <ArtifactOverview artifact={artifact} artifactType={artifactType} />;
+      case 'Source':
+        return <ArtifactSource envId={envId} componentId={componentId} artifactType={artifactType} artifactName={artifact.name?.toString() ?? ''} />;
+      case 'API definition':
+        return <ArtifactApiDefinition artifact={artifact} />;
+      case 'Endpoints':
+        return <ArtifactEndpoints artifact={artifact} />;
+      case 'WSDL':
+        return <ArtifactWsdl />;
+      case 'Value':
+        return <ArtifactValue artifact={artifact} />;
+      case 'Artifacts':
+        return <ArtifactCarbonArtifacts artifact={artifact} />;
+      case 'Runtimes':
+        return <ArtifactRuntimes artifact={artifact} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Drawer anchor="right" open onClose={onClose} variant="persistent" sx={drawerSx}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={headerSx}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          {artifact.name?.toString()}
+        </Typography>
+        <Stack direction="row" gap={0.5}>
+          <IconButton size="small">
+            <Maximize2 size={16} />
+          </IconButton>
+          <IconButton size="small" onClick={onClose}>
+            <X size={16} />
+          </IconButton>
+        </Stack>
+      </Stack>
+      <Box sx={{ px: 2 }}>
+        <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
+          {tabs.map((t) => (
+            <Tab key={t} label={t} />
+          ))}
+        </Tabs>
+        {renderActiveTab()}
+      </Box>
+    </Drawer>
+  );
+}
+
+function SelectedTypeArtifacts({ artifacts, artifactType, query, onSelect }: { artifacts: GqlArtifact[]; artifactType: string; query: string; onSelect: (a: GqlArtifact) => void }) {
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const artifactMapping = ARTIFACT_QUERY_MAP[artifactType];
+  if (!artifactMapping) return null;
+
+  const columns = artifactMapping.fields.split(', ').filter((f) => f !== 'state' && f !== 'container');
+  const filtered = artifacts.filter((a) => !query || a.name?.toString().toLowerCase().includes(query.toLowerCase()));
+  const supportsToggle = ['ProxyService', 'Endpoint', 'Task'].includes(artifactType);
+  const hasStateField = ['ProxyService', 'Task', 'Connector'].includes(artifactType);
+  const paginatedArtifacts = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const totalColumns = columns.length + (hasStateField ? 1 : 0);
+  const columnSize = Math.floor(12 / totalColumns);
+
+  return (
+    <>
+      <Stack gap={1.5}>
+        {paginatedArtifacts.map((a, i) => {
+          const artifactState = (a.state ?? '').toString().toLowerCase();
+          return (
+            <Card key={i} variant="outlined" sx={{ cursor: 'pointer', width: '100%', '&:hover': { boxShadow: 1 } }} onClick={() => onSelect(a)}>
+              <CardContent sx={{ display: 'flex', alignItems: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                <Grid container spacing={2} sx={{ flex: 1 }}>
+                  {columns.map((col) => (
+                    <Grid key={col} size={{ xs: columnSize }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                        {col}
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                        {(a[col] ?? '—').toString()}
+                      </Typography>
+                    </Grid>
+                  ))}
+                  {hasStateField && (
+                    <Grid size={{ xs: columnSize }}>
+                      <Typography variant="caption" color="text.secondary">
+                        State
+                      </Typography>
+                      <Chip label={(a.state ?? '—').toString().toUpperCase()} size="small" color={artifactState === 'enabled' ? 'success' : 'default'} />
+                    </Grid>
+                  )}
+                </Grid>
+                {supportsToggle && <Switch size="small" checked={artifactState === 'enabled'} onClick={(e) => e.stopPropagation()} sx={{ mr: 1 }} />}
+                <ChevronRight size={18} style={{ color: 'var(--oxygen-palette-text-secondary)', flexShrink: 0 }} />
+              </CardContent>
+            </Card>
+          );
+        })}
+      </Stack>
+      {filtered.length > 5 && (
+        <TablePagination
+          component="div"
+          count={filtered.length}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 25]}
+          sx={{ mt: 1 }}
+        />
+      )}
+    </>
+  );
+}
+
+function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId: string; componentId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void }) {
   const { data: types = [], isLoading } = useArtifactTypes(componentId, envId);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
-  const activeType = selectedType ?? types[0]?.artifactType ?? '';
-  const { data: artifacts = [], isLoading: loadingArtifacts } = useArtifacts(activeType, envId, componentId);
+  const selectedArtifactType = selectedType ?? types[0]?.artifactType ?? '';
+  const { data: artifacts = [], isLoading: loadingArtifacts } = useArtifacts(selectedArtifactType, envId, componentId);
 
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
   if (types.length === 0)
     return (
       <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
-        No artifacts found for this environment.
+        No artifacts found for this component.
       </Typography>
     );
 
@@ -129,12 +425,13 @@ function ArtifactsPanel({ envId, componentId }: { envId: string; componentId: st
           {types.map((t) => (
             <ListItemButton
               key={t.artifactType}
-              selected={t.artifactType === activeType}
+              selected={t.artifactType === selectedArtifactType}
               onClick={() => {
                 setSelectedType(t.artifactType);
                 setQuery('');
               }}
               sx={{ borderRadius: 1, mb: 0.5 }}>
+              {ARTIFACT_ICONS[t.artifactType] && <ListItemIcon sx={{ minWidth: 32 }}>{ARTIFACT_ICONS[t.artifactType]}</ListItemIcon>}
               <ListItemText primary={t.artifactType} />
               <Badge badgeContent={t.artifactCount} color="primary" sx={{ mr: 1 }} />
             </ListItemButton>
@@ -143,18 +440,16 @@ function ArtifactsPanel({ envId, componentId }: { envId: string; componentId: st
       </Grid>
       <Grid size={{ xs: 12, sm: 9 }}>
         <Typography variant="overline" sx={{ mb: 1, display: 'block' }}>
-          {activeType}s
+          {selectedArtifactType}s
         </Typography>
-        <SearchField value={query} onChange={setQuery} placeholder={`Search ${activeType}s by name, context, or version`} fullWidth sx={{ mb: 2 }} />
-        {loadingArtifacts ? <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} /> : <ArtifactDetail artifacts={artifacts} artifactType={activeType} query={query} />}
+        <SearchField value={query} onChange={setQuery} placeholder={`Search ${selectedArtifactType}s by name, context, or version`} fullWidth sx={{ mb: 2 }} />
+        {loadingArtifacts ? <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} /> : <SelectedTypeArtifacts artifacts={artifacts} artifactType={selectedArtifactType} query={query} onSelect={(a) => onSelectArtifact(a, selectedArtifactType, envId)} />}
       </Grid>
     </Grid>
   );
 }
 
-function EnvironmentCard({ env, projectId, componentId }: { env: GqlEnvironment; projectId: string; componentId: string }) {
-  const [tab, setTab] = useState(0);
-
+function Environment({ env, componentId, onSelectArtifact }: { env: GqlEnvironment; componentId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void }) {
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
@@ -169,12 +464,7 @@ function EnvironmentCard({ env, projectId, componentId }: { env: GqlEnvironment;
             <Button variant="contained">Configure Runtime</Button>
           </Stack>
         </Stack>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-          <Tab label="Runtimes" />
-          <Tab label="Artifacts" />
-        </Tabs>
-        {tab === 0 && <RuntimesTable envId={env.id} projectId={projectId} componentId={componentId} />}
-        {tab === 1 && <ArtifactsPanel envId={env.id} componentId={componentId} />}
+        <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />
       </CardContent>
     </Card>
   );
@@ -184,33 +474,33 @@ export default function Component(): JSX.Element {
   const { orgHandler = 'default', projectId = '', componentHandler = '' } = useParams();
   const { data: component, isLoading } = useComponentByHandler(projectId, componentHandler);
   const { data: environments = [] } = useEnvironments(projectId);
+  const [selectedArtifact, setSelectedArtifact] = useState<SelectedArtifact | null>(null);
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
         <CircularProgress />
       </PageContent>
     );
-  }
-  if (!component) {
-    return <NotFound message="Component not found" backTo={projectUrl(orgHandler, projectId)} backLabel="Back to Project" />;
-  }
+  if (!component) return <NotFound message="Component not found" backTo={projectUrl(orgHandler, projectId)} backLabel="Back to Project" />;
 
   return (
-    <PageContent>
-      <Stack component="header" direction="row" alignItems="center" gap={2} sx={{ mb: 1 }}>
-        <Avatar sx={{ width: 56, height: 56, fontSize: 24, bgcolor: 'text.primary', color: 'background.paper' }}>{component?.displayName?.[0]?.toUpperCase() ?? 'C'}</Avatar>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          {component?.displayName ?? componentHandler}
+    <Box sx={{ position: 'relative', overflow: 'hidden', flex: 1 }}>
+      <PageContent>
+        <Stack component="header" direction="row" alignItems="center" gap={2} sx={{ mb: 1 }}>
+          <Avatar sx={{ width: 56, height: 56, fontSize: 24, bgcolor: 'text.primary', color: 'background.paper' }}>{component.displayName?.[0]?.toUpperCase() ?? 'C'}</Avatar>
+          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+            {component.displayName ?? componentHandler}
+          </Typography>
+        </Stack>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4, ml: 9 }}>
+          {component.description || '+ Add Description'}
         </Typography>
-      </Stack>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 4, ml: 9 }}>
-        {component?.description || '+ Add Description'}
-      </Typography>
-
-      {environments.map((env) => (
-        <EnvironmentCard key={env.id} env={env} projectId={projectId} componentId={component?.id ?? ''} />
-      ))}
-    </PageContent>
+        {environments.map((env) => (
+          <Environment key={env.id} env={env} componentId={component.id} onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId })} />
+        ))}
+      </PageContent>
+      <ArtifactDetail selected={selectedArtifact} onClose={() => setSelectedArtifact(null)} />
+    </Box>
   );
 }

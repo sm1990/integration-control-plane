@@ -1306,8 +1306,7 @@ service /auth on httpListener {
                     signatureConfig: {
                         secret: defaultJwtHMACSecret
                     }
-                },
-                scopes: [auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
+                }
             }
         ]
     }
@@ -1453,11 +1452,18 @@ service /auth on httpListener {
     }
 
     // DELETE /auth/orgs/{orgHandle}/groups/{groupId}/roles/{mappingId} - Remove role from group
-    // TODO Update the permission checks
     @http:ResourceConfig {
-        auth: {
-            scopes: [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE]
-        }
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
     }
     resource function delete orgs/[string orgHandle]/groups/[string groupId]/roles/[int mappingId](http:Request req)
             returns http:Ok|http:NotFound|http:Forbidden|http:InternalServerError|http:Unauthorized|error {
@@ -1507,72 +1513,44 @@ service /auth on httpListener {
         }
 
         // Granular permission checks based on mapping scope
-        // Check permissions at the scope level of the mapping (integration → project → org)
+        // Check user has appropriate permissions at the specified scope
+        types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
         if mapping.integrationUuid is string {
-            // Integration scope - most restrictive
-            string integrationId = <string>mapping.integrationUuid;
-            string projectId = mapping.projectUuid is string ? <string>mapping.projectUuid : "";
-            
-            boolean|error canRemove = auth:canAssignRolesAtIntegrationScope(
-                userContext.userId, 
-                integrationId, 
-                projectId
-            );
-            if canRemove is error {
-                log:printError("Error checking integration scope permissions", canRemove, 
-                    userId = userContext.userId, 
-                    integrationId = integrationId);
-                return utils:createInternalServerError("Error checking permissions");
-            }
-            
-            if !canRemove {
-                log:printWarn("User lacks permission to remove roles at integration scope", 
-                    userId = userContext.userId, 
-                    integrationId = integrationId);
-                return <http:Forbidden>{
-                    body: {
-                        message: string `You do not have permission to remove roles at integration scope: ${integrationId}`
-                    }
-                };
-            }
+            // Integration-level scope - most restrictive
+            string integrationUuid = <string>mapping.integrationUuid;
+            string projectUuid = <string>mapping.projectUuid;
+            scope.projectUuid = projectUuid;
+            scope.integrationUuid = integrationUuid;
         } else if mapping.projectUuid is string {
-            // Project scope
-            string projectId = <string>mapping.projectUuid;
-            
-            boolean|error canRemove = auth:canAssignRolesAtProjectScope(userContext.userId, projectId);
-            if canRemove is error {
-                log:printError("Error checking project scope permissions", canRemove, 
-                    userId = userContext.userId, 
-                    projectId = projectId);
-                return utils:createInternalServerError("Error checking permissions");
-            }
-            
-            if !canRemove {
-                log:printWarn("User lacks permission to remove roles at project scope", 
-                    userId = userContext.userId, 
-                    projectId = projectId);
-                return <http:Forbidden>{
-                    body: {
-                        message: string `You do not have permission to remove roles at project scope: ${projectId}`
-                    }
-                };
-            }
-        } else {
-            // Organization scope - least restrictive
-            boolean|error canRemove = auth:canAssignRolesAtOrgScope(userContext.userId);
-            if canRemove is error {
-                log:printError("Error checking org scope permissions", canRemove, userId = userContext.userId);
-                return utils:createInternalServerError("Error checking permissions");
-            }
-            
-            if !canRemove {
-                log:printWarn("User lacks permission to remove roles at org scope", userId = userContext.userId);
-                return <http:Forbidden>{
-                    body: {
-                        message: "You do not have permission to remove roles at organization scope"
-                    }
-                };
-            }
+            // Project-level scope
+            string projectUuid = <string>mapping.projectUuid;
+            scope.projectUuid = projectUuid;
+        } 
+
+        string[] permissionsList = [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS];
+        if scope.integrationUuid is string {
+            permissionsList.push(auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE);
+        } 
+        if scope.projectUuid is string {
+            permissionsList.push(auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE);
+        }
+        boolean|error canAssign = auth:hasAnyPermission(userContext.userId, 
+            permissionsList, 
+            scope
+        );
+        if canAssign is error {
+            log:printError("Error checking project scope permissions", canAssign, userId = userContext.userId);
+            return utils:createInternalServerError("Error checking permissions");
+        }
+        
+        if !canAssign {
+            log:printWarn("User lacks permission to remove roles at this scope", 
+                userId = userContext.userId, projectUuid = mapping.projectUuid ?: "N/A", integrationUuid = mapping.integrationUuid ?: "N/A");
+            return <http:Forbidden>{
+                body: {
+                    message: "You do not have permission to remove roles at this scope"
+                }
+            };
         }
 
         // Remove the role mapping

@@ -638,6 +638,7 @@ CREATE TABLE runtime_apis (
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, api_name),
@@ -673,6 +674,7 @@ CREATE TABLE runtime_proxy_services (
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, proxy_name),
@@ -707,6 +709,7 @@ CREATE TABLE runtime_endpoints (
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, endpoint_name),
@@ -747,6 +750,7 @@ CREATE TABLE runtime_inbound_endpoints (
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, inbound_name),
@@ -770,6 +774,7 @@ CREATE TABLE runtime_sequences (
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, sequence_name),
@@ -792,6 +797,7 @@ CREATE TABLE runtime_tasks (
         'enabled',
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, task_name),
@@ -807,6 +813,7 @@ CREATE TABLE runtime_templates (
     runtime_id VARCHAR(100) NOT NULL,
     template_name VARCHAR(200) NOT NULL,
     template_type VARCHAR(100) NOT NULL,
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, template_name),
@@ -822,6 +829,7 @@ CREATE TABLE runtime_message_stores (
     store_name VARCHAR(200) NOT NULL,
     store_type VARCHAR(100) NOT NULL,
     size BIGINT NOT NULL DEFAULT 0,
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, store_name),
@@ -842,6 +850,7 @@ CREATE TABLE runtime_message_processors (
         'enabled',
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, processor_name),
@@ -864,6 +873,7 @@ CREATE TABLE runtime_local_entries (
         'enabled',
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, entry_name),
@@ -886,6 +896,7 @@ CREATE TABLE runtime_data_services (
         'enabled',
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, service_name),
@@ -924,6 +935,7 @@ CREATE TABLE runtime_data_sources (
         'enabled',
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, datasource_name),

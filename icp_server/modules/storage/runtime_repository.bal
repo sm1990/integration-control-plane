@@ -235,7 +235,7 @@ public isolated function getListenersForRuntime(string runtimeId) returns types:
 public isolated function getApisForRuntime(string runtimeId) returns types:RestApi[]|error {
     types:RestApi[] apiList = [];
     stream<types:RestApi, sql:Error?> apiStream = dbClient->query(`
-        SELECT api_name, url, context, version, state, tracing
+        SELECT api_name, url, context, version, state, tracing, carbon_app
         FROM runtime_apis 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -291,7 +291,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
         };
 
     stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(`
-        SELECT proxy_name, state, tracing
+        SELECT proxy_name, state, tracing, carbon_app
         FROM runtime_proxy_services 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -301,7 +301,8 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
             types:ProxyService proxy = {
                 name: proxyRecord.proxy_name,
                 state: proxyRecord.state,
-                tracing: proxyRecord.tracing
+                tracing: proxyRecord.tracing,
+                carbonApp: proxyRecord.carbon_app
             };
             string[] eps = endpointMap[proxyRecord.proxy_name] ?: [];
             proxy.endpoints = eps;
@@ -315,7 +316,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
 public isolated function getEndpointsForRuntime(string runtimeId) returns types:Endpoint[]|error {
     types:Endpoint[] endpointList = [];
     stream<types:EndpointRecordInDB, sql:Error?> endpointStream = dbClient->query(`
-        SELECT endpoint_name, endpoint_type, state, tracing
+        SELECT endpoint_name, endpoint_type, state, tracing, carbon_app
         FROM runtime_endpoints 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -326,7 +327,8 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
                 name: endpointRecord.endpoint_name,
                 'type: endpointRecord.endpoint_type,
                 state: endpointRecord.state,
-                tracing: endpointRecord.tracing
+                tracing: endpointRecord.tracing,
+                carbonApp: endpointRecord.carbon_app
             };
             endpointList.push(endpoint);
         };
@@ -359,13 +361,13 @@ public isolated function getInboundEndpointsForRuntime(string runtimeId) returns
     sql:ParameterizedQuery query;
     if isMSSQL() {
         query = `
-            SELECT inbound_name, protocol, sequence, state, [statistics], on_error, tracing
+            SELECT inbound_name, protocol, sequence, state, [statistics], on_error, tracing, carbon_app
             FROM runtime_inbound_endpoints 
             WHERE runtime_id = ${runtimeId}
         `;
     } else {
         query = `
-            SELECT inbound_name, protocol, sequence, state, statistics, on_error, tracing
+            SELECT inbound_name, protocol, sequence, state, statistics, on_error, tracing, carbon_app
             FROM runtime_inbound_endpoints 
             WHERE runtime_id = ${runtimeId}
         `;
@@ -384,7 +386,7 @@ public isolated function getInboundEndpointsForRuntime(string runtimeId) returns
 public isolated function getSequencesForRuntime(string runtimeId) returns types:Sequence[]|error {
     types:Sequence[] sequenceList = [];
     stream<types:SequenceRecordInDB, sql:Error?> sequenceStream = dbClient->query(`
-        SELECT sequence_name, sequence_type, container, state, tracing
+        SELECT sequence_name, sequence_type, container, state, tracing, carbon_app
         FROM runtime_sequences 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -396,7 +398,8 @@ public isolated function getSequencesForRuntime(string runtimeId) returns types:
                 'type: sequenceRecord.sequence_type,
                 container: sequenceRecord.container,
                 state: sequenceRecord.state,
-                tracing: sequenceRecord.tracing
+                tracing: sequenceRecord.tracing,
+                carbonApp: sequenceRecord.carbon_app
             };
             sequenceList.push(sequence);
         };
@@ -408,7 +411,7 @@ public isolated function getSequencesForRuntime(string runtimeId) returns types:
 public isolated function getTasksForRuntime(string runtimeId) returns types:Task[]|error {
     types:Task[] taskList = [];
     stream<types:TaskRecordInDB, sql:Error?> taskStream = dbClient->query(`
-        SELECT task_name, task_class, task_group, state 
+        SELECT task_name, task_class, task_group, state, carbon_app
         FROM runtime_tasks 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -419,7 +422,8 @@ public isolated function getTasksForRuntime(string runtimeId) returns types:Task
                 name: taskRecord.task_name,
                 'class: taskRecord.task_class,
                 group: taskRecord.task_group,
-                state: taskRecord.state
+                state: taskRecord.state,
+                carbonApp: taskRecord.carbon_app
             };
             taskList.push(task);
         };
@@ -431,7 +435,7 @@ public isolated function getTasksForRuntime(string runtimeId) returns types:Task
 public isolated function getTemplatesForRuntime(string runtimeId) returns types:Template[]|error {
     types:Template[] templateList = [];
     stream<types:Template, sql:Error?> templateStream = dbClient->query(`
-        SELECT template_name, template_type 
+        SELECT template_name, template_type, carbon_app
         FROM runtime_templates 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -449,7 +453,7 @@ public isolated function getTemplatesForRuntime(string runtimeId) returns types:
 public isolated function getMessageStoresForRuntime(string runtimeId) returns types:MessageStore[]|error {
     types:MessageStore[] storeList = [];
     stream<types:MessageStoreRecordInDB, sql:Error?> storeStream = dbClient->query(`
-        SELECT store_name, store_type, size 
+        SELECT store_name, store_type, size, carbon_app
         FROM runtime_message_stores 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -459,7 +463,8 @@ public isolated function getMessageStoresForRuntime(string runtimeId) returns ty
             types:MessageStore store = {
                 name: storeRecord.store_name,
                 'type: storeRecord.store_type,
-                size: storeRecord.size
+                size: storeRecord.size,
+                carbonApp: storeRecord.carbon_app
             };
             storeList.push(store);
         };
@@ -471,7 +476,7 @@ public isolated function getMessageStoresForRuntime(string runtimeId) returns ty
 public isolated function getMessageProcessorsForRuntime(string runtimeId) returns types:MessageProcessor[]|error {
     types:MessageProcessor[] processorList = [];
     stream<types:MessageProcessorRecordInDB, sql:Error?> processorStream = dbClient->query(`
-        SELECT processor_name, processor_type, processor_class, state 
+        SELECT processor_name, processor_type, processor_class, state, carbon_app
         FROM runtime_message_processors 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -482,7 +487,8 @@ public isolated function getMessageProcessorsForRuntime(string runtimeId) return
                 name: processorRecord.processor_name,
                 'type: processorRecord.processor_type,
                 'class: processorRecord.processor_class,
-                state: processorRecord.state
+                state: processorRecord.state,
+                carbonApp: processorRecord.carbon_app
             };
             processorList.push(processor);
         };
@@ -494,7 +500,7 @@ public isolated function getMessageProcessorsForRuntime(string runtimeId) return
 public isolated function getLocalEntriesForRuntime(string runtimeId) returns types:LocalEntry[]|error {
     types:LocalEntry[] entryList = [];
     stream<types:LocalEntryRecordInDB, sql:Error?> entryStream = dbClient->query(`
-        SELECT entry_name, entry_type, entry_value, state 
+        SELECT entry_name, entry_type, entry_value, state, carbon_app
         FROM runtime_local_entries 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -505,7 +511,8 @@ public isolated function getLocalEntriesForRuntime(string runtimeId) returns typ
                 name: entryRecord.entry_name,
                 'type: entryRecord.entry_type,
                 value: entryRecord.entry_value,
-                state: entryRecord.state
+                state: entryRecord.state,
+                carbonApp: entryRecord.carbon_app
             };
             entryList.push(entry);
         };
@@ -517,7 +524,7 @@ public isolated function getLocalEntriesForRuntime(string runtimeId) returns typ
 public isolated function getDataServicesForRuntime(string runtimeId) returns types:DataService[]|error {
     types:DataService[] serviceList = [];
     stream<types:DataService, sql:Error?> serviceStream = dbClient->query(`
-        SELECT service_name, description, wsdl, state 
+        SELECT service_name, description, wsdl, state, carbon_app
         FROM runtime_data_services 
         WHERE runtime_id = ${runtimeId}
     `);
@@ -587,7 +594,7 @@ isolated function parseCarbonAppArtifacts(json j) returns types:CarbonAppArtifac
 public isolated function getDataSourcesForRuntime(string runtimeId) returns types:DataSource[]|error {
     types:DataSource[] sourceList = [];
     stream<types:DataSource, sql:Error?> sourceStream = dbClient->query(`
-        SELECT datasource_name, datasource_type, driver, url, username, state 
+        SELECT datasource_name, datasource_type, driver, url, username, state, carbon_app
         FROM runtime_data_sources 
         WHERE runtime_id = ${runtimeId}
     `);

@@ -941,27 +941,28 @@ isolated function deleteExistingArtifacts(string runtimeId) returns error? {
 isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
     foreach types:RestApi api in <types:RestApi[]>heartbeat.artifacts.apis {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = api?.carbonApp;
         if dbType == MSSQL {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_apis AS target
                 USING (VALUES (${heartbeat.runtime}, ${api.name}, ${artifactId}, ${api.url}, ${api.context}, 
-                       ${api.version}, ${api.state}, ${api.tracing})) 
-                       AS source (runtime_id, api_name, artifact_id, url, context, version, state, tracing)
+                       ${api.version}, ${api.state}, ${api.tracing}, ${carbonApp})) 
+                       AS source (runtime_id, api_name, artifact_id, url, context, version, state, tracing, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.api_name = source.api_name)
                 WHEN MATCHED THEN
                     UPDATE SET url = source.url, context = source.context, version = source.version,
-                               state = source.state, tracing = source.tracing, updated_at = CURRENT_TIMESTAMP
+                               state = source.state, tracing = source.tracing, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, api_name, artifact_id, url, context, version, state, tracing)
-                    VALUES (source.runtime_id, source.api_name, source.artifact_id, source.url, source.context, source.version, source.state, source.tracing);
+                    INSERT (runtime_id, api_name, artifact_id, url, context, version, state, tracing, carbon_app)
+                    VALUES (source.runtime_id, source.api_name, source.artifact_id, source.url, source.context, source.version, source.state, source.tracing, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_apis (
-                    runtime_id, api_name, url, context, version, state, tracing
+                    runtime_id, api_name, url, context, version, state, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${api.name}, ${api.url},
-                    ${api.context}, ${api.version}, ${api.state}, ${api.tracing}
+                    ${api.context}, ${api.version}, ${api.state}, ${api.tracing}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, api_name) DO UPDATE SET
                     url = EXCLUDED.url,
@@ -969,15 +970,16 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                     version = EXCLUDED.version,
                     state = EXCLUDED.state,
                     tracing = EXCLUDED.tracing,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_apis (
-                    runtime_id, api_name, artifact_id, url, context, version, state, tracing
+                    runtime_id, api_name, artifact_id, url, context, version, state, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${api.name}, ${artifactId}, ${api.url},
-                    ${api.context}, ${api.version}, ${api.state}, ${api.tracing}
+                    ${api.context}, ${api.version}, ${api.state}, ${api.tracing}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     url = VALUES(url),
@@ -985,6 +987,7 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
                     version = VALUES(version),
                     state = VALUES(state),
                     tracing = VALUES(tracing),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1035,40 +1038,43 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
 
     foreach types:ProxyService proxy in <types:ProxyService[]>heartbeat.artifacts.proxyServices {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = proxy?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_proxy_services AS target
-                USING (VALUES (${heartbeat.runtime}, ${proxy.name}, ${artifactId}, ${proxy.state}, ${proxy.tracing}))
-                       AS source (runtime_id, proxy_name, artifact_id, state, tracing)
+                USING (VALUES (${heartbeat.runtime}, ${proxy.name}, ${artifactId}, ${proxy.state}, ${proxy.tracing}, ${carbonApp}))
+                       AS source (runtime_id, proxy_name, artifact_id, state, tracing, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.proxy_name = source.proxy_name)
                 WHEN MATCHED THEN
-                    UPDATE SET state = source.state, tracing = source.tracing, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET state = source.state, tracing = source.tracing, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, proxy_name, artifact_id, state, tracing)
-                    VALUES (source.runtime_id, source.proxy_name, source.artifact_id, source.state, source.tracing);
+                    INSERT (runtime_id, proxy_name, artifact_id, state, tracing, carbon_app)
+                    VALUES (source.runtime_id, source.proxy_name, source.artifact_id, source.state, source.tracing, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_proxy_services (
-                    runtime_id, proxy_name, artifact_id, state, tracing
+                    runtime_id, proxy_name, artifact_id, state, tracing, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${proxy.name}, ${artifactId}, ${proxy.state}, ${proxy.tracing}
+                    ${heartbeat.runtime}, ${proxy.name}, ${artifactId}, ${proxy.state}, ${proxy.tracing}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, proxy_name) DO UPDATE SET
                     state = EXCLUDED.state,
                     tracing = EXCLUDED.tracing,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_proxy_services (
-                    runtime_id, proxy_name, artifact_id, state, tracing
+                    runtime_id, proxy_name, artifact_id, state, tracing, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${proxy.name}, ${artifactId}, ${proxy.state}, ${proxy.tracing}
+                    ${heartbeat.runtime}, ${proxy.name}, ${artifactId}, ${proxy.state}, ${proxy.tracing}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     state = VALUES(state),
                     tracing = VALUES(tracing),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1115,44 +1121,47 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
 
     foreach types:Endpoint endpoint in <types:Endpoint[]>heartbeat.artifacts.endpoints {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = endpoint?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_endpoints AS target
-                USING (VALUES (${heartbeat.runtime}, ${endpoint.name}, ${artifactId}, ${endpoint.'type}, ${endpoint.state}, ${endpoint.tracing}))
-                       AS source (runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing)
+                USING (VALUES (${heartbeat.runtime}, ${endpoint.name}, ${artifactId}, ${endpoint.'type}, ${endpoint.state}, ${endpoint.tracing}, ${carbonApp}))
+                       AS source (runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.endpoint_name = source.endpoint_name)
                 WHEN MATCHED THEN
-                    UPDATE SET endpoint_type = source.endpoint_type, state = source.state, tracing = source.tracing, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET endpoint_type = source.endpoint_type, state = source.state, tracing = source.tracing, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing)
-                    VALUES (source.runtime_id, source.endpoint_name, source.artifact_id, source.endpoint_type, source.state, source.tracing);
+                    INSERT (runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing, carbon_app)
+                    VALUES (source.runtime_id, source.endpoint_name, source.artifact_id, source.endpoint_type, source.state, source.tracing, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_endpoints (
-                    runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing
+                    runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${endpoint.name}, ${artifactId}, ${endpoint.'type},
-                    ${endpoint.state}, ${endpoint.tracing}
+                    ${endpoint.state}, ${endpoint.tracing}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, endpoint_name) DO UPDATE SET
                     endpoint_type = EXCLUDED.endpoint_type,
                     state = EXCLUDED.state,
                     tracing = EXCLUDED.tracing,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_endpoints (
-                    runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing
+                    runtime_id, endpoint_name, artifact_id, endpoint_type, state, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${endpoint.name}, ${artifactId}, ${endpoint.'type},
-                    ${endpoint.state}, ${endpoint.tracing}
+                    ${endpoint.state}, ${endpoint.tracing}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     endpoint_type = VALUES(endpoint_type),
                     state = VALUES(state),
                     tracing = VALUES(tracing),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1205,25 +1214,26 @@ isolated function insertMIArtifacts(types:Heartbeat heartbeat) returns error? {
 isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns error? {
     foreach types:InboundEndpoint inbound in <types:InboundEndpoint[]>heartbeat.artifacts.inboundEndpoints {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = inbound?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_inbound_endpoints AS target
-                USING (VALUES (${heartbeat.runtime}, ${inbound.name}, ${artifactId}, ${inbound.protocol}, ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}))
-                       AS source (runtime_id, inbound_name, artifact_id, protocol, sequence, state, [statistics], on_error, tracing)
+                USING (VALUES (${heartbeat.runtime}, ${inbound.name}, ${artifactId}, ${inbound.protocol}, ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}, ${carbonApp}))
+                       AS source (runtime_id, inbound_name, artifact_id, protocol, sequence, state, [statistics], on_error, tracing, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.inbound_name = source.inbound_name)
                 WHEN MATCHED THEN
-                    UPDATE SET protocol = source.protocol, sequence = source.sequence, state = source.state, [statistics] = source.[statistics], on_error = source.on_error, tracing = source.tracing, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET protocol = source.protocol, sequence = source.sequence, state = source.state, [statistics] = source.[statistics], on_error = source.on_error, tracing = source.tracing, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, inbound_name, artifact_id, protocol, sequence, state, [statistics], on_error, tracing)
-                    VALUES (source.runtime_id, source.inbound_name, source.artifact_id, source.protocol, source.sequence, source.state, source.[statistics], source.on_error, source.tracing);
+                    INSERT (runtime_id, inbound_name, artifact_id, protocol, sequence, state, [statistics], on_error, tracing, carbon_app)
+                    VALUES (source.runtime_id, source.inbound_name, source.artifact_id, source.protocol, source.sequence, source.state, source.[statistics], source.on_error, source.tracing, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_inbound_endpoints (
-                    runtime_id, inbound_name, protocol, sequence, state, statistics, on_error, tracing
+                    runtime_id, inbound_name, protocol, sequence, state, statistics, on_error, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${inbound.name}, ${inbound.protocol},
-                    ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}
+                    ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, inbound_name) DO UPDATE SET
                     protocol = EXCLUDED.protocol,
@@ -1232,15 +1242,16 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     statistics = EXCLUDED.statistics,
                     on_error = EXCLUDED.on_error,
                     tracing = EXCLUDED.tracing,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_inbound_endpoints (
-                    runtime_id, inbound_name, artifact_id, protocol, sequence, state, statistics, on_error, tracing
+                    runtime_id, inbound_name, artifact_id, protocol, sequence, state, statistics, on_error, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${inbound.name}, ${artifactId}, ${inbound.protocol},
-                    ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}
+                    ${inbound.sequence}, ${inbound.state}, ${inbound.statistics}, ${inbound.onError}, ${inbound.tracing}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     protocol = VALUES(protocol),
@@ -1249,6 +1260,7 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     statistics = VALUES(statistics),
                     on_error = VALUES(on_error),
                     tracing = VALUES(tracing),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1256,46 +1268,49 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
 
     foreach types:Sequence sequence in <types:Sequence[]>heartbeat.artifacts.sequences {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = sequence?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_sequences AS target
-                USING (VALUES (${heartbeat.runtime}, ${sequence.name}, ${artifactId}, ${sequence.'type}, ${sequence.container}, ${sequence.state}, ${sequence.tracing}))
-                       AS source (runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing)
+                USING (VALUES (${heartbeat.runtime}, ${sequence.name}, ${artifactId}, ${sequence.'type}, ${sequence.container}, ${sequence.state}, ${sequence.tracing}, ${carbonApp}))
+                       AS source (runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.sequence_name = source.sequence_name)
                 WHEN MATCHED THEN
-                    UPDATE SET sequence_type = source.sequence_type, container = source.container, state = source.state, tracing = source.tracing, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET sequence_type = source.sequence_type, container = source.container, state = source.state, tracing = source.tracing, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing)
-                    VALUES (source.runtime_id, source.sequence_name, source.artifact_id, source.sequence_type, source.container, source.state, source.tracing);
+                    INSERT (runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing, carbon_app)
+                    VALUES (source.runtime_id, source.sequence_name, source.artifact_id, source.sequence_type, source.container, source.state, source.tracing, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_sequences (
-                    runtime_id, sequence_name, sequence_type, container, state, tracing
+                    runtime_id, sequence_name, sequence_type, container, state, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${sequence.name}, ${sequence.'type},
-                    ${sequence.container}, ${sequence.state}, ${sequence.tracing}
+                    ${sequence.container}, ${sequence.state}, ${sequence.tracing}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, sequence_name) DO UPDATE SET
                     sequence_type = EXCLUDED.sequence_type,
                     container = EXCLUDED.container,
                     state = EXCLUDED.state,
                     tracing = EXCLUDED.tracing,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_sequences (
-                    runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing
+                    runtime_id, sequence_name, artifact_id, sequence_type, container, state, tracing, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${sequence.name}, ${artifactId}, ${sequence.'type},
-                    ${sequence.container}, ${sequence.state}, ${sequence.tracing}
+                    ${sequence.container}, ${sequence.state}, ${sequence.tracing}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     sequence_type = VALUES(sequence_type),
                     container = VALUES(container),
                     state = VALUES(state),
                     tracing = VALUES(tracing),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1303,122 +1318,131 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
 
     foreach types:Task task in <types:Task[]>heartbeat.artifacts.tasks {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = task?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_tasks AS target
-                USING (VALUES (${heartbeat.runtime}, ${task.name}, ${artifactId}, ${task.'class}, ${task.group}, ${task.state}))
-                       AS source (runtime_id, task_name, artifact_id, task_class, task_group, state)
+                USING (VALUES (${heartbeat.runtime}, ${task.name}, ${artifactId}, ${task.'class}, ${task.group}, ${task.state}, ${carbonApp}))
+                       AS source (runtime_id, task_name, artifact_id, task_class, task_group, state, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.task_name = source.task_name)
                 WHEN MATCHED THEN
-                    UPDATE SET task_class = source.task_class, task_group = source.task_group, state = source.state, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET task_class = source.task_class, task_group = source.task_group, state = source.state, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, task_name, artifact_id, task_class, task_group, state)
-                    VALUES (source.runtime_id, source.task_name, source.artifact_id, source.task_class, source.task_group, source.state);
+                    INSERT (runtime_id, task_name, artifact_id, task_class, task_group, state, carbon_app)
+                    VALUES (source.runtime_id, source.task_name, source.artifact_id, source.task_class, source.task_group, source.state, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_tasks (
-                    runtime_id, task_name, task_class, task_group, state
+                    runtime_id, task_name, task_class, task_group, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${task.name}, ${task.'class},
-                    ${task.group}, ${task.state}
+                    ${task.group}, ${task.state}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, task_name) DO UPDATE SET
                     task_class = EXCLUDED.task_class,
                     task_group = EXCLUDED.task_group,
                     state = EXCLUDED.state,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_tasks (
-                    runtime_id, task_name, artifact_id, task_class, task_group, state
+                    runtime_id, task_name, artifact_id, task_class, task_group, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${task.name}, ${artifactId}, ${task.'class},
-                    ${task.group}, ${task.state}
+                    ${task.group}, ${task.state}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     task_class = VALUES(task_class),
                     task_group = VALUES(task_group),
                     state = VALUES(state),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
     }
 
     foreach types:Template template in <types:Template[]>heartbeat.artifacts.templates {
+        string? carbonApp = template?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_templates AS target
-                USING (VALUES (${heartbeat.runtime}, ${template.name}, ${template.'type}))
-                       AS source (runtime_id, template_name, template_type)
+                USING (VALUES (${heartbeat.runtime}, ${template.name}, ${template.'type}, ${carbonApp}))
+                       AS source (runtime_id, template_name, template_type, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.template_name = source.template_name)
                 WHEN MATCHED THEN
-                    UPDATE SET template_type = source.template_type, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET template_type = source.template_type, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, template_name, template_type)
-                    VALUES (source.runtime_id, source.template_name, source.template_type);
+                    INSERT (runtime_id, template_name, template_type, carbon_app)
+                    VALUES (source.runtime_id, source.template_name, source.template_type, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_templates (
-                    runtime_id, template_name, template_type
+                    runtime_id, template_name, template_type, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${template.name}, ${template.'type}
+                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, template_name) DO UPDATE SET
                     template_type = EXCLUDED.template_type,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_templates (
-                    runtime_id, template_name, template_type
+                    runtime_id, template_name, template_type, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${template.name}, ${template.'type}
+                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     template_type = VALUES(template_type),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
     }
 
     foreach types:MessageStore store in <types:MessageStore[]>heartbeat.artifacts.messageStores {
+        string? carbonApp = store?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_message_stores AS target
-                USING (VALUES (${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}))
-                       AS source (runtime_id, store_name, store_type, size)
+                USING (VALUES (${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}, ${carbonApp}))
+                       AS source (runtime_id, store_name, store_type, size, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.store_name = source.store_name)
                 WHEN MATCHED THEN
-                    UPDATE SET store_type = source.store_type, size = source.size, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET store_type = source.store_type, size = source.size, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, store_name, store_type, size)
-                    VALUES (source.runtime_id, source.store_name, source.store_type, source.size);
+                    INSERT (runtime_id, store_name, store_type, size, carbon_app)
+                    VALUES (source.runtime_id, source.store_name, source.store_type, source.size, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_message_stores (
-                    runtime_id, store_name, store_type, size
+                    runtime_id, store_name, store_type, size, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}
+                    ${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, store_name) DO UPDATE SET
                     store_type = EXCLUDED.store_type,
                     size = EXCLUDED.size,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_message_stores (
-                    runtime_id, store_name, store_type, size
+                    runtime_id, store_name, store_type, size, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}
+                    ${heartbeat.runtime}, ${store.name}, ${store.'type}, ${store.size}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     store_type = VALUES(store_type),
                     size = VALUES(size),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1426,44 +1450,47 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
 
     foreach types:MessageProcessor processor in <types:MessageProcessor[]>heartbeat.artifacts.messageProcessors {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = processor?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_message_processors AS target
-                USING (VALUES (${heartbeat.runtime}, ${processor.name}, ${artifactId}, ${processor.'type}, ${processor.'class}, ${processor.state}))
-                       AS source (runtime_id, processor_name, artifact_id, processor_type, processor_class, state)
+                USING (VALUES (${heartbeat.runtime}, ${processor.name}, ${artifactId}, ${processor.'type}, ${processor.'class}, ${processor.state}, ${carbonApp}))
+                       AS source (runtime_id, processor_name, artifact_id, processor_type, processor_class, state, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.processor_name = source.processor_name)
                 WHEN MATCHED THEN
-                    UPDATE SET processor_type = source.processor_type, processor_class = source.processor_class, state = source.state, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET processor_type = source.processor_type, processor_class = source.processor_class, state = source.state, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, processor_name, artifact_id, processor_type, processor_class, state)
-                    VALUES (source.runtime_id, source.processor_name, source.artifact_id, source.processor_type, source.processor_class, source.state);
+                    INSERT (runtime_id, processor_name, artifact_id, processor_type, processor_class, state, carbon_app)
+                    VALUES (source.runtime_id, source.processor_name, source.artifact_id, source.processor_type, source.processor_class, source.state, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_message_processors (
-                    runtime_id, processor_name, processor_type, processor_class, state
+                    runtime_id, processor_name, processor_type, processor_class, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${processor.name}, ${processor.'type},
-                    ${processor.'class}, ${processor.state}
+                    ${processor.'class}, ${processor.state}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, processor_name) DO UPDATE SET
                     processor_type = EXCLUDED.processor_type,
                     processor_class = EXCLUDED.processor_class,
                     state = EXCLUDED.state,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_message_processors (
-                    runtime_id, processor_name, artifact_id, processor_type, processor_class, state
+                    runtime_id, processor_name, artifact_id, processor_type, processor_class, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${processor.name}, ${artifactId}, ${processor.'type},
-                    ${processor.'class}, ${processor.state}
+                    ${processor.'class}, ${processor.state}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     processor_type = VALUES(processor_type),
                     processor_class = VALUES(processor_class),
                     state = VALUES(state),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1471,44 +1498,47 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
 
     foreach types:LocalEntry entry in <types:LocalEntry[]>heartbeat.artifacts.localEntries {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = entry?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_local_entries AS target
-                USING (VALUES (${heartbeat.runtime}, ${entry.name}, ${artifactId}, ${entry.'type}, ${entry.value}, ${entry.state}))
-                       AS source (runtime_id, entry_name, artifact_id, entry_type, entry_value, state)
+                USING (VALUES (${heartbeat.runtime}, ${entry.name}, ${artifactId}, ${entry.'type}, ${entry.value}, ${entry.state}, ${carbonApp}))
+                       AS source (runtime_id, entry_name, artifact_id, entry_type, entry_value, state, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.entry_name = source.entry_name)
                 WHEN MATCHED THEN
-                    UPDATE SET entry_type = source.entry_type, entry_value = source.entry_value, state = source.state, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET entry_type = source.entry_type, entry_value = source.entry_value, state = source.state, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, entry_name, artifact_id, entry_type, entry_value, state)
-                    VALUES (source.runtime_id, source.entry_name, source.artifact_id, source.entry_type, source.entry_value, source.state);
+                    INSERT (runtime_id, entry_name, artifact_id, entry_type, entry_value, state, carbon_app)
+                    VALUES (source.runtime_id, source.entry_name, source.artifact_id, source.entry_type, source.entry_value, source.state, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_local_entries (
-                    runtime_id, entry_name, entry_type, entry_value, state
+                    runtime_id, entry_name, entry_type, entry_value, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${entry.name}, ${entry.'type},
-                    ${entry.value}, ${entry.state}
+                    ${entry.value}, ${entry.state}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, entry_name) DO UPDATE SET
                     entry_type = EXCLUDED.entry_type,
                     entry_value = EXCLUDED.entry_value,
                     state = EXCLUDED.state,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_local_entries (
-                    runtime_id, entry_name, artifact_id, entry_type, entry_value, state
+                    runtime_id, entry_name, artifact_id, entry_type, entry_value, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${entry.name}, ${artifactId}, ${entry.'type},
-                    ${entry.value}, ${entry.state}
+                    ${entry.value}, ${entry.state}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     entry_type = VALUES(entry_type),
                     entry_value = VALUES(entry_value),
                     state = VALUES(state),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }
@@ -1516,44 +1546,47 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
 
     foreach types:DataService dataService in <types:DataService[]>heartbeat.artifacts.dataServices {
         string artifactId = uuid:createType4AsString();
+        string? carbonApp = dataService?.carbonApp;
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO runtime_data_services AS target
-                USING (VALUES (${heartbeat.runtime}, ${dataService.name}, ${artifactId}, ${dataService.description}, ${dataService.wsdl}, ${dataService.state}))
-                       AS source (runtime_id, service_name, artifact_id, description, wsdl, state)
+                USING (VALUES (${heartbeat.runtime}, ${dataService.name}, ${artifactId}, ${dataService.description}, ${dataService.wsdl}, ${dataService.state}, ${carbonApp}))
+                       AS source (runtime_id, service_name, artifact_id, description, wsdl, state, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.service_name = source.service_name)
                 WHEN MATCHED THEN
-                    UPDATE SET description = source.description, wsdl = source.wsdl, state = source.state, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET description = source.description, wsdl = source.wsdl, state = source.state, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, service_name, artifact_id, description, wsdl, state)
-                    VALUES (source.runtime_id, source.service_name, source.artifact_id, source.description, source.wsdl, source.state);
+                    INSERT (runtime_id, service_name, artifact_id, description, wsdl, state, carbon_app)
+                    VALUES (source.runtime_id, source.service_name, source.artifact_id, source.description, source.wsdl, source.state, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_data_services (
-                    runtime_id, service_name, description, wsdl, state
+                    runtime_id, service_name, description, wsdl, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${dataService.name}, ${dataService.description},
-                    ${dataService.wsdl}, ${dataService.state}
+                    ${dataService.wsdl}, ${dataService.state}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, service_name) DO UPDATE SET
                     description = EXCLUDED.description,
                     wsdl = EXCLUDED.wsdl,
                     state = EXCLUDED.state,
+                    carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO runtime_data_services (
-                    runtime_id, service_name, artifact_id, description, wsdl, state
+                    runtime_id, service_name, artifact_id, description, wsdl, state, carbon_app
                 ) VALUES (
                     ${heartbeat.runtime}, ${dataService.name}, ${artifactId}, ${dataService.description},
-                    ${dataService.wsdl}, ${dataService.state}
+                    ${dataService.wsdl}, ${dataService.state}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     description = VALUES(description),
                     wsdl = VALUES(wsdl),
                     state = VALUES(state),
+                    carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }

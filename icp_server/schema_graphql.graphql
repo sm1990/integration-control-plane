@@ -24,6 +24,25 @@ type Query {
   component(componentId: String, projectId: String, componentHandler: String): Component
   componentDeployment(orgHandler: String!, orgUuid: String!, componentId: String!, versionId: String!, environmentId: String!): ComponentDeployment
   componentArtifactTypes(componentId: String!): ArtifactTypes!
+
+  # Artifact Queries by Environment and Component
+  servicesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Service!]!
+  listenersByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Listener!]!
+  restApisByEnvironmentAndComponent(environmentId: String!, componentId: String!): [RestApi!]!
+  proxyServicesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [ProxyService!]!
+  endpointsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [MIEndpoint!]!
+  inboundEndpointsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [InboundEndpoint!]!
+  sequencesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Sequence!]!
+  tasksByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Task!]!
+  templatesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Template!]!
+  messageStoresByEnvironmentAndComponent(environmentId: String!, componentId: String!): [MessageStore!]!
+  messageProcessorsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [MessageProcessor!]!
+  localEntriesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [LocalEntry!]!
+  dataServicesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [DataService!]!
+  dataSourcesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [DataSource!]!
+  carbonAppsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [CarbonApp!]!
+  connectorsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Connector!]!
+  registryResourcesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [RegistryResource!]!
 }
 
 # ============================================
@@ -131,6 +150,7 @@ type RestApi {
   version: String
   state: ArtifactState!
   tracing: String!
+  carbonApp: String
   resources: [ApiResource!]!
 }
 
@@ -149,6 +169,7 @@ type ProxyService {
   name: String!
   state: ArtifactState!
   tracing: String!
+  carbonApp: String
   endpoints: [String!]
 }
 
@@ -160,6 +181,7 @@ type MIEndpoint {
   type: String!
   state: ArtifactState!
   tracing: String!
+  carbonApp: String
   attributes: [EndpointAttribute!]
 }
 
@@ -182,6 +204,7 @@ type InboundEndpoint {
   statistics: String
   onError: String
   tracing: String!
+  carbonApp: String
 }
 
 # ============================================
@@ -193,6 +216,7 @@ type Sequence {
   container: String
   state: ArtifactState!
   tracing: String!
+  carbonApp: String
 }
 
 # ============================================
@@ -202,6 +226,108 @@ type Task {
   name: String!
   group: String
   state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# Template Type - MI Template Artifacts
+# ============================================
+type Template {
+  name: String!
+  type: String!
+  carbonApp: String
+}
+
+# ============================================
+# MessageStore Type - MI Message Store Artifacts
+# ============================================
+type MessageStore {
+  name: String!
+  type: String!
+  size: Int!
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# MessageProcessor Type - MI Message Processor Artifacts
+# ============================================
+type MessageProcessor {
+  name: String!
+  type: String!
+  class: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# LocalEntry Type - MI Local Entry Artifacts
+# ============================================
+type LocalEntry {
+  name: String!
+  type: String!
+  value: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# DataService Type - MI Data Service Artifacts
+# ============================================
+type DataService {
+  name: String!
+  description: String
+  wsdl: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# DataSource Type - MI Data Source Artifacts
+# ============================================
+type DataSource {
+  name: String!
+  type: String
+  driver: String
+  url: String
+  username: String
+  state: ArtifactState!
+}
+
+# ============================================
+# CarbonApp Type - MI Carbon Application Artifacts
+# ============================================
+type CarbonApp {
+  name: String!
+  version: String
+  state: String!
+  artifacts: [CarbonAppArtifact!]
+}
+
+# ============================================
+# CarbonAppArtifact Type - Artifact within Carbon App
+# ============================================
+type CarbonAppArtifact {
+  name: String!
+  type: String!
+}
+
+# ============================================
+# Connector Type - MI Connector Artifacts
+# ============================================
+type Connector {
+  name: String!
+  package: String!
+  version: String
+  state: ArtifactState!
+}
+
+# ============================================
+# RegistryResource Type - MI Registry Resource Artifacts
+# ============================================
+type RegistryResource {
+  name: String!
+  type: String!
 }
 
 # ============================================

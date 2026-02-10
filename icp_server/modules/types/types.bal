@@ -485,6 +485,7 @@ public type ProxyServiceRecordInDB record {
     string proxy_name;
     ArtifactState state;
     string tracing;
+    string? carbon_app;
 };
 
 public type EndpointRecordInDB record {
@@ -492,6 +493,7 @@ public type EndpointRecordInDB record {
     string endpoint_type;
     ArtifactState state;
     string tracing;
+    string? carbon_app;
 };
 
 public type SequenceRecordInDB record {
@@ -500,6 +502,7 @@ public type SequenceRecordInDB record {
     string container?;
     ArtifactState state;
     string tracing;
+    string? carbon_app;
 };
 
 public type TaskRecordInDB record {
@@ -507,12 +510,14 @@ public type TaskRecordInDB record {
     string task_class?;
     string task_group?;
     ArtifactState state;
+    string? carbon_app;
 };
 
 public type MessageStoreRecordInDB record {
     string store_name;
     string store_type;
     int size;
+    string? carbon_app;
 };
 
 public type MessageProcessorRecordInDB record {
@@ -520,6 +525,7 @@ public type MessageProcessorRecordInDB record {
     string processor_type;
     string processor_class?;
     ArtifactState state;
+    string? carbon_app;
 };
 
 public type LocalEntryRecordInDB record {
@@ -527,6 +533,7 @@ public type LocalEntryRecordInDB record {
     string entry_type;
     string entry_value?;
     ArtifactState state;
+    string? carbon_app;
 };
 
 public type CarbonAppRecordInDB record {
@@ -635,6 +642,10 @@ public type RestApi record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     ApiResource[] resources = []; // API resources (path + methods)
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -659,6 +670,10 @@ public type ProxyService record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] endpoints?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -675,6 +690,10 @@ public type Endpoint record {
     }
     ArtifactState state; // "enabled", "disabled"
     string tracing = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     EndpointAttribute[]? attributes?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -712,6 +731,10 @@ public type InboundEndpoint record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -728,6 +751,10 @@ public type Sequence record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -743,6 +770,10 @@ public type Task record {
         name: "task_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -756,6 +787,10 @@ public type Template record {
         name: "template_type"
     }
     string 'type;
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -771,6 +806,10 @@ public type MessageStore record {
         name: "store_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -786,6 +825,10 @@ public type MessageProcessor record {
         name: "processor_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -801,6 +844,10 @@ public type LocalEntry record {
         name: "entry_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -816,6 +863,10 @@ public type DataService record {
         name: "dataservice_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };

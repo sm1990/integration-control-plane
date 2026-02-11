@@ -33,15 +33,26 @@ const DELETE_COMPONENT = `
   }
 `;
 
+
 export function useDeleteComponent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: DeleteComponentInput) =>
-      gql<{ deleteComponentV2: { status: string; canDelete: boolean; message: string; encodedData: string } }>(DELETE_COMPONENT, {
+    mutationFn: async (input: DeleteComponentInput) => {
+      const payload = await gql<{ deleteComponentV2: { status: string; canDelete: boolean; message: string; encodedData: string } }>(DELETE_COMPONENT, {
         projectId: input.projectId,
         componentId: input.componentId,
         orgHandler: input.orgHandler,
-      }).then((d) => d.deleteComponentV2),
+      });
+      const result = payload.deleteComponentV2;
+      if (result.status === 'FAILED' || result.canDelete === false) {
+        throw new Error(result.message || 'Failed to delete the integration');
+      }
+      // Normalize any legacy message to 'Integration deleted successfully.'
+      if (!result.message || result.message === 'Component deleted successfully') {
+        result.message = 'Integration deleted successfully.';
+      }
+      return result;
+    },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['components', variables.orgHandler, variables.projectId] });
     },
@@ -148,42 +159,42 @@ export function useDeleteEnvironment() {
   });
 }
 
-const CREATE_COMPONENT = `
-  mutation CreateComponent(
-    $displayName: String!,
-    $name: String!,
-    $componentType: RuntimeType!,
-    $description: String!,
-    $projectId: String!,
-    $orgHandler: String!
-  ) {
-    createComponent(component: {
-      displayName: $displayName,
-      name: $name,
-      componentType: $componentType,
-      description: $description,
-      projectId: $projectId,
-      orgHandler: $orgHandler
-    }) {
-      id
-      projectId
-      name
-      handler
-      displayName
-      displayType
-      description
-      status
-      componentType
-      componentSubType
-      version
-      createdAt
-      lastBuildDate
-    }
-  }
-`;
-
+// ── Create Component ──
 export function useCreateComponent() {
   const qc = useQueryClient();
+  const CREATE_COMPONENT = `
+    mutation CreateComponent(
+      $displayName: String!,
+      $name: String!,
+      $componentType: RuntimeType!,
+      $description: String!,
+      $projectId: String!,
+      $orgHandler: String!
+    ) {
+      createComponent(component: {
+        displayName: $displayName,
+        name: $name,
+        componentType: $componentType,
+        description: $description,
+        projectId: $projectId,
+        orgHandler: $orgHandler
+      }) {
+        id
+        projectId
+        name
+        handler
+        displayName
+        displayType
+        description
+        status
+        componentType
+        componentSubType
+        version
+        createdAt
+        lastBuildDate
+      }
+    }
+  `;
   return useMutation({
     mutationFn: (input: CreateComponentInput) =>
       gql<{ createComponent: GqlComponent }>(CREATE_COMPONENT, {
@@ -199,6 +210,9 @@ export function useCreateComponent() {
     },
   });
 }
+// ...existing code...
+
+// ...existing code...
 
 // ── Artifact status toggle ──
 export interface ArtifactStatusInput {

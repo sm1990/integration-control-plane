@@ -16,11 +16,11 @@
  * under the License.
  */
 
-import { Button, PageContent, Stack, TextField, Select, MenuItem, IconButton, InputAdornment, Typography, FormHelperText, Box, CircularProgress, Backdrop } from '@wso2/oxygen-ui';
+import { Button, PageContent, Stack, TextField, Select, MenuItem, IconButton, InputAdornment, Typography, FormHelperText, Box, CircularProgress, Backdrop, Snackbar, Alert, Tooltip } from '@wso2/oxygen-ui';
 import { useState, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { componentUrl, projectUrl } from '../paths';
-import { PencilIcon, ArrowLeft } from '@wso2/oxygen-ui-icons-react';
+import { PencilIcon, ArrowLeft, HelpCircle } from '@wso2/oxygen-ui-icons-react';
 import { useProject, useComponents } from '../api/queries';
 import { useCreateComponent } from '../api/mutations';
 
@@ -42,6 +42,9 @@ export default function CreateComponent(): JSX.Element {
   const [displayNameError, setDisplayNameError] = useState('');
 
   // Remove useEffect: auto-generate name directly in handler
+
+  // Snackbar state for error notification
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   const handleDisplayNameChange = (value: string) => {
     setDisplayName(value);
@@ -84,8 +87,11 @@ export default function CreateComponent(): JSX.Element {
       // Redirect to component overview page
       navigate(componentUrl(orgHandler, projectId, result.handler));
     } catch (error) {
-      console.error('Failed to create component:', error);
-      // TODO: Show error notification
+      let message = 'Failed to create integration.';
+      if (error && typeof error === 'object' && 'message' in error && typeof (error as Record<string, unknown>).message === 'string') {
+        message = (error as { message: string }).message;
+      }
+      setSnackbar({ open: true, message });
     }
   };
 
@@ -147,11 +153,16 @@ export default function CreateComponent(): JSX.Element {
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
                   Name
                 </Typography>
-                <IconButton size="small" sx={{ color: 'text.secondary', p: 0.25 }} disabled={createComponent.isPending}>
-                  <Box component="span" sx={{ fontSize: 14, fontWeight: 400 }}>
-                    ?
-                  </Box>
-                </IconButton>
+                <Tooltip title="Unique identifier for the integration. Auto-generated from Display Name, but can be edited.">
+                  <IconButton
+                    size="small"
+                    sx={{ color: 'text.secondary', p: 0.25 }}
+                    disabled={createComponent.isPending}
+                    aria-label="Help with integration name"
+                  >
+                    <HelpCircle size={16} />
+                  </IconButton>
+                </Tooltip>
               </Stack>
               <TextField
                 fullWidth
@@ -233,6 +244,20 @@ export default function CreateComponent(): JSX.Element {
           </Stack>
         </Stack>
       </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          severity="error"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </PageContent>
   );
 }

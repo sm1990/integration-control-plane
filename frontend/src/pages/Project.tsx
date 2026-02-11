@@ -42,7 +42,12 @@ function IntegrationsTable({ components, isLoading, onSelect, onCreate, onDelete
       setDeleteModalOpen(false);
       setDeleteTarget(null);
       setDeleteConfirm('');
-      onDeleteResult({ success: true, message: result?.message || 'Integration deleted successfully.' });
+      let successMsg = result?.message || 'Integration deleted successfully.';
+      // Replace any legacy 'Component deleted successfully.' with 'Integration deleted successfully.'
+      if (successMsg === 'Component deleted successfully.') {
+        successMsg = 'Integration deleted successfully.';
+      }
+      onDeleteResult({ success: true, message: successMsg });
     } catch (error: unknown) {
       let message = 'Failed to delete integration.';
       if (error && typeof error === 'object' && 'message' in error && typeof (error as Record<string, unknown>).message === 'string') {
@@ -203,6 +208,25 @@ export default function Project(): JSX.Element {
     return <NotFound message="Project not found" backTo={orgUrl(orgHandler)} backLabel="Back to Projects" />;
   }
 
+
+  // Snackbar JSX (always rendered)
+  const snackbarNode = (
+    <Snackbar
+      open={snackbar.open}
+      autoHideDuration={4000}
+      onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+    >
+      <Alert
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        severity={snackbar.success ? 'success' : 'error'}
+        sx={{ width: '100%' }}
+      >
+        {snackbar.message}
+      </Alert>
+    </Snackbar>
+  );
+
   // Show empty state if no components
   if (!loadingComponents && components.length === 0) {
     return (
@@ -227,6 +251,7 @@ export default function Project(): JSX.Element {
           actionLabel="Create Integration"
           onAction={() => navigate(newComponentUrl(orgHandler, projectId))}
         />
+        {snackbarNode}
       </PageContent>
     );
   }
@@ -254,20 +279,6 @@ export default function Project(): JSX.Element {
             onCreate={() => navigate(newComponentUrl(orgHandler, projectId))}
             onDeleteResult={handleDeleteResult}
           />
-              <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              >
-                <Alert
-                  onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-                  severity={snackbar.success ? 'success' : 'error'}
-                  sx={{ width: '100%' }}
-                >
-                  {snackbar.message}
-                </Alert>
-              </Snackbar>
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack gap={3}>
@@ -275,6 +286,7 @@ export default function Project(): JSX.Element {
           </Stack>
         </Grid>
       </Grid>
+      {snackbarNode}
     </PageContent>
   );
 }

@@ -169,7 +169,7 @@ export default function AppLayout(): JSX.Element {
             <Divider orientation="vertical" flexItem sx={{ mx: 1, display: { xs: 'none', sm: 'block' } }} />
             <UserMenu>
               <UserMenu.Trigger name={displayName || username || 'User'} />
-              <UserMenu.Header name={displayName} email={username} role="Admin" />
+              <UserMenu.Header name={displayName || username || 'User'} email={username} role="Admin" />
               <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" />
               <UserMenu.Item icon={<Settings size={18} />} label="Settings" />
               <UserMenu.Divider />

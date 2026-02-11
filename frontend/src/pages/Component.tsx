@@ -345,7 +345,7 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
   );
 }
 
-function SelectedTypeArtifacts({ artifacts, artifactType, componentId, query, onSelect }: { artifacts: GqlArtifact[]; artifactType: string; componentId: string; query: string; onSelect: (a: GqlArtifact) => void }) {
+function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, query, onSelect }: { artifacts: GqlArtifact[]; artifactType: string; envId: string; componentId: string; query: string; onSelect: (a: GqlArtifact) => void }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const toggleStatus = useUpdateArtifactStatus();
@@ -395,7 +395,7 @@ function SelectedTypeArtifacts({ artifacts, artifactType, componentId, query, on
                     checked={enabled}
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleStatus.mutate({ componentId, artifactType, artifactName: a.name, status: enabled ? 'inactive' : 'active' });
+                      toggleStatus.mutate({ envId, componentId, artifactType, artifactName: a.name, status: enabled ? 'inactive' : 'active' });
                     }}
                     sx={{ mr: 1 }}
                   />
@@ -468,7 +468,7 @@ function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId:
         {loadingArtifacts ? (
           <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />
         ) : (
-          <SelectedTypeArtifacts artifacts={artifacts} artifactType={selectedArtifactType} componentId={componentId} query={query} onSelect={(a) => onSelectArtifact(a, selectedArtifactType, envId)} />
+          <SelectedTypeArtifacts artifacts={artifacts} artifactType={selectedArtifactType} envId={envId} componentId={componentId} query={query} onSelect={(a) => onSelectArtifact(a, selectedArtifactType, envId)} />
         )}
       </Grid>
     </Grid>

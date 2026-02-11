@@ -49,6 +49,7 @@ const UPDATE_ARTIFACT_STATUS = `
   }`;
 
 export interface ArtifactStatusInput {
+  envId: string;
   componentId: string;
   artifactType: string;
   artifactName: string;
@@ -65,15 +66,13 @@ export function useUpdateArtifactStatus() {
   return useMutation({
     mutationFn: (input: ArtifactStatusInput) =>
       gql<{ updateArtifactStatus: { status: string; message: string } }>(UPDATE_ARTIFACT_STATUS, {
-        input: { ...input, artifactType: toKebab(input.artifactType) },
+        input: { componentId: input.componentId, artifactType: toKebab(input.artifactType), artifactName: input.artifactName, status: input.status },
       }).then((d) => d.updateArtifactStatus),
     onMutate: async (input) => {
-      // Optimistic update: flip artifact state in cache immediately
-      await qc.cancelQueries({ queryKey: ['artifacts', input.artifactType] });
+      const scope = (q: { queryKey: readonly unknown[] }) => q.queryKey[2] === input.envId && q.queryKey[3] === input.componentId;
+      await qc.cancelQueries({ queryKey: ['artifacts', input.artifactType], predicate: scope });
       const newState = input.status === 'active' ? 'enabled' : 'disabled';
-      qc.setQueriesData<GqlArtifact[]>({ queryKey: ['artifacts', input.artifactType] }, (old) =>
-        old?.map((a) => (a.name === input.artifactName ? { ...a, state: newState } : a)),
-      );
+      qc.setQueriesData<GqlArtifact[]>({ queryKey: ['artifacts', input.artifactType], predicate: scope }, (old) => old?.map((a) => (a.name === input.artifactName ? { ...a, state: newState } : a)));
     },
   });
 }

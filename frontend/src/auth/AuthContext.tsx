@@ -27,7 +27,12 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 function loadUserInfo(): UserInfo | null {
   const stored = localStorage.getItem(USER_KEY);
   if (!stored) return null;
-  return JSON.parse(stored);
+  try {
+    return JSON.parse(stored);
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {

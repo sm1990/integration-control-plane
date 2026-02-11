@@ -65,15 +65,6 @@ export default function CreateComponent(): JSX.Element {
   };
 
   const handleCreate = async () => {
-    if (!displayName) {
-      setDisplayNameError('Enter the display name here');
-      return;
-    }
-    if (displayName.length < 3) {
-      setDisplayNameError('Display name must be at least 3 characters');
-      return;
-    }
-
     try {
       const result = await createComponent.mutateAsync({
         displayName,
@@ -83,12 +74,10 @@ export default function CreateComponent(): JSX.Element {
         projectId,
         orgHandler,
       });
-
-      // Redirect to component overview page
       navigate(componentUrl(orgHandler, projectId, result.handler));
-    } catch (error) {
+    } catch (error: unknown) {
       let message = 'Failed to create integration.';
-      if (error && typeof error === 'object' && 'message' in error && typeof (error as Record<string, unknown>).message === 'string') {
+      if (typeof error === 'object' && error && 'message' in error && typeof (error as { message?: unknown }).message === 'string') {
         message = (error as { message: string }).message;
       }
       setSnackbar({ open: true, message });

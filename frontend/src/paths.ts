@@ -109,3 +109,5 @@ export const observabilityLogsApiUrl = 'https://localhost:9448/icp/observability
 
 export const authApiBaseUrl = 'https://localhost:9445';
 export const loginApiUrl = `${authApiBaseUrl}/auth/login`;
+export const refreshTokenApiUrl = `${authApiBaseUrl}/auth/refresh-token`;
+export const revokeTokenApiUrl = `${authApiBaseUrl}/auth/revoke-token`;

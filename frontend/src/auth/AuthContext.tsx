@@ -58,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       throw new Error(body || `Login failed (${res.status})`);
     }
     const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean } = await res.json();
-    console.log('Login successful, received data:', data);
     saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
 
     const user: UserInfo = { username: data.username, displayName: data.displayName, permissions: data.permissions };

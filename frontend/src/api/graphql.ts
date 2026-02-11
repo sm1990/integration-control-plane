@@ -1,13 +1,12 @@
-const GRAPHQL_URL = 'http://localhost:9446/graphql';
+import { getToken } from '../auth/AuthContext';
 
-// Dev-only hardcoded token matching the backend's expected JWT format
-// prettier-ignore
-export const TOKEN = 'eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJpc3MiOiJpY3AtZnJvbnRlbmQtand0LWlzc3VlciIsICJzdWIiOiI1NTBlODQwMC1lMjliLTQxZDQtYTcxNi00NDY2NTU0NDAwMDAiLCAiYXVkIjoiaWNwLXNlcnZlciIsICJleHAiOjE3NzA1NzgzNTcsICJuYmYiOjE3NzA1NzQ3NTcsICJpYXQiOjE3NzA1NzQ3NTcsICJ1c2VybmFtZSI6ImFkbWluIiwgImRpc3BsYXlOYW1lIjoiU3lzdGVtIEFkbWluaXN0cmF0b3IiLCAic2NvcGUiOiJlbnZpcm9ubWVudF9tZ3Q6bWFuYWdlIGVudmlyb25tZW50X21ndDptYW5hZ2Vfbm9ucHJvZCBpbnRlZ3JhdGlvbl9tZ3Q6ZWRpdCBpbnRlZ3JhdGlvbl9tZ3Q6bWFuYWdlIGludGVncmF0aW9uX21ndDp2aWV3IG9ic2VydmFiaWxpdHlfbWd0OnZpZXdfaW5zaWdodHMgb2JzZXJ2YWJpbGl0eV9tZ3Q6dmlld19sb2dzIHByb2plY3RfbWd0OmVkaXQgcHJvamVjdF9tZ3Q6bWFuYWdlIHByb2plY3RfbWd0OnZpZXcgdXNlcl9tZ3Q6bWFuYWdlX2dyb3VwcyB1c2VyX21ndDptYW5hZ2Vfcm9sZXMgdXNlcl9tZ3Q6bWFuYWdlX3VzZXJzIHVzZXJfbWd0OnVwZGF0ZV9ncm91cF9yb2xlcyB1c2VyX21ndDp1cGRhdGVfdXNlcnMifQ.rxqWeqdFyJl6aAXikAOIEGmeEDEEsc1RM5s9PFokZp4';
+const GRAPHQL_URL = 'https://localhost:9446/graphql';
 
 export async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  const token = getToken();
   const res = await fetch(GRAPHQL_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body: JSON.stringify({ query, variables }),
   });
   const json = await res.json();

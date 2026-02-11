@@ -3,6 +3,7 @@ import { rootUrl, loginUrl, orgUrl, newProjectUrl, projectUrl, componentUrl, pro
 import PublicLayout from '../layouts/PublicLayout';
 import Login from '../pages/Login';
 import AppLayout from '../layouts/AppLayout';
+import ProtectedRoute from '../auth/ProtectedRoute';
 import Projects from '../pages/Projects';
 import CreateProject from '../pages/CreateProject';
 import Project from '../pages/Project';
@@ -20,6 +21,8 @@ const routes: AppRoute[] = [
     children: [{ path: loginUrl(), element: <Login /> }],
   },
   {
+    element: <ProtectedRoute />,
+    children: [{
     element: <AppLayout />,
     children: [
       { path: orgUrl(':orgHandler'), element: <Projects /> },
@@ -29,6 +32,7 @@ const routes: AppRoute[] = [
       { path: projectLogsUrl(':orgHandler', ':projectId'), element: <RuntimeLogs /> },
       { path: componentLogsUrl(':orgHandler', ':projectId', ':componentHandler'), element: <RuntimeLogs /> },
     ],
+  }],
   },
 ];
 

@@ -22,6 +22,7 @@ import { BrowserRouter } from 'react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { AuthProvider } from './auth/AuthContext';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -57,7 +58,9 @@ createRoot(document.getElementById('root')!).render(
       initialTheme="acrylicOrange">
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <AuthProvider>
+            <App />
+          </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </OxygenUIThemeProvider>

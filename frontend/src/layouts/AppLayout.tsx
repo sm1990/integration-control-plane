@@ -41,7 +41,7 @@ import {
   useAppShell,
   useNotifications,
 } from '@wso2/oxygen-ui';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { JSX } from 'react';
 import { useNavigate, Outlet, Link as NavLink, useParams } from 'react-router';
 import Logo from '../components/Logo';
@@ -49,10 +49,23 @@ import { BarChart3, Bell, Building, ChevronRight, LayoutDashboard, LogOut, Scrol
 import { useProject, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { orgUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, loginUrl } from '../paths';
+import { useAuth } from '../auth/AuthContext';
+
+function decodeTokenPayload(token: string): { username?: string; displayName?: string } {
+  try {
+    const payload = token.split('.')[1];
+    return JSON.parse(atob(payload));
+  } catch {
+    return {};
+  }
+}
 
 export default function AppLayout(): JSX.Element {
   const navigate = useNavigate();
   const { orgHandler = 'default', projectId, componentHandler } = useParams();
+
+  const { token, logout } = useAuth();
+  const userInfo = useMemo(() => (token ? decodeTokenPayload(token) : { username: '', displayName: '' }), [token]);
 
   const { state: shell, actions } = useAppShell({ initialCollapsed: true });
   const [activeItem, setActiveItem] = useState('overview');
@@ -165,8 +178,8 @@ export default function AppLayout(): JSX.Element {
             </Tooltip>
             <Divider orientation="vertical" flexItem sx={{ mx: 1, display: { xs: 'none', sm: 'block' } }} />
             <UserMenu>
-              <UserMenu.Trigger name="Admin" />
-              <UserMenu.Header name="System Administrator" email="admin" role="Admin" />
+              <UserMenu.Trigger name={userInfo.displayName ?? userInfo.username ?? 'User'} />
+              <UserMenu.Header name={userInfo.displayName ?? ''} email={userInfo.username ?? ''} role="Admin" />
               <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" />
               <UserMenu.Item icon={<Settings size={18} />} label="Settings" />
               <UserMenu.Divider />
@@ -307,6 +320,7 @@ export default function AppLayout(): JSX.Element {
             <Button
               variant="contained"
               onClick={() => {
+                logout();
                 navigate(loginUrl());
                 setConfirmDialogOpen(false);
               }}>

@@ -18,18 +18,21 @@
 
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { Alert, Box, Button, Checkbox, Divider, FormControlLabel, IconButton, InputAdornment, InputLabel, Link, OutlinedInput, Typography } from '@wso2/oxygen-ui';
-import { Eye, EyeOff, GitHub, Google } from '@wso2/oxygen-ui-icons-react';
+import { Alert, Box, Button, CircularProgress, Divider, IconButton, InputAdornment, InputLabel, OutlinedInput, Typography } from '@wso2/oxygen-ui';
+import { Eye, EyeOff } from '@wso2/oxygen-ui-icons-react';
 import { useNavigate } from 'react-router';
 import { orgUrl } from '../paths';
+import { useAuth } from '../auth/AuthContext';
 
 export default function LoginForm(): JSX.Element {
-  const [error] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -41,44 +44,36 @@ export default function LoginForm(): JSX.Element {
     event.preventDefault();
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(orgUrl('default'));
+    setError(null);
+    setLoading(true);
+    try {
+      await login(username, password);
+      navigate(orgUrl('default'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <form onSubmit={handleLogin}>
-      <Box sx={{ mb: 6 }}>
-        <Typography variant="h3" gutterBottom>
-          Login to Account
-        </Typography>
-
-        <Typography>
-          Don&apos;t have an account <Link href="">Sign up!</Link>
-        </Typography>
-      </Box>
+      <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 4, textAlign: 'center' }}>
+        Sign In
+      </Typography>
 
       {error && (
-        <Alert severity="warning" sx={{ my: 2 }}>
-          You are about to access a non-secure site. Proceed with caution!
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
         </Alert>
       )}
 
-      <Box>
-        <Button fullWidth variant="contained" startIcon={<Google />} color="secondary" sx={{ my: 1 }}>
-          Continue with Google
-        </Button>
-        <Button fullWidth variant="contained" startIcon={<GitHub />} color="secondary" sx={{ my: 1 }}>
-          Continue with GitHub
-        </Button>
-      </Box>
-
-      <Divider sx={{ my: 3 }}>or</Divider>
-
-      <Box display="flex" flexDirection="column" gap={2}>
+      <Box display="flex" flexDirection="column" gap={2.5}>
         <Box display="flex" flexDirection="column" gap={0.5}>
           <InputLabel htmlFor="username">Username</InputLabel>
-          <OutlinedInput type="text" id="username" name="username" placeholder="Enter your username" value={username} onChange={(e) => setUsername(e.target.value)} size="small" required />
+          <OutlinedInput type="text" id="username" name="username" placeholder="Enter username" value={username} onChange={(e) => setUsername(e.target.value)} size="small" required disabled={loading} />
         </Box>
         <Box display="flex" flexDirection="column" gap={0.5}>
           <InputLabel htmlFor="password">Password</InputLabel>
@@ -93,27 +88,23 @@ export default function LoginForm(): JSX.Element {
             }
             id="password"
             name="password"
-            placeholder="Enter your password"
+            placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             size="small"
             required
+            disabled={loading}
           />
         </Box>
 
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-          <FormControlLabel control={<Checkbox name="remember-me-checkbox" />} label="Remember me" />
-          <Link href="">Forgot your password?</Link>
-        </Box>
+        <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 1, bgcolor: '#1e1e1e', '&:hover': { bgcolor: '#333' }, textTransform: 'none', py: 1.2 }} disabled={loading} startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}>
+          {loading ? 'Signing In...' : 'Login'}
+        </Button>
 
-        <input type="hidden" id="sessionDataKey" name="sessionDataKey" value="" />
-        <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 2 }}>
-          Sign In
+        <Divider sx={{ my: 0.5 }}>OR</Divider>
+
+        <Button variant="outlined" fullWidth sx={{ textTransform: 'none', py: 1.2, borderColor: '#ccc', color: 'text.primary' }}>
+          Sign in with SSO
         </Button>
       </Box>
     </form>

@@ -16,20 +16,28 @@
  * under the License.
  */
 
+import type { JSX } from 'react';
 import { Route, Routes } from 'react-router';
-import routes from './config/routes';
+import routes, { type AppRoute } from './config/routes';
 import './App.css';
+
+function renderRoutes(routeList: AppRoute[]): JSX.Element[] {
+  return routeList.map((route, i) => {
+    if (route.index) {
+      return <Route key={`index-${i}`} index element={route.element} />;
+    }
+    return (
+      <Route key={route.path ?? `layout-${i}`} path={route.path} element={route.element}>
+        {route.children && renderRoutes(route.children)}
+      </Route>
+    );
+  });
+}
 
 function App() {
   return (
     <Routes>
-      {routes.map((route, index) => (
-        <Route key={route.path ?? `layout-${index}`} path={route.path} element={route.element}>
-          {route.children?.map((child, index) => (
-            <Route key={child.path || `index-${index}`} index={child.index} path={child.path} element={child.element} />
-          ))}
-        </Route>
-      ))}
+      {renderRoutes(routes)}
     </Routes>
   );
 }

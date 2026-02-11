@@ -101,14 +101,15 @@ export function useComponentByHandler(projectId: string, handler: string) {
 export interface GqlEnvironment {
   id: string;
   name: string;
-  choreoEnv: string;
   critical: boolean;
+  description?: string;
+  createdAt?: string;
 }
 
 const ENVIRONMENTS_QUERY = `
   query GetEnvironments($projectId: String!) {
     environments(orgUuid: "default-org-uuid", type: "external", projectId: $projectId) {
-      id, name, choreoEnv, critical
+      id, name, critical
     }
   }`;
 
@@ -117,6 +118,17 @@ export function useEnvironments(projectId: string) {
     queryKey: ['environments', projectId],
     queryFn: () => gql<{ environments: GqlEnvironment[] }>(ENVIRONMENTS_QUERY, { projectId }).then((d) => d.environments),
     enabled: !!projectId,
+  });
+}
+
+const ALL_ENVIRONMENTS_QUERY = `{
+  environments { id, name, description, critical, createdAt }
+}`;
+
+export function useAllEnvironments() {
+  return useQuery({
+    queryKey: ['environments'],
+    queryFn: () => gql<{ environments: GqlEnvironment[] }>(ALL_ENVIRONMENTS_QUERY).then((d) => d.environments),
   });
 }
 
@@ -183,7 +195,12 @@ export interface GqlArtifact {
 // `fields` = flat scalar fields, `gqlFields` = full GraphQL selection (including nested)
 // fields = card columns, gqlFields = full GraphQL selection (including nested)
 const ARTIFACT_QUERY_MAP: Record<string, { queryName: string; field: string; fields: string; gqlFields: string }> = {
-  RestApi: { queryName: 'restApisByEnvironmentAndComponent', field: 'restApisByEnvironmentAndComponent', fields: 'name, context, version, state', gqlFields: 'name, context, version, state, tracing, url, runtimes { runtimeId, status }, resources { path, methods }' },
+  RestApi: {
+    queryName: 'restApisByEnvironmentAndComponent',
+    field: 'restApisByEnvironmentAndComponent',
+    fields: 'name, context, version, state',
+    gqlFields: 'name, context, version, state, tracing, url, runtimes { runtimeId, status }, resources { path, methods }',
+  },
   ProxyService: { queryName: 'proxyServicesByEnvironmentAndComponent', field: 'proxyServicesByEnvironmentAndComponent', fields: 'name, state', gqlFields: 'name, state, tracing, endpoints, runtimes { runtimeId, status }' },
   Endpoint: { queryName: 'endpointsByEnvironmentAndComponent', field: 'endpointsByEnvironmentAndComponent', fields: 'name, type, state', gqlFields: 'name, type, state, tracing, attributes { name, value }, runtimes { runtimeId, status }' },
   InboundEndpoint: { queryName: 'inboundEndpointsByEnvironmentAndComponent', field: 'inboundEndpointsByEnvironmentAndComponent', fields: 'name, protocol', gqlFields: 'name, protocol, sequence, onError, state, tracing, runtimes { runtimeId, status }' },

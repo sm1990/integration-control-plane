@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import type { GqlArtifact, GqlProject } from './queries';
+import type { GqlArtifact, GqlEnvironment, GqlProject } from './queries';
 
 export interface CreateProjectInput {
   name: string;
@@ -36,6 +36,59 @@ export function useCreateProject() {
         orgHandler: input.orgHandler,
       }).then((d) => d.createProject),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+  });
+}
+
+// ── Environment CRUD ──
+
+export interface EnvironmentInput {
+  name: string;
+  description: string;
+  critical: boolean;
+}
+
+const CREATE_ENVIRONMENT = `
+  mutation CreateEnvironment($name: String!, $description: String!, $critical: Boolean!) {
+    createEnvironment(environment: { name: $name, description: $description, critical: $critical }) {
+      id, name, description, critical, createdAt
+    }
+  }`;
+
+const UPDATE_ENVIRONMENT = `
+  mutation UpdateEnvironment($environmentId: String!, $name: String!, $description: String!, $critical: Boolean!) {
+    updateEnvironment(environmentId: $environmentId, name: $name, description: $description, critical: $critical) {
+      id, name, description, critical, createdAt
+    }
+  }`;
+
+const DELETE_ENVIRONMENT = `
+  mutation DeleteEnvironment($environmentId: String!) {
+    deleteEnvironment(environmentId: $environmentId)
+  }`;
+
+export function useCreateEnvironment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EnvironmentInput) =>
+      gql<{ createEnvironment: GqlEnvironment }>(CREATE_ENVIRONMENT, input).then((d) => d.createEnvironment),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
+  });
+}
+
+export function useUpdateEnvironment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EnvironmentInput & { environmentId: string }) =>
+      gql<{ updateEnvironment: GqlEnvironment }>(UPDATE_ENVIRONMENT, input).then((d) => d.updateEnvironment),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
+  });
+}
+
+export function useDeleteEnvironment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (environmentId: string) => gql<{ deleteEnvironment: string }>(DELETE_ENVIRONMENT, { environmentId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
   });
 }
 

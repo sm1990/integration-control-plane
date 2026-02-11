@@ -27,6 +27,14 @@ export function editOrgUrl(orgId: string): string {
   return `/organizations/${orgId}/edit`;
 }
 
+export function environmentsUrl(orgHandler: string): string {
+  return `/organizations/${orgHandler}/environments`;
+}
+
+export function newEnvironmentUrl(orgHandler: string): string {
+  return `/organizations/${orgHandler}/environments/new`;
+}
+
 export function newProjectUrl(orgHandler: string): string {
   return `/organizations/${orgHandler}/projects/new`;
 }

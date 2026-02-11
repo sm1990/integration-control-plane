@@ -45,10 +45,10 @@ import { useState, useMemo } from 'react';
 import type { JSX } from 'react';
 import { useNavigate, Outlet, Link as NavLink, useParams } from 'react-router';
 import Logo from '../components/Logo';
-import { BarChart3, Bell, Building, ChevronRight, LayoutDashboard, LogOut, ScrollText, Settings, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
+import { BarChart3, Bell, Building, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Settings, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProject, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
-import { orgUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, loginUrl } from '../paths';
+import { orgUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, loginUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 
 function decodeTokenPayload(token: string): { username?: string; displayName?: string } {
@@ -202,6 +202,19 @@ export default function AppLayout(): JSX.Element {
                 </Sidebar.Item>
               </Link>
             </Sidebar.Category>
+
+            {!inProject && (
+              <Sidebar.Category>
+                <Link component={NavLink} to={environmentsUrl(orgHandler)}>
+                  <Sidebar.Item id="environments">
+                    <Sidebar.ItemIcon>
+                      <Layers size={20} />
+                    </Sidebar.ItemIcon>
+                    <Sidebar.ItemLabel>Environments</Sidebar.ItemLabel>
+                  </Sidebar.Item>
+                </Link>
+              </Sidebar.Category>
+            )}
 
             {inProject && (
               <>

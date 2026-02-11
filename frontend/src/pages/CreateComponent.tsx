@@ -16,51 +16,223 @@
  * under the License.
  */
 
-import { Button, Divider, Form, PageTitle, PageContent, Stack } from '@wso2/oxygen-ui';
+import { Button, PageContent, Stack, TextField, Select, MenuItem, IconButton, InputAdornment, Typography, FormHelperText, Box, CircularProgress, Backdrop } from '@wso2/oxygen-ui';
 import { useState, type JSX } from 'react';
-import { Link as NavigateLink, useParams } from 'react-router';
-import { projectUrl } from '../paths';
-import { ExternalLinkIcon, Import, Network, WSO2 } from '@wso2/oxygen-ui-icons-react';
-import IntegrationTypeCard from '../components/ComponentCreate/IntegrationTypeCard';
-import IntegrationWizard from '../components/ComponentCreate/IntegrationWizard';
-import SampleAppCard from '../components/ComponentCreate/SampleAppCard';
-import SampleIntegrationsSection from '../components/ComponentCreate/SampleIntegrationsSection';
-
-const SelectionView = ({ onNext }: { onNext: () => void }) => (
-  <Stack maxWidth="xl" mx="auto" spacing={2}>
-    <Stack direction="row" spacing={2}>
-      <Form.Stack direction="row" width="md">
-        <IntegrationTypeCard icon={Network} title="Create a new Integration" description="Start developing in a complete, browser-based development environment." tooltipText="What is this?" onClick={onNext} />
-        <IntegrationTypeCard icon={Import} title="Import an Integration" description="Connect your existing code repository, and start building instantly" tooltipText="What is this?" />
-      </Form.Stack>
-      <Divider orientation="vertical" flexItem />
-      <SampleIntegrationsSection>
-        {['Sample Integration 1', 'Sample Integration 2', 'Sample Integration 3'].map((t, i) => (
-          <SampleAppCard key={i} title={t} subtitle={t} description={t} icon={<WSO2 />} />
-        ))}
-        <Form.CardButton alignItems="center" sx={{ width: 280 }}>
-          <Button variant="text" size="small" endIcon={<ExternalLinkIcon size={16} />}>
-            View more samples..
-          </Button>
-        </Form.CardButton>
-      </SampleIntegrationsSection>
-    </Stack>
-  </Stack>
-);
+import { useNavigate, useParams } from 'react-router';
+import { componentUrl, projectUrl } from '../paths';
+import { PencilIcon, ArrowLeft } from '@wso2/oxygen-ui-icons-react';
+import { useProject, useComponents } from '../api/queries';
+import { useCreateComponent } from '../api/mutations';
 
 export default function CreateComponent(): JSX.Element {
-  const { orgId, id } = useParams<{ orgId: string; id?: string }>();
-  const [step, setStep] = useState<'select' | 'config'>('select');
+  const navigate = useNavigate();
+  const { orgHandler = 'default', projectId = '' } = useParams<{ orgHandler: string; projectId: string }>();
+  
+  // Fetch project and components data on page load
+  useProject(projectId);
+  useComponents(orgHandler, projectId);
+
+  const createComponent = useCreateComponent();
+
+  const [displayName, setDisplayName] = useState('');
+  const [name, setName] = useState('');
+  const [integrationType, setIntegrationType] = useState('MI');
+  const [description, setDescription] = useState('');
+  const [isNameEditable, setIsNameEditable] = useState(false);
+  const [displayNameError, setDisplayNameError] = useState('');
+
+  // Remove useEffect: auto-generate name directly in handler
+
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value);
+    if (!value) {
+      setDisplayNameError('Enter the display name here');
+    } else if (value.length < 3) {
+      setDisplayNameError('Display name must be at least 3 characters');
+    } else {
+      setDisplayNameError('');
+    }
+    if (!isNameEditable) {
+      const generatedName = value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      setName(generatedName);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!displayName) {
+      setDisplayNameError('Enter the display name here');
+      return;
+    }
+    if (displayName.length < 3) {
+      setDisplayNameError('Display name must be at least 3 characters');
+      return;
+    }
+
+    try {
+      const result = await createComponent.mutateAsync({
+        displayName,
+        name,
+        componentType: integrationType,
+        description,
+        projectId,
+        orgHandler,
+      });
+
+      // Redirect to component overview page
+      navigate(componentUrl(orgHandler, projectId, result.handler));
+    } catch (error) {
+      console.error('Failed to create component:', error);
+      // TODO: Show error notification
+    }
+  };
+
+  const handleCancel = () => {
+    navigate(projectUrl(orgHandler, projectId));
+  };
 
   return (
     <PageContent>
-      <PageTitle>
-        <PageTitle.BackButton component={step === 'select' && orgId && id ? <NavigateLink to={projectUrl(orgId, id)} /> : undefined} onClick={step === 'config' ? () => setStep('select') : undefined} />
-        <PageTitle.Header>{step === 'select' ? 'Get started with your Integration' : 'Import your Integration'}</PageTitle.Header>
-        <PageTitle.SubHeader>Follow the steps below to {step === 'select' ? 'create a new' : 'import your'} integration</PageTitle.SubHeader>
-      </PageTitle>
+      <Backdrop open={createComponent.isPending} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: 'rgba(0, 0, 0, 0.5)' }}>
+        <CircularProgress />
+      </Backdrop>
+      
+      <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+        {/* Back button and title */}
+        <Button
+          variant="text"
+          startIcon={<ArrowLeft size={16} />}
+          onClick={handleCancel}
+          sx={{ mb: 3, color: 'text.secondary' }}
+          disabled={createComponent.isPending}>
+          Back to Project Home
+        </Button>
 
-      {step === 'select' ? <SelectionView onNext={() => setStep('config')} /> : <IntegrationWizard />}
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>
+          Create New Integration
+        </Typography>
+
+        {/* Form */}
+        <Stack spacing={3} sx={{ maxWidth: 800 }}>
+          {/* Display Name and Name Row */}
+          <Stack direction="row" spacing={2} alignItems="flex-start">
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500, height: 32, display: 'flex', alignItems: 'center' }}>
+                Display Name
+              </Typography>
+              <TextField
+                fullWidth
+                placeholder="Enter display name here"
+                value={displayName}
+                onChange={(e) => handleDisplayNameChange(e.target.value)}
+                error={!!displayNameError}
+                disabled={createComponent.isPending}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: 'background.paper',
+                  },
+                }}
+              />
+              {displayNameError && (
+                <FormHelperText error sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                  <span>⚠</span> {displayNameError}
+                </FormHelperText>
+              )}
+            </Box>
+
+            <Box sx={{ flex: 1 }}>
+              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1, height: 32 }}>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  Name
+                </Typography>
+                <IconButton size="small" sx={{ color: 'text.secondary', p: 0.25 }} disabled={createComponent.isPending}>
+                  <Box component="span" sx={{ fontSize: 14, fontWeight: 400 }}>
+                    ?
+                  </Box>
+                </IconButton>
+              </Stack>
+              <TextField
+                fullWidth
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={!isNameEditable || createComponent.isPending}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        onClick={() => setIsNameEditable(!isNameEditable)}
+                        sx={{ color: 'text.secondary' }}
+                        disabled={createComponent.isPending}>
+                        <PencilIcon size={16} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    bgcolor: isNameEditable ? 'background.paper' : 'action.hover',
+                  },
+                }}
+              />
+            </Box>
+
+            <Box sx={{ width: 200 }}>
+              <Typography variant="body2" sx={{ mb: 1, fontWeight: 500, height: 32, display: 'flex', alignItems: 'center' }}>
+                Integration Type
+              </Typography>
+              <Select
+                fullWidth
+                value={integrationType}
+                onChange={(e) => setIntegrationType(e.target.value as string)}
+                disabled={createComponent.isPending}
+                sx={{
+                  bgcolor: 'background.paper',
+                }}>
+                <MenuItem value="MI">MI</MenuItem>
+                <MenuItem value="BI">BI</MenuItem>
+              </Select>
+            </Box>
+          </Stack>
+
+          {/* Description */}
+          <Box>
+            <Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+              Description
+            </Typography>
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              placeholder="Enter description here"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={createComponent.isPending}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: 'background.paper',
+                },
+              }}
+            />
+          </Box>
+
+          {/* Action Buttons */}
+          <Stack direction="row" spacing={2} sx={{ pt: 2 }}>
+            <Button variant="outlined" onClick={handleCancel} disabled={createComponent.isPending}>
+              Cancel
+            </Button>
+            <Button 
+              variant="contained" 
+              onClick={handleCreate} 
+              disabled={!displayName || displayName.length < 3 || createComponent.isPending}
+              startIcon={createComponent.isPending ? <CircularProgress size={16} /> : undefined}>
+              {createComponent.isPending ? 'Creating...' : 'Create'}
+            </Button>
+          </Stack>
+        </Stack>
+      </Box>
     </PageContent>
   );
 }

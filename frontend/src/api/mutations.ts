@@ -1,7 +1,54 @@
+// ── Create Component Input ──
+export interface CreateComponentInput {
+  displayName: string;
+  name: string;
+  componentType: string;
+  description: string;
+  projectId: string;
+  orgHandler: string;
+}
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import type { GqlArtifact, GqlProject, GqlComponent, GqlEnvironment } from './queries';
 import { gql } from './graphql';
-import type { GqlArtifact, GqlEnvironment, GqlProject } from './queries';
 
+// ── Delete Component ──
+export interface DeleteComponentInput {
+  projectId: string;
+  componentId: string;
+  orgHandler: string;
+}
+
+const DELETE_COMPONENT = `
+  mutation DeleteComponentV2($projectId: String!, $componentId: String!, $orgHandler: String!) {
+    deleteComponentV2(
+      orgHandler: $orgHandler,
+      componentId: $componentId,
+      projectId: $projectId
+    ) {
+      status
+      canDelete
+      message
+      encodedData
+    }
+  }
+`;
+
+export function useDeleteComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DeleteComponentInput) =>
+      gql<{ deleteComponentV2: { status: string; canDelete: boolean; message: string; encodedData: string } }>(DELETE_COMPONENT, {
+        projectId: input.projectId,
+        componentId: input.componentId,
+        orgHandler: input.orgHandler,
+      }).then((d) => d.deleteComponentV2),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['components', variables.orgHandler, variables.projectId] });
+    },
+  });
+}
+
+// ── Create Project ──
 export interface CreateProjectInput {
   name: string;
   handler: string;
@@ -19,11 +66,21 @@ const CREATE_PROJECT = `
       orgHandler: $orgHandler,
       version: "1.0.0"
     }) {
-      id, orgId, name, version, createdDate, handler, region,
-      description, defaultDeploymentPipelineId, deploymentPipelineIds,
-      type, updatedAt
+      id
+      orgId
+      name
+      version
+      createdDate
+      handler
+      region
+      description
+      defaultDeploymentPipelineId
+      deploymentPipelineIds
+      type
+      updatedAt
     }
-  }`;
+  }
+`;
 
 export function useCreateProject() {
   const qc = useQueryClient();
@@ -40,7 +97,6 @@ export function useCreateProject() {
 }
 
 // ── Environment CRUD ──
-
 export interface EnvironmentInput {
   name: string;
   description: string;
@@ -70,7 +126,7 @@ export function useCreateEnvironment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: EnvironmentInput) =>
-      gql<{ createEnvironment: GqlEnvironment }>(CREATE_ENVIRONMENT, input).then((d) => d.createEnvironment),
+      gql<{ createEnvironment: GqlEnvironment }>(CREATE_ENVIRONMENT, { ...input }).then((d: { createEnvironment: GqlEnvironment }) => d.createEnvironment),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
   });
 }
@@ -79,7 +135,7 @@ export function useUpdateEnvironment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: EnvironmentInput & { environmentId: string }) =>
-      gql<{ updateEnvironment: GqlEnvironment }>(UPDATE_ENVIRONMENT, input).then((d) => d.updateEnvironment),
+      gql<{ updateEnvironment: GqlEnvironment }>(UPDATE_ENVIRONMENT, { ...input }).then((d: { updateEnvironment: GqlEnvironment }) => d.updateEnvironment),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
   });
 }
@@ -92,15 +148,59 @@ export function useDeleteEnvironment() {
   });
 }
 
-// ── Artifact status toggle ──
-
-const UPDATE_ARTIFACT_STATUS = `
-  mutation UpdateArtifactStatus($input: ArtifactStatusChangeInput!) {
-    updateArtifactStatus(input: $input) {
-      status, message, successCount, failedCount, details
+const CREATE_COMPONENT = `
+  mutation CreateComponent(
+    $displayName: String!,
+    $name: String!,
+    $componentType: RuntimeType!,
+    $description: String!,
+    $projectId: String!,
+    $orgHandler: String!
+  ) {
+    createComponent(component: {
+      displayName: $displayName,
+      name: $name,
+      componentType: $componentType,
+      description: $description,
+      projectId: $projectId,
+      orgHandler: $orgHandler
+    }) {
+      id
+      projectId
+      name
+      handler
+      displayName
+      displayType
+      description
+      status
+      componentType
+      componentSubType
+      version
+      createdAt
+      lastBuildDate
     }
-  }`;
+  }
+`;
 
+export function useCreateComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateComponentInput) =>
+      gql<{ createComponent: GqlComponent }>(CREATE_COMPONENT, {
+        displayName: input.displayName,
+        name: input.name,
+        componentType: input.componentType,
+        description: input.description,
+        projectId: input.projectId,
+        orgHandler: input.orgHandler,
+      }).then((d) => d.createComponent),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['components', variables.orgHandler, variables.projectId] });
+    },
+  });
+}
+
+// ── Artifact status toggle ──
 export interface ArtifactStatusInput {
   envId: string;
   componentId: string;
@@ -108,6 +208,18 @@ export interface ArtifactStatusInput {
   artifactName: string;
   status: 'active' | 'inactive';
 }
+
+const UPDATE_ARTIFACT_STATUS = `
+  mutation UpdateArtifactStatus($input: ArtifactStatusChangeInput!) {
+    updateArtifactStatus(input: $input) {
+      status
+      message
+      successCount
+      failedCount
+      details
+    }
+  }
+`;
 
 /** PascalCase → kebab-case: "ProxyService" → "proxy-service" */
 function toKebab(s: string): string {
@@ -129,3 +241,4 @@ export function useUpdateArtifactStatus() {
     },
   });
 }
+// (No code here; removed merge conflict markers and duplicate code)

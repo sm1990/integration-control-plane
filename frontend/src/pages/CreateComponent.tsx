@@ -176,7 +176,9 @@ export default function CreateComponent(): JSX.Element {
                         size="small"
                         onClick={() => setIsNameEditable(!isNameEditable)}
                         sx={{ color: 'text.secondary' }}
-                        disabled={createComponent.isPending}>
+                        disabled={createComponent.isPending}
+                        aria-label="Edit integration name"
+                      >
                         <PencilIcon size={16} />
                       </IconButton>
                     </InputAdornment>

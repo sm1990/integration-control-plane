@@ -163,6 +163,17 @@ export function useRuntimes(envId: string, projectId: string, componentId: strin
   });
 }
 
+const PROJECT_RUNTIMES_QUERY = `
+  query GetProjectRuntimes($environmentId: String!, $projectId: String!) {
+    runtimes(environmentId: $environmentId, projectId: $projectId) {
+      runtimeId, runtimeType, status, version,
+      platformName, platformVersion, platformHome,
+      osName, osVersion, registrationTime, lastHeartbeat
+    }
+  }`;
+
+export { RUNTIMES_QUERY, PROJECT_RUNTIMES_QUERY };
+
 export interface GqlArtifactType {
   artifactType: string;
   artifactCount: number;

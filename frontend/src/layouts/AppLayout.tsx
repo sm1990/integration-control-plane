@@ -48,7 +48,7 @@ import Logo from '../components/Logo';
 import { BarChart3, Bell, Building, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Settings, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProject, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
-import { orgUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, loginUrl } from '../paths';
+import { orgUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, loginUrl, projectRuntimeUrl, componentRuntimeUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 
 function decodeTokenPayload(token: string): { username?: string; displayName?: string } {
@@ -237,12 +237,15 @@ export default function AppLayout(): JSX.Element {
                 </Sidebar.Category>
 
                 <Sidebar.Category>
-                  <Sidebar.Item id="admin">
-                    <Sidebar.ItemIcon>
-                      <Settings size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Admin</Sidebar.ItemLabel>
-                  </Sidebar.Item>
+                  <Sidebar.CategoryLabel>Admin</Sidebar.CategoryLabel>
+                  <Link component={NavLink} to={inComponent ? componentRuntimeUrl(orgHandler, projectId!, componentHandler!) : projectRuntimeUrl(orgHandler, projectId!)}>
+                    <Sidebar.Item id="admin">
+                      <Sidebar.ItemIcon>
+                        <Settings size={20} />
+                      </Sidebar.ItemIcon>
+                      <Sidebar.ItemLabel>Runtime</Sidebar.ItemLabel>
+                    </Sidebar.Item>
+                  </Link>
                 </Sidebar.Category>
               </>
             )}

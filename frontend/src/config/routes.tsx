@@ -1,5 +1,5 @@
 import { type RouteProps, Navigate } from 'react-router';
-import { rootUrl, loginUrl, orgUrl, newProjectUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, newEnvironmentUrl } from '../paths';
+import { rootUrl, loginUrl, orgUrl, newProjectUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, newEnvironmentUrl, projectRuntimeUrl, componentRuntimeUrl } from '../paths';
 import PublicLayout from '../layouts/PublicLayout';
 import Login from '../pages/Login';
 import AppLayout from '../layouts/AppLayout';
@@ -11,6 +11,7 @@ import Component from '../pages/Component';
 import RuntimeLogs from '../pages/RuntimeLogs';
 import Environments from '../pages/Environments';
 import CreateEnvironment from '../pages/CreateEnvironment';
+import Runtime from '../pages/Runtime';
 
 export interface AppRoute extends Omit<RouteProps, 'children'> {
   children?: AppRoute[];
@@ -35,6 +36,8 @@ const routes: AppRoute[] = [
       { path: componentUrl(':orgHandler', ':projectId', ':componentHandler'), element: <Component /> },
       { path: projectLogsUrl(':orgHandler', ':projectId'), element: <RuntimeLogs /> },
       { path: componentLogsUrl(':orgHandler', ':projectId', ':componentHandler'), element: <RuntimeLogs /> },
+      { path: projectRuntimeUrl(':orgHandler', ':projectId'), element: <Runtime /> },
+      { path: componentRuntimeUrl(':orgHandler', ':projectId', ':componentHandler'), element: <Runtime /> },
     ],
   }],
   },

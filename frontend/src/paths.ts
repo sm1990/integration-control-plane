@@ -67,6 +67,14 @@ export function componentLogsUrl(orgHandler: string, projectId: string, componen
   return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/observe/runtimelogs`;
 }
 
+export function projectRuntimeUrl(orgHandler: string, projectId: string): string {
+  return `/organizations/${orgHandler}/projects/${projectId}/admin/runtime`;
+}
+
+export function componentRuntimeUrl(orgHandler: string, projectId: string, componentHandler: string): string {
+  return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/admin/runtime`;
+}
+
 export function orgAnalyticsUrl(orgHandler: string): string {
   return `/organizations/${orgHandler}/analytics`;
 }

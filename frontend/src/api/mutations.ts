@@ -69,8 +69,7 @@ const DELETE_ENVIRONMENT = `
 export function useCreateEnvironment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: EnvironmentInput) =>
-      gql<{ createEnvironment: GqlEnvironment }>(CREATE_ENVIRONMENT, input).then((d) => d.createEnvironment),
+    mutationFn: (input: EnvironmentInput) => gql<{ createEnvironment: GqlEnvironment }>(CREATE_ENVIRONMENT, input).then((d) => d.createEnvironment),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
   });
 }
@@ -78,8 +77,7 @@ export function useCreateEnvironment() {
 export function useUpdateEnvironment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: EnvironmentInput & { environmentId: string }) =>
-      gql<{ updateEnvironment: GqlEnvironment }>(UPDATE_ENVIRONMENT, input).then((d) => d.updateEnvironment),
+    mutationFn: (input: EnvironmentInput & { environmentId: string }) => gql<{ updateEnvironment: GqlEnvironment }>(UPDATE_ENVIRONMENT, input).then((d) => d.updateEnvironment),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
   });
 }
@@ -89,6 +87,19 @@ export function useDeleteEnvironment() {
   return useMutation({
     mutationFn: (environmentId: string) => gql<{ deleteEnvironment: string }>(DELETE_ENVIRONMENT, { environmentId }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
+  });
+}
+
+const DELETE_RUNTIME = `
+  mutation DeleteRuntime($runtimeId: String!) {
+    deleteRuntime(runtimeId: $runtimeId)
+  }`;
+
+export function useDeleteRuntime() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runtimeId: string) => gql<{ deleteRuntime: string }>(DELETE_RUNTIME, { runtimeId }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['runtimes'] }),
   });
 }
 

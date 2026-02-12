@@ -104,4 +104,5 @@ export interface RoleGroupMapping {
   orgUuid: number;
   projectUuid: string | null;
   envUuid: string | null;
+  integrationUuid: string | null;
 }

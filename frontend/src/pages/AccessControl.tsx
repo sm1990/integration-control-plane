@@ -35,7 +35,7 @@ import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SearchField from '../components/SearchField';
 import { useAuth } from '../auth/AuthContext';
-import { orgRoleDetailUrl, projectRoleDetailUrl } from '../paths';
+import { orgRoleDetailUrl, projectRoleDetailUrl, componentRoleDetailUrl, componentAccessControlUrl } from '../paths';
 import {
   useUsers,
   useCreateUser,
@@ -56,7 +56,8 @@ import {
   useRemoveUserFromGroup,
 } from '../api/authQueries';
 import type { User, Group, Permission, Role } from '../api/auth';
-import { useAllEnvironments } from '../api/queries';
+import { useAllEnvironments, useComponentByHandler } from '../api/queries';
+import type { ComponentScope } from '../nav';
 
 function Loading() {
   return <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />;
@@ -108,7 +109,7 @@ function FormDialog({
   );
 }
 
-const mappingLevel = (m: { projectUuid?: string | null }) => (m.projectUuid ? 'Project' : 'Organization');
+const mappingLevel = (m: { projectUuid?: string | null; integrationUuid?: string | null }) => (m.integrationUuid ? 'Component' : m.projectUuid ? 'Project' : 'Organization');
 const envLabel = (m: { envUuid?: string | null }, environments: { id: string; name: string }[]) => {
   if (!m.envUuid) return 'All';
   const env = environments.find((e) => e.id === m.envUuid);
@@ -426,7 +427,7 @@ function CreateRoleDialog({ orgHandler, allPermissions, onClose }: { orgHandler:
   );
 }
 
-export function RolesTab({ orgHandler, projectId, readOnly }: { orgHandler: string; projectId?: string; readOnly?: boolean }) {
+export function RolesTab({ orgHandler, projectId, componentHandler, readOnly }: { orgHandler: string; projectId?: string; componentHandler?: string; readOnly?: boolean }) {
   const navigate = useNavigate();
   const { data: roles, isLoading } = useRoles(orgHandler);
   const { data: allPermsData } = useAllPermissions();
@@ -437,7 +438,9 @@ export function RolesTab({ orgHandler, projectId, readOnly }: { orgHandler: stri
   const filtered = useFiltered(roles ?? [], search, (r) => r.roleName);
 
   const getRoleDetailUrl = (roleId: string) => {
-    return projectId ? projectRoleDetailUrl(orgHandler, projectId, roleId) : orgRoleDetailUrl(orgHandler, roleId);
+    if (componentHandler && projectId) return componentRoleDetailUrl(orgHandler, projectId, componentHandler, roleId);
+    if (projectId) return projectRoleDetailUrl(orgHandler, projectId, roleId);
+    return orgRoleDetailUrl(orgHandler, roleId);
   };
 
   if (isLoading) return <Loading />;
@@ -553,10 +556,10 @@ function AddToGroupDialog<T>({
   );
 }
 
-function AddRolesToGroupDialog({ orgHandler, projectId, groupId, existingRoleIds, onClose }: { orgHandler: string; projectId?: string; groupId: string; existingRoleIds: string[]; onClose: () => void }) {
+function AddRolesToGroupDialog({ orgHandler, projectId, componentId, groupId, existingRoleIds, onClose }: { orgHandler: string; projectId?: string; componentId?: string; groupId: string; existingRoleIds: string[]; onClose: () => void }) {
   const { data: allRoles = [] } = useRoles(orgHandler);
   const { data: allEnvironments = [] } = useAllEnvironments();
-  const mutation = useAddRolesToGroup(orgHandler, projectId);
+  const mutation = useAddRolesToGroup(orgHandler, projectId, componentId);
   const [selected, setSelected] = useState<Role[]>([]);
   const [envMode, setEnvMode] = useState<'all' | 'selected'>('all');
   const [selectedEnvs, setSelectedEnvs] = useState<string[]>([]);
@@ -644,7 +647,7 @@ function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose }
   );
 }
 
-function GroupDetailView({ orgHandler, projectId, group, onBack, showUsers = true }: { orgHandler: string; projectId?: string; group: Group; onBack: () => void; showUsers?: boolean }) {
+function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, showUsers = true }: { orgHandler: string; projectId?: string; componentId?: string; group: Group; onBack: () => void; showUsers?: boolean }) {
   const { data: groupRoles = [], isLoading: loadingRoles } = useGroupRoles(orgHandler, group.groupId);
   const { data: groupUsers = [], isLoading: loadingUsers } = useGroupUsers(orgHandler, group.groupId);
   const { data: allEnvironments = [] } = useAllEnvironments();
@@ -768,9 +771,9 @@ function GroupDetailView({ orgHandler, projectId, group, onBack, showUsers = tru
                       <Chip label={envLabel(r, allEnvironments)} size="small" />
                     </TableCell>
                     <TableCell align="right">
-                      <Tooltip title={projectId && !r.projectUuid ? 'Org-level mapping' : ''} placement="right">
+                      <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : '') : projectId && !r.projectUuid ? 'Org-level mapping' : ''} placement="right">
                         <span>
-                          <IconButton size="small" onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })} disabled={Boolean(projectId && !r.projectUuid)}>
+                          <IconButton size="small" onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })} disabled={componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)}>
                             <Trash2 size={16} />
                           </IconButton>
                         </span>
@@ -781,7 +784,7 @@ function GroupDetailView({ orgHandler, projectId, group, onBack, showUsers = tru
               </TableBody>
             </Table>
           )}
-          {addingRoles && <AddRolesToGroupDialog orgHandler={orgHandler} projectId={projectId} groupId={group.groupId} existingRoleIds={groupRoles.map((r) => r.roleId)} onClose={() => setAddingRoles(false)} />}
+          {addingRoles && <AddRolesToGroupDialog orgHandler={orgHandler} projectId={projectId} componentId={componentId} groupId={group.groupId} existingRoleIds={groupRoles.map((r) => r.roleId)} onClose={() => setAddingRoles(false)} />}
           {removingRole && (
             <Dialog open onClose={() => setRemovingRole(null)} maxWidth="sm" fullWidth>
               <DialogTitle>Remove Role from Group</DialogTitle>
@@ -816,7 +819,7 @@ function CreateGroupDialog({ orgHandler, onClose }: { orgHandler: string; onClos
   );
 }
 
-export function GroupsTab({ orgHandler, projectId, readOnly }: { orgHandler: string; projectId?: string; readOnly?: boolean }) {
+export function GroupsTab({ orgHandler, projectId, componentId, readOnly }: { orgHandler: string; projectId?: string; componentId?: string; readOnly?: boolean }) {
   const { data: groups, isLoading } = useGroups(orgHandler);
   const deleteMutation = useDeleteGroup(orgHandler);
   const [search, setSearch] = useState('');
@@ -826,7 +829,7 @@ export function GroupsTab({ orgHandler, projectId, readOnly }: { orgHandler: str
   const filtered = useFiltered(groups ?? [], search, (g) => g.groupName);
 
   if (isLoading) return <Loading />;
-  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} projectId={projectId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!readOnly} />;
+  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} projectId={projectId} componentId={componentId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!readOnly} />;
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
@@ -963,6 +966,44 @@ export function ProjectAccessControl({ org, project }: { org: string; project: s
       </Tabs>
       {safeIndex === 0 && <RolesTab orgHandler={org} projectId={project} readOnly />}
       {safeIndex === 1 && <GroupsTab orgHandler={org} projectId={project} readOnly />}
+    </PageContent>
+  );
+}
+
+// Wrapper component for component-level access control (matrix-compatible)
+export function ComponentAccessControl({ org, project, component }: ComponentScope): JSX.Element {
+  const { tab = 'roles' } = useParams();
+  const navigate = useNavigate();
+  const { data: componentData, isLoading } = useComponentByHandler(project, component);
+  const tabIndex = PROJECT_TABS.indexOf(tab as string as (typeof PROJECT_TABS)[number]);
+  const safeIndex = tabIndex < 0 ? 0 : tabIndex;
+
+  if (isLoading)
+    return (
+      <PageContent>
+        <Loading />
+      </PageContent>
+    );
+  if (!componentData)
+    return (
+      <PageContent>
+        <Typography>Component not found</Typography>
+      </PageContent>
+    );
+
+  const componentId = componentData.id;
+
+  return (
+    <PageContent>
+      <PageTitle>
+        <PageTitle.Header>Access Control</PageTitle.Header>
+      </PageTitle>
+      <Tabs value={safeIndex} onChange={(_, v) => navigate(componentAccessControlUrl(org, project, component, PROJECT_TABS[v] ?? 'roles'))} sx={{ mb: 3 }}>
+        <Tab label="Roles" />
+        <Tab label="Groups" />
+      </Tabs>
+      {safeIndex === 0 && <RolesTab orgHandler={org} projectId={project} componentHandler={component} readOnly />}
+      {safeIndex === 1 && <GroupsTab orgHandler={org} projectId={project} componentId={componentId} readOnly />}
     </PageContent>
   );
 }

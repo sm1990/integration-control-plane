@@ -1,5 +1,5 @@
 import { type RouteProps, Navigate } from 'react-router';
-import { orgRoleDetailUrl, projectRoleDetailUrl } from '../paths';
+import { orgRoleDetailUrl, projectRoleDetailUrl, componentRoleDetailUrl } from '../paths';
 import PublicLayout from '../layouts/PublicLayout';
 import Login from '../pages/Login';
 import OIDCCallback from '../pages/OIDCCallback';
@@ -14,9 +14,10 @@ import RuntimeLogs from '../pages/RuntimeLogs';
 import Environments from '../pages/Environments';
 import CreateEnvironment from '../pages/CreateEnvironment';
 import Runtime from '../pages/Runtime';
-import { OrgAccessControl, ProjectAccessControl } from '../pages/AccessControl';
+import { OrgAccessControl, ProjectAccessControl, ComponentAccessControl } from '../pages/AccessControl';
 import RoleDetail from '../pages/RoleDetail';
 import ProjectRoleDetail from '../pages/ProjectRoleDetail';
+import ComponentRoleDetail from '../pages/ComponentRoleDetail';
 import { ScopeResolver, generateMatrixRoutes, withScope, type Matrix } from '../nav';
 import { createElement } from 'react';
 
@@ -29,7 +30,7 @@ const MATRIX: Matrix = {
   logs: { segment: 'logs', pages: { projects: RuntimeLogs, components: RuntimeLogs } },
   runtimes: { segment: 'runtimes', pages: { projects: Runtime, components: Runtime } },
   environments: { segment: 'environments', pages: { organizations: Environments, projects: Environments } },
-  'access-control': { segment: 'settings/access-control/:tab', pages: { organizations: OrgAccessControl, projects: ProjectAccessControl } },
+  'access-control': { segment: 'settings/access-control/:tab', pages: { organizations: OrgAccessControl, projects: ProjectAccessControl, components: ComponentAccessControl } },
 };
 
 const routes: AppRoute[] = [
@@ -54,6 +55,7 @@ const routes: AppRoute[] = [
               { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
               { path: orgRoleDetailUrl(':orgHandler', ':roleId'), element: <RoleDetail /> },
               { path: projectRoleDetailUrl(':orgHandler', ':projectId', ':roleId'), element: <ProjectRoleDetail /> },
+              { path: componentRoleDetailUrl(':orgHandler', ':projectId', ':componentHandler', ':roleId'), element: <ComponentRoleDetail /> },
             ],
           },
         ],

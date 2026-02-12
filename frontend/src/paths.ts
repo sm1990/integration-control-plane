@@ -69,6 +69,14 @@ export function projectRoleDetailUrl(orgHandler: string, projectId: string, role
   return `/organizations/${orgHandler}/projects/${projectId}/settings/access-control/roles/${roleId}`;
 }
 
+export function componentAccessControlUrl(orgHandler: string, projectId: string, componentHandler: string, tab: 'roles' | 'groups' = 'roles'): string {
+  return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/settings/access-control/${tab}`;
+}
+
+export function componentRoleDetailUrl(orgHandler: string, projectId: string, componentHandler: string, roleId: string): string {
+  return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/settings/access-control/roles/${roleId}`;
+}
+
 export function orgAnalyticsUrl(orgHandler: string): string {
   return `/organizations/${orgHandler}/analytics`;
 }

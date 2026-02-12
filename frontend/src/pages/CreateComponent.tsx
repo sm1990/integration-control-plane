@@ -1,66 +1,116 @@
-/**
- * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
- *
- * WSO2 LLC. licenses this file to you under the Apache License,
- * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-import { Button, Divider, Form, PageTitle, PageContent, Stack } from '@wso2/oxygen-ui';
+import { Alert, Button, Grid, IconButton, MenuItem, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
+import { ArrowLeft, Edit } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
-import { Link as NavigateLink, useParams } from 'react-router';
-import { projectUrl } from '../paths';
-import { ExternalLinkIcon, Import, Network, WSO2 } from '@wso2/oxygen-ui-icons-react';
-import IntegrationTypeCard from '../components/ComponentCreate/IntegrationTypeCard';
-import IntegrationWizard from '../components/ComponentCreate/IntegrationWizard';
-import SampleAppCard from '../components/ComponentCreate/SampleAppCard';
-import SampleIntegrationsSection from '../components/ComponentCreate/SampleIntegrationsSection';
+import { useNavigate, Link } from 'react-router';
+import { useCreateComponent, type CreateComponentInput } from '../api/mutations';
+import { resourceUrl, narrow, type ProjectScope } from '../nav';
 
-const SelectionView = ({ onNext }: { onNext: () => void }) => (
-  <Stack maxWidth="xl" mx="auto" spacing={2}>
-    <Stack direction="row" spacing={2}>
-      <Form.Stack direction="row" width="md">
-        <IntegrationTypeCard icon={Network} title="Create a new Integration" description="Start developing in a complete, browser-based development environment." tooltipText="What is this?" onClick={onNext} />
-        <IntegrationTypeCard icon={Import} title="Import an Integration" description="Connect your existing code repository, and start building instantly" tooltipText="What is this?" />
-      </Form.Stack>
-      <Divider orientation="vertical" flexItem />
-      <SampleIntegrationsSection>
-        {['Sample Integration 1', 'Sample Integration 2', 'Sample Integration 3'].map((t, i) => (
-          <SampleAppCard key={i} title={t} subtitle={t} description={t} icon={<WSO2 />} />
-        ))}
-        <Form.CardButton alignItems="center" sx={{ width: 280 }}>
-          <Button variant="text" size="small" endIcon={<ExternalLinkIcon size={16} />}>
-            View more samples..
-          </Button>
-        </Form.CardButton>
-      </SampleIntegrationsSection>
-    </Stack>
-  </Stack>
-);
+function toHandler(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
 
-export default function CreateComponent(): JSX.Element {
-  const { orgId, id } = useParams<{ orgId: string; id?: string }>();
-  const [step, setStep] = useState<'select' | 'config'>('select');
+export default function CreateComponent(scope: ProjectScope): JSX.Element {
+  const navigate = useNavigate();
+
+  const [displayName, setDisplayName] = useState('');
+  const [handler, setHandler] = useState('');
+  const [handlerEdited, setHandlerEdited] = useState(false);
+  const [description, setDescription] = useState('');
+  const [componentType, setComponentType] = useState<'MI' | 'BI'>('MI');
+  const mutation = useCreateComponent();
+
+  const effectiveHandler = handlerEdited ? handler : toHandler(displayName);
+
+  const submit = () => {
+    const input: CreateComponentInput = {
+      displayName,
+      name: effectiveHandler,
+      description,
+      orgHandler: scope.org,
+      projectId: scope.project,
+      componentType,
+    };
+    mutation.mutate(input, {
+      onSuccess: (component) => navigate(resourceUrl(narrow(scope, component.handler), 'overview')),
+    });
+  };
 
   return (
     <PageContent>
-      <PageTitle>
-        <PageTitle.BackButton component={step === 'select' && orgId && id ? <NavigateLink to={projectUrl(orgId, id)} /> : undefined} onClick={step === 'config' ? () => setStep('select') : undefined} />
-        <PageTitle.Header>{step === 'select' ? 'Get started with your Integration' : 'Import your Integration'}</PageTitle.Header>
-        <PageTitle.SubHeader>Follow the steps below to {step === 'select' ? 'create a new' : 'import your'} integration</PageTitle.SubHeader>
-      </PageTitle>
+      <Link to={resourceUrl(scope, 'overview')} style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
+          <ArrowLeft size={18} />
+          <Typography variant="body2">Back to Project Home</Typography>
+        </Stack>
+      </Link>
 
-      {step === 'select' ? <SelectionView onNext={() => setStep('config')} /> : <IntegrationWizard />}
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>
+        Create New Integration
+      </Typography>
+
+      {mutation.error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {mutation.error.message || 'Failed to create integration. Please try again.'}
+        </Alert>
+      )}
+
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField label="Display Name" placeholder="Enter display name here" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }} />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Name"
+            value={effectiveHandler}
+            onChange={(e) => {
+              setHandler(e.target.value);
+              setHandlerEdited(true);
+            }}
+            fullWidth
+            disabled={!handlerEdited}
+            slotProps={{
+              htmlInput: { 'aria-label': 'Name' },
+              input: {
+                endAdornment: (
+                  <IconButton size="small" onClick={() => setHandlerEdited(!handlerEdited)}>
+                    <Edit size={16} />
+                  </IconButton>
+                ),
+              },
+            }}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField label="Integration Type" select value={componentType} onChange={(e) => setComponentType(e.target.value as 'MI' | 'BI')} fullWidth slotProps={{ htmlInput: { 'aria-label': 'Integration Type' } }}>
+            <MenuItem value="MI">MI</MenuItem>
+            <MenuItem value="BI">BI</MenuItem>
+          </TextField>
+        </Grid>
+      </Grid>
+
+      <TextField
+        label="Description"
+        placeholder="Enter description here"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        fullWidth
+        multiline
+        minRows={2}
+        sx={{ mb: 4, maxWidth: 720 }}
+        slotProps={{ htmlInput: { 'aria-label': 'Description' } }}
+      />
+
+      <Stack direction="row" gap={2}>
+        <Button variant="outlined" onClick={() => navigate(resourceUrl(scope, 'overview'))}>
+          Cancel
+        </Button>
+        <Button variant="contained" onClick={submit} disabled={!displayName.trim() || !effectiveHandler || mutation.isPending}>
+          Create
+        </Button>
+      </Stack>
     </PageContent>
   );
 }

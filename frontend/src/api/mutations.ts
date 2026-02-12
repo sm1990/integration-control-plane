@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import type { GqlArtifact, GqlEnvironment, GqlProject } from './queries';
+import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject } from './queries';
 
 export interface CreateProjectInput {
   name: string;
@@ -123,6 +123,67 @@ export interface ArtifactStatusInput {
 /** PascalCase → kebab-case: "ProxyService" → "proxy-service" */
 function toKebab(s: string): string {
   return s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
+// ── Component CRUD ──
+
+export interface CreateComponentInput {
+  displayName: string;
+  name: string;
+  description: string;
+  orgHandler: string;
+  projectId: string;
+  componentType: 'MI' | 'BI';
+}
+
+const CREATE_COMPONENT = `
+  mutation CreateComponent($component: ComponentInput!) {
+    createComponent(component: $component) {
+      id, name, displayName, handler, orgId, projectId, createdAt, updatedAt
+    }
+  }`;
+
+export function useCreateComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateComponentInput) =>
+      gql<{ createComponent: GqlComponent }>(CREATE_COMPONENT, {
+        component: {
+          name: input.name,
+          displayName: input.displayName,
+          description: input.description,
+          orgId: 1,
+          orgHandler: input.orgHandler,
+          projectId: input.projectId,
+          componentType: input.componentType,
+          technology: 'WSO2MI',
+          isPublicRepo: false,
+        },
+      }).then((d) => d.createComponent),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+  });
+}
+
+interface DeleteComponentResult {
+  status: string;
+  canDelete: boolean;
+  message: string;
+  encodedData: string;
+}
+
+const DELETE_COMPONENT_V2 = `
+  mutation DeleteComponentV2($orgHandler: String!, $componentId: String!, $projectId: String!) {
+    deleteComponentV2(orgHandler: $orgHandler, componentId: $componentId, projectId: $projectId) {
+      status, canDelete, message, encodedData
+    }
+  }`;
+
+export function useDeleteComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { orgHandler: string; componentId: string; projectId: string }) => gql<{ deleteComponentV2: DeleteComponentResult }>(DELETE_COMPONENT_V2, input).then((d) => d.deleteComponentV2),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+  });
 }
 
 export function useUpdateArtifactStatus() {

@@ -1,15 +1,76 @@
-import { Avatar, Button, Card, CardContent, CircularProgress, Divider, Grid, IconButton, List, ListItem, ListItemText, ListingTable, PageContent, Stack, Typography } from '@wso2/oxygen-ui';
-import { Clock, Plus, RefreshCw } from '@wso2/oxygen-ui-icons-react';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Divider,
+  Grid,
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  ListingTable,
+  PageContent,
+  Stack,
+  TextField,
+  Typography,
+} from '@wso2/oxygen-ui';
+import { Clock, Plus, RefreshCw, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useNavigate } from 'react-router';
 import { useState, type JSX } from 'react';
 import { useProject, useComponents, type GqlComponent } from '../api/queries';
+import { useDeleteComponent } from '../api/mutations';
 import NotFound from '../components/NotFound';
 import { formatDistanceToNow } from '../utils/time';
-import { resourceUrl, narrow, broaden, type ProjectScope } from '../nav';
+import { resourceUrl, narrow, broaden, newComponentUrl, type ProjectScope } from '../nav';
 
-function IntegrationsTable({ components, isLoading, onSelect }: { components: GqlComponent[]; isLoading: boolean; onSelect: (handler: string) => void }) {
+function DeleteDialog({ component, scope, onClose }: { component: GqlComponent; scope: ProjectScope; onClose: () => void }) {
+  const [confirmation, setConfirmation] = useState('');
+  const mutation = useDeleteComponent();
+  const confirmed = confirmation === component.displayName;
+
+  const handleDelete = () => {
+    mutation.mutate({ orgHandler: scope.org, componentId: component.id, projectId: scope.project }, { onSuccess: onClose });
+  };
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>
+        Are you sure you want to remove the integration &lsquo;<strong>{component.displayName}</strong>&rsquo; ?
+      </DialogTitle>
+      <DialogContent>
+        <DialogContentText sx={{ mb: 2 }}>This action will be irreversible and all related details will be lost. Please type in the integration name below to confirm.</DialogContentText>
+        {mutation.error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {mutation.error.message || 'Failed to delete integration. Please try again.'}
+          </Alert>
+        )}
+        <TextField autoFocus fullWidth placeholder="Enter integration name to confirm" value={confirmation} onChange={(e) => setConfirmation(e.target.value)} />
+      </DialogContent>
+      <DialogActions>
+        <Button variant="outlined" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant="contained" color="error" disabled={!confirmed || mutation.isPending} onClick={handleDelete}>
+          Delete
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function IntegrationsTable({ components, isLoading, scope, onSelect }: { components: GqlComponent[]; isLoading: boolean; scope: ProjectScope; onSelect: (handler: string) => void }) {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [deleting, setDeleting] = useState<GqlComponent | null>(null);
   const filtered = components.filter((c) => !query || c.displayName.toLowerCase().includes(query.toLowerCase()));
 
   return (
@@ -22,7 +83,7 @@ function IntegrationsTable({ components, isLoading, onSelect }: { components: Gq
           <RefreshCw size={16} />
         </IconButton>
         <SearchField value={query} onChange={setQuery} placeholder="Search" sx={{ flex: 1 }} />
-        <Button variant="contained" startIcon={<Plus size={16} />}>
+        <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => navigate(newComponentUrl(scope))}>
           Create
         </Button>
       </Stack>
@@ -38,6 +99,7 @@ function IntegrationsTable({ components, isLoading, onSelect }: { components: Gq
                 <ListingTable.Cell>Description</ListingTable.Cell>
                 <ListingTable.Cell>Type</ListingTable.Cell>
                 <ListingTable.Cell>Last Updated</ListingTable.Cell>
+                <ListingTable.Cell width={60} />
               </ListingTable.Row>
             </ListingTable.Head>
             <ListingTable.Body>
@@ -60,12 +122,25 @@ function IntegrationsTable({ components, isLoading, onSelect }: { components: Gq
                       {formatDistanceToNow(c.lastBuildDate)}
                     </Typography>
                   </ListingTable.Cell>
+                  <ListingTable.Cell>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleting(c);
+                      }}>
+                      <Trash2 size={16} />
+                    </IconButton>
+                  </ListingTable.Cell>
                 </ListingTable.Row>
               ))}
             </ListingTable.Body>
           </ListingTable>
         </ListingTable.Container>
       )}
+
+      {deleting && <DeleteDialog component={deleting} scope={scope} onClose={() => setDeleting(null)} />}
     </section>
   );
 }
@@ -135,7 +210,7 @@ export default function Project(scope: ProjectScope): JSX.Element {
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 8 }}>
-          <IntegrationsTable components={components} isLoading={loadingComponents} onSelect={(handler) => navigate(resourceUrl(narrow(scope, handler), 'overview'))} />
+          <IntegrationsTable components={components} isLoading={loadingComponents} scope={scope} onSelect={(handler) => navigate(resourceUrl(narrow(scope, handler), 'overview'))} />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack gap={3}>

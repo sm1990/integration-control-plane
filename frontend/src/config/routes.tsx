@@ -1,5 +1,4 @@
 import { type RouteProps, Navigate } from 'react-router';
-import { oidcCallbackUrl, orgAccessControlUrl, projectAccessControlUrl } from '../paths';
 import PublicLayout from '../layouts/PublicLayout';
 import Login from '../pages/Login';
 import OIDCCallback from '../pages/OIDCCallback';
@@ -7,6 +6,7 @@ import AppLayout from '../layouts/AppLayout';
 import ProtectedRoute from '../auth/ProtectedRoute';
 import Projects from '../pages/Projects';
 import CreateProject from '../pages/CreateProject';
+import CreateComponent from '../pages/CreateComponent';
 import Project from '../pages/Project';
 import Component from '../pages/Component';
 import RuntimeLogs from '../pages/RuntimeLogs';
@@ -34,7 +34,7 @@ const routes: AppRoute[] = [
     element: <PublicLayout />,
     children: [{ path: '/login', element: <Login /> }],
   },
-  { path: oidcCallbackUrl(), element: <OIDCCallback /> },
+  { path: '/auth/callback', element: <OIDCCallback /> },
   {
     element: <ProtectedRoute />,
     children: [
@@ -46,9 +46,10 @@ const routes: AppRoute[] = [
             children: [
               ...generateMatrixRoutes(MATRIX),
               { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
+              { path: 'organizations/:orgHandler/projects/:projectId/components/new', element: createElement(withScope(CreateComponent, ['projects'])) },
               { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
-              { path: orgAccessControlUrl(':orgHandler', ':tab' as any), element: <AccessControl /> },
-              { path: projectAccessControlUrl(':orgHandler', ':projectId', ':tab' as any), element: <ProjectAccessControl /> },
+              { path: '/organizations/:orgHandler/settings/access-control/:tab', element: <AccessControl /> },
+              { path: '/organizations/:orgHandler/projects/:projectId/settings/access-control/:tab', element: <ProjectAccessControl /> },
             ],
           },
         ],

@@ -57,8 +57,16 @@ export function orgAccessControlUrl(orgHandler: string, tab: 'users' | 'roles' |
   return `/organizations/${orgHandler}/settings/access-control/${tab}`;
 }
 
-export function projectAccessControlUrl(orgHandler: string, projectId: string, tab: 'roles' | 'groups' = 'groups'): string {
+export function orgRoleDetailUrl(orgHandler: string, roleId: string): string {
+  return `/organizations/${orgHandler}/settings/access-control/roles/${roleId}`;
+}
+
+export function projectAccessControlUrl(orgHandler: string, projectId: string, tab: 'roles' | 'groups' = 'roles'): string {
   return `/organizations/${orgHandler}/projects/${projectId}/settings/access-control/${tab}`;
+}
+
+export function projectRoleDetailUrl(orgHandler: string, projectId: string, roleId: string): string {
+  return `/organizations/${orgHandler}/projects/${projectId}/settings/access-control/roles/${roleId}`;
 }
 
 export function orgAnalyticsUrl(orgHandler: string): string {
@@ -121,7 +129,7 @@ export const support = {
 
 export const observabilityLogsApiUrl = 'https://localhost:9448/icp/observability/logs?live=true';
 
-export const authApiBaseUrl = 'https://localhost:9445/auth';
+export const authApiBaseUrl = 'https://localhost:6445/auth';
 export const loginApiUrl = `${authApiBaseUrl}/login`;
 export const refreshTokenApiUrl = `${authApiBaseUrl}/refresh-token`;
 export const revokeTokenApiUrl = `${authApiBaseUrl}/revoke-token`;

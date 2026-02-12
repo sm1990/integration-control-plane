@@ -28,6 +28,17 @@ export function useUpdateUser(orgHandler: string) {
   });
 }
 
+export function useUpdateUserGroups(orgHandler: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { userId: string; groupIds: string[] }) => authPut(`/orgs/${orgHandler}/users/${input.userId}/groups`, { groupIds: input.groupIds }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users', orgHandler] });
+      qc.invalidateQueries({ queryKey: ['groupUsers'] });
+    },
+  });
+}
+
 export function useDeleteUser(orgHandler: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -145,10 +156,17 @@ export function useGroupUsers(orgHandler: string, groupId: string) {
   });
 }
 
-export function useAddRolesToGroup(orgHandler: string) {
+export function useAddRolesToGroup(orgHandler: string, projectId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { groupId: string; roleIds: string[] }) => authPost(`/orgs/${orgHandler}/groups/${input.groupId}/roles`, { roleIds: input.roleIds }),
+    mutationFn: (input: { groupId: string; roleIds: string[]; envUuid?: string }) => {
+      const body = {
+        roleIds: input.roleIds,
+        envUuid: input.envUuid,
+        ...(projectId ? { projectUuid: projectId } : {}),
+      };
+      return authPost(`/orgs/${orgHandler}/groups/${input.groupId}/roles`, body);
+    },
     onSuccess: (_, input) => {
       qc.invalidateQueries({ queryKey: ['groupRoles', orgHandler, input.groupId] });
       qc.invalidateQueries({ queryKey: ['roleGroups'] });
@@ -159,7 +177,9 @@ export function useAddRolesToGroup(orgHandler: string) {
 export function useRemoveRoleFromGroup(orgHandler: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { groupId: string; mappingId: number }) => authDelete(`/orgs/${orgHandler}/groups/${input.groupId}/roles/${input.mappingId}`),
+    mutationFn: (input: { groupId: string; mappingId: number }) => {
+      return authDelete(`/orgs/${orgHandler}/groups/${input.groupId}/roles/${input.mappingId}`);
+    },
     onSuccess: (_, input) => {
       qc.invalidateQueries({ queryKey: ['groupRoles', orgHandler, input.groupId] });
       qc.invalidateQueries({ queryKey: ['roleGroups'] });

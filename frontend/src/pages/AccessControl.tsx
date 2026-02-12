@@ -1,5 +1,6 @@
 import {
   Autocomplete,
+  Avatar,
   Box,
   Button,
   Checkbox,
@@ -8,11 +9,15 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   FormControlLabel,
   IconButton,
+  MenuItem,
   PageContent,
   PageTitle,
+  Radio,
+  RadioGroup,
   Stack,
   Tab,
   Table,
@@ -24,22 +29,20 @@ import {
   TextField,
   Typography,
 } from '@wso2/oxygen-ui';
-import { ArrowLeft, ChevronDown, ChevronUp, Pencil, Plus, Trash2, Users, Lock } from '@wso2/oxygen-ui-icons-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SearchField from '../components/SearchField';
+import { useAuth } from '../auth/AuthContext';
+import { orgRoleDetailUrl, projectRoleDetailUrl } from '../paths';
 import {
   useUsers,
   useCreateUser,
-  useUpdateUser,
   useDeleteUser,
   useRoles,
-  useRoleDetail,
   useAllPermissions,
   useCreateRole,
-  useUpdateRole,
   useDeleteRole,
-  useRoleGroups,
   useGroups,
   useCreateGroup,
   useDeleteGroup,
@@ -48,9 +51,11 @@ import {
   useAddRolesToGroup,
   useRemoveRoleFromGroup,
   useAddUsersToGroup,
+  useUpdateUserGroups,
   useRemoveUserFromGroup,
 } from '../api/authQueries';
-import type { User, Group, Permission, RoleGroupMapping } from '../api/auth';
+import type { User, Group, Permission, Role } from '../api/auth';
+import { useAllEnvironments } from '../api/queries';
 
 function Loading() {
   return <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />;
@@ -103,7 +108,11 @@ function FormDialog({
 }
 
 const mappingLevel = (m: { projectUuid?: string | null }) => (m.projectUuid ? 'Project' : 'Organization');
-const envLabel = (m: { envUuid?: string | null }) => m.envUuid ?? 'All';
+const envLabel = (m: { envUuid?: string | null }, environments: { id: string; name: string }[]) => {
+  if (!m.envUuid) return 'All';
+  const env = environments.find((e) => e.id === m.envUuid);
+  return env?.name ?? m.envUuid;
+};
 
 // ── Users ──
 
@@ -122,38 +131,120 @@ function CreateUserDialog({ orgHandler, onClose }: { orgHandler: string; onClose
   );
 }
 
-function EditUserDialog({ orgHandler, user, groups, onClose }: { orgHandler: string; user: User; groups: Group[]; onClose: () => void }) {
-  const [displayName, setDisplayName] = useState(user.displayName);
-  const [selectedGroups, setSelectedGroups] = useState<Group[]>(groups.filter((g) => user.groups.some((ug) => ug.groupId === g.groupId)));
-  const mutation = useUpdateUser(orgHandler);
+
+function AssignGroupsDialog({ orgHandler, user, onClose }: { orgHandler: string; user: User; onClose: () => void }) {
+  const { data: allGroups = [] } = useGroups(orgHandler);
+  const mutation = useUpdateUserGroups(orgHandler);
+  const [selected, setSelected] = useState<Group[]>([]);
+  const available = allGroups.filter((g) => !user.groups.some((ug) => ug.groupId === g.groupId));
   return (
-    <FormDialog open onClose={onClose} primaryLabel="Save" primaryDisabled={mutation.isPending} onPrimary={() => mutation.mutate({ userId: user.userId, displayName, groupIds: selectedGroups.map((g) => g.groupId) }, { onSuccess: onClose })} title="Edit User">
-      <TextField label="Username" value={user.username} disabled fullWidth />
-      <TextField label="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth />
+    <FormDialog open onClose={onClose} primaryLabel="Assign" primaryDisabled={selected.length === 0 || mutation.isPending} onPrimary={() => mutation.mutate({ userId: user.userId, groupIds: [...user.groups.map((g) => g.groupId), ...selected.map((g) => g.groupId)] }, { onSuccess: onClose })} title="Assign Groups">
       <Autocomplete
         multiple
-        options={groups}
+        options={available}
         getOptionLabel={(g) => g.groupName}
-        value={selectedGroups}
-        onChange={(_, v) => setSelectedGroups(v)}
+        value={selected}
+        onChange={(_, v) => setSelected(v)}
         isOptionEqualToValue={(a, b) => a.groupId === b.groupId}
-        renderInput={(params) => <TextField {...params} label="Groups" />}
+        renderInput={(params) => <TextField {...params} label="Groups" placeholder="Select groups" />}
       />
     </FormDialog>
   );
 }
 
+function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user: User; onBack: () => void }) {
+  const { username: currentUsername } = useAuth();
+  const isSelf = user.username === currentUsername;
+  const removeUserMutation = useRemoveUserFromGroup(orgHandler);
+  const [search, setSearch] = useState('');
+  const [assigning, setAssigning] = useState(false);
+  const [removingGroupId, setRemovingGroupId] = useState<string | null>(null);
+  const getSearchStr = useCallback((g: User['groups'][number]) => `${g.groupName} ${g.groupDescription}`, []);
+  const filtered = useFiltered(user.groups, search, getSearchStr);
+  const removingGroup = removingGroupId ? user.groups.find((g) => g.groupId === removingGroupId) : null;
+
+  return (
+    <>
+      <Button startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
+        Back to Users List
+      </Button>
+      <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 3 }}>
+        <Avatar sx={{ width: 48, height: 48 }}>{user.displayName[0]}</Avatar>
+        <Stack>
+          <Typography variant="h6">{user.displayName}</Typography>
+          <Typography variant="body2" color="text.secondary">{user.username}</Typography>
+        </Stack>
+      </Stack>
+      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
+        <SearchField value={search} onChange={setSearch} />
+        {!isSelf && (
+          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAssigning(true)}>
+            Assign Groups
+          </Button>
+        )}
+      </Stack>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Group Name</TableCell>
+            <TableCell>Description</TableCell>
+            {!isSelf && <TableCell align="right">Action</TableCell>}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {filtered.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={isSelf ? 2 : 3} align="center">No groups assigned</TableCell>
+            </TableRow>
+          ) : (
+            filtered.map((g) => (
+              <TableRow key={g.groupId}>
+                <TableCell>{g.groupName}</TableCell>
+                <TableCell>{g.groupDescription}</TableCell>
+                {!isSelf && (
+                  <TableCell align="right">
+                    <IconButton size="small" onClick={() => setRemovingGroupId(g.groupId)}>
+                      <Trash2 size={16} />
+                    </IconButton>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+      {assigning && <AssignGroupsDialog orgHandler={orgHandler} user={user} onClose={() => setAssigning(false)} />}
+      {removingGroup && (
+        <Dialog open onClose={() => setRemovingGroupId(null)} maxWidth="xs" fullWidth>
+          <DialogTitle>Remove Group</DialogTitle>
+          <DialogContent>
+            <Typography>Remove <strong>{user.displayName}</strong> from <strong>{removingGroup.groupName}</strong>?</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setRemovingGroupId(null)}>Cancel</Button>
+            <Button variant="contained" color="error" disabled={removeUserMutation.isPending} onClick={() => removeUserMutation.mutate({ groupId: removingGroup.groupId, userId: user.userId }, { onSuccess: () => setRemovingGroupId(null) })}>
+              Remove
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+    </>
+  );
+}
+
 function UsersTab({ orgHandler }: { orgHandler: string }) {
   const { data: users, isLoading } = useUsers(orgHandler);
-  const { data: groups = [], isLoading: groupsLoading } = useGroups(orgHandler);
   const deleteMutation = useDeleteUser(orgHandler);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<User | null>(null);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const getSearchStr = useCallback((u: User) => `${u.username} ${u.displayName}`, []);
   const filtered = useFiltered(users ?? [], search, getSearchStr);
+  const viewingUser = viewingUserId ? users?.find((u) => u.userId === viewingUserId) : null;
 
   if (isLoading) return <Loading />;
+  if (viewingUser) return <UserDetailView orgHandler={orgHandler} user={viewingUser} onBack={() => setViewingUserId(null)} />;
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
@@ -173,7 +264,7 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
         </TableHead>
         <TableBody>
           {filtered.map((u) => (
-            <TableRow key={u.userId}>
+            <TableRow key={u.userId} hover sx={{ cursor: 'pointer' }} onClick={() => setViewingUserId(u.userId)}>
               <TableCell>{u.displayName}</TableCell>
               <TableCell>{u.username}</TableCell>
               <TableCell>
@@ -188,10 +279,10 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
               <TableCell align="right">
                 {!u.isSuperAdmin && (
                   <>
-                    <IconButton size="small" disabled={groupsLoading} onClick={() => setEditing(u)}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setViewingUserId(u.userId); }}>
                       <Pencil size={16} />
                     </IconButton>
-                    <IconButton size="small" onClick={() => deleteMutation.mutate(u.userId)}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeletingUserId(u.userId); }}>
                       <Trash2 size={16} />
                     </IconButton>
                   </>
@@ -202,7 +293,23 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
         </TableBody>
       </Table>
       {creating && <CreateUserDialog orgHandler={orgHandler} onClose={() => setCreating(false)} />}
-      {editing && <EditUserDialog orgHandler={orgHandler} user={editing} groups={groups} onClose={() => setEditing(null)} />}
+      {deletingUserId && (() => {
+        const u = users?.find((x) => x.userId === deletingUserId);
+        return u ? (
+          <Dialog open onClose={() => setDeletingUserId(null)} maxWidth="xs" fullWidth>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogContent>
+              <Typography>Delete <strong>{u.displayName}</strong> ({u.username})?</Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeletingUserId(null)}>Cancel</Button>
+              <Button variant="contained" color="error" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(u.userId, { onSuccess: () => setDeletingUserId(null) })}>
+                Delete
+              </Button>
+            </DialogActions>
+          </Dialog>
+        ) : null;
+      })()}
     </>
   );
 }
@@ -289,104 +396,23 @@ function CreateRoleDialog({ orgHandler, allPermissions, onClose }: { orgHandler:
   );
 }
 
-function RoleDetailView({ orgHandler, roleId, onBack, readOnly }: { orgHandler: string; roleId: string; onBack: () => void; readOnly?: boolean }) {
-  const { data: role, isLoading: loadingRole } = useRoleDetail(orgHandler, roleId);
-  const { data: allPermsData } = useAllPermissions();
-  const { data: roleGroups = [], isLoading: loadingGroups } = useRoleGroups(orgHandler, roleId);
-  const updateMutation = useUpdateRole(orgHandler);
-  const [subTab, setSubTab] = useState(0);
-  const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
-  const [search, setSearch] = useState('');
-  const permIds = useMemo(() => selectedIds ?? (role ? new Set(role.permissions.map((p) => p.permissionId)) : new Set<string>()), [role, selectedIds]);
-  const grouped = allPermsData?.groupedByDomain ?? {};
-  const getSearchStr = useCallback((g: RoleGroupMapping) => (g.groupName ?? '') + (g.groupId ?? ''), []);
-  const filteredGroups = useFiltered(roleGroups, search, getSearchStr);
-
-  if (loadingRole) return <Loading />;
-  if (!role) return null;
-  const dirty = selectedIds !== null;
-
-  return (
-    <Box>
-      <Button startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-        Back to Role List
-      </Button>
-      <Typography variant="h6">Role : {role.roleName}</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Description : {role.description}
-      </Typography>
-      <Tabs value={subTab} onChange={(_, v) => setSubTab(v)} sx={{ mb: 2 }}>
-        <Tab icon={<Lock size={16} />} iconPosition="start" label="Permissions" />
-        <Tab icon={<Users size={16} />} iconPosition="start" label="Groups" />
-      </Tabs>
-      {subTab === 0 && (
-        <>
-          <PermissionsEditor allPermissions={grouped} selectedIds={permIds} onChange={readOnly ? () => {} : setSelectedIds} />
-          {dirty && !readOnly && (
-            <Stack direction="row" justifyContent="flex-end" sx={{ mt: 2 }}>
-              <Button variant="contained" disabled={updateMutation.isPending} onClick={() => updateMutation.mutate({ roleId, roleName: role.roleName, description: role.description, permissionIds: [...permIds] }, { onSuccess: () => setSelectedIds(null) })}>
-                Save Permissions
-              </Button>
-            </Stack>
-          )}
-        </>
-      )}
-      {subTab === 1 && (
-        <>
-          <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-            <SearchField value={search} onChange={setSearch} />
-          </Stack>
-          {loadingGroups ? (
-            <Loading />
-          ) : (
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Group Name</TableCell>
-                  <TableCell>Mapping Level</TableCell>
-                  <TableCell>Applicable Environment</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredGroups.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center">
-                      No records to display
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredGroups.map((g) => (
-                    <TableRow key={g.id}>
-                      <TableCell>{g.groupName ?? g.groupId}</TableCell>
-                      <TableCell>
-                        <Chip label={mappingLevel(g)} size="small" />
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={envLabel(g)} size="small" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </>
-      )}
-    </Box>
-  );
-}
-
-function RolesTab({ orgHandler, readOnly }: { orgHandler: string; readOnly?: boolean }) {
+export function RolesTab({ orgHandler, projectId, readOnly }: { orgHandler: string; projectId?: string; readOnly?: boolean }) {
+  const navigate = useNavigate();
   const { data: roles, isLoading } = useRoles(orgHandler);
   const { data: allPermsData } = useAllPermissions();
   const deleteMutation = useDeleteRole(orgHandler);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
-  const [viewingRoleId, setViewingRoleId] = useState<string | null>(null);
+  const [deletingRole, setDeletingRole] = useState<Role | null>(null);
   const filtered = useFiltered(roles ?? [], search, (r) => r.roleName);
+  
+  const getRoleDetailUrl = (roleId: string) => {
+    return projectId 
+      ? projectRoleDetailUrl(orgHandler, projectId, roleId)
+      : orgRoleDetailUrl(orgHandler, roleId);
+  };
 
   if (isLoading) return <Loading />;
-  if (viewingRoleId) return <RoleDetailView orgHandler={orgHandler} roleId={viewingRoleId} onBack={() => setViewingRoleId(null)} readOnly={readOnly} />;
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
@@ -407,15 +433,15 @@ function RolesTab({ orgHandler, readOnly }: { orgHandler: string; readOnly?: boo
         </TableHead>
         <TableBody>
           {filtered.map((r) => (
-            <TableRow key={r.roleId}>
+            <TableRow key={r.roleId} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(getRoleDetailUrl(r.roleId))}>
               <TableCell>{r.roleName}</TableCell>
               <TableCell>{r.description}</TableCell>
               <TableCell align="right">
-                <IconButton size="small" onClick={() => setViewingRoleId(r.roleId)}>
+                <IconButton size="small" onClick={(e) => { e.stopPropagation(); navigate(getRoleDetailUrl(r.roleId)); }}>
                   <Pencil size={16} />
                 </IconButton>
                 {!readOnly && (
-                  <IconButton size="small" onClick={() => deleteMutation.mutate(r.roleId)}>
+                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeletingRole(r); }}>
                     <Trash2 size={16} />
                   </IconButton>
                 )}
@@ -425,6 +451,27 @@ function RolesTab({ orgHandler, readOnly }: { orgHandler: string; readOnly?: boo
         </TableBody>
       </Table>
       {creating && allPermsData && <CreateRoleDialog orgHandler={orgHandler} allPermissions={allPermsData.groupedByDomain} onClose={() => setCreating(false)} />}
+      {deletingRole && (
+        <Dialog open onClose={() => setDeletingRole(null)} maxWidth="sm" fullWidth>
+          <DialogTitle>Delete Role</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete the role <strong>{deletingRole.roleName}</strong>?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeletingRole(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(deletingRole.roleId, { onSuccess: () => setDeletingRole(null) })}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </>
   );
 }
@@ -473,23 +520,70 @@ function AddToGroupDialog<T>({
   );
 }
 
-function AddRolesToGroupDialog({ orgHandler, groupId, existingRoleIds, onClose }: { orgHandler: string; groupId: string; existingRoleIds: string[]; onClose: () => void }) {
+function AddRolesToGroupDialog({ orgHandler, projectId, groupId, existingRoleIds, onClose }: { orgHandler: string; projectId?: string; groupId: string; existingRoleIds: string[]; onClose: () => void }) {
   const { data: allRoles = [] } = useRoles(orgHandler);
-  const mutation = useAddRolesToGroup(orgHandler);
+  const { data: allEnvironments = [] } = useAllEnvironments();
+  const mutation = useAddRolesToGroup(orgHandler, projectId);
+  const [selected, setSelected] = useState<Role[]>([]);
+  const [envMode, setEnvMode] = useState<'all' | 'selected'>('all');
+  const [selectedEnvs, setSelectedEnvs] = useState<string[]>([]);
+  const available = allRoles.filter((r) => !existingRoleIds.includes(r.roleId));
+  const pending = mutation.isPending;
+  
+  const assign = () => {
+    let remaining = selected.length;
+    const envUuid = envMode === 'selected' && selectedEnvs.length > 0 ? selectedEnvs[0] : undefined;
+    for (const r of selected) {
+      mutation.mutate({ groupId, roleIds: [r.roleId], envUuid }, { onSuccess: () => { if (--remaining === 0) onClose(); } });
+    }
+  };
+  
   return (
-    <AddToGroupDialog
-      title="Add Roles to Group"
-      label="Roles"
-      placeholder="Select roles to add to group"
-      options={allRoles}
-      getOptionLabel={(r) => r.roleName}
-      idKey="roleId"
-      existingIds={existingRoleIds}
-      onClose={onClose}
-      mutate={(payload) => mutation.mutate(payload as { groupId: string; roleIds: string[] }, { onSuccess: onClose })}
-      getPayload={(selected) => ({ groupId, roleIds: selected.map((r) => r.roleId) })}
-      isPending={mutation.isPending}
-    />
+    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Add Roles to Group</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Autocomplete
+            multiple
+            options={available}
+            getOptionLabel={(r) => r.roleName}
+            value={selected}
+            onChange={(_, v) => setSelected(v)}
+            isOptionEqualToValue={(a, b) => a.roleId === b.roleId}
+            renderInput={(params) => <TextField {...params} label="Roles" placeholder="Select roles to add to group" />}
+          />
+          <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1, p: 2, bgcolor: 'background.paper' }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+              Applicable Environments
+            </Typography>
+            <RadioGroup value={envMode} onChange={(e) => setEnvMode(e.target.value as 'all' | 'selected')}>
+              <FormControlLabel value="all" control={<Radio />} label="All Environments" />
+              <FormControlLabel value="selected" control={<Radio />} label="Selected Environments" />
+            </RadioGroup>
+            {envMode === 'selected' && (
+              <TextField
+                select
+                fullWidth
+                label="Select applicable environments"
+                value={selectedEnvs[0] || ''}
+                onChange={(e) => setSelectedEnvs(e.target.value ? [e.target.value] : [])}
+                sx={{ mt: 2 }}
+              >
+                {allEnvironments.map((env) => (
+                  <MenuItem key={env.id} value={env.id}>
+                    {env.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" disabled={selected.length === 0 || pending} onClick={assign}>Add</Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -513,15 +607,18 @@ function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose }
   );
 }
 
-function GroupDetailView({ orgHandler, group, onBack, showUsers = true }: { orgHandler: string; group: Group; onBack: () => void; showUsers?: boolean }) {
+function GroupDetailView({ orgHandler, projectId, group, onBack, showUsers = true }: { orgHandler: string; projectId?: string; group: Group; onBack: () => void; showUsers?: boolean }) {
   const { data: groupRoles = [], isLoading: loadingRoles } = useGroupRoles(orgHandler, group.groupId);
   const { data: groupUsers = [], isLoading: loadingUsers } = useGroupUsers(orgHandler, group.groupId);
+  const { data: allEnvironments = [] } = useAllEnvironments();
   const removeRoleMutation = useRemoveRoleFromGroup(orgHandler);
   const removeUserMutation = useRemoveUserFromGroup(orgHandler);
   const [subTab, setSubTab] = useState(showUsers ? 0 : 1);
   const [search, setSearch] = useState('');
   const [addingRoles, setAddingRoles] = useState(false);
   const [addingUsers, setAddingUsers] = useState(false);
+  const [removingUser, setRemovingUser] = useState<{ userId: string; displayName: string; username: string } | null>(null);
+  const [removingRole, setRemovingRole] = useState<{ id: number; roleName: string } | null>(null);
   const filteredUsers = useFiltered(groupUsers, search, (u) => `${u.displayName} ${u.username}`);
   const filteredRoles = useFiltered(groupRoles, search, (r) => r.roleName);
 
@@ -575,7 +672,7 @@ function GroupDetailView({ orgHandler, group, onBack, showUsers = true }: { orgH
                     <TableCell>{u.displayName}</TableCell>
                     <TableCell>{u.username}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => removeUserMutation.mutate({ groupId: group.groupId, userId: u.userId })}>
+                      <IconButton size="small" onClick={() => setRemovingUser(u)}>
                         <Trash2 size={16} />
                       </IconButton>
                     </TableCell>
@@ -585,6 +682,27 @@ function GroupDetailView({ orgHandler, group, onBack, showUsers = true }: { orgH
             </Table>
           )}
           {addingUsers && <AddUsersToGroupDialog orgHandler={orgHandler} groupId={group.groupId} existingUserIds={groupUsers.map((u) => u.userId)} onClose={() => setAddingUsers(false)} />}
+          {removingUser && (
+            <Dialog open onClose={() => setRemovingUser(null)} maxWidth="sm" fullWidth>
+              <DialogTitle>Remove User from Group</DialogTitle>
+              <DialogContent>
+                <DialogContentText>
+                  Are you sure you want to remove <strong>{removingUser.displayName}</strong> from this group?
+                </DialogContentText>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setRemovingUser(null)}>Cancel</Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={removeUserMutation.isPending}
+                  onClick={() => removeUserMutation.mutate({ groupId: group.groupId, userId: removingUser.userId }, { onSuccess: () => setRemovingUser(null) })}
+                >
+                  Remove
+                </Button>
+              </DialogActions>
+            </Dialog>
+          )}
         </>
       )}
       {((showUsers && subTab === 1) || !showUsers) && (
@@ -603,7 +721,7 @@ function GroupDetailView({ orgHandler, group, onBack, showUsers = true }: { orgH
                 <TableRow>
                   <TableCell>Role Name</TableCell>
                   <TableCell>Mapping Level</TableCell>
-                  <TableCell>Applicable Environment</TableCell>
+                  <TableCell align="center">Applicable Environment</TableCell>
                   <TableCell align="right">Action</TableCell>
                 </TableRow>
               </TableHead>
@@ -614,11 +732,11 @@ function GroupDetailView({ orgHandler, group, onBack, showUsers = true }: { orgH
                     <TableCell>
                       <Chip label={mappingLevel(r)} size="small" />
                     </TableCell>
-                    <TableCell>
-                      <Chip label={envLabel(r)} size="small" />
+                    <TableCell align="center">
+                      <Chip label={envLabel(r, allEnvironments)} size="small" />
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => removeRoleMutation.mutate({ groupId: group.groupId, mappingId: r.id })}>
+                      <IconButton size="small" onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })}>
                         <Trash2 size={16} />
                       </IconButton>
                     </TableCell>
@@ -627,7 +745,28 @@ function GroupDetailView({ orgHandler, group, onBack, showUsers = true }: { orgH
               </TableBody>
             </Table>
           )}
-          {addingRoles && <AddRolesToGroupDialog orgHandler={orgHandler} groupId={group.groupId} existingRoleIds={groupRoles.map((r) => r.roleId)} onClose={() => setAddingRoles(false)} />}
+          {addingRoles && <AddRolesToGroupDialog orgHandler={orgHandler} projectId={projectId} groupId={group.groupId} existingRoleIds={groupRoles.map((r) => r.roleId)} onClose={() => setAddingRoles(false)} />}
+          {removingRole && (
+            <Dialog open onClose={() => setRemovingRole(null)} maxWidth="sm" fullWidth>
+              <DialogTitle>Remove Role from Group</DialogTitle>
+              <DialogContent>
+                <DialogContentText>
+                  Are you sure you want to remove the role <strong>{removingRole.roleName}</strong> from this group?
+                </DialogContentText>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setRemovingRole(null)}>Cancel</Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={removeRoleMutation.isPending}
+                  onClick={() => removeRoleMutation.mutate({ groupId: group.groupId, mappingId: removingRole.id }, { onSuccess: () => setRemovingRole(null) })}
+                >
+                  Remove
+                </Button>
+              </DialogActions>
+            </Dialog>
+          )}
         </>
       )}
     </Box>
@@ -646,16 +785,17 @@ function CreateGroupDialog({ orgHandler, onClose }: { orgHandler: string; onClos
   );
 }
 
-function GroupsTab({ orgHandler, readOnly }: { orgHandler: string; readOnly?: boolean }) {
+export function GroupsTab({ orgHandler, projectId, readOnly }: { orgHandler: string; projectId?: string; readOnly?: boolean }) {
   const { data: groups, isLoading } = useGroups(orgHandler);
   const deleteMutation = useDeleteGroup(orgHandler);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<Group | null>(null);
+  const [deletingGroup, setDeletingGroup] = useState<Group | null>(null);
   const filtered = useFiltered(groups ?? [], search, (g) => g.groupName);
 
   if (isLoading) return <Loading />;
-  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!readOnly} />;
+  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} projectId={projectId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!readOnly} />;
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
@@ -676,15 +816,15 @@ function GroupsTab({ orgHandler, readOnly }: { orgHandler: string; readOnly?: bo
         </TableHead>
         <TableBody>
           {filtered.map((g) => (
-            <TableRow key={g.groupId}>
+            <TableRow key={g.groupId} hover sx={{ cursor: 'pointer' }} onClick={() => setViewingGroup(g)}>
               <TableCell>{g.groupName}</TableCell>
               <TableCell>{g.description}</TableCell>
               <TableCell align="right">
-                <IconButton size="small" onClick={() => setViewingGroup(g)}>
+                <IconButton size="small" onClick={(e) => { e.stopPropagation(); setViewingGroup(g); }}>
                   <Pencil size={16} />
                 </IconButton>
                 {!readOnly && (
-                  <IconButton size="small" onClick={() => deleteMutation.mutate(g.groupId)}>
+                  <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeletingGroup(g); }}>
                     <Trash2 size={16} />
                   </IconButton>
                 )}
@@ -694,6 +834,27 @@ function GroupsTab({ orgHandler, readOnly }: { orgHandler: string; readOnly?: bo
         </TableBody>
       </Table>
       {creating && <CreateGroupDialog orgHandler={orgHandler} onClose={() => setCreating(false)} />}
+      {deletingGroup && (
+        <Dialog open onClose={() => setDeletingGroup(null)} maxWidth="sm" fullWidth>
+          <DialogTitle>Delete Group</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete the group <strong>{deletingGroup.groupName}</strong>?
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeletingGroup(null)}>Cancel</Button>
+            <Button
+              variant="contained"
+              color="error"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate(deletingGroup.groupId, { onSuccess: () => setDeletingGroup(null) })}
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </>
   );
 }
@@ -725,22 +886,51 @@ export default function AccessControl(): JSX.Element {
   );
 }
 
-export function ProjectAccessControl(): JSX.Element {
-  const { orgHandler = 'default', projectId = '', tab = 'groups' } = useParams();
+// Wrapper component for organization-level access control (matrix-compatible)
+export function OrgAccessControl({ org }: { org: string }): JSX.Element {
+  const { tab = 'users' } = useParams();
   const navigate = useNavigate();
-  const tabIndex = PROJECT_TABS.indexOf(tab as string as (typeof PROJECT_TABS)[number]);
+  const tabIndex = ORG_TABS.indexOf(tab as string as (typeof ORG_TABS)[number]);
   const safeIndex = tabIndex < 0 ? 0 : tabIndex;
   return (
     <PageContent>
       <PageTitle>
         <PageTitle.Header>Access Control</PageTitle.Header>
       </PageTitle>
-      <Tabs value={safeIndex} onChange={(_, v) => navigate(`/organizations/${orgHandler}/projects/${projectId}/settings/access-control/${PROJECT_TABS[v] ?? 'groups'}`)} sx={{ mb: 3 }}>
+      <Tabs value={safeIndex} onChange={(_, v) => navigate(`/organizations/${org}/settings/access-control/${ORG_TABS[v] ?? 'users'}`)} sx={{ mb: 3 }}>
+        <Tab label="Users" />
         <Tab label="Roles" />
         <Tab label="Groups" />
       </Tabs>
-      {safeIndex === 0 && <RolesTab orgHandler={orgHandler} readOnly />}
-      {safeIndex === 1 && <GroupsTab orgHandler={orgHandler} readOnly />}
+      {safeIndex === 0 && <UsersTab orgHandler={org} />}
+      {safeIndex === 1 && <RolesTab orgHandler={org} />}
+      {safeIndex === 2 && <GroupsTab orgHandler={org} />}
+    </PageContent>
+  );
+}
+
+// Wrapper component for project-level access control (matrix-compatible)
+export function ProjectAccessControl({ org, project }: { org: string; project: string }): JSX.Element {
+  const { tab = 'roles' } = useParams();
+  const navigate = useNavigate();
+  const tabIndex = PROJECT_TABS.indexOf(tab as string as (typeof PROJECT_TABS)[number]);
+  const safeIndex = tabIndex < 0 ? 0 : tabIndex;
+  
+  return (
+    <PageContent>
+      <PageTitle>
+        <PageTitle.Header>Access Control</PageTitle.Header>
+      </PageTitle>
+      <Tabs 
+        value={safeIndex} 
+        onChange={(_, v) => navigate(`/organizations/${org}/projects/${project}/settings/access-control/${PROJECT_TABS[v] ?? 'roles'}`)} 
+        sx={{ mb: 3 }}
+      >
+        <Tab label="Roles" />
+        <Tab label="Groups" />
+      </Tabs>
+      {safeIndex === 0 && <RolesTab orgHandler={org} projectId={project} readOnly />}
+      {safeIndex === 1 && <GroupsTab orgHandler={org} projectId={project} readOnly />}
     </PageContent>
   );
 }

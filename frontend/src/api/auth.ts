@@ -1,10 +1,9 @@
 import { getAccessToken } from '../auth/tokenManager';
-
-const AUTH_BASE = 'https://localhost:6445/auth';
+import { authApiBaseUrl } from '../paths';
 
 async function authFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const token = getAccessToken();
-  const res = await fetch(`${AUTH_BASE}${path}`, {
+  const res = await fetch(`${authApiBaseUrl}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

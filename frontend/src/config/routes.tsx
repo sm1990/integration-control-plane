@@ -1,4 +1,5 @@
 import { type RouteProps, Navigate } from 'react-router';
+import { orgRoleDetailUrl, projectRoleDetailUrl } from '../paths';
 import PublicLayout from '../layouts/PublicLayout';
 import Login from '../pages/Login';
 import OIDCCallback from '../pages/OIDCCallback';
@@ -13,7 +14,9 @@ import RuntimeLogs from '../pages/RuntimeLogs';
 import Environments from '../pages/Environments';
 import CreateEnvironment from '../pages/CreateEnvironment';
 import Runtime from '../pages/Runtime';
-import AccessControl, { ProjectAccessControl } from '../pages/AccessControl';
+import { OrgAccessControl, ProjectAccessControl } from '../pages/AccessControl';
+import RoleDetail from '../pages/RoleDetail';
+import ProjectRoleDetail from '../pages/ProjectRoleDetail';
 import { ScopeResolver, generateMatrixRoutes, withScope, type Matrix } from '../nav';
 import { createElement } from 'react';
 
@@ -26,6 +29,7 @@ const MATRIX: Matrix = {
   logs: { segment: 'logs', pages: { projects: RuntimeLogs, components: RuntimeLogs } },
   runtimes: { segment: 'runtimes', pages: { projects: Runtime, components: Runtime } },
   environments: { segment: 'environments', pages: { organizations: Environments, projects: Environments } },
+  'access-control': { segment: 'settings/access-control/:tab', pages: { organizations: OrgAccessControl, projects: ProjectAccessControl } },
 };
 
 const routes: AppRoute[] = [
@@ -48,8 +52,8 @@ const routes: AppRoute[] = [
               { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
               { path: 'organizations/:orgHandler/projects/:projectId/components/new', element: createElement(withScope(CreateComponent, ['projects'])) },
               { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
-              { path: '/organizations/:orgHandler/settings/access-control/:tab', element: <AccessControl /> },
-              { path: '/organizations/:orgHandler/projects/:projectId/settings/access-control/:tab', element: <ProjectAccessControl /> },
+              { path: orgRoleDetailUrl(':orgHandler', ':roleId'), element: <RoleDetail /> },
+              { path: projectRoleDetailUrl(':orgHandler', ':projectId', ':roleId'), element: <ProjectRoleDetail /> },
             ],
           },
         ],

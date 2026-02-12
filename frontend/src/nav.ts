@@ -15,7 +15,7 @@ export type Scope = OrgScope | ProjectScope | ComponentScope;
 
 export type ScopeForLevel = { organizations: OrgScope; projects: ProjectScope; components: ComponentScope };
 
-export type Resource = 'overview' | 'logs' | 'runtimes' | 'environments';
+export type Resource = 'overview' | 'logs' | 'runtimes' | 'environments' | 'access-control';
 
 export type Matrix = { [R in Resource]: { segment: string; pages: Partial<{ [L in Level]: FC<ScopeForLevel[L]> }> } };
 
@@ -86,7 +86,11 @@ function urlPattern(level: Level, segment: string): string {
 
 export function resourceUrl(scope: Scope, resource: Resource): string {
   const effective = MATRIX[resource].levels.includes(scope.level) ? resource : 'overview';
-  const seg = MATRIX[effective].segment;
+  let seg = MATRIX[effective].segment;
+  // Replace route parameters with default values based on scope level
+  if (effective === 'access-control') {
+    seg = seg.replace(':tab', scope.level === 'organizations' ? 'users' : 'roles');
+  }
   const prefix = scopePrefix(scope);
   return seg ? `${prefix}/${seg}` : prefix;
 }
@@ -159,7 +163,10 @@ function resolveResource(pathname: string, scope: Scope): Resource | null {
   const prefix = scopePrefix(scope);
   const rest = pathname.slice(prefix.length).replace(/^\//, '');
   for (const [resource, def] of Object.entries(MATRIX) as [Resource, (typeof MATRIX)[Resource]][]) {
-    if (rest === def.segment && def.levels.includes(scope.level)) return resource;
+    if (!def.levels.includes(scope.level)) continue;
+    // Convert segment pattern to regex, replacing :param with [^/]+
+    const pattern = '^' + def.segment.replace(/:[^/]+/g, '[^/]+') + '$';
+    if (new RegExp(pattern).test(rest)) return resource;
   }
   return null;
 }

@@ -43,13 +43,13 @@ import {
 } from '@wso2/oxygen-ui';
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { useNavigate, Outlet, Link as NavLink } from 'react-router';
+import { useNavigate, Outlet, Link as NavLink, useLocation } from 'react-router';
 import Logo from '../components/Logo';
 import { BarChart3, Bell, Building, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Settings, Shield, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProject, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
-import { orgAccessControlUrl, projectAccessControlUrl, loginUrl } from '../paths';
+import { loginUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 
 const SIDEBAR_ICONS: Record<Resource, JSX.Element> = {
@@ -57,6 +57,7 @@ const SIDEBAR_ICONS: Record<Resource, JSX.Element> = {
   logs: <ScrollText size={20} />,
   runtimes: <Settings size={20} />,
   environments: <Layers size={20} />,
+  'access-control': <Shield size={20} />,
 };
 
 export default function AppLayout(): JSX.Element {
@@ -190,44 +191,24 @@ export default function AppLayout(): JSX.Element {
         <Sidebar collapsed={shell.sidebarCollapsed} activeItem={resource ?? 'overview'} expandedMenus={shell.expandedMenus} onSelect={() => {}} onToggleExpand={actions.toggleMenu}>
           <Sidebar.Nav>
             <Sidebar.Category>
-              {items.map((item) => (
-                <Link key={item.resource} component={NavLink} to={item.url}>
-                  <Sidebar.Item id={item.resource}>
-                    <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
-                  </Sidebar.Item>
-                </Link>
+              {items.map((item, index) => (
+                <>
+                  <Link key={item.resource} component={NavLink} to={item.url}>
+                    <Sidebar.Item id={item.resource}>
+                      <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
+                      <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
+                    </Sidebar.Item>
+                  </Link>
+                  {hasProject(scope) && item.resource === 'logs' && (
+                    <Sidebar.Item id="metrics" key="metrics">
+                      <Sidebar.ItemIcon>
+                        <BarChart3 size={20} />
+                      </Sidebar.ItemIcon>
+                      <Sidebar.ItemLabel>Metrics</Sidebar.ItemLabel>
+                    </Sidebar.Item>
+                  )}
+                </>
               ))}
-              {hasProject(scope) && (
-                <Sidebar.Item id="metrics">
-                  <Sidebar.ItemIcon>
-                    <BarChart3 size={20} />
-                  </Sidebar.ItemIcon>
-                  <Sidebar.ItemLabel>Metrics</Sidebar.ItemLabel>
-                </Sidebar.Item>
-              )}
-            </Sidebar.Category>
-            <Sidebar.Category>
-              {!hasProject(scope) && (
-                <Link component={NavLink} to={orgAccessControlUrl(scope.org)}>
-                  <Sidebar.Item id="access-control">
-                    <Sidebar.ItemIcon>
-                      <Shield size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Access Control</Sidebar.ItemLabel>
-                  </Sidebar.Item>
-                </Link>
-              )}
-              {hasProject(scope) && (
-                <Link component={NavLink} to={projectAccessControlUrl(scope.org, scope.project)}>
-                  <Sidebar.Item id="project-access-control">
-                    <Sidebar.ItemIcon>
-                      <Shield size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Access Control</Sidebar.ItemLabel>
-                  </Sidebar.Item>
-                </Link>
-              )}
             </Sidebar.Category>
           </Sidebar.Nav>
 

@@ -52,15 +52,14 @@ import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutation
 import NotFound from '../components/NotFound';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 
-/** Format artifact type name for display: "Listener" → "Listener", "RestApi" → "Rest Api" */
+/** Format artifact type name for display: "RestApi" → "Rest Api" */
 function formatArtifactTypeName(t: string): string {
-  // Add space before capital letters for PascalCase
   return t.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
-/** "RestApi" → "Rest Apis", "ProxyService" → "Proxy Services", "Listener" → "Listeners" */
+/** "RestApi" → "Rest Api(s)", "ProxyService" → "Proxy Service(s)" */
 function typePlural(t: string): string {
-  return t.replace(/([a-z])([A-Z])/g, '$1 $2') + 's';
+  return t.replace(/([a-z])([A-Z])/g, '$1 $2') + '(s)';
 }
 
 const ARTIFACT_ICONS: Record<string, JSX.Element> = {
@@ -91,11 +90,11 @@ const ARTIFACT_TABS: Record<string, string[]> = {
 };
 const DEFAULT_ARTIFACT_TABS = ['Overview', 'Source', 'Runtimes'];
 
-const ENTRY_POINT_CONFIG: Record<string, { label: string; pluralLabel: string; color: string; bgColor: string; metaField?: string }> = {
-  RestApi: { label: 'API', pluralLabel: 'APIS', color: '#1565c0', bgColor: '#e3f2fd', metaField: 'context' },
-  ProxyService: { label: 'Proxy', pluralLabel: 'PROXIES', color: '#e65100', bgColor: '#fff3e0' },
-  InboundEndpoint: { label: 'Inbound', pluralLabel: 'INBOUND ENDPOINTS', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol' },
-  Task: { label: 'Task', pluralLabel: 'TASKS', color: '#00695c', bgColor: '#e0f2f1' },
+const ENTRY_POINT_CONFIG: Record<string, { label: string; color: string; bgColor: string; metaField?: string }> = {
+  RestApi: { label: 'API', color: '#1565c0', bgColor: '#e3f2fd', metaField: 'context' },
+  ProxyService: { label: 'Proxy', color: '#e65100', bgColor: '#fff3e0' },
+  InboundEndpoint: { label: 'Inbound', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol' },
+  Task: { label: 'Task', color: '#00695c', bgColor: '#e0f2f1' },
 };
 
 const ENTRY_POINT_DETAIL_TABS: Record<string, string[]> = {
@@ -364,8 +363,8 @@ function ServiceResources({ artifact }: TabProps) {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ArtifactWsdl(_unused: TabProps) {
+function ArtifactWsdl(_wsdlProps: TabProps) {
+  void _wsdlProps;
   return <Typography sx={emptySx}>No WSDL content available.</Typography>;
 }
 
@@ -496,8 +495,8 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
 
   const columns = artifactMapping.fields.split(', ').filter((f) => f !== 'state' && f !== 'container');
   const filtered = artifacts.filter((a) => !query || a.name?.toString().toLowerCase().includes(query.toLowerCase()));
-  const supportsToggle = ['ProxyService', 'Endpoint', 'Task', 'Listener'].includes(artifactType);
-  const hasStateField = ['ProxyService', 'Task', 'Connector', 'Listener'].includes(artifactType);
+  const supportsToggle = ['Endpoint', 'Listener'].includes(artifactType);
+  const hasStateField = ['Connector', 'Listener'].includes(artifactType);
   const maxPage = Math.max(0, Math.ceil(filtered.length / rowsPerPage) - 1);
   const safePage = Math.min(page, maxPage);
   const paginatedArtifacts = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);
@@ -601,11 +600,14 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
   );
 }
 
+const ENTRY_POINT_TYPE_SET = new Set(Object.keys(ENTRY_POINT_CONFIG));
+
 function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId: string; componentId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void }) {
-  const { data: types = [], isLoading } = useArtifactTypes(componentId, envId);
+  const { data: allTypes = [], isLoading } = useArtifactTypes(componentId, envId);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
+  const types = allTypes.filter((t) => !ENTRY_POINT_TYPE_SET.has(t.artifactType));
   const selectedArtifactType = selectedType ?? types[0]?.artifactType ?? '';
   const { data: artifacts = [], isLoading: loadingArtifacts } = useArtifacts(selectedArtifactType, envId, componentId);
 
@@ -684,7 +686,7 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
   return (
     <Box sx={{ mt: 2, borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
       <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 2 }}>
-        <Chip label={`${config?.label ?? artifactType}`.toUpperCase()} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11 }} />
+        <Chip label={(config?.label ?? artifactType).toUpperCase()} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11 }} />
         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
           {artifact.name?.toString()}
         </Typography>
@@ -700,9 +702,11 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
           </Typography>
           <Switch size="small" checked={tracing === 'enabled'} />
         </Stack>
-        <Button variant="outlined" size="small" onClick={onViewSource}>
-          View Source
-        </Button>
+        {(ARTIFACT_TABS[artifactType] ?? DEFAULT_ARTIFACT_TABS).includes('Source') && (
+          <Button variant="outlined" size="small" onClick={onViewSource}>
+            View Source
+          </Button>
+        )}
         <Button variant="outlined" size="small" onClick={onViewRuntimes}>
           View Runtimes
         </Button>
@@ -776,7 +780,7 @@ function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envI
         </Grid>
         <Grid size={{ xs: 12, sm: 9 }}>
           <Typography variant="overline" sx={{ mb: 1, display: 'block' }}>
-            {activeConfig?.pluralLabel ?? activeType}
+            {(activeConfig?.label ?? activeType) + '(s)'}
           </Typography>
           <SearchField value={query} onChange={setQuery} placeholder={`Search ${activeConfig?.label.toLowerCase() ?? ''} entry points by name`} fullWidth sx={{ mb: 2 }} />
           {filtered.length === 0 ? (

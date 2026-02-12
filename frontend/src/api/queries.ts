@@ -90,7 +90,7 @@ const COMPONENT_BY_HANDLER_QUERY = `
     }
   }`;
 
-export function useComponentByHandler(projectId: string, handler: string) {
+export function useComponentByHandler(projectId: string, handler: string | undefined) {
   return useQuery({
     queryKey: ['component', projectId, handler],
     queryFn: () => gql<{ component: GqlComponentDetail }>(COMPONENT_BY_HANDLER_QUERY, { projectId, componentHandler: handler }).then((d) => d.component),

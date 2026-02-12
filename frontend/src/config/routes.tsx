@@ -1,5 +1,5 @@
 import { type RouteProps, Navigate } from 'react-router';
-import { rootUrl, loginUrl, orgUrl, newProjectUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, newEnvironmentUrl, oidcCallbackUrl, projectRuntimeUrl, componentRuntimeUrl, orgAccessControlUrl, projectAccessControlUrl } from '../paths';
+import { oidcCallbackUrl, orgAccessControlUrl, projectAccessControlUrl } from '../paths';
 import PublicLayout from '../layouts/PublicLayout';
 import Login from '../pages/Login';
 import OIDCCallback from '../pages/OIDCCallback';
@@ -14,37 +14,42 @@ import Environments from '../pages/Environments';
 import CreateEnvironment from '../pages/CreateEnvironment';
 import Runtime from '../pages/Runtime';
 import AccessControl, { ProjectAccessControl } from '../pages/AccessControl';
+import { ScopeResolver, generateMatrixRoutes, withScope, type Matrix } from '../nav';
+import { createElement } from 'react';
 
 export interface AppRoute extends Omit<RouteProps, 'children'> {
   children?: AppRoute[];
 }
 
+const MATRIX: Matrix = {
+  overview: { segment: '', pages: { organizations: Projects, projects: Project, components: Component } },
+  logs: { segment: 'logs', pages: { projects: RuntimeLogs, components: RuntimeLogs } },
+  runtimes: { segment: 'runtimes', pages: { projects: Runtime, components: Runtime } },
+  environments: { segment: 'environments', pages: { organizations: Environments, projects: Environments } },
+};
+
 const routes: AppRoute[] = [
-  { path: rootUrl(), element: <Navigate to={loginUrl()} replace /> },
+  { path: '/', element: <Navigate to="/login" replace /> },
   {
     element: <PublicLayout />,
-    children: [{ path: loginUrl(), element: <Login /> }],
+    children: [{ path: '/login', element: <Login /> }],
   },
   { path: oidcCallbackUrl(), element: <OIDCCallback /> },
   {
     element: <ProtectedRoute />,
     children: [{
-    element: <AppLayout />,
-    children: [
-      { path: orgUrl(':orgHandler'), element: <Projects /> },
-      { path: environmentsUrl(':orgHandler'), element: <Environments /> },
-      { path: newEnvironmentUrl(':orgHandler'), element: <CreateEnvironment /> },
-      { path: orgAccessControlUrl(':orgHandler', ':tab' as any), element: <AccessControl /> },
-      { path: projectAccessControlUrl(':orgHandler', ':projectId', ':tab' as any), element: <ProjectAccessControl /> },
-      { path: newProjectUrl(':orgHandler'), element: <CreateProject /> },
-      { path: projectUrl(':orgHandler', ':projectId'), element: <Project /> },
-      { path: componentUrl(':orgHandler', ':projectId', ':componentHandler'), element: <Component /> },
-      { path: projectLogsUrl(':orgHandler', ':projectId'), element: <RuntimeLogs /> },
-      { path: componentLogsUrl(':orgHandler', ':projectId', ':componentHandler'), element: <RuntimeLogs /> },
-      { path: projectRuntimeUrl(':orgHandler', ':projectId'), element: <Runtime /> },
-      { path: componentRuntimeUrl(':orgHandler', ':projectId', ':componentHandler'), element: <Runtime /> },
-    ],
-  }],
+      element: <ScopeResolver />,
+      children: [{
+        element: <AppLayout />,
+        children: [
+          ...generateMatrixRoutes(MATRIX),
+          { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
+          { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
+          { path: orgAccessControlUrl(':orgHandler', ':tab' as any), element: <AccessControl /> },
+          { path: projectAccessControlUrl(':orgHandler', ':projectId', ':tab' as any), element: <ProjectAccessControl /> },
+        ],
+      }],
+    }],
   },
 ];
 

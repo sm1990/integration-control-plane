@@ -1,12 +1,12 @@
 import { Avatar, Button, Card, CardContent, CircularProgress, Divider, Grid, IconButton, List, ListItem, ListItemText, ListingTable, PageContent, Stack, Typography } from '@wso2/oxygen-ui';
 import { Clock, Plus, RefreshCw } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useState, type JSX } from 'react';
 import { useProject, useComponents, type GqlComponent } from '../api/queries';
 import NotFound from '../components/NotFound';
 import { formatDistanceToNow } from '../utils/time';
-import { componentUrl, orgUrl } from '../paths';
+import { resourceUrl, narrow, broaden, type ProjectScope } from '../nav';
 
 function IntegrationsTable({ components, isLoading, onSelect }: { components: GqlComponent[]; isLoading: boolean; onSelect: (handler: string) => void }) {
   const [query, setQuery] = useState('');
@@ -103,11 +103,10 @@ function IntegrationTypesCard({ components }: { components: GqlComponent[] }) {
   );
 }
 
-export default function Project(): JSX.Element {
+export default function Project(scope: ProjectScope): JSX.Element {
   const navigate = useNavigate();
-  const { orgHandler = 'default', projectId = '' } = useParams();
-  const { data: project, isLoading: loadingProject } = useProject(projectId);
-  const { data: components = [], isLoading: loadingComponents } = useComponents(orgHandler, projectId);
+  const { data: project, isLoading: loadingProject } = useProject(scope.project);
+  const { data: components = [], isLoading: loadingComponents } = useComponents(scope.org, scope.project);
 
   if (loadingProject) {
     return (
@@ -117,7 +116,7 @@ export default function Project(): JSX.Element {
     );
   }
   if (!project) {
-    return <NotFound message="Project not found" backTo={orgUrl(orgHandler)} backLabel="Back to Projects" />;
+    return <NotFound message="Project not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Projects" />;
   }
 
   return (
@@ -136,7 +135,7 @@ export default function Project(): JSX.Element {
 
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, md: 8 }}>
-          <IntegrationsTable components={components} isLoading={loadingComponents} onSelect={(handler) => navigate(componentUrl(orgHandler, projectId!, handler))} />
+          <IntegrationsTable components={components} isLoading={loadingComponents} onSelect={(handler) => navigate(resourceUrl(narrow(scope, handler), 'overview'))} />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack gap={3}>

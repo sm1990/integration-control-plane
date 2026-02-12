@@ -1,9 +1,9 @@
-import { getToken } from '../auth/AuthContext';
+import { getAccessToken } from '../auth/tokenManager';
 
 const AUTH_BASE = 'https://localhost:6445/auth';
 
 async function authFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = getToken();
+  const token = getAccessToken();
   const res = await fetch(`${AUTH_BASE}${path}`, {
     ...options,
     headers: {

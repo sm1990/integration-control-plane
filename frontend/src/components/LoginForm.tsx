@@ -21,7 +21,7 @@ import type { JSX } from 'react';
 import { Alert, Box, Button, CircularProgress, Divider, IconButton, InputAdornment, InputLabel, OutlinedInput, Typography } from '@wso2/oxygen-ui';
 import { Eye, EyeOff } from '@wso2/oxygen-ui-icons-react';
 import { useNavigate } from 'react-router';
-import { orgUrl } from '../paths';
+import { resourceUrl } from '../nav';
 import { useAuth } from '../auth/AuthContext';
 
 export default function LoginForm(): JSX.Element {
@@ -62,7 +62,7 @@ export default function LoginForm(): JSX.Element {
     setLoading(true);
     try {
       await login(username, password);
-      navigate(orgUrl('default'));
+      navigate(resourceUrl({ level: 'organizations', org: 'default' }, 'overview'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

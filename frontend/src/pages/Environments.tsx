@@ -23,12 +23,12 @@ import {
 } from '@wso2/oxygen-ui';
 import { Clock, Layers, Pencil, Plus, Trash2, AlertTriangle } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useAllEnvironments, type GqlEnvironment } from '../api/queries';
 import { useUpdateEnvironment, useDeleteEnvironment } from '../api/mutations';
 import EmptyListing from '../components/EmptyListing';
 import { formatDistanceToNow } from '../utils/time';
-import { newEnvironmentUrl } from '../paths';
+import { newEnvironmentUrl, type OrgScope, type ProjectScope } from '../nav';
 
 function EditDialog({ env, onClose }: { env: GqlEnvironment; onClose: () => void }) {
   const [name, setName] = useState(env.name);
@@ -93,9 +93,8 @@ function DeleteDialog({ env, onClose }: { env: GqlEnvironment; onClose: () => vo
   );
 }
 
-export default function Environments(): JSX.Element {
+export default function Environments(scope: OrgScope | ProjectScope): JSX.Element {
   const navigate = useNavigate();
-  const { orgHandler = 'default' } = useParams();
   const { data: environments, isLoading } = useAllEnvironments();
   const [editing, setEditing] = useState<GqlEnvironment | null>(null);
   const [deleting, setDeleting] = useState<GqlEnvironment | null>(null);
@@ -105,7 +104,7 @@ export default function Environments(): JSX.Element {
       <PageTitle>
         <PageTitle.Header>Environments</PageTitle.Header>
         <PageTitle.Actions>
-          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newEnvironmentUrl(orgHandler))}>
+          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newEnvironmentUrl(scope))}>
             Create
           </Button>
         </PageTitle.Actions>
@@ -120,7 +119,7 @@ export default function Environments(): JSX.Element {
           description="Create your first environment to get started"
           showAction
           actionLabel="Create Environment"
-          onAction={() => navigate(newEnvironmentUrl(orgHandler))}
+          onAction={() => navigate(newEnvironmentUrl(scope))}
         />
       ) : (
         <Table>

@@ -1,12 +1,12 @@
 import { Avatar, Button, Card, CardContent, Grid, IconButton, PageContent, PageTitle, Stack, ToggleButton, ToggleButtonGroup, Typography, CircularProgress } from '@wso2/oxygen-ui';
 import { Clock, Folder, LayoutGrid, List, Plus, RefreshCw, Settings } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useState, type JSX } from 'react';
 import { useProjects, type GqlProject } from '../api/queries';
 import EmptyListing from '../components/EmptyListing';
 import { formatDistanceToNow } from '../utils/time';
-import { newProjectUrl, projectUrl } from '../paths';
+import { resourceUrl, narrow, newProjectUrl, type OrgScope } from '../nav';
 
 function ProjectCard({ project, onClick }: { project: GqlProject; onClick: () => void }) {
   return (
@@ -34,9 +34,8 @@ function ProjectCard({ project, onClick }: { project: GqlProject; onClick: () =>
   );
 }
 
-export default function Projects(): JSX.Element {
+export default function Projects(scope: OrgScope): JSX.Element {
   const navigate = useNavigate();
-  const { orgHandler = 'default' } = useParams();
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const { data: projects, isLoading, refetch } = useProjects();
@@ -68,7 +67,7 @@ export default function Projects(): JSX.Element {
 
       <Stack direction="row" gap={2} alignItems="center" sx={{ mb: 3 }}>
         <SearchField value={query} onChange={setQuery} placeholder="Search projects" fullWidth />
-        <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newProjectUrl(orgHandler))} sx={{ whiteSpace: 'nowrap' }}>
+        <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newProjectUrl(scope))} sx={{ whiteSpace: 'nowrap' }}>
           Create
         </Button>
       </Stack>
@@ -82,13 +81,13 @@ export default function Projects(): JSX.Element {
           description={query ? 'Try adjusting your search' : 'Create your first project to get started'}
           showAction={!query}
           actionLabel="Create Project"
-          onAction={() => navigate(newProjectUrl(orgHandler))}
+          onAction={() => navigate(newProjectUrl(scope))}
         />
       ) : (
         <Grid container spacing={2}>
           {filtered.map((p) => (
             <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <ProjectCard project={p} onClick={() => navigate(projectUrl(orgHandler, p.id))} />
+              <ProjectCard project={p} onClick={() => navigate(resourceUrl(narrow(scope, p.id), 'overview'))} />
             </Grid>
           ))}
         </Grid>

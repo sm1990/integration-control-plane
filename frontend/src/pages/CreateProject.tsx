@@ -1,9 +1,9 @@
 import { Button, Grid, IconButton, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, Edit } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
-import { useNavigate, useParams, Link } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { useCreateProject, type CreateProjectInput } from '../api/mutations';
-import { orgUrl, projectUrl } from '../paths';
+import { resourceUrl, narrow, type OrgScope } from '../nav';
 
 function toHandler(name: string) {
   return name
@@ -12,9 +12,8 @@ function toHandler(name: string) {
     .replace(/^-|-$/g, '');
 }
 
-export default function CreateProject(): JSX.Element {
+export default function CreateProject(scope: OrgScope): JSX.Element {
   const navigate = useNavigate();
-  const { orgHandler = 'default' } = useParams();
 
   const [displayName, setDisplayName] = useState('');
   const [handler, setHandler] = useState('');
@@ -29,16 +28,16 @@ export default function CreateProject(): JSX.Element {
       name: displayName,
       handler: effectiveHandler,
       description,
-      orgHandler,
+      orgHandler: scope.org,
     };
     mutation.mutate(input, {
-      onSuccess: (project) => navigate(projectUrl(orgHandler, project.id)),
+      onSuccess: (project) => navigate(resourceUrl(narrow(scope, project.id), 'overview')),
     });
   };
 
   return (
     <PageContent>
-      <Link to={orgUrl(orgHandler)} style={{ textDecoration: 'none', color: 'inherit' }}>
+      <Link to={resourceUrl(scope, 'overview')} style={{ textDecoration: 'none', color: 'inherit' }}>
         <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
           <ArrowLeft size={18} />
           <Typography variant="body2">Back to Home</Typography>
@@ -85,7 +84,7 @@ export default function CreateProject(): JSX.Element {
       </Grid>
 
       <Stack direction="row" gap={2}>
-        <Button variant="outlined" onClick={() => navigate(orgUrl(orgHandler))}>
+        <Button variant="outlined" onClick={() => navigate(resourceUrl(scope, 'overview'))}>
           Cancel
         </Button>
         <Button variant="contained" onClick={submit} disabled={!displayName.trim() || mutation.isPending}>

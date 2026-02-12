@@ -1,13 +1,13 @@
 import { Button, Checkbox, Chip, CircularProgress, FormControlLabel, List, ListItemButton, ListItemText, MenuItem, PageContent, Select, Stack, Typography } from '@wso2/oxygen-ui';
 import { RefreshCw, ScrollText } from '@wso2/oxygen-ui-icons-react';
-import { useParams } from 'react-router';
 import { useMemo, useState, type JSX } from 'react';
 import { useComponentByHandler, useComponents, useEnvironments, useRuntimes } from '../api/queries';
 import { useLogs, type LogsRequest } from '../api/logs';
 import EmptyListing from '../components/EmptyListing';
 import NotFound from '../components/NotFound';
 import SearchField from '../components/SearchField';
-import { projectUrl } from '../paths';
+import { resourceUrl, broaden, hasComponent, type ProjectScope, type ComponentScope } from '../nav';
+
 
 const LOG_LEVELS = ['INFO', 'WARN', 'ERROR', 'DEBUG'] as const;
 const TIME_RANGES: Record<string, number> = {
@@ -24,15 +24,12 @@ function levelColor(level: string): 'info' | 'warning' | 'error' | 'default' {
   return 'default';
 }
 
-export default function RuntimeLogs(): JSX.Element {
-  const { orgHandler = 'default', projectId = '', componentHandler } = useParams();
-  const isComponentLevel = !!componentHandler;
+export default function RuntimeLogs(scope: ProjectScope | ComponentScope): JSX.Element {
+  const { data: singleComponent, isLoading: loadingComponent } = useComponentByHandler(scope.project, hasComponent(scope) ? scope.component : undefined);
+  const { data: allComponents = [], isLoading: loadingComponents } = useComponents(scope.org, scope.project);
+  const { data: environments = [], isLoading: loadingEnvironments } = useEnvironments(scope.project);
 
-  const { data: singleComponent, isLoading: loadingComponent } = useComponentByHandler(projectId, componentHandler ?? '');
-  const { data: allComponents = [], isLoading: loadingComponents } = useComponents(orgHandler, projectId);
-  const { data: environments = [], isLoading: loadingEnvironments } = useEnvironments(projectId);
-
-  const componentIds = isComponentLevel ? (singleComponent ? [singleComponent.id] : []) : allComponents.map((c) => c.id);
+  const componentIds = hasComponent(scope) ? (singleComponent ? [singleComponent.id] : []) : allComponents.map((c) => c.id);
 
   const [envFilter, setEnvFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('all');
@@ -46,7 +43,7 @@ export default function RuntimeLogs(): JSX.Element {
   const selectedEnv = environments.find((e) => e.id === effectiveEnvId);
   const componentIdsKey = componentIds.join(',');
 
-  const { data: runtimes = [] } = useRuntimes(effectiveEnvId, projectId, isComponentLevel && singleComponent ? singleComponent.id : '');
+  const { data: runtimes = [] } = useRuntimes(effectiveEnvId, scope.project, hasComponent(scope) && singleComponent ? singleComponent.id : '');
 
   const logsRequest = useMemo<LogsRequest | null>(() => {
     if (componentIds.length === 0 || !selectedEnv) return null;
@@ -79,7 +76,7 @@ export default function RuntimeLogs(): JSX.Element {
       return next;
     });
 
-  const loadingContext = isComponentLevel ? loadingComponent : loadingComponents;
+  const loadingContext = hasComponent(scope) ? loadingComponent : loadingComponents;
   if (loadingContext || loadingEnvironments) {
     return (
       <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
@@ -87,10 +84,10 @@ export default function RuntimeLogs(): JSX.Element {
       </PageContent>
     );
   }
-  if (isComponentLevel && !singleComponent) {
-    return <NotFound message="Component not found" backTo={projectUrl(orgHandler, projectId)} backLabel="Back to Project" />;
+  if (hasComponent(scope) && !singleComponent) {
+    return <NotFound message="Component not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Project" />;
   }
-  if (!isComponentLevel && allComponents.length === 0) {
+  if (!hasComponent(scope) && allComponents.length === 0) {
     return (
       <PageContent>
         <EmptyListing icon={<ScrollText size={48} />} title="No components" description="Add a component to view runtime logs." />

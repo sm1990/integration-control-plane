@@ -43,22 +43,30 @@ import {
 } from '@wso2/oxygen-ui';
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { useNavigate, Outlet, Link as NavLink, useParams } from 'react-router';
+import { useNavigate, Outlet, Link as NavLink } from 'react-router';
 import Logo from '../components/Logo';
 import { BarChart3, Bell, Building, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Settings, Shield, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProject, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
-import { orgUrl, projectUrl, componentUrl, projectLogsUrl, componentLogsUrl, environmentsUrl, loginUrl, projectRuntimeUrl, componentRuntimeUrl, orgAccessControlUrl, projectAccessControlUrl } from '../paths';
+import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
+import { orgAccessControlUrl, projectAccessControlUrl, loginUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
+
+const SIDEBAR_ICONS: Record<Resource, JSX.Element> = {
+  overview: <LayoutDashboard size={20} />,
+  logs: <ScrollText size={20} />,
+  runtimes: <Settings size={20} />,
+  environments: <Layers size={20} />,
+};
 
 export default function AppLayout(): JSX.Element {
   const navigate = useNavigate();
-  const { orgHandler = 'default', projectId, componentHandler } = useParams();
+  const scope = useScope();
+  const resource = useResource();
 
   const { username, displayName, logout } = useAuth();
 
   const { state: shell, actions } = useAppShell({ initialCollapsed: true });
-  const [activeItem, setActiveItem] = useState('overview');
   const [tabIndex, setTabIndex] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
 
@@ -70,18 +78,11 @@ export default function AppLayout(): JSX.Element {
     return notifications;
   };
 
-  const { data: project } = useProject(projectId ?? '');
+  const { data: project } = useProject(hasProject(scope) ? scope.project : '');
   const { data: projects = [] } = useProjects();
-  const { data: components = [] } = useComponents(orgHandler, projectId ?? '');
+  const { data: components = [] } = useComponents(scope.org, hasProject(scope) ? scope.project : '');
 
-  const inProject = !!projectId;
-  const inComponent = !!componentHandler;
-
-  const handleSelect = (id: string) => {
-    setActiveItem(id);
-    if (!inProject) return;
-    if (id === 'overview') navigate(inComponent ? componentUrl(orgHandler, projectId!, componentHandler!) : projectUrl(orgHandler, projectId!));
-  };
+  const items = sidebarItems(scope, resource);
 
   return (
     <AppShell>
@@ -95,7 +96,7 @@ export default function AppLayout(): JSX.Element {
           </Header.Brand>
           <Header.Switchers showDivider={false}>
             <ComplexSelect
-              value={orgHandler}
+              value={scope.org}
               onChange={() => {}}
               size="small"
               sx={{ minWidth: 180 }}
@@ -115,14 +116,17 @@ export default function AppLayout(): JSX.Element {
                 <ComplexSelect.MenuItem.Text primary="Default Organization" secondary="Organization" />
               </ComplexSelect.MenuItem>
             </ComplexSelect>
-            {inProject && (
+            {hasProject(scope) && (
               <Stack direction="row" alignItems="center" gap={0.5}>
                 <ComplexSelect
-                  value={projectId}
-                  onChange={(e) => navigate(projectUrl(orgHandler, String(e.target.value)))}
+                  value={scope.project}
+                  onChange={(e) => {
+                    const newScope = narrow({ level: 'organizations', org: scope.org }, String(e.target.value));
+                    navigate(resourceUrl(newScope, resource ?? 'overview'));
+                  }}
                   size="small"
                   sx={{ minWidth: 160 }}
-                  renderValue={() => <ComplexSelect.MenuItem.Text primary={project?.name ?? projectId} secondary="Project" />}
+                  renderValue={() => <ComplexSelect.MenuItem.Text primary={project?.name ?? scope.project} secondary="Project" />}
                   label="Projects">
                   {projects.map((p) => (
                     <ComplexSelect.MenuItem key={p.id} value={p.id}>
@@ -130,19 +134,22 @@ export default function AppLayout(): JSX.Element {
                     </ComplexSelect.MenuItem>
                   ))}
                 </ComplexSelect>
-                <IconButton size="small" onClick={() => navigate(orgUrl(orgHandler))}>
+                <IconButton size="small" onClick={() => navigate(resourceUrl({ level: 'organizations', org: scope.org }, resource ?? 'overview'))}>
                   <X size={14} />
                 </IconButton>
               </Stack>
             )}
-            {inComponent && (
+            {hasComponent(scope) && (
               <Stack direction="row" alignItems="center" gap={0.5}>
                 <ComplexSelect
-                  value={componentHandler}
-                  onChange={(e) => navigate(componentUrl(orgHandler, projectId!, String(e.target.value)))}
+                  value={scope.component}
+                  onChange={(e) => {
+                    const newScope = narrow({ level: 'projects', org: scope.org, project: scope.project }, String(e.target.value));
+                    navigate(resourceUrl(newScope, resource ?? 'overview'));
+                  }}
                   size="small"
                   sx={{ minWidth: 160 }}
-                  renderValue={() => <ComplexSelect.MenuItem.Text primary={componentHandler} secondary="Integration" />}
+                  renderValue={() => <ComplexSelect.MenuItem.Text primary={scope.component} secondary="Integration" />}
                   label="Integrations">
                   {components.map((c) => (
                     <ComplexSelect.MenuItem key={c.id} value={c.handler}>
@@ -150,7 +157,7 @@ export default function AppLayout(): JSX.Element {
                     </ComplexSelect.MenuItem>
                   ))}
                 </ComplexSelect>
-                <IconButton size="small" onClick={() => navigate(projectUrl(orgHandler, projectId!))}>
+                <IconButton size="small" onClick={() => navigate(resourceUrl(broaden(scope)!, resource ?? 'overview'))}>
                   <X size={14} />
                 </IconButton>
               </Stack>
@@ -180,85 +187,48 @@ export default function AppLayout(): JSX.Element {
       </AppShell.Navbar>
 
       <AppShell.Sidebar>
-        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={activeItem} expandedMenus={shell.expandedMenus} onSelect={handleSelect} onToggleExpand={actions.toggleMenu}>
+        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={resource ?? 'overview'} expandedMenus={shell.expandedMenus} onSelect={() => {}} onToggleExpand={actions.toggleMenu}>
           <Sidebar.Nav>
             <Sidebar.Category>
-              <Link component={NavLink} to={inProject ? projectUrl(orgHandler, projectId!) : orgUrl(orgHandler)}>
-                <Sidebar.Item id="overview">
-                  <Sidebar.ItemIcon>
-                    <LayoutDashboard size={20} />
-                  </Sidebar.ItemIcon>
-                  <Sidebar.ItemLabel>Overview</Sidebar.ItemLabel>
-                </Sidebar.Item>
-              </Link>
-            </Sidebar.Category>
-
-            {!inProject && (
-              <>
-                <Sidebar.Category>
-                  <Link component={NavLink} to={environmentsUrl(orgHandler)}>
-                    <Sidebar.Item id="environments">
-                      <Sidebar.ItemIcon>
-                        <Layers size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Environments</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                </Sidebar.Category>
-                <Sidebar.Category>
-                  <Link component={NavLink} to={orgAccessControlUrl(orgHandler)}>
-                    <Sidebar.Item id="access-control">
-                      <Sidebar.ItemIcon>
-                        <Shield size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Access Control</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                </Sidebar.Category>
-              </>
-            )}
-
-            {inProject && (
-              <>
-                <Sidebar.Category>
-                  <Sidebar.CategoryLabel>Observability</Sidebar.CategoryLabel>
-                  <Link component={NavLink} to={inComponent ? componentLogsUrl(orgHandler, projectId!, componentHandler!) : projectLogsUrl(orgHandler, projectId!)}>
-                    <Sidebar.Item id="logs">
-                      <Sidebar.ItemIcon>
-                        <ScrollText size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Logs</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                  <Sidebar.Item id="metrics">
-                    <Sidebar.ItemIcon>
-                      <BarChart3 size={20} />
-                    </Sidebar.ItemIcon>
-                    <Sidebar.ItemLabel>Metrics</Sidebar.ItemLabel>
+              {items.map((item) => (
+                <Link key={item.resource} component={NavLink} to={item.url}>
+                  <Sidebar.Item id={item.resource}>
+                    <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
+                    <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
                   </Sidebar.Item>
-                </Sidebar.Category>
-
-                <Sidebar.Category>
-                  <Sidebar.CategoryLabel>Admin</Sidebar.CategoryLabel>
-                  <Link component={NavLink} to={inComponent ? componentRuntimeUrl(orgHandler, projectId!, componentHandler!) : projectRuntimeUrl(orgHandler, projectId!)}>
-                    <Sidebar.Item id="admin">
-                      <Sidebar.ItemIcon>
-                        <Settings size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Runtime</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                  <Link component={NavLink} to={projectAccessControlUrl(orgHandler, projectId!)}>
-                    <Sidebar.Item id="project-access-control">
-                      <Sidebar.ItemIcon>
-                        <Shield size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Access Control</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  </Link>
-                </Sidebar.Category>
-              </>
-            )}
+                </Link>
+              ))}
+              {hasProject(scope) && (
+                <Sidebar.Item id="metrics">
+                  <Sidebar.ItemIcon>
+                    <BarChart3 size={20} />
+                  </Sidebar.ItemIcon>
+                  <Sidebar.ItemLabel>Metrics</Sidebar.ItemLabel>
+                </Sidebar.Item>
+              )}
+            </Sidebar.Category>
+            <Sidebar.Category>
+              {!hasProject(scope) && (
+                <Link component={NavLink} to={orgAccessControlUrl(scope.org)}>
+                  <Sidebar.Item id="access-control">
+                    <Sidebar.ItemIcon>
+                      <Shield size={20} />
+                    </Sidebar.ItemIcon>
+                    <Sidebar.ItemLabel>Access Control</Sidebar.ItemLabel>
+                  </Sidebar.Item>
+                </Link>
+              )}
+              {hasProject(scope) && (
+                <Link component={NavLink} to={projectAccessControlUrl(scope.org, scope.project)}>
+                  <Sidebar.Item id="project-access-control">
+                    <Sidebar.ItemIcon>
+                      <Shield size={20} />
+                    </Sidebar.ItemIcon>
+                    <Sidebar.ItemLabel>Access Control</Sidebar.ItemLabel>
+                  </Sidebar.Item>
+                </Link>
+              )}
+            </Sidebar.Category>
           </Sidebar.Nav>
 
           <Sidebar.Footer>

@@ -30,12 +30,11 @@ import {
 import { ChevronRight, Maximize2, RefreshCw, X } from '@wso2/oxygen-ui-icons-react';
 import { Globe, Link2, ArrowRightLeft, Inbox, ListOrdered, Clock, FolderArchive, Package, Plug, FileText } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
-import { useParams } from 'react-router';
 import { useEffect, useState, type JSX } from 'react';
 import { useComponentByHandler, useEnvironments, useArtifactTypes, useArtifacts, useArtifactSource, useLocalEntryValue, ARTIFACT_TYPE_TO_SOURCE_TYPE, type GqlEnvironment, type GqlArtifact, ARTIFACT_QUERY_MAP } from '../api/queries';
 import { useUpdateArtifactStatus } from '../api/mutations';
 import NotFound from '../components/NotFound';
-import { projectUrl } from '../paths';
+import { resourceUrl, broaden, type ComponentScope } from '../nav';
 
 /** "RestApi" → "Rest Apis", "ProxyService" → "Proxy Services" */
 function typePlural(t: string): string {
@@ -499,10 +498,9 @@ function Environment({ env, componentId, onSelectArtifact }: { env: GqlEnvironme
   );
 }
 
-export default function Component(): JSX.Element {
-  const { orgHandler = 'default', projectId = '', componentHandler = '' } = useParams();
-  const { data: component, isLoading } = useComponentByHandler(projectId, componentHandler);
-  const { data: environments = [] } = useEnvironments(projectId);
+export default function Component(scope: ComponentScope): JSX.Element {
+  const { data: component, isLoading } = useComponentByHandler(scope.project, scope.component);
+  const { data: environments = [] } = useEnvironments(scope.project);
   const [selectedArtifact, setSelectedArtifact] = useState<SelectedArtifact | null>(null);
 
   if (isLoading)
@@ -511,7 +509,7 @@ export default function Component(): JSX.Element {
         <CircularProgress />
       </PageContent>
     );
-  if (!component) return <NotFound message="Component not found" backTo={projectUrl(orgHandler, projectId)} backLabel="Back to Project" />;
+  if (!component) return <NotFound message="Component not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Project" />;
 
   return (
     <Box sx={{ position: 'relative', overflow: 'hidden', flex: 1 }}>
@@ -519,14 +517,14 @@ export default function Component(): JSX.Element {
         <Stack component="header" direction="row" alignItems="center" gap={2} sx={{ mb: 1 }}>
           <Avatar sx={{ width: 56, height: 56, fontSize: 24, bgcolor: 'text.primary', color: 'background.paper' }}>{component.displayName?.[0]?.toUpperCase() ?? 'C'}</Avatar>
           <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            {component.displayName ?? componentHandler}
+            {component.displayName ?? scope.component}
           </Typography>
         </Stack>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 4, ml: 9 }}>
           {component.description || '+ Add Description'}
         </Typography>
         {environments.map((env) => (
-          <Environment key={env.id} env={env} componentId={component.id} onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId })} />
+          <Environment key={env.id} env={env} componentId={component.id} onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId: scope.project })} />
         ))}
       </PageContent>
       <ArtifactDetail selected={selectedArtifact} onClose={() => setSelectedArtifact(null)} />

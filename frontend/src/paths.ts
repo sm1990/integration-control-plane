@@ -1,11 +1,7 @@
 /**
- * Single source of truth for app and external URLs. Pure functions and constants only.
- * id = uuid, handle = slug
+ * API URLs, external links, and legacy path helpers for pages not yet migrated to nav.ts.
+ * Navigation for the main matrix pages is handled by src/nav.ts.
  */
-
-export function rootUrl(): string {
-  return '/';
-}
 
 export function loginUrl(): string {
   return '/login';
@@ -13,6 +9,16 @@ export function loginUrl(): string {
 
 export function oidcCallbackUrl(): string {
   return '/auth/callback';
+}
+
+// ---------------------------------------------------------------------------
+// Legacy path helpers — used by pages outside the nav matrix (Organizations,
+// Analytics, Components, ComponentEditor, Error, etc.). Migrate these pages
+// to nav.ts before removing.
+// ---------------------------------------------------------------------------
+
+export function rootUrl(): string {
+  return '/';
 }
 
 export function orgUrl(orgHandler: string): string {
@@ -31,23 +37,7 @@ export function editOrgUrl(orgId: string): string {
   return `/organizations/${orgId}/edit`;
 }
 
-export function environmentsUrl(orgHandler: string): string {
-  return `/organizations/${orgHandler}/environments`;
-}
-
-export function newEnvironmentUrl(orgHandler: string): string {
-  return `/organizations/${orgHandler}/environments/new`;
-}
-
-export function newProjectUrl(orgHandler: string): string {
-  return `/organizations/${orgHandler}/projects/new`;
-}
-
 export function projectUrl(orgHandler: string, projectId: string): string {
-  return `/organizations/${orgHandler}/projects/${projectId}`;
-}
-
-export function projectComponentsUrl(orgHandler: string, projectId: string): string {
   return `/organizations/${orgHandler}/projects/${projectId}`;
 }
 
@@ -61,22 +51,6 @@ export function newComponentUrl(orgHandler: string, projectId: string): string {
 
 export function editComponentUrl(orgHandler: string, projectId: string, componentId: string): string {
   return `/organizations/${orgHandler}/projects/${projectId}/components/${componentId}/edit`;
-}
-
-export function projectLogsUrl(orgHandler: string, projectId: string): string {
-  return `/organizations/${orgHandler}/projects/${projectId}/observe/runtimelogs`;
-}
-
-export function componentLogsUrl(orgHandler: string, projectId: string, componentHandler: string): string {
-  return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/observe/runtimelogs`;
-}
-
-export function projectRuntimeUrl(orgHandler: string, projectId: string): string {
-  return `/organizations/${orgHandler}/projects/${projectId}/admin/runtime`;
-}
-
-export function componentRuntimeUrl(orgHandler: string, projectId: string, componentHandler: string): string {
-  return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/admin/runtime`;
 }
 
 export function orgAccessControlUrl(orgHandler: string, tab: 'users' | 'roles' | 'groups' = 'users'): string {
@@ -95,12 +69,20 @@ export function orgAnalyticsLogsUrl(orgHandler: string): string {
   return `/organizations/${orgHandler}/analytics/logs`;
 }
 
+// ---------------------------------------------------------------------------
+// External links
+// ---------------------------------------------------------------------------
+
 export const external = {
   wso2: 'https://www.wso2.com',
   vite: 'https://vite.dev',
   react: 'https://react.dev',
   oxygenUi: 'https://github.com/wso2/oxygen-ui/tree/next',
 } as const;
+
+// ---------------------------------------------------------------------------
+// Mock-data path constants
+// ---------------------------------------------------------------------------
 
 export const dashboard = '/dashboard';
 export const analytics = {
@@ -132,6 +114,10 @@ export const support = {
   helpCenter: '/support/help-center',
   contact: '/support/contact',
 } as const;
+
+// ---------------------------------------------------------------------------
+// API URLs
+// ---------------------------------------------------------------------------
 
 export const observabilityLogsApiUrl = 'https://localhost:9448/icp/observability/logs?live=true';
 

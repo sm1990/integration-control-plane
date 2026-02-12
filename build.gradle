@@ -86,11 +86,49 @@ task testICP {
     }
 }
 
+task buildFrontend {
+    description = 'Build the frontend application'
+    doLast {
+        logger.info('Building frontend...')
+        exec {
+            workingDir 'frontend'
+            commandLine 'pnpm', 'build'
+        }
+        logger.info('Frontend build complete')
+    }
+}
 
+task copyFrontendDist {
+    description = 'Copy frontend dist folder contents to www folder'
+    dependsOn buildFrontend
+    doLast {
+        logger.info('Copying frontend dist to www folder...')
+        
+        def distDir = file('frontend/dist')
+        def wwwDir = file('www')
+        
+        if (distDir.exists()) {
+            // Clean www directory first
+            if (wwwDir.exists()) {
+                delete wwwDir
+            }
+            wwwDir.mkdirs()
+            
+            // Copy all contents from dist to www
+            copy {
+                from distDir
+                into wwwDir
+            }
+            logger.info('Frontend dist copied to www folder')
+        } else {
+            throw new GradleException("Frontend dist not found at ${distDir.absolutePath} - ensure buildFrontend completed")
+        }
+    }
+}
 
 task packageICP {
     description = 'Package the ICP executable JAR into a zip file'
-    dependsOn buildICP
+    dependsOn buildICP, copyFrontendDist
     doLast {
         logger.info('Packaging Integration Control Plane...')
         

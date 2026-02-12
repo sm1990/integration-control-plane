@@ -14,7 +14,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM ballerina/ballerina:2201.13.0
+FROM ballerina/ballerina:2201.13.1
 
 USER root
 

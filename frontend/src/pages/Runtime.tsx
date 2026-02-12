@@ -32,10 +32,7 @@ export default function Runtime(scope: ProjectScope | ComponentScope): JSX.Eleme
     queries: environments.map((env) => ({
       queryKey: componentId ? ['runtimes', env.id, scope.project, componentId] : ['runtimes', env.id, scope.project],
       queryFn: () =>
-        gql<{ runtimes: GqlRuntime[] }>(
-          componentId ? RUNTIMES_QUERY : PROJECT_RUNTIMES_QUERY,
-          componentId ? { environmentId: env.id, projectId: scope.project, componentId } : { environmentId: env.id, projectId: scope.project },
-        ).then((d) => d.runtimes),
+        gql<{ runtimes: GqlRuntime[] }>(componentId ? RUNTIMES_QUERY : PROJECT_RUNTIMES_QUERY, componentId ? { environmentId: env.id, projectId: scope.project, componentId } : { environmentId: env.id, projectId: scope.project }).then((d) => d.runtimes),
     })),
   });
 
@@ -124,11 +121,7 @@ export default function Runtime(scope: ProjectScope | ComponentScope): JSX.Eleme
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setDeleting(null)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="error"
-              disabled={deleteMutation.isPending}
-              onClick={() => deleteMutation.mutate(deleting.runtimeId, { onSuccess: () => setDeleting(null) })}>
+            <Button variant="contained" color="error" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(deleting.runtimeId, { onSuccess: () => setDeleting(null) })}>
               Delete
             </Button>
           </DialogActions>

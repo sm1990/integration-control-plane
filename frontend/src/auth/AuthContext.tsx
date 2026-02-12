@@ -112,16 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     queryClient.clear();
   }, [queryClient]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    isAuthenticated,
-    username: userInfo?.username ?? '',
-    displayName: userInfo?.displayName ?? '',
-    permissions: userInfo?.permissions ?? [],
-    login,
-    loginWithOIDC,
-    handleOIDCCallback,
-    logout,
-  }), [isAuthenticated, userInfo, login, loginWithOIDC, handleOIDCCallback, logout]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      isAuthenticated,
+      username: userInfo?.username ?? '',
+      displayName: userInfo?.displayName ?? '',
+      permissions: userInfo?.permissions ?? [],
+      login,
+      loginWithOIDC,
+      handleOIDCCallback,
+      logout,
+    }),
+    [isAuthenticated, userInfo, login, loginWithOIDC, handleOIDCCallback, logout],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

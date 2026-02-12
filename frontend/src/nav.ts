@@ -1,5 +1,6 @@
 import { createContext, createElement, useContext, type FC, type JSX } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router';
+import { capitalize } from './utils/string';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,7 +68,9 @@ function scopeValue(scope: Scope, level: Level): string {
 
 function scopePrefix(scope: Scope): string {
   const idx = LEVEL_CHAIN.indexOf(scope.level);
-  return LEVEL_CHAIN.slice(0, idx + 1).map((l) => `/${l}/${scopeValue(scope, l)}`).join('');
+  return LEVEL_CHAIN.slice(0, idx + 1)
+    .map((l) => `/${l}/${scopeValue(scope, l)}`)
+    .join('');
 }
 
 function urlPattern(level: Level, segment: string): string {
@@ -101,12 +104,14 @@ export function narrow(scope: Scope, childId: string): Scope {
 }
 
 export function sidebarItems(scope: Scope, currentResource: Resource | null): SidebarItem[] {
-  return (Object.entries(MATRIX) as [Resource, (typeof MATRIX)[Resource]][]).filter(([, def]) => def.levels.includes(scope.level)).map(([resource]) => ({
-    resource,
-    label: resource === 'overview' ? 'Overview' : resource === 'logs' ? 'Logs' : resource === 'runtimes' ? 'Runtime' : 'Environments',
-    url: resourceUrl(scope, resource),
-    active: resource === currentResource,
-  }));
+  return (Object.entries(MATRIX) as [Resource, (typeof MATRIX)[Resource]][])
+    .filter(([, def]) => def.levels.includes(scope.level))
+    .map(([resource]) => ({
+      resource,
+      label: capitalize(resource),
+      url: resourceUrl(scope, resource),
+      active: resource === currentResource,
+    }));
 }
 
 export function newProjectUrl(scope: { org: string }): string {

@@ -8,7 +8,6 @@ import NotFound from '../components/NotFound';
 import SearchField from '../components/SearchField';
 import { resourceUrl, broaden, hasComponent, type ProjectScope, type ComponentScope } from '../nav';
 
-
 const LOG_LEVELS = ['INFO', 'WARN', 'ERROR', 'DEBUG'] as const;
 const TIME_RANGES: Record<string, number> = {
   'Past 1 hour': 1,

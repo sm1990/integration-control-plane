@@ -109,13 +109,26 @@ export default function LoginForm(): JSX.Element {
           />
         </Box>
 
-        <Button variant="contained" color="primary" type="submit" fullWidth sx={{ mt: 1, bgcolor: '#1e1e1e', '&:hover': { bgcolor: '#333' }, textTransform: 'none', py: 1.2 }} disabled={loading} startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}>
+        <Button
+          variant="contained"
+          color="primary"
+          type="submit"
+          fullWidth
+          sx={{ mt: 1, bgcolor: '#1e1e1e', '&:hover': { bgcolor: '#333' }, textTransform: 'none', py: 1.2 }}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}>
           {loading ? 'Signing In...' : 'Login'}
         </Button>
 
         <Divider sx={{ my: 0.5 }}>OR</Divider>
 
-        <Button variant="outlined" fullWidth sx={{ textTransform: 'none', py: 1.2, borderColor: '#ccc', color: 'text.primary' }} onClick={handleSSOLogin} disabled={loading || ssoLoading} startIcon={ssoLoading ? <CircularProgress size={20} color="inherit" /> : undefined}>
+        <Button
+          variant="outlined"
+          fullWidth
+          sx={{ textTransform: 'none', py: 1.2, borderColor: '#ccc', color: 'text.primary' }}
+          onClick={handleSSOLogin}
+          disabled={loading || ssoLoading}
+          startIcon={ssoLoading ? <CircularProgress size={20} color="inherit" /> : undefined}>
           {ssoLoading ? 'Redirecting...' : 'Sign in with SSO'}
         </Button>
       </Box>

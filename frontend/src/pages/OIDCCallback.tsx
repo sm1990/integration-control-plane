@@ -47,7 +47,7 @@ export default function OIDCCallback(): JSX.Element {
 
         const redirectUrl = getAndClearRedirectUrl();
         const isLoginPage = redirectUrl && new URL(redirectUrl).pathname === loginUrl();
-        window.location.href = (redirectUrl && !isLoginPage) ? redirectUrl : orgUrl('default');
+        window.location.href = redirectUrl && !isLoginPage ? redirectUrl : orgUrl('default');
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to complete authentication');
       }

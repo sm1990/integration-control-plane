@@ -37,19 +37,23 @@ const routes: AppRoute[] = [
   { path: oidcCallbackUrl(), element: <OIDCCallback /> },
   {
     element: <ProtectedRoute />,
-    children: [{
-      element: <ScopeResolver />,
-      children: [{
-        element: <AppLayout />,
+    children: [
+      {
+        element: <ScopeResolver />,
         children: [
-          ...generateMatrixRoutes(MATRIX),
-          { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
-          { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
-          { path: orgAccessControlUrl(':orgHandler', ':tab' as any), element: <AccessControl /> },
-          { path: projectAccessControlUrl(':orgHandler', ':projectId', ':tab' as any), element: <ProjectAccessControl /> },
+          {
+            element: <AppLayout />,
+            children: [
+              ...generateMatrixRoutes(MATRIX),
+              { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
+              { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
+              { path: orgAccessControlUrl(':orgHandler', ':tab' as any), element: <AccessControl /> },
+              { path: projectAccessControlUrl(':orgHandler', ':projectId', ':tab' as any), element: <ProjectAccessControl /> },
+            ],
+          },
         ],
-      }],
-    }],
+      },
+    ],
   },
 ];
 

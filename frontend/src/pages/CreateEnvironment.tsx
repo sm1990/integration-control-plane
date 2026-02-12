@@ -13,8 +13,7 @@ export default function CreateEnvironment(scope: OrgScope): JSX.Element {
   const [critical, setCritical] = useState(false);
   const mutation = useCreateEnvironment();
 
-  const submit = () =>
-    mutation.mutate({ name, description, critical }, { onSuccess: () => navigate(resourceUrl(scope, 'environments')) });
+  const submit = () => mutation.mutate({ name, description, critical }, { onSuccess: () => navigate(resourceUrl(scope, 'environments')) });
 
   return (
     <PageContent>

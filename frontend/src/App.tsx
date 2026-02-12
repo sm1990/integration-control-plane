@@ -35,11 +35,7 @@ function renderRoutes(routeList: AppRoute[]): JSX.Element[] {
 }
 
 function App() {
-  return (
-    <Routes>
-      {renderRoutes(routes)}
-    </Routes>
-  );
+  return <Routes>{renderRoutes(routes)}</Routes>;
 }
 
 export default App;

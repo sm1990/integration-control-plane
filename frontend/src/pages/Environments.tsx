@@ -113,14 +113,7 @@ export default function Environments(scope: OrgScope | ProjectScope): JSX.Elemen
       {isLoading ? (
         <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
       ) : !environments?.length ? (
-        <EmptyListing
-          icon={<Layers size={48} />}
-          title="No environments found"
-          description="Create your first environment to get started"
-          showAction
-          actionLabel="Create Environment"
-          onAction={() => navigate(newEnvironmentUrl(scope))}
-        />
+        <EmptyListing icon={<Layers size={48} />} title="No environments found" description="Create your first environment to get started" showAction actionLabel="Create Environment" onAction={() => navigate(newEnvironmentUrl(scope))} />
       ) : (
         <Table>
           <TableHead>

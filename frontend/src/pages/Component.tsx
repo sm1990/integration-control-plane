@@ -31,7 +31,7 @@ import {
   Tabs,
   Typography,
 } from '@wso2/oxygen-ui';
-import { ChevronRight, Maximize2, RefreshCw, X } from '@wso2/oxygen-ui-icons-react';
+import { ChevronRight, Maximize2, RefreshCw, X, ListFilter, LayoutGrid } from '@wso2/oxygen-ui-icons-react';
 import { Globe, Link2, ListOrdered, Clock, FolderArchive, Package, Plug, FileText, Radio, Server, Wifi, Layers } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useEffect, useState, type JSX } from 'react';
@@ -60,7 +60,7 @@ function formatArtifactTypeName(t: string): string {
 
 /** "RestApi" → "Rest Apis", "ProxyService" → "Proxy Services", "Listener" → "Listeners" */
 function typePlural(t: string): string {
-  return t.replace(/([a-z])([A-Z])/g, '$1 $2') + 's';
+  return t.replace(/([a-z])([A-Z])/g, '$1 $2') + '(s)';
 }
 
 const ARTIFACT_ICONS: Record<string, JSX.Element> = {
@@ -91,12 +91,29 @@ const ARTIFACT_TABS: Record<string, string[]> = {
 };
 const DEFAULT_ARTIFACT_TABS = ['Overview', 'Source', 'Runtimes'];
 
+const ENTRY_POINT_CONFIG: Record<string, { label: string; color: string; bgColor: string; metaField?: string }> = {
+  RestApi: { label: 'API', color: '#1565c0', bgColor: '#e3f2fd', metaField: 'context' },
+  ProxyService: { label: 'Proxy', color: '#e65100', bgColor: '#fff3e0' },
+  InboundEndpoint: { label: 'Inbound', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol' },
+  Task: { label: 'Task', color: '#00695c', bgColor: '#e0f2f1' },
+};
+
+const ENTRY_POINT_TYPE_SET = new Set(Object.keys(ENTRY_POINT_CONFIG));
+
+const ENTRY_POINT_DETAIL_TABS: Record<string, string[]> = {
+  RestApi: ['Overview', 'Resources', 'Runtimes'],
+  ProxyService: ['Overview', 'Runtimes'],
+  InboundEndpoint: ['Overview', 'Runtimes'],
+  Task: ['Runtimes'],
+};
+
 interface SelectedArtifact {
   artifact: GqlArtifact;
   artifactType: string;
   envId: string;
   componentId: string;
   projectId: string;
+  initialTab?: string;
 }
 
 const cellSx = { borderBottom: '1px solid', borderColor: 'divider' };
@@ -349,7 +366,8 @@ function ServiceResources({ artifact }: TabProps) {
   );
 }
 
-function ArtifactWsdl(_props: TabProps) {
+function ArtifactWsdl(props: TabProps) {
+  void props;
   return <Typography sx={emptySx}>No WSDL content available.</Typography>;
 }
 
@@ -399,8 +417,14 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const artifactKey = selected ? `${selected.artifactType}-${selected.artifact.name}` : '';
   useEffect(() => {
-    setActiveTabIndex(0);
-  }, [artifactKey]);
+    if (selected?.initialTab) {
+      const tabs = ARTIFACT_TABS[selected.artifactType] ?? DEFAULT_ARTIFACT_TABS;
+      const idx = tabs.indexOf(selected.initialTab);
+      setActiveTabIndex(idx >= 0 ? idx : 0);
+    } else {
+      setActiveTabIndex(0);
+    }
+  }, [artifactKey, selected?.artifactType, selected?.initialTab]);
 
   if (!selected) return null;
 
@@ -580,10 +604,11 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
 }
 
 function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId: string; componentId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void }) {
-  const { data: types = [], isLoading } = useArtifactTypes(componentId, envId);
+  const { data: rawTypes = [], isLoading } = useArtifactTypes(componentId, envId);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
+  const types = rawTypes.filter((t) => !ENTRY_POINT_TYPE_SET.has(t.artifactType));
   const selectedArtifactType = selectedType ?? types[0]?.artifactType ?? '';
   const { data: artifacts = [], isLoading: loadingArtifacts } = useArtifacts(selectedArtifactType, envId, componentId);
 
@@ -629,9 +654,173 @@ function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId:
   );
 }
 
-function Environment({ env, componentId, onSelectArtifact }: { env: GqlEnvironment; componentId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void }) {
+function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected: SelectedArtifact; onViewSource: () => void; onViewRuntimes: () => void }) {
+  const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const { artifact, artifactType, envId, componentId, projectId } = selected;
+  const config = ENTRY_POINT_CONFIG[artifactType];
+  const tabs = ENTRY_POINT_DETAIL_TABS[artifactType] ?? ['Overview', 'Runtimes'];
+  const validTabIndex = Math.min(activeTabIndex, tabs.length - 1);
+  const activeTab = tabs[validTabIndex];
+  const tabProps: TabProps = { artifact, artifactType, envId, componentId, projectId };
+  const container = artifact.container?.toString();
+  const context = artifact.context?.toString();
+  const tracing = (artifact.tracing ?? 'disabled').toString().toLowerCase();
+  const showViewSource = (ARTIFACT_TABS[artifactType] ?? DEFAULT_ARTIFACT_TABS).includes('Source');
+
+  const artifactKey = `${artifactType}-${artifact.name}`;
+  useEffect(() => {
+    setActiveTabIndex(0);
+  }, [artifactKey]);
+
+  const renderActiveTab = () => {
+    switch (activeTab) {
+      case 'Overview':
+        return <ArtifactOverview {...tabProps} />;
+      case 'Resources':
+        return <ArtifactApiDefinition {...tabProps} />;
+      case 'Runtimes':
+        return <ArtifactRuntimes {...tabProps} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <Box sx={{ mt: 2, borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
+      <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 2 }}>
+        <Chip label={`${config?.label ?? artifactType}`.toUpperCase()} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11 }} />
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          {artifact.name?.toString()}
+        </Typography>
+        {container && <Chip label={`C-App: ${container}`} size="small" variant="outlined" sx={{ bgcolor: '#e8eaf6', color: '#3949ab', fontSize: 11 }} />}
+        {context && (
+          <Typography variant="body2" color="text.secondary">
+            Context: {context}
+          </Typography>
+        )}
+        <Stack direction="row" alignItems="center" gap={0.5} sx={{ ml: 'auto' }}>
+          <Typography variant="body2" color="text.secondary">
+            Tracing {tracing === 'enabled' ? 'Enabled' : 'Disabled'}
+          </Typography>
+          <Switch size="small" checked={tracing === 'enabled'} />
+        </Stack>
+        {showViewSource && (
+          <Button variant="outlined" size="small" onClick={onViewSource}>
+            View Source
+          </Button>
+        )}
+        <Button variant="outlined" size="small" onClick={onViewRuntimes}>
+          View Runtimes
+        </Button>
+      </Stack>
+      <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
+        {tabs.map((t) => (
+          <Tab key={t} label={t} />
+        ))}
+      </Tabs>
+      {renderActiveTab()}
+    </Box>
+  );
+}
+
+function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envId: string; componentId: string; projectId: string; onOpenDrawer: (a: GqlArtifact, type: string, envId: string, tab: string) => void }) {
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<SelectedArtifact | null>(null);
+
+  const { data: apis = [], isLoading: loadingApis } = useArtifacts('RestApi', envId, componentId);
+  const { data: proxies = [], isLoading: loadingProxies } = useArtifacts('ProxyService', envId, componentId);
+  const { data: inboundEps = [], isLoading: loadingInbound } = useArtifacts('InboundEndpoint', envId, componentId);
+  const { data: tasks = [], isLoading: loadingTasks } = useArtifacts('Task', envId, componentId);
+
+  const isLoading = loadingApis || loadingProxies || loadingInbound || loadingTasks;
+
+  const groups = [
+    { type: 'RestApi', items: apis },
+    { type: 'ProxyService', items: proxies },
+    { type: 'InboundEndpoint', items: inboundEps },
+    { type: 'Task', items: tasks },
+  ].filter((g) => g.items.length > 0);
+
+  const activeType = selectedType ?? groups[0]?.type ?? '';
+  const activeConfig = ENTRY_POINT_CONFIG[activeType];
+  const activeItems = groups.find((g) => g.type === activeType)?.items ?? [];
+  const filtered = query ? activeItems.filter((a) => a.name?.toString().toLowerCase().includes(query.toLowerCase())) : activeItems;
+
+  if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
+  if (groups.length === 0)
+    return (
+      <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
+        No entry points found for this component.
+      </Typography>
+    );
+
+  return (
+    <>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, sm: 3 }}>
+          <List disablePadding>
+            {groups.map(({ type, items }) => {
+              const config = ENTRY_POINT_CONFIG[type];
+              return (
+                <ListItemButton
+                  key={type}
+                  selected={type === activeType}
+                  onClick={() => {
+                    setSelectedType(type);
+                    setQuery('');
+                    setSelected(null);
+                  }}
+                  sx={{ borderRadius: 1, mb: 0.5 }}>
+                  {ARTIFACT_ICONS[type] && <ListItemIcon sx={{ minWidth: 32 }}>{ARTIFACT_ICONS[type]}</ListItemIcon>}
+                  <ListItemText primary={config.label} />
+                  <Chip label={items.length} size="small" sx={{ height: 20, fontSize: 11 }} />
+                </ListItemButton>
+              );
+            })}
+          </List>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 9 }}>
+          <Typography variant="overline" sx={{ mb: 1, display: 'block' }}>
+            {activeConfig?.label ?? activeType}(s)
+          </Typography>
+          <SearchField value={query} onChange={setQuery} placeholder={`Search ${activeConfig?.label.toLowerCase() ?? ''} entry points by name`} fullWidth sx={{ mb: 2 }} />
+          {filtered.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+              No {activeConfig?.label.toLowerCase()} entry points found.
+            </Typography>
+          ) : (
+            <Stack gap={0}>
+              {filtered.map((a) => {
+                const isSelected = selected?.artifact.name === a.name && selected?.artifactType === activeType;
+                const meta = activeConfig?.metaField ? a[activeConfig.metaField]?.toString() : undefined;
+                return (
+                  <Box key={`${activeType}-${a.name}`} onClick={() => setSelected(isSelected ? null : { artifact: a, artifactType: activeType, envId, componentId, projectId })} sx={{ display: 'flex', alignItems: 'center', px: 1.5, py: 1, cursor: 'pointer', borderBottom: '1px solid', borderColor: 'divider', bgcolor: isSelected ? 'action.selected' : 'transparent', '&:hover': { bgcolor: isSelected ? 'action.selected' : 'action.hover' } }}>
+                    <Chip label={activeConfig?.label} size="small" sx={{ bgcolor: activeConfig?.bgColor, color: activeConfig?.color, fontWeight: 700, fontSize: 11, mr: 2, minWidth: 60, justifyContent: 'center' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
+                      {a.name?.toString()}
+                    </Typography>
+                    {meta && (
+                      <Typography variant="body2" color="text.secondary">
+                        {meta}
+                      </Typography>
+                    )}
+                  </Box>
+                );
+              })}
+            </Stack>
+          )}
+        </Grid>
+      </Grid>
+      {selected && <EntryPointDetail selected={selected} onViewSource={() => onOpenDrawer(selected.artifact, selected.artifactType, envId, 'Source')} onViewRuntimes={() => onOpenDrawer(selected.artifact, selected.artifactType, envId, 'Runtimes')} />}
+    </>
+  );
+}
+
+function Environment({ env, componentId, projectId, onSelectArtifact, onOpenDrawerForTab }: { env: GqlEnvironment; componentId: string; projectId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void; onOpenDrawerForTab: (a: GqlArtifact, type: string, envId: string, tab: string) => void }) {
   const refreshEnvironmentArtifacts = useRefreshEnvironmentArtifacts();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'entryPoints' | 'allArtifacts'>('entryPoints');
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -663,7 +852,19 @@ function Environment({ env, componentId, onSelectArtifact }: { env: GqlEnvironme
           </Stack>
         </Stack>
         <Divider sx={{ my: 2 }} />
-        <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+          <Typography variant="overline">VIEW MODE</Typography>
+          <Stack direction="row">
+            <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+              Entry Points
+            </Button>
+            <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
+              All Artifacts
+            </Button>
+          </Stack>
+        </Stack>
+        {viewMode === 'entryPoints' && <EntryPointsList envId={env.id} componentId={componentId} projectId={projectId} onOpenDrawer={onOpenDrawerForTab} />}
+        {viewMode === 'allArtifacts' && <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />}
       </CardContent>
     </Card>
   );
@@ -704,7 +905,14 @@ export default function Component(scope: ComponentScope): JSX.Element {
             {component.description || '+ Add Description'}
           </Typography>
           {environments.map((env) => (
-            <Environment key={env.id} env={env} componentId={component.id} onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId: scope.project })} />
+            <Environment
+              key={env.id}
+              env={env}
+              componentId={component.id}
+              projectId={scope.project}
+              onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId: scope.project })}
+              onOpenDrawerForTab={(a, type, envId, tab) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId: scope.project, initialTab: tab })}
+            />
           ))}
         </PageContent>
         <ArtifactDetail selected={selectedArtifact} onClose={() => setSelectedArtifact(null)} />

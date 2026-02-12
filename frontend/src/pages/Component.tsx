@@ -6,6 +6,10 @@ import {
   CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Drawer,
   Grid,
@@ -28,30 +32,38 @@ import {
   Typography,
 } from '@wso2/oxygen-ui';
 import { ChevronRight, Maximize2, RefreshCw, X } from '@wso2/oxygen-ui-icons-react';
-import { Globe, Link2, ArrowRightLeft, Inbox, ListOrdered, Clock, FolderArchive, Package, Plug, FileText } from '@wso2/oxygen-ui-icons-react';
+import { Globe, Link2, ListOrdered, Clock, FolderArchive, Package, Plug, FileText, Radio, Server, Wifi, Layers } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useEffect, useState, type JSX } from 'react';
 import { useComponentByHandler, useEnvironments, useArtifactTypes, useArtifacts, useArtifactSource, useLocalEntryValue, ARTIFACT_TYPE_TO_SOURCE_TYPE, type GqlEnvironment, type GqlArtifact, ARTIFACT_QUERY_MAP } from '../api/queries';
-import { useUpdateArtifactStatus } from '../api/mutations';
+import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutations';
 import NotFound from '../components/NotFound';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 
-/** "RestApi" → "Rest Apis", "ProxyService" → "Proxy Services" */
+/** Format artifact type name for display: "Listener" → "Listener", "RestApi" → "Rest Api" */
+function formatArtifactTypeName(t: string): string {
+  // Add space before capital letters for PascalCase
+  return t.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+/** "RestApi" → "Rest Apis", "ProxyService" → "Proxy Services", "Listener" → "Listeners" */
 function typePlural(t: string): string {
   return t.replace(/([a-z])([A-Z])/g, '$1 $2') + 's';
 }
 
 const ARTIFACT_ICONS: Record<string, JSX.Element> = {
   RestApi: <Globe size={18} />,
-  ProxyService: <ArrowRightLeft size={18} />,
+  ProxyService: <Server size={18} />,
   Endpoint: <Link2 size={18} />,
-  InboundEndpoint: <Inbox size={18} />,
+  InboundEndpoint: <Radio size={18} />,
   Sequence: <ListOrdered size={18} />,
   Task: <Clock size={18} />,
   LocalEntry: <FileText size={18} />,
   CarbonApp: <Package size={18} />,
   Connector: <Plug size={18} />,
   RegistryResource: <FolderArchive size={18} />,
+  Listener: <Wifi size={18} />,
+  Service: <Layers size={18} />,
 };
 
 const ARTIFACT_TABS: Record<string, string[]> = {
@@ -62,6 +74,8 @@ const ARTIFACT_TABS: Record<string, string[]> = {
   CarbonApp: ['Artifacts', 'Runtimes'],
   Connector: ['Runtimes'],
   RegistryResource: ['Runtimes'],
+  Listener: ['Overview', 'Runtimes'],
+  Service: ['Overview', 'Resources', 'Runtimes'],
 };
 const DEFAULT_ARTIFACT_TABS = ['Overview', 'Source', 'Runtimes'];
 
@@ -78,10 +92,50 @@ const labelSx = { ...cellSx, fontWeight: 600, textTransform: 'capitalize', width
 const preSx = { p: 2, bgcolor: 'action.hover', borderRadius: 1, overflow: 'auto', fontSize: 12, fontFamily: 'monospace', maxHeight: 500 };
 const emptySx = { color: 'text.secondary', py: 2 };
 
-function Toggle({ checked }: { checked: boolean }) {
+function ListenerConfirmDialog({
+  open,
+  action,
+  listenerName,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  action: 'START' | 'STOP';
+  listenerName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onCancel}>
+      <DialogTitle>
+        {action === 'STOP' ? 'Disable Listener' : 'Enable Listener'}
+      </DialogTitle>
+      <DialogContent>
+        <Typography>
+          Are you sure you want to {action === 'STOP' ? 'disable' : 'enable'} the listener <strong>{listenerName}</strong>?
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onCancel} variant="text">
+          Cancel
+        </Button>
+        <Button onClick={onConfirm} variant="contained" color={action === 'STOP' ? 'error' : 'primary'}>
+          {action === 'STOP' ? 'Disable' : 'Enable'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange?: (checked: boolean) => void; disabled?: boolean }) {
   return (
     <Stack direction="row" alignItems="center" gap={1}>
-      <Switch size="small" checked={checked} />
+      <Switch
+        size="small"
+        checked={checked}
+        onChange={(e) => onChange?.(e.target.checked)}
+        disabled={disabled}
+      />
       <Typography variant="body2" color="text.secondary">
         {checked ? 'Enabled' : 'Disabled'}
       </Typography>
@@ -121,10 +175,16 @@ function DataTable({ headers, rows, emptyMsg }: { headers?: string[]; rows: (str
 
 type TabProps = SelectedArtifact;
 
-function ArtifactOverview({ artifact, artifactType }: TabProps) {
+function ArtifactOverview({ artifact, artifactType, envId, componentId }: TabProps) {
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'START' | 'STOP' } | null>(null);
+  const toggleStatus = useUpdateArtifactStatus();
+  const updateListenerState = useUpdateListenerState();
+
   const artifactMapping = ARTIFACT_QUERY_MAP[artifactType];
   if (!artifactMapping) return null;
   const isProxyService = artifactType === 'ProxyService';
+  const hasToggle = ['ProxyService', 'Listener'].includes(artifactType);
+  const hasTracing = !['Service', 'Listener'].includes(artifactType);
   const fields = artifactMapping.fields.split(', ');
   const tracing = (artifact.tracing ?? 'disabled').toString().toLowerCase();
   const artifactState = (artifact.state ?? '').toString().toLowerCase();
@@ -136,6 +196,37 @@ function ArtifactOverview({ artifact, artifactType }: TabProps) {
     return f === 'version' && !val ? 'N/A' : (val ?? 'N/A').toString();
   };
 
+  const handleToggle = (enabled: boolean) => {
+    if (artifactType === 'Listener') {
+      setConfirmDialog({
+        open: true,
+        action: enabled ? 'STOP' : 'START',
+      });
+    } else {
+      toggleStatus.mutate({
+        envId,
+        componentId,
+        artifactType,
+        artifactName: artifact.name?.toString() ?? '',
+        status: enabled ? 'inactive' : 'active'
+      });
+    }
+  };
+
+  const handleConfirmListenerToggle = () => {
+    if (!confirmDialog) return;
+    const runtimes = (artifact.runtimes as Array<{ runtimeId: string }> | undefined) ?? [];
+    const runtimeIds = runtimes.map((r) => r.runtimeId);
+
+    updateListenerState.mutate({
+      runtimeIds,
+      listenerName: artifact.name?.toString() ?? '',
+      action: confirmDialog.action,
+    });
+
+    setConfirmDialog(null);
+  };
+
   return (
     <Stack gap={2}>
       <Table size="small">
@@ -143,23 +234,29 @@ function ArtifactOverview({ artifact, artifactType }: TabProps) {
           {fields.map((f) => (
             <TableRow key={f}>
               <TableCell sx={labelSx}>{f}</TableCell>
-              <TableCell sx={cellSx}>{isProxyService && f === 'state' ? <Chip label={formatFieldValue(f).toUpperCase()} size="small" color={artifactState === 'enabled' ? 'success' : 'default'} /> : formatFieldValue(f)}</TableCell>
+              <TableCell sx={cellSx}>{hasToggle && f === 'state' ? <Chip label={formatFieldValue(f).toUpperCase()} size="small" color={artifactState === 'enabled' ? 'success' : 'default'} /> : formatFieldValue(f)}</TableCell>
             </TableRow>
           ))}
-          {isProxyService && (
+          {hasToggle && (
             <TableRow>
               <TableCell sx={labelSx}>Enable/Disable</TableCell>
               <TableCell sx={cellSx}>
-                <Toggle checked={artifactState === 'enabled'} />
+                <Toggle
+                  checked={artifactState === 'enabled'}
+                  onChange={() => handleToggle(artifactState === 'enabled')}
+                  disabled={toggleStatus.isPending || updateListenerState.isPending}
+                />
               </TableCell>
             </TableRow>
           )}
-          <TableRow>
-            <TableCell sx={labelSx}>Tracing</TableCell>
-            <TableCell sx={cellSx}>
-              <Toggle checked={tracing === 'enabled'} />
-            </TableCell>
-          </TableRow>
+          {hasTracing && (
+            <TableRow>
+              <TableCell sx={labelSx}>Tracing</TableCell>
+              <TableCell sx={cellSx}>
+                <Toggle checked={tracing === 'enabled'} />
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
       {isProxyService && endpoints.length > 0 && (
@@ -184,6 +281,15 @@ function ArtifactOverview({ artifact, artifactType }: TabProps) {
           <DataTable headers={['Name', 'Value']} rows={attributes.map((a) => [a.name.toString(), (a.value ?? '').toString()])} />
         </>
       )}
+
+      {/* Listener State Confirmation Dialog */}
+      <ListenerConfirmDialog
+        open={confirmDialog?.open ?? false}
+        action={confirmDialog?.action ?? 'START'}
+        listenerName={artifact.name?.toString() ?? ''}
+        onConfirm={handleConfirmListenerToggle}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </Stack>
   );
 }
@@ -229,6 +335,38 @@ function ArtifactEndpoints({ artifact }: TabProps) {
       ])}
       emptyMsg="No endpoints available."
     />
+  );
+}
+
+function ServiceResources({ artifact }: TabProps) {
+  const resources = (artifact.resources as Array<{ url?: string; methods?: string[] }> | undefined) ?? [];
+  const basePath = (artifact.basePath ?? '/').toString();
+
+  return (
+    <Stack gap={1}>
+      {resources.length === 0 ? (
+        <Typography sx={emptySx}>No resources available.</Typography>
+      ) : (
+        resources.map((r, i) => {
+          const methods = r.methods ?? [];
+          return (
+            <Box key={i} sx={{ bgcolor: '#e8f5e9', p: 1.5, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              {methods.map((method, idx) => (
+                <Chip
+                  key={idx}
+                  label={method.toUpperCase()}
+                  size="small"
+                  sx={{ bgcolor: '#4caf50', color: 'white', fontWeight: 700 }}
+                />
+              ))}
+              <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                {basePath}{r.url ?? ''}
+              </Typography>
+            </Box>
+          );
+        })
+      )}
+    </Stack>
   );
 }
 
@@ -310,6 +448,8 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
         return <ArtifactValue {...tabProps} />;
       case 'Artifacts':
         return <ArtifactCarbonArtifacts {...tabProps} />;
+      case 'Resources':
+        return <ServiceResources {...tabProps} />;
       case 'Runtimes':
         return <ArtifactRuntimes {...tabProps} />;
       default:
@@ -347,19 +487,50 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
 function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, query, onSelect }: { artifacts: GqlArtifact[]; artifactType: string; envId: string; componentId: string; query: string; onSelect: (a: GqlArtifact) => void }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; artifact: GqlArtifact | null; action: 'START' | 'STOP' } | null>(null);
   const toggleStatus = useUpdateArtifactStatus();
+  const updateListenerState = useUpdateListenerState();
   const artifactMapping = ARTIFACT_QUERY_MAP[artifactType];
   if (!artifactMapping) return null;
 
   const columns = artifactMapping.fields.split(', ').filter((f) => f !== 'state' && f !== 'container');
   const filtered = artifacts.filter((a) => !query || a.name?.toString().toLowerCase().includes(query.toLowerCase()));
-  const supportsToggle = ['ProxyService', 'Endpoint', 'Task'].includes(artifactType);
-  const hasStateField = ['ProxyService', 'Task', 'Connector'].includes(artifactType);
+  const supportsToggle = ['ProxyService', 'Endpoint', 'Task', 'Listener'].includes(artifactType);
+  const hasStateField = ['ProxyService', 'Task', 'Connector', 'Listener'].includes(artifactType);
   const maxPage = Math.max(0, Math.ceil(filtered.length / rowsPerPage) - 1);
   const safePage = Math.min(page, maxPage);
   const paginatedArtifacts = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);
   const totalColumns = columns.length + (hasStateField ? 1 : 0);
   const columnSize = Math.floor(12 / totalColumns);
+
+  const handleToggle = (artifact: GqlArtifact, enabled: boolean) => {
+    if (artifactType === 'Listener') {
+      // Show confirmation dialog for listeners
+      setConfirmDialog({
+        open: true,
+        artifact,
+        action: enabled ? 'STOP' : 'START',
+      });
+    } else {
+      // Direct toggle for other artifact types
+      toggleStatus.mutate({ envId, componentId, artifactType, artifactName: artifact.name, status: enabled ? 'inactive' : 'active' });
+    }
+  };
+
+  const handleConfirmListenerToggle = () => {
+    if (!confirmDialog?.artifact) return;
+
+    const runtimes = (confirmDialog.artifact.runtimes as Array<{ runtimeId: string }> | undefined) ?? [];
+    const runtimeIds = runtimes.map((r) => r.runtimeId);
+
+    updateListenerState.mutate({
+      runtimeIds,
+      listenerName: confirmDialog.artifact.name?.toString() ?? '',
+      action: confirmDialog.action,
+    });
+
+    setConfirmDialog(null);
+  };
 
   return (
     <>
@@ -396,7 +567,7 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
                     checked={enabled}
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleStatus.mutate({ envId, componentId, artifactType, artifactName: a.name, status: enabled ? 'inactive' : 'active' });
+                      handleToggle(a, enabled);
                     }}
                     sx={{ mr: 1 }}
                   />
@@ -422,6 +593,15 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
           sx={{ mt: 1 }}
         />
       )}
+
+      {/* Listener State Confirmation Dialog */}
+      <ListenerConfirmDialog
+        open={confirmDialog?.open ?? false}
+        action={confirmDialog?.action ?? 'START'}
+        listenerName={confirmDialog?.artifact?.name?.toString() ?? ''}
+        onConfirm={handleConfirmListenerToggle}
+        onCancel={() => setConfirmDialog(null)}
+      />
     </>
   );
 }
@@ -456,7 +636,7 @@ function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId:
               }}
               sx={{ borderRadius: 1, mb: 0.5 }}>
               {ARTIFACT_ICONS[t.artifactType] && <ListItemIcon sx={{ minWidth: 32 }}>{ARTIFACT_ICONS[t.artifactType]}</ListItemIcon>}
-              <ListItemText primary={t.artifactType} />
+              <ListItemText primary={formatArtifactTypeName(t.artifactType)} />
             </ListItemButton>
           ))}
         </List>

@@ -112,12 +112,25 @@ const UPDATE_ARTIFACT_STATUS = `
     }
   }`;
 
+const UPDATE_LISTENER_STATE = `
+  mutation UpdateListenerState($input: ListenerControlInput!) {
+    updateListenerState(input: $input) {
+      success, message, commandIds
+    }
+  }`;
+
 export interface ArtifactStatusInput {
   envId: string;
   componentId: string;
   artifactType: string;
   artifactName: string;
   status: 'active' | 'inactive';
+}
+
+export interface ListenerStateInput {
+  runtimeIds: string[];
+  listenerName: string;
+  action: 'START' | 'STOP';
 }
 
 /** PascalCase → kebab-case: "ProxyService" → "proxy-service" */
@@ -137,6 +150,24 @@ export function useUpdateArtifactStatus() {
       await qc.cancelQueries({ queryKey: ['artifacts', input.artifactType], predicate: scope });
       const newState = input.status === 'active' ? 'enabled' : 'disabled';
       qc.setQueriesData<GqlArtifact[]>({ queryKey: ['artifacts', input.artifactType], predicate: scope }, (old) => old?.map((a) => (a.name === input.artifactName ? { ...a, state: newState } : a)));
+    },
+  });
+}
+
+export function useUpdateListenerState() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ListenerStateInput) =>
+      gql<{ updateListenerState: { success: boolean; message: string; commandIds: string[] } }>(UPDATE_LISTENER_STATE, {
+        input: {
+          runtimeIds: input.runtimeIds,
+          listenerName: input.listenerName,
+          action: input.action,
+        },
+      }).then((d) => d.updateListenerState),
+    onSuccess: () => {
+      // Invalidate all listener queries to refetch the updated state
+      qc.invalidateQueries({ queryKey: ['artifacts', 'Listener'] });
     },
   });
 }

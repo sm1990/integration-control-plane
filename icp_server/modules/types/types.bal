@@ -51,8 +51,8 @@ public enum ArtifactState {
 }
 
 public enum ArtifactType {
-    SERVICE = "services",
-    LISTENER = "listeners",
+    SERVICE = "Service",
+    LISTENER = "Listener",
     RESTAPI = "RestApi",
     PROXYSERVICE = "ProxyService",
     ENDPOINT = "Endpoint",
@@ -1641,7 +1641,7 @@ public enum LogEntryRequestSort {
 }
 
 public type ICPLogEntryRequest record {
-    * IntegrationDetails;
+    *IntegrationDetails;
     string[] logLevels?;
     string region?;
     string searchPhrase?;
@@ -1694,7 +1694,7 @@ public type LogEntriesResponse record {
 };
 
 public type ICPMetricEntryRequest record {
-    * IntegrationDetails;
+    *IntegrationDetails;
     string region?;
     string startTime;
     string endTime;

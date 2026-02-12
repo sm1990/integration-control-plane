@@ -35,8 +35,7 @@ import { ChevronRight, Maximize2, RefreshCw, X } from '@wso2/oxygen-ui-icons-rea
 import { Globe, Link2, ListOrdered, Clock, FolderArchive, Package, Plug, FileText, Radio, Server, Wifi, Layers } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useEffect, useState, type JSX } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { useComponentByHandler, useEnvironments, useArtifactTypes, useArtifacts, useArtifactSource, useLocalEntryValue, ARTIFACT_TYPE_TO_SOURCE_TYPE, type GqlEnvironment, type GqlArtifact, ARTIFACT_QUERY_MAP } from '../api/queries';
+import { useComponentByHandler, useEnvironments, useArtifactTypes, useArtifacts, useArtifactSource, useLocalEntryValue, useRefreshEnvironmentArtifacts, ARTIFACT_TYPE_TO_SOURCE_TYPE, type GqlEnvironment, type GqlArtifact, ARTIFACT_QUERY_MAP } from '../api/queries';
 import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutations';
 import NotFound from '../components/NotFound';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
@@ -658,23 +657,13 @@ function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId:
 }
 
 function Environment({ env, componentId, onSelectArtifact }: { env: GqlEnvironment; componentId: string; onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void }) {
-  const queryClient = useQueryClient();
+  const refreshEnvironmentArtifacts = useRefreshEnvironmentArtifacts();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // Invalidate all queries related to this environment and component
-      await queryClient.invalidateQueries({
-        queryKey: ['artifacts'],
-        predicate: (query) => {
-          const [, , envId, compId] = query.queryKey;
-          return envId === env.id && compId === componentId;
-        }
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ['artifactTypes', componentId, env.id]
-      });
+      await refreshEnvironmentArtifacts(env.id, componentId);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }

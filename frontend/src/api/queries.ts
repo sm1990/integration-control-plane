@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
 
 export interface GqlProject {
@@ -297,3 +297,24 @@ export const ARTIFACT_TYPE_TO_SOURCE_TYPE: Record<string, string> = {
   Listener: 'listener',
   Service: 'service',
 };
+
+// ── Refresh environment artifacts ──
+
+export function useRefreshEnvironmentArtifacts() {
+  const qc = useQueryClient();
+  
+  return (envId: string, componentId: string) => {
+    return Promise.all([
+      qc.invalidateQueries({
+        queryKey: ['artifacts'],
+        predicate: (query) => {
+          const [, , envIdKey, compIdKey] = query.queryKey;
+          return envIdKey === envId && compIdKey === componentId;
+        }
+      }),
+      qc.invalidateQueries({
+        queryKey: ['artifactTypes', componentId, envId]
+      })
+    ]);
+  };
+}

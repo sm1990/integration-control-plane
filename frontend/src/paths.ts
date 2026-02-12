@@ -75,6 +75,14 @@ export function componentRuntimeUrl(orgHandler: string, projectId: string, compo
   return `/organizations/${orgHandler}/projects/${projectId}/components/${componentHandler}/admin/runtime`;
 }
 
+export function orgAccessControlUrl(orgHandler: string, tab: 'users' | 'roles' | 'groups' = 'users'): string {
+  return `/organizations/${orgHandler}/settings/access-control/${tab}`;
+}
+
+export function projectAccessControlUrl(orgHandler: string, projectId: string, tab: 'roles' | 'groups' = 'groups'): string {
+  return `/organizations/${orgHandler}/projects/${projectId}/settings/access-control/${tab}`;
+}
+
 export function orgAnalyticsUrl(orgHandler: string): string {
   return `/organizations/${orgHandler}/analytics`;
 }
@@ -123,5 +131,5 @@ export const support = {
 
 export const observabilityLogsApiUrl = 'https://localhost:9448/icp/observability/logs?live=true';
 
-export const authApiBaseUrl = 'https://localhost:9445';
+export const authApiBaseUrl = 'https://localhost:6445';
 export const loginApiUrl = `${authApiBaseUrl}/auth/login`;

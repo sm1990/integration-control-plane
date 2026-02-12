@@ -786,6 +786,8 @@ CREATE TABLE runtime_apis (
     version VARCHAR(50),
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    statistics VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, api_name),
@@ -825,6 +827,8 @@ CREATE TABLE runtime_proxy_services (
     artifact_id CHAR(36) NOT NULL UNIQUE,
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    statistics VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, proxy_name),
@@ -861,6 +865,8 @@ CREATE TABLE runtime_endpoints (
     endpoint_type VARCHAR(100) NOT NULL,
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    statistics VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, endpoint_name),
@@ -904,6 +910,7 @@ CREATE TABLE runtime_inbound_endpoints (
     on_error VARCHAR(200),
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, inbound_name),
@@ -929,6 +936,8 @@ CREATE TABLE runtime_sequences (
     container VARCHAR(200),
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
     tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    statistics VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, sequence_name),
@@ -953,6 +962,7 @@ CREATE TABLE runtime_tasks (
     task_class VARCHAR(500),
     task_group VARCHAR(200),
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, task_name),
@@ -972,6 +982,9 @@ CREATE TABLE runtime_templates (
     runtime_id VARCHAR(100) NOT NULL,
     template_name VARCHAR(200) NOT NULL,
     template_type VARCHAR(100) NOT NULL,
+    tracing VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    statistics VARCHAR(20) NOT NULL DEFAULT 'disabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, template_name),
@@ -992,6 +1005,7 @@ CREATE TABLE runtime_message_stores (
     store_name VARCHAR(200) NOT NULL,
     store_type VARCHAR(100) NOT NULL,
     size BIGINT NOT NULL DEFAULT 0,
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, store_name),
@@ -1013,6 +1027,7 @@ CREATE TABLE runtime_message_processors (
     processor_type VARCHAR(100) NOT NULL,
     processor_class VARCHAR(500),
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, processor_name),
@@ -1037,6 +1052,7 @@ CREATE TABLE runtime_local_entries (
     entry_type VARCHAR(100) NOT NULL,
     entry_value TEXT,
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, entry_name),
@@ -1061,6 +1077,7 @@ CREATE TABLE runtime_data_services (
     description TEXT,
     wsdl TEXT,
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, service_name),
@@ -1103,6 +1120,7 @@ CREATE TABLE runtime_data_sources (
     url VARCHAR(1000),
     username VARCHAR(255),
     state VARCHAR(20) NOT NULL DEFAULT 'enabled',
+    carbon_app VARCHAR(200),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, datasource_name),
@@ -1278,6 +1296,24 @@ CREATE TABLE mi_artifact_intended_tracing (
 CREATE INDEX idx_mi_artifact_intended_tracing_component_id ON mi_artifact_intended_tracing (component_id);
 CREATE INDEX idx_mi_artifact_intended_tracing_artifact ON mi_artifact_intended_tracing (artifact_name, artifact_type);
 CREATE INDEX idx_mi_artifact_intended_tracing_issued_by ON mi_artifact_intended_tracing (issued_by);
+
+CREATE TABLE mi_artifact_intended_statistics (
+    component_id CHAR(36) NOT NULL,
+    artifact_name VARCHAR(200) NOT NULL,
+    artifact_type VARCHAR(100) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    issued_by CHAR(36),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (component_id, artifact_name, artifact_type),
+    CONSTRAINT fk_mi_artifact_statistics_component FOREIGN KEY (component_id) REFERENCES components (component_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_artifact_statistics_issued_by FOREIGN KEY (issued_by) REFERENCES users (user_id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_mi_artifact_intended_statistics_component_id ON mi_artifact_intended_statistics (component_id);
+CREATE INDEX idx_mi_artifact_intended_statistics_artifact ON mi_artifact_intended_statistics (artifact_name, artifact_type);
+CREATE INDEX idx_mi_artifact_intended_statistics_issued_by ON mi_artifact_intended_statistics (issued_by);
 
 -- ============================================================================
 -- AUDIT & EVENTS

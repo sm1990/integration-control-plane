@@ -94,3 +94,26 @@ function enrich_bal_logs(tag, timestamp, record)
     
     return 1, timestamp, record
 end
+
+function enrich_mi_logs(tag, timestamp, record)
+    -- Add common fields for all MI logs
+    record["product"] = "Micro Integrator"
+    record["service_type"] = "MI"
+
+    -- Extract icp.runtimeId from [icp.runtimeId=...] at the very end of message, then remove it
+    if record["message"] then
+        -- Pattern matches [icp.runtimeId=value] at the end of the message (even after stack traces)
+        local runtimeId = string.match(record["message"], '%[icp%.runtimeId=([^%]]+)%]%s*$')
+        if runtimeId then
+            record["icp_runtimeId"] = runtimeId
+            -- Remove icp.runtimeId suffix from the message
+            record["message"] = string.gsub(record["message"], '%s*%[icp%.runtimeId=[^%]]+%]%s*$', '')
+        else
+            record["icp_runtimeId"] = ""
+        end
+    else
+        record["icp_runtimeId"] = ""
+    end
+
+    return 1, timestamp, record
+end

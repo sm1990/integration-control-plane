@@ -11,6 +11,10 @@ export function loginUrl(): string {
   return '/login';
 }
 
+export function oidcCallbackUrl(): string {
+  return '/auth/callback';
+}
+
 export function orgUrl(orgHandler: string): string {
   return `/organizations/${orgHandler}`;
 }
@@ -131,5 +135,9 @@ export const support = {
 
 export const observabilityLogsApiUrl = 'https://localhost:9448/icp/observability/logs?live=true';
 
-export const authApiBaseUrl = 'https://localhost:6445';
-export const loginApiUrl = `${authApiBaseUrl}/auth/login`;
+export const authApiBaseUrl = 'https://localhost:9445/auth';
+export const loginApiUrl = `${authApiBaseUrl}/login`;
+export const refreshTokenApiUrl = `${authApiBaseUrl}/refresh-token`;
+export const revokeTokenApiUrl = `${authApiBaseUrl}/revoke-token`;
+export const oidcAuthorizeApiUrl = `${authApiBaseUrl}/oidc/authorize-url`;
+export const oidcCallbackApiUrl = `${authApiBaseUrl}/login/oidc`;

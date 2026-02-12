@@ -24,6 +24,12 @@ public enum RuntimeType {
     BI
 }
 
+public enum LogIndexRuntimeType {
+    MI,
+    BI,
+    ALL
+}
+
 public enum DeploymentType {
     VM,
     K8S
@@ -192,6 +198,8 @@ public enum MIControlAction {
     ARTIFACT_DISABLE,
     ARTIFACT_ENABLE_TRACING,
     ARTIFACT_DISABLE_TRACING,
+    ARTIFACT_ENABLE_STATISTICS,
+    ARTIFACT_DISABLE_STATISTICS,
     ARTIFACT_TRIGGER
 }
 
@@ -299,13 +307,15 @@ public type BIArtifactIntendedStateDBRecord record {
 
 # Record type for artifact query result from runtime tables
 #
-# + artifact_id - Unique identifier for the artifact (not used in control commands)
-# + state - Current state of the artifact (enabled/disabled)
-# + tracing - Current tracing state of the artifact (enabled/disabled)
+# + artifact_id - Unique identifier for the artifact (not used in control commands)  
+# + state - Current state of the artifact (enabled/disabled)  
+# + tracing - Current tracing state of the artifact (enabled/disabled)  
+# + statistics - field description
 public type ArtifactQueryResult record {|
     string artifact_id;
     string state;
     string tracing?;
+    string statistics?;
 |};
 
 // === Configuration ===
@@ -385,6 +395,25 @@ public type RuntimeDBRecord record {
     string server_name?;
     time:Utc registration_time?;
     time:Utc last_heartbeat?;
+};
+
+public type RuntimeTypeRecord record {
+    @sql:Column {
+        name: "runtime_id"
+    }
+    string runtimeId;
+    @sql:Column {
+        name: "runtime_type"
+    }
+    string runtimeType;
+    @sql:Column {
+        name: "environment_id"
+    }
+    string environmentId;
+    @sql:Column {
+        name: "component_id"
+    }
+    string componentId;
 };
 
 public type ControlCommandDBRecord record {
@@ -485,6 +514,7 @@ public type ProxyServiceRecordInDB record {
     string proxy_name;
     ArtifactState state;
     string tracing;
+    string? carbon_app;
 };
 
 public type EndpointRecordInDB record {
@@ -492,6 +522,7 @@ public type EndpointRecordInDB record {
     string endpoint_type;
     ArtifactState state;
     string tracing;
+    string? carbon_app;
 };
 
 public type SequenceRecordInDB record {
@@ -500,6 +531,7 @@ public type SequenceRecordInDB record {
     string container?;
     ArtifactState state;
     string tracing;
+    string? carbon_app;
 };
 
 public type TaskRecordInDB record {
@@ -507,12 +539,14 @@ public type TaskRecordInDB record {
     string task_class?;
     string task_group?;
     ArtifactState state;
+    string? carbon_app;
 };
 
 public type MessageStoreRecordInDB record {
     string store_name;
     string store_type;
     int size;
+    string? carbon_app;
 };
 
 public type MessageProcessorRecordInDB record {
@@ -520,6 +554,7 @@ public type MessageProcessorRecordInDB record {
     string processor_type;
     string processor_class?;
     ArtifactState state;
+    string? carbon_app;
 };
 
 public type LocalEntryRecordInDB record {
@@ -527,6 +562,7 @@ public type LocalEntryRecordInDB record {
     string entry_type;
     string entry_value?;
     ArtifactState state;
+    string? carbon_app;
 };
 
 public type CarbonAppRecordInDB record {
@@ -635,6 +671,11 @@ public type RestApi record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    string statistics = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     ApiResource[] resources = []; // API resources (path + methods)
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -659,6 +700,11 @@ public type ProxyService record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    string statistics = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] endpoints?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -675,6 +721,11 @@ public type Endpoint record {
     }
     ArtifactState state; // "enabled", "disabled"
     string tracing = "disabled"; // "enabled", "disabled"
+    string statistics = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     EndpointAttribute[]? attributes?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
@@ -712,6 +763,10 @@ public type InboundEndpoint record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -728,6 +783,11 @@ public type Sequence record {
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
     string tracing = "disabled"; // "enabled", "disabled"
+    string statistics = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -743,6 +803,10 @@ public type Task record {
         name: "task_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -756,6 +820,12 @@ public type Template record {
         name: "template_type"
     }
     string 'type;
+    string tracing = "disabled"; // "enabled", "disabled"
+    string statistics = "disabled"; // "enabled", "disabled"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -771,6 +841,10 @@ public type MessageStore record {
         name: "store_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -786,6 +860,10 @@ public type MessageProcessor record {
         name: "processor_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -801,6 +879,10 @@ public type LocalEntry record {
         name: "entry_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -816,6 +898,10 @@ public type DataService record {
         name: "dataservice_state"
     }
     ArtifactState state = "enabled"; // "ENABLED", "DISABLED"
+    @sql:Column {
+        name: "carbon_app"
+    }
+    string carbonApp?;
     string[] runtimeIds?;
     ArtifactRuntimeInfo[]? runtimes?;
 };
@@ -1951,6 +2037,23 @@ public type ArtifactTracingChangeInput record {|
 
 // Response for artifact tracing change
 public type ArtifactTracingChangeResponse record {|
+    string status; // "success" or "failed"
+    string message;
+    int successCount; // Number of runtimes successfully updated
+    int failedCount; // Number of runtimes that failed
+    string[] details; // Detailed status per runtime
+|};
+
+// Input type for changing artifact statistics
+public type ArtifactStatisticsChangeInput record {|
+    string componentId;
+    string artifactType; // e.g., "proxy-service"
+    string artifactName;
+    string statistics; // "enable" or "disable"
+|};
+
+// Response for artifact statistics change
+public type ArtifactStatisticsChangeResponse record {|
     string status; // "success" or "failed"
     string message;
     int successCount; // Number of runtimes successfully updated

@@ -93,9 +93,16 @@ services:
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/scripts:/fluent-bit/scripts
       - ./resources/observability/opensearch-observability-dashboard/logs/ballerina:/var/log/ballerina:ro
+      - ${MI_LOG_FILE_PATH}/${MI_LOG_FILE_NAME}:/var/log/mi/${MI_LOG_FILE_NAME}:ro
+      # Persist position database
+      - fluent-bit-db:/fluent-bit/db
+      # Persist buffer storage
+      - fluent-bit-buffer:/fluent-bit/buffer
     depends_on:
       opensearch:
         condition: service_healthy
+      opensearch-setup:
+        condition: service_completed_successfully
 
   envsubst-service:
     image: nginx:alpine
@@ -155,3 +162,6 @@ services:
 volumes:
   opensearch_data:
   data_prepper_config:
+  fluent-bit-db:
+  # Size constrained by Fluent Bit storage.total_limit_size (500M) in fluent-bit.conf
+  fluent-bit-buffer:

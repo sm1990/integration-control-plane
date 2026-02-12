@@ -176,3 +176,6 @@ temp/
 database/
 
 www/*
+
+# Instruction and context files for agents
+frontend/agent-contexts

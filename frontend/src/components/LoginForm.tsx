@@ -26,12 +26,13 @@ import { useAuth } from '../auth/AuthContext';
 
 export default function LoginForm(): JSX.Element {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginWithOIDC } = useAuth();
 
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
@@ -42,6 +43,17 @@ export default function LoginForm(): JSX.Element {
 
   const handleMouseUpPassword = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
+  };
+
+  const handleSSOLogin = async () => {
+    setError(null);
+    setSsoLoading(true);
+    try {
+      await loginWithOIDC();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'SSO login failed');
+      setSsoLoading(false);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -103,8 +115,8 @@ export default function LoginForm(): JSX.Element {
 
         <Divider sx={{ my: 0.5 }}>OR</Divider>
 
-        <Button variant="outlined" fullWidth sx={{ textTransform: 'none', py: 1.2, borderColor: '#ccc', color: 'text.primary' }}>
-          Sign in with SSO
+        <Button variant="outlined" fullWidth sx={{ textTransform: 'none', py: 1.2, borderColor: '#ccc', color: 'text.primary' }} onClick={handleSSOLogin} disabled={loading || ssoLoading} startIcon={ssoLoading ? <CircularProgress size={20} color="inherit" /> : undefined}>
+          {ssoLoading ? 'Redirecting...' : 'Sign in with SSO'}
         </Button>
       </Box>
     </form>

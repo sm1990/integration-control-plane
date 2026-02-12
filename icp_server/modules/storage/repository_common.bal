@@ -58,7 +58,7 @@ public isolated function sendMIControlCommandAsync(string runtimeId, string arti
 
         http:Client mgmtClient = mgmtClientResult;
         string hmacToken = check issueRuntimeHmacToken();
-
+        
         string artifactPath;
         json payload;
 
@@ -88,6 +88,15 @@ public isolated function sendMIControlCommandAsync(string runtimeId, string arti
                 "trace": trace
             };
             artifactPath = string `${ICP_ARTIFACTS_PATH}/tracing`;
+        } else if action == types:ARTIFACT_ENABLE_STATISTICS || action == types:ARTIFACT_DISABLE_STATISTICS {
+            // Statistics change: enable/disable
+            string statistics = action == types:ARTIFACT_ENABLE_STATISTICS ? "enable" : "disable";
+            payload = {
+                "type": artifactType,
+                "name": artifactName,
+                "statistics": statistics
+            };
+            artifactPath = string `${ICP_ARTIFACTS_PATH}/statistics`;
         } else {
             log:printWarn(string `Unknown MI control action: ${action}`, runtimeId = runtimeId);
             return;
@@ -303,6 +312,12 @@ isolated function convertToMIControlAction(string action) returns types:MIContro
         "ARTIFACT_DISABLE_TRACING" => {
             return types:ARTIFACT_DISABLE_TRACING;
         }
+        "ARTIFACT_ENABLE_STATISTICS" => {
+            return types:ARTIFACT_ENABLE_STATISTICS;
+        }
+        "ARTIFACT_DISABLE_STATISTICS" => {
+            return types:ARTIFACT_DISABLE_STATISTICS;
+        }
         _ => {
             return types:ARTIFACT_ENABLE;
         }
@@ -482,9 +497,22 @@ public isolated function getMIIntendedStatesForComponent(string componentId) ret
         check from types:MIArtifactIntendedStateDBRecord state in tracingStream
         select state;
 
-    // Combine both lists
+    // Query statistics intended states
+    stream<types:MIArtifactIntendedStateDBRecord, sql:Error?> statisticsStream = dbClient->query(`
+        SELECT component_id, artifact_name, artifact_type, action
+        FROM mi_artifact_intended_statistics
+        WHERE component_id = ${componentId}
+    `);
+    types:MIArtifactIntendedStateDBRecord[] statisticsStates =
+        check from types:MIArtifactIntendedStateDBRecord state in statisticsStream
+        select state;
+
+    // Combine all lists
     foreach types:MIArtifactIntendedStateDBRecord tracingState in tracingStates {
         intendedStatesList.push(tracingState);
+    }
+    foreach types:MIArtifactIntendedStateDBRecord statisticsState in statisticsStates {
+        intendedStatesList.push(statisticsState);
     }
 
     return intendedStatesList;
@@ -601,6 +629,7 @@ type ArtifactTableMetadata record {|
     string tableName;
     string nameColumn;
     boolean hasTracing;
+    boolean hasStatistics;
     string stateColumn;
 |};
 
@@ -608,25 +637,25 @@ type ArtifactTableMetadata record {|
 isolated function resolveArtifactTableMetadata(string artifactType) returns ArtifactTableMetadata? {
     string normalizedType = artifactType.toLowerAscii().trim();
     if normalizedType == "api" || normalizedType == "apis" {
-        return {tableName: "runtime_apis", nameColumn: "api_name", hasTracing: true, stateColumn: "state"};
+        return {tableName: "runtime_apis", nameColumn: "api_name", hasTracing: true, hasStatistics: true, stateColumn: "state"};
     } else if normalizedType == "proxy-service" || normalizedType == "proxy-services" {
-        return {tableName: "runtime_proxy_services", nameColumn: "proxy_name", hasTracing: true, stateColumn: "state"};
+        return {tableName: "runtime_proxy_services", nameColumn: "proxy_name", hasTracing: true, hasStatistics: true, stateColumn: "state"};
     } else if normalizedType == "endpoint" || normalizedType == "endpoints" {
-        return {tableName: "runtime_endpoints", nameColumn: "endpoint_name", hasTracing: true, stateColumn: "state"};
+        return {tableName: "runtime_endpoints", nameColumn: "endpoint_name", hasTracing: true, hasStatistics: true, stateColumn: "state"};
     } else if normalizedType == "inbound-endpoint" || normalizedType == "inbound-endpoints" {
-        return {tableName: "runtime_inbound_endpoints", nameColumn: "inbound_name", hasTracing: true, stateColumn: "state"};
+        return {tableName: "runtime_inbound_endpoints", nameColumn: "inbound_name", hasTracing: true, hasStatistics: true, stateColumn: "state"};
     } else if normalizedType == "sequence" || normalizedType == "sequences" {
-        return {tableName: "runtime_sequences", nameColumn: "sequence_name", hasTracing: true, stateColumn: "state"};
+        return {tableName: "runtime_sequences", nameColumn: "sequence_name", hasTracing: true, hasStatistics: true, stateColumn: "state"};
     } else if normalizedType == "task" || normalizedType == "tasks" {
-        return {tableName: "runtime_tasks", nameColumn: "task_name", hasTracing: false, stateColumn: "state"};
+        return {tableName: "runtime_tasks", nameColumn: "task_name", hasTracing: false, hasStatistics: false, stateColumn: "state"};
     } else if normalizedType == "message-processor" || normalizedType == "message-processors" {
-        return {tableName: "runtime_message_processors", nameColumn: "processor_name", hasTracing: false, stateColumn: "state"};
+        return {tableName: "runtime_message_processors", nameColumn: "processor_name", hasTracing: false, hasStatistics: false, stateColumn: "state"};
     } else if normalizedType == "local-entry" || normalizedType == "local-entries" {
-        return {tableName: "runtime_local_entries", nameColumn: "entry_name", hasTracing: false, stateColumn: "state"};
+        return {tableName: "runtime_local_entries", nameColumn: "entry_name", hasTracing: false, hasStatistics: false, stateColumn: "state"};
     } else if normalizedType == "data-service" || normalizedType == "data-services" {
-        return {tableName: "runtime_data_services", nameColumn: "service_name", hasTracing: false, stateColumn: "state"};
+        return {tableName: "runtime_data_services", nameColumn: "service_name", hasTracing: false, hasStatistics: false, stateColumn: "state"};
     } else if normalizedType == "connector" || normalizedType == "connectors" {
-        return {tableName: "runtime_connectors", nameColumn: "connector_name", hasTracing: false, stateColumn: "status"};
+        return {tableName: "runtime_connectors", nameColumn: "connector_name", hasTracing: false, hasStatistics: false, stateColumn: "status"};
     }
     return ();
 }
@@ -677,6 +706,65 @@ public isolated function upsertMIArtifactIntendedStatus(string componentId, stri
         // MySQL
         _ = check dbClient->execute(`
             INSERT INTO mi_artifact_intended_status (
+                component_id, artifact_name, artifact_type, action, issued_by
+            ) VALUES (
+                ${componentId}, ${artifactName}, ${artifactType}, ${action}, ${issuedBy}
+            )
+            ON DUPLICATE KEY UPDATE
+                action = VALUES(action),
+                issued_at = CURRENT_TIMESTAMP,
+                issued_by = VALUES(issued_by),
+                updated_at = CURRENT_TIMESTAMP
+        `);
+    }
+}
+
+// Upsert MI artifact intended statistics (enable/disable statistics) for a component
+public isolated function upsertMIArtifactIntendedStatistics(string componentId, string artifactName, string artifactType, string action, string? issuedBy = ()) returns error? {
+    if dbType == MSSQL {
+        _ = check dbClient->execute(`
+            MERGE INTO mi_artifact_intended_statistics AS target
+            USING (VALUES (${componentId}, ${artifactName}, ${artifactType}, ${action}, ${issuedBy}))
+                   AS source (component_id, artifact_name, artifact_type, action, issued_by)
+            ON (target.component_id = source.component_id AND target.artifact_name = source.artifact_name AND target.artifact_type = source.artifact_type)
+            WHEN MATCHED THEN
+                UPDATE SET action = source.action, issued_at = CURRENT_TIMESTAMP,
+                           issued_by = source.issued_by, updated_at = CURRENT_TIMESTAMP
+            WHEN NOT MATCHED THEN
+                INSERT (component_id, artifact_name, artifact_type, action, issued_by)
+                VALUES (source.component_id, source.artifact_name, source.artifact_type, source.action, source.issued_by);
+        `);
+    } else if dbType == POSTGRESQL {
+        _ = check dbClient->execute(`
+            INSERT INTO mi_artifact_intended_statistics (
+                component_id, artifact_name, artifact_type, action, issued_by
+            ) VALUES (
+                ${componentId}, ${artifactName}, ${artifactType}, ${action}, ${issuedBy}
+            )
+            ON CONFLICT (component_id, artifact_name, artifact_type) DO UPDATE SET
+                action = EXCLUDED.action,
+                issued_at = CURRENT_TIMESTAMP,
+                issued_by = EXCLUDED.issued_by,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+    } else if dbType == H2 {
+        // H2 uses MERGE syntax similar to MSSQL
+        _ = check dbClient->execute(`
+            MERGE INTO mi_artifact_intended_statistics AS target
+            USING (VALUES (${componentId}, ${artifactName}, ${artifactType}, ${action}, ${issuedBy}))
+                   AS source (component_id, artifact_name, artifact_type, action, issued_by)
+            ON (target.component_id = source.component_id AND target.artifact_name = source.artifact_name AND target.artifact_type = source.artifact_type)
+            WHEN MATCHED THEN
+                UPDATE SET action = source.action, issued_at = CURRENT_TIMESTAMP,
+                           issued_by = source.issued_by, updated_at = CURRENT_TIMESTAMP
+            WHEN NOT MATCHED THEN
+                INSERT (component_id, artifact_name, artifact_type, action, issued_by)
+                VALUES (source.component_id, source.artifact_name, source.artifact_type, source.action, source.issued_by)
+        `);
+    } else {
+        // MySQL
+        _ = check dbClient->execute(`
+            INSERT INTO mi_artifact_intended_statistics (
                 component_id, artifact_name, artifact_type, action, issued_by
             ) VALUES (
                 ${componentId}, ${artifactName}, ${artifactType}, ${action}, ${issuedBy}
@@ -771,6 +859,20 @@ public isolated function deleteMIArtifactIntendedTracing(
 ) returns error? {
     _ = check dbClient->execute(`
         DELETE FROM mi_artifact_intended_tracing
+        WHERE component_id = ${componentId}
+        AND artifact_name = ${artifactName}
+        AND artifact_type = ${artifactType}
+    `);
+}
+
+// Delete MI artifact intended statistics
+public isolated function deleteMIArtifactIntendedStatistics(
+        string componentId,
+        string artifactName,
+        string artifactType
+) returns error? {
+    _ = check dbClient->execute(`
+        DELETE FROM mi_artifact_intended_statistics
         WHERE component_id = ${componentId}
         AND artifact_name = ${artifactName}
         AND artifact_type = ${artifactType}

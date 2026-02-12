@@ -1133,6 +1133,8 @@ CREATE TABLE runtime_apis (
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    [statistics] NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    carbon_app NVARCHAR (200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, api_name),
@@ -1204,6 +1206,8 @@ CREATE TABLE runtime_proxy_services (
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    [statistics] NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, proxy_name),
@@ -1275,6 +1279,8 @@ CREATE TABLE runtime_endpoints (
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    [statistics] NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, endpoint_name),
@@ -1352,6 +1358,7 @@ CREATE TABLE runtime_inbound_endpoints (
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, inbound_name),
@@ -1392,6 +1399,8 @@ CREATE TABLE runtime_sequences (
         )
     ),
     tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    [statistics] NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, sequence_name),
@@ -1431,6 +1440,7 @@ CREATE TABLE runtime_tasks (
             'disabled'
         )
     ),  
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, task_name),
@@ -1461,6 +1471,9 @@ CREATE TABLE runtime_templates (
     runtime_id VARCHAR(100) NOT NULL,
     template_name NVARCHAR (200) NOT NULL,
     template_type NVARCHAR (100) NOT NULL,
+    tracing NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    [statistics] NVARCHAR (20) NOT NULL DEFAULT 'disabled',
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, template_name),
@@ -1491,6 +1504,7 @@ CREATE TABLE runtime_message_stores (
     store_name NVARCHAR (200) NOT NULL,
     store_type NVARCHAR (100) NOT NULL,
     size BIGINT NOT NULL DEFAULT 0,
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, store_name),
@@ -1528,6 +1542,7 @@ CREATE TABLE runtime_message_processors (
             'disabled'
         )
     ),
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, processor_name),
@@ -1567,6 +1582,7 @@ CREATE TABLE runtime_local_entries (
             'disabled'
         )
     ),
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, entry_name),
@@ -1606,6 +1622,7 @@ CREATE TABLE runtime_data_services (
             'disabled'
         )
     ),
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, service_name),
@@ -1676,6 +1693,7 @@ CREATE TABLE runtime_data_sources (
             'disabled'
         )
     ),
+    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, datasource_name),
@@ -1939,6 +1957,37 @@ BEGIN
     SET updated_at = GETDATE()
     FROM mi_artifact_intended_tracing mat
     INNER JOIN inserted i ON mat.component_id = i.component_id AND mat.artifact_name = i.artifact_name AND mat.artifact_type = i.artifact_type;
+END;
+GO
+
+CREATE TABLE mi_artifact_intended_statistics (
+    component_id CHAR(36) NOT NULL,
+    artifact_name NVARCHAR(200) NOT NULL,
+    artifact_type NVARCHAR(100) NOT NULL,
+    action NVARCHAR(50) NOT NULL,
+    issued_at DATETIME2(6) NOT NULL DEFAULT SYSDATETIME(),
+    issued_by CHAR(36),
+    created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+    updated_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+    PRIMARY KEY (component_id, artifact_name, artifact_type),
+    CONSTRAINT fk_mi_artifact_statistics_component FOREIGN KEY (component_id) REFERENCES components (component_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_artifact_statistics_issued_by FOREIGN KEY (issued_by) REFERENCES users (user_id) ON DELETE SET NULL,
+    INDEX idx_mi_artifact_intended_statistics_component_id (component_id),
+    INDEX idx_mi_artifact_intended_statistics_artifact (artifact_name, artifact_type),
+    INDEX idx_mi_artifact_intended_statistics_issued_by (issued_by)
+);
+GO
+
+CREATE TRIGGER trg_mi_artifact_intended_statistics_updated_at
+ON mi_artifact_intended_statistics
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE mi_artifact_intended_statistics
+    SET updated_at = GETDATE()
+    FROM mi_artifact_intended_statistics mas
+    INNER JOIN inserted i ON mas.component_id = i.component_id AND mas.artifact_name = i.artifact_name AND mas.artifact_type = i.artifact_type;
 END;
 GO
 

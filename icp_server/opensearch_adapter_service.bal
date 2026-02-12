@@ -46,6 +46,8 @@ type LogSource record {
     string? icp_runtimeId?;
     string? deployment?;
     string? app?;
+    string? artifact_container?;
+    string? 'class?;
     string? traceId?;
 };
 
@@ -119,7 +121,7 @@ service /observability on openSerachObservabilityListener {
         log:printInfo("Opensearch adapter service started at " + serverHost + ":" + defaultOpensearchAdaptorPort.toString());
     }
 
-    resource function post logs(@http:Header {name: "X-API-Key"} string? apiKeyHeader, http:Request request, types:LogEntryRequest logRequest) returns types:LogEntriesResponse|error {
+    resource function post logs/[string componentType](@http:Header {name: "X-API-Key"} string? apiKeyHeader, http:Request request, types:LogEntryRequest logRequest) returns types:LogEntriesResponse|error {
         log:printInfo("Received log request for component: " + logRequest.toString());
 
         // Build OpenSearch query
@@ -138,14 +140,39 @@ service /observability on openSerachObservabilityListener {
         log:printDebug("OpenSearch query: " + searchRequest.toJsonString());
 
         // Call OpenSearch
-        OpenSearchResponse searchResponse = check opensearchClient->post("/ballerina-application-logs-*/_search", searchRequest);
+        string indexPattern;
+        if componentType == "BI" {
+            indexPattern = "/ballerina-application-logs-*/_search";
+        } else if componentType == "MI" {
+            indexPattern = "/mi-application-logs-*/_search";
+        } else if componentType == "ALL" {
+            // Multi-index search: combine both index patterns in a single query
+            indexPattern = "/ballerina-application-logs-*,mi-application-logs-*/_search";
+        } else {
+            string errorMessage = "Unknown component type specified: " + componentType;
+            log:printWarn(errorMessage);
+            return error(errorMessage);
+        }
+
+        OpenSearchResponse searchResponse = check opensearchClient->post(indexPattern, searchRequest);
         log:printDebug("Search returned " + searchResponse.hits.total.value.toString() + " results");
+        
 
         // Build response columns
         types:LogColumn[] columns = [
             {name: "TimeGenerated", 'type: "datetime"},
             {name: "LogLevel", 'type: "string"},
             {name: "LogEntry", 'type: "dynamic"},
+            {name: "Class", 'type: "dynamic"},
+            {name: "LogFilePath", 'type: "dynamic"},
+            {name: "AppName", 'type: "dynamic"},
+            {name: "Module", 'type: "dynamic"},
+            {name: "ServiceType", 'type: "dynamic"},
+            {name: "App", 'type: "dynamic"},
+            {name: "Deployment", 'type: "dynamic"},
+            {name: "ArtifactContainer", 'type: "dynamic"},
+            {name: "Product", 'type: "dynamic"},
+            {name: "IcpRuntimeId", 'type: "dynamic"},
             {name: "LogContext", 'type: "dynamic"},
             {name: "ComponentVersion", 'type: "string"},
             {name: "ComponentVersionId", 'type: "string"}
@@ -160,6 +187,16 @@ service /observability on openSerachObservabilityListener {
             anydata timestampData = sourceData["@timestamp"];
             string timestamp = timestampData is string ? timestampData : timestampData.toString();
             string level = sourceData?.level ?: "INFO";
+            string? 'class = sourceData?.'class ?: ();
+            string logFilePath = sourceData?.log_file_path ?: "";
+            string? appName = sourceData?.app_name ?: ();
+            string? module = sourceData?.module ?: ();
+            string serviceType = sourceData?.service_type ?: "";
+            string? app = sourceData?.app ?: ();
+            string? deployment = sourceData?.deployment ?: ();
+            string? artifactContainer = sourceData?.artifact_container ?: ();
+            string product = sourceData?.product ?: "";
+            string icpRuntimeId = sourceData?.icp_runtimeId ?: "";
 
             // Construct the full log entry string
             string logEntry = constructLogEntry(sourceData);
@@ -168,6 +205,16 @@ service /observability on openSerachObservabilityListener {
                 timestamp,
                 level,
                 logEntry,
+                'class,
+                logFilePath,
+                appName,
+                module,
+                serviceType,
+                app,
+                deployment,
+                artifactContainer,
+                product,
+                icpRuntimeId,
                 (), // LogContext - null for now
                 "",
                 ""
@@ -394,7 +441,7 @@ function buildLogQuery(types:LogEntryRequest logRequest) returns json {
     if (runtimeIds.length() > 0) {
         mustClauses.push({
             "terms": {
-                "icp_runtimeId.keyword": runtimeIds
+                "icp_runtimeId": runtimeIds
             }
         });
     }
@@ -458,21 +505,38 @@ function buildLogQuery(types:LogEntryRequest logRequest) returns json {
 function constructLogEntry(LogSource sourceData) returns string {
     string time = sourceData?.time ?: "";
     string level = sourceData?.level ?: "";
-    string module = sourceData?.module ?: "";
     string message = sourceData?.message ?: "";
+    string serviceType = sourceData?.service_type ?: "";
 
-    // Additional fields that might be present
+    // Common fields
     string? traceIdValue = sourceData?.traceId;
-    string traceId = traceIdValue is string ? " traceId=\"" + traceIdValue + "\"" : "";
+    string traceId = traceIdValue is string && traceIdValue != "" ? " traceId=\"" + traceIdValue + "\"" : "";
 
     string? spanIdValue = sourceData?.spanId;
-    string spanId = spanIdValue is string ? " spanId=\"" + spanIdValue + "\"" : "";
+    string spanId = spanIdValue is string && spanIdValue != "" ? " spanId=\"" + spanIdValue + "\"" : "";
 
     string? runtimeIdValue = sourceData?.icp_runtimeId;
-    string runtimeId = runtimeIdValue is string ? " icp.runtimeId=\"" + runtimeIdValue + "\"" : "";
+    string runtimeId = runtimeIdValue is string && runtimeIdValue != "" ? " icp.runtimeId=\"" + runtimeIdValue + "\"" : "";
+
+    // Service-type specific fields
+    string serviceSpecificFields = "";
+    if serviceType == "ballerina" {
+        string? moduleValue = sourceData?.module;
+        string module = moduleValue is string && moduleValue != "" ? " module=\"" + moduleValue + "\"" : "";
+
+        string? appNameValue = sourceData?.app_name;
+        string appName = appNameValue is string && appNameValue != "" ? " app_name=\"" + appNameValue + "\"" : "";
+
+        serviceSpecificFields = module + appName;
+    } else if serviceType == "MI" {
+        string? artifactContainerValue = sourceData?.artifact_container;
+        string artifactContainer = artifactContainerValue is string && artifactContainerValue != "" ? " artifact_container=\"" + artifactContainerValue + "\"" : "";
+
+        serviceSpecificFields = artifactContainer;
+    }
 
     // Construct the log entry in logfmt style
-    return string `time=${time} level=${level} module=${module} message="${message}"${traceId}${spanId}${runtimeId}`;
+    return string `time=${time} level=${level}${serviceSpecificFields} message="${message}"${traceId}${spanId}${runtimeId}`;
 }
 
 function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {

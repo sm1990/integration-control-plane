@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Box, Button, Card, CardContent, Typography, TextField, IconButton, Tabs, Tab, Divider, FormControl, FormLabel, Switch, PageContent, FormControlLabel, Select, MenuItem, Chip, Grid } from '@wso2/oxygen-ui';
+import { Box, Button, Card, CardContent, Typography, TextField, IconButton, Tabs, Tab, Divider, FormControl, FormLabel, Switch, PageContent, FormControlLabel, Chip, Grid } from '@wso2/oxygen-ui';
 import { ArrowLeft, Save, Eye, Code, Settings, Play, Undo, Redo } from '@wso2/oxygen-ui-icons-react';
 import { useNavigate, useParams } from 'react-router';
 import { projectUrl } from '../paths';

@@ -1,6 +1,6 @@
 {
     "index_patterns": [
-        "wso2-integration-application-logs-*"
+        "ballerina-application-logs-*", "mi-application-logs-*"
     ],
     "template": {
         "mappings": {
@@ -31,7 +31,7 @@
                     "type": "keyword"
                 },
                 "message": {
-                    "type": "keyword"
+                    "type": "text"
                 },
                 "product": {
                     "type": "keyword"
@@ -45,7 +45,28 @@
                 "log_type": {
                     "type": "keyword"
                 },
+                "service_type": {
+                    "type": "keyword"
+                },
                 "app": {
+                    "type": "keyword"
+                },
+                "app_name": {
+                    "type": "keyword"
+                },
+                "deployment": {
+                    "type": "keyword"
+                },
+                "module": {
+                    "type": "keyword"
+                },
+                "class": {
+                    "type": "keyword"
+                },
+                "artifact_container": {
+                    "type": "keyword"
+                },
+                "icp_runtimeId": {
                     "type": "keyword"
                 }
             }

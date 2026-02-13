@@ -188,6 +188,14 @@ const PROJECT_RUNTIMES_QUERY = `
     }
   }`;
 
+export function useProjectRuntimes(envId: string, projectId: string) {
+  return useQuery({
+    queryKey: ['projectRuntimes', envId, projectId],
+    queryFn: () => gql<{ runtimes: GqlRuntime[] }>(PROJECT_RUNTIMES_QUERY, { environmentId: envId, projectId }).then((d) => d.runtimes),
+    enabled: !!envId && !!projectId,
+  });
+}
+
 export { RUNTIMES_QUERY, PROJECT_RUNTIMES_QUERY };
 
 export interface GqlArtifactType {

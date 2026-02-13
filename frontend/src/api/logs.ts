@@ -18,13 +18,47 @@ export interface LogsRequest {
 export interface LogRow {
   timestamp: string;
   level: string;
-  entry: string;
-  context: unknown;
-  version: string;
-  versionId: string;
+  logLine: string;
+  class: string | null;
+  logFilePath: string | null;
+  appName: string | null;
+  module: string | null;
+  serviceType: string | null;
+  app: string | null;
+  deployment: string | null;
+  artifactContainer: string | null;
+  product: string | null;
+  icpRuntimeId: string | null;
+  logContext: unknown;
+  componentVersion: string;
+  componentVersionId: string;
 }
 
-async function fetchLogs(req: LogsRequest): Promise<LogRow[]> {
+interface Column {
+  name: string;
+  type: string;
+}
+
+const COLUMN_MAP: Record<string, keyof LogRow> = {
+  TimeGenerated: 'timestamp',
+  LogLevel: 'level',
+  LogEntry: 'logLine',
+  Class: 'class',
+  LogFilePath: 'logFilePath',
+  AppName: 'appName',
+  Module: 'module',
+  ServiceType: 'serviceType',
+  App: 'app',
+  Deployment: 'deployment',
+  ArtifactContainer: 'artifactContainer',
+  Product: 'product',
+  IcpRuntimeId: 'icpRuntimeId',
+  LogContext: 'logContext',
+  ComponentVersion: 'componentVersion',
+  ComponentVersionId: 'componentVersionId',
+};
+
+export async function fetchLogs(req: LogsRequest): Promise<LogRow[]> {
   const res = await authenticatedFetch(observabilityLogsApiUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -34,22 +68,35 @@ async function fetchLogs(req: LogsRequest): Promise<LogRow[]> {
     const body = await res.text();
     throw new Error(`${res.status}: ${body}`);
   }
-  const json: { rows: [string, string, string, unknown, string, string][] } = await res.json();
-  return (json.rows ?? []).map((r) => ({
-    timestamp: r[0],
-    level: r[1],
-    entry: r[2],
-    context: r[3],
-    version: r[4],
-    versionId: r[5],
-  }));
+  const json: { columns: Column[]; rows: (string | null)[][] } = await res.json();
+  const indexMap: Record<number, keyof LogRow> = {};
+  (json.columns ?? []).forEach((col, i) => {
+    const key = COLUMN_MAP[col.name];
+    if (key) indexMap[i] = key;
+  });
+  return (json.rows ?? []).map((row) => {
+    const entry = {} as Record<string, unknown>;
+    row.forEach((val, i) => {
+      const key = indexMap[i];
+      if (key) entry[key] = val;
+    });
+    return entry as unknown as LogRow;
+  });
 }
 
-export function useLogs(req: LogsRequest | null) {
+export function useInfiniteLogs(req: LogsRequest | null, refetchInterval: number | false = false) {
   return useQuery({
     queryKey: ['logs', req],
-    queryFn: () => fetchLogs(req!),
+    queryFn: async ({ pageParam }) => {
+      const pageReq = pageParam ? { ...req!, ...(req!.sort === 'desc' ? { endTime: pageParam } : { startTime: pageParam }) } : req!;
+      return fetchLogs(pageReq);
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => {
+      if (!req || lastPage.length < req.limit) return undefined;
+      return lastPage[lastPage.length - 1]?.timestamp;
+    },
     enabled: !!req,
-    refetchInterval: false,
+    refetchInterval,
   });
 }

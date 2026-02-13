@@ -18,7 +18,9 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  MenuItem,
   PageContent,
+  Select,
   Stack,
   Switch,
   Tab,
@@ -722,9 +724,7 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
 }
 
 function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envId: string; componentId: string; projectId: string; onOpenDrawer: (a: GqlArtifact, type: string, envId: string, tab: string) => void }) {
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<SelectedArtifact | null>(null);
+  const [selectedKey, setSelectedKey] = useState('');
 
   const { data: apis = [], isLoading: loadingApis } = useArtifacts('RestApi', envId, componentId);
   const { data: proxies = [], isLoading: loadingProxies } = useArtifacts('ProxyService', envId, componentId);
@@ -733,20 +733,20 @@ function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envI
 
   const isLoading = loadingApis || loadingProxies || loadingInbound || loadingTasks;
 
-  const groups = [
-    { type: 'RestApi', items: apis },
-    { type: 'ProxyService', items: proxies },
-    { type: 'InboundEndpoint', items: inboundEps },
-    { type: 'Task', items: tasks },
-  ].filter((g) => g.items.length > 0);
+  const allEntryPoints = [
+    ...apis.map((a) => ({ artifact: a, type: 'RestApi' })),
+    ...proxies.map((a) => ({ artifact: a, type: 'ProxyService' })),
+    ...inboundEps.map((a) => ({ artifact: a, type: 'InboundEndpoint' })),
+    ...tasks.map((a) => ({ artifact: a, type: 'Task' })),
+  ];
 
-  const activeType = selectedType ?? groups[0]?.type ?? '';
-  const activeConfig = ENTRY_POINT_CONFIG[activeType];
-  const activeItems = groups.find((g) => g.type === activeType)?.items ?? [];
-  const filtered = query ? activeItems.filter((a) => a.name?.toString().toLowerCase().includes(query.toLowerCase())) : activeItems;
+  const allKeys = new Set(allEntryPoints.map(({ artifact: a, type }) => `${type}::${a.name}`));
+  const firstKey = allEntryPoints.length > 0 ? `${allEntryPoints[0].type}::${allEntryPoints[0].artifact.name}` : '';
+  const activeKey = selectedKey && allKeys.has(selectedKey) ? selectedKey : firstKey;
+  const selectedEntry = allEntryPoints.find(({ artifact: a, type }) => `${type}::${a.name}` === activeKey);
 
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
-  if (groups.length === 0)
+  if (allEntryPoints.length === 0)
     return (
       <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
         No entry points found for this component.
@@ -755,75 +755,57 @@ function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envI
 
   return (
     <>
-      <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 3 }}>
-          <List disablePadding>
-            {groups.map(({ type, items }) => {
-              const config = ENTRY_POINT_CONFIG[type];
-              return (
-                <ListItemButton
-                  key={type}
-                  selected={type === activeType}
-                  onClick={() => {
-                    setSelectedType(type);
-                    setQuery('');
-                    setSelected(null);
-                  }}
-                  sx={{ borderRadius: 1, mb: 0.5 }}>
-                  {ARTIFACT_ICONS[type] && <ListItemIcon sx={{ minWidth: 32 }}>{ARTIFACT_ICONS[type]}</ListItemIcon>}
-                  <ListItemText primary={config.label} />
-                  <Chip label={items.length} size="small" sx={{ height: 20, fontSize: 11 }} />
-                </ListItemButton>
-              );
-            })}
-          </List>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 9 }}>
-          <Typography variant="overline" sx={{ mb: 1, display: 'block' }}>
-            {(activeConfig?.label ?? activeType) + '(s)'}
-          </Typography>
-          <SearchField value={query} onChange={setQuery} placeholder={`Search ${activeConfig?.label.toLowerCase() ?? ''} entry points by name`} fullWidth sx={{ mb: 2 }} />
-          {filtered.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
-              No {activeConfig?.label.toLowerCase()} entry points found.
-            </Typography>
-          ) : (
-            <Stack gap={0}>
-              {filtered.map((a) => {
-                const isSelected = selected?.artifact.name === a.name && selected?.artifactType === activeType;
-                const meta = activeConfig?.metaField ? a[activeConfig.metaField]?.toString() : undefined;
-                return (
-                  <Box
-                    key={`${activeType}-${a.name}`}
-                    onClick={() => setSelected(isSelected ? null : { artifact: a, artifactType: activeType, envId, componentId, projectId })}
-                    sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      px: 1.5,
-                      py: 1,
-                      cursor: 'pointer',
-                      borderBottom: '1px solid',
-                      borderColor: 'divider',
-                      bgcolor: isSelected ? 'action.selected' : 'transparent',
-                      '&:hover': { bgcolor: isSelected ? 'action.selected' : 'action.hover' },
-                    }}>
-                    <Chip label={activeConfig?.label} size="small" sx={{ bgcolor: activeConfig?.bgColor, color: activeConfig?.color, fontWeight: 700, fontSize: 11, mr: 2, minWidth: 60, justifyContent: 'center' }} />
-                    <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
-                      {a.name?.toString()}
-                    </Typography>
-                    {meta && (
-                      <Typography variant="body2" color="text.secondary">
-                        {meta}
-                      </Typography>
-                    )}
-                  </Box>
-                );
-              })}
-            </Stack>
-          )}
-        </Grid>
-      </Grid>
-      {selected && <EntryPointDetail selected={selected} onViewSource={() => onOpenDrawer(selected.artifact, selected.artifactType, envId, 'Source')} onViewRuntimes={() => onOpenDrawer(selected.artifact, selected.artifactType, envId, 'Runtimes')} />}
+      <Select
+        value={activeKey}
+        onChange={(e) => setSelectedKey(e.target.value as string)}
+        fullWidth
+        renderValue={(value) => {
+          const entry = allEntryPoints.find(({ artifact: a, type }) => `${type}::${a.name}` === value);
+          if (!entry) return value;
+          const config = ENTRY_POINT_CONFIG[entry.type];
+          const meta = config?.metaField ? entry.artifact[config.metaField]?.toString() : undefined;
+          return (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Chip label={config?.label} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11, minWidth: 60, justifyContent: 'center' }} />
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {entry.artifact.name?.toString()}
+              </Typography>
+              {meta && (
+                <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                  {meta}
+                </Typography>
+              )}
+            </Box>
+          );
+        }}>
+        {allEntryPoints.map(({ artifact: a, type }) => {
+          const key = `${type}::${a.name}`;
+          const config = ENTRY_POINT_CONFIG[type];
+          const meta = config?.metaField ? a[config.metaField]?.toString() : undefined;
+          return (
+            <MenuItem key={key} value={key}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
+                <Chip label={config?.label} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11, minWidth: 60, justifyContent: 'center' }} />
+                <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
+                  {a.name?.toString()}
+                </Typography>
+                {meta && (
+                  <Typography variant="body2" color="text.secondary">
+                    {meta}
+                  </Typography>
+                )}
+              </Box>
+            </MenuItem>
+          );
+        })}
+      </Select>
+      {selectedEntry && (
+        <EntryPointDetail
+          selected={{ artifact: selectedEntry.artifact, artifactType: selectedEntry.type, envId, componentId, projectId }}
+          onViewSource={() => onOpenDrawer(selectedEntry.artifact, selectedEntry.type, envId, 'Source')}
+          onViewRuntimes={() => onOpenDrawer(selectedEntry.artifact, selectedEntry.type, envId, 'Runtimes')}
+        />
+      )}
     </>
   );
 }

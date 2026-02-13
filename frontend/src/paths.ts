@@ -137,7 +137,7 @@ export const support = {
 
 export const observabilityLogsApiUrl = 'https://localhost:9448/icp/observability/logs?live=true';
 
-export const authApiBaseUrl = 'https://localhost:6445/auth';
+export const authApiBaseUrl = 'https://localhost:9445/auth';
 export const loginApiUrl = `${authApiBaseUrl}/login`;
 export const refreshTokenApiUrl = `${authApiBaseUrl}/refresh-token`;
 export const revokeTokenApiUrl = `${authApiBaseUrl}/revoke-token`;

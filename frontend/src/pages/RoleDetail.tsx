@@ -52,7 +52,8 @@ function PermissionsEditor({ allPermissions, selectedIds, onChange }: { allPermi
   };
   const togglePerm = (id: string) => {
     const next = new Set(selectedIds);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     onChange(next);
   };
   return (

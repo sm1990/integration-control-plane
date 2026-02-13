@@ -740,8 +740,9 @@ function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envI
     ...tasks.map((a) => ({ artifact: a, type: 'Task' })),
   ];
 
+  const allKeys = new Set(allEntryPoints.map(({ artifact: a, type }) => `${type}::${a.name}`));
   const firstKey = allEntryPoints.length > 0 ? `${allEntryPoints[0].type}::${allEntryPoints[0].artifact.name}` : '';
-  const activeKey = selectedKey || firstKey;
+  const activeKey = selectedKey && allKeys.has(selectedKey) ? selectedKey : firstKey;
   const selectedEntry = allEntryPoints.find(({ artifact: a, type }) => `${type}::${a.name}` === activeKey);
 
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;

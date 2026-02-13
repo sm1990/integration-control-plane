@@ -1,9 +1,7 @@
 import { authenticatedFetch } from '../auth/tokenManager';
 
-const GRAPHQL_URL = 'https://localhost:9446/graphql';
-
 export async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-  const res = await authenticatedFetch(GRAPHQL_URL, {
+  const res = await authenticatedFetch(window.API_CONFIG.graphqlUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),

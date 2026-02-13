@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }, [navigate, queryClient]);
 
   const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch(loginApiUrl, {
+    const res = await fetch(loginApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const loginWithOIDC = useCallback(async () => {
     saveRedirectUrl(window.location.href);
     const state = generateAndSaveOIDCState();
-    const res = await fetch(`${oidcAuthorizeApiUrl}?state=${encodeURIComponent(state)}`);
+    const res = await fetch(`${oidcAuthorizeApiUrl()}?state=${encodeURIComponent(state)}`);
     if (!res.ok) {
       const body = await res.text();
       throw new Error(body || `Failed to get OIDC authorization URL (${res.status})`);
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }, []);
 
   const handleOIDCCallback = useCallback(async (code: string, state: string | null) => {
-    const res = await fetch(oidcCallbackApiUrl, {
+    const res = await fetch(oidcCallbackApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, state }),

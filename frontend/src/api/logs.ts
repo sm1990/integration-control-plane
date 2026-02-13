@@ -25,7 +25,7 @@ export interface LogRow {
 }
 
 async function fetchLogs(req: LogsRequest): Promise<LogRow[]> {
-  const res = await authenticatedFetch(observabilityLogsApiUrl, {
+  const res = await authenticatedFetch(observabilityLogsApiUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),

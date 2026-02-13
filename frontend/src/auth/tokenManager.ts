@@ -66,7 +66,7 @@ export async function refreshAccessToken(): Promise<void> {
       return;
     }
 
-    const res = await fetch(refreshTokenApiUrl, {
+    const res = await fetch(refreshTokenApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken }),
@@ -129,7 +129,7 @@ export async function revokeToken(): Promise<void> {
     const refreshToken = getRefreshToken();
     if (!token) return;
 
-    await fetch(revokeTokenApiUrl, {
+    await fetch(revokeTokenApiUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ refreshToken }),

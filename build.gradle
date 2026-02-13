@@ -108,11 +108,14 @@ task copyFrontendDist {
         def wwwDir = file('www')
         
         if (distDir.exists()) {
-            // Clean www directory first
+            // Clean www directory contents but preserve .gitkeep
             if (wwwDir.exists()) {
-                delete wwwDir
+                delete fileTree(wwwDir) {
+                    exclude '.gitkeep'
+                }
+            } else {
+                wwwDir.mkdirs()
             }
-            wwwDir.mkdirs()
             
             // Copy all contents from dist to www
             copy {

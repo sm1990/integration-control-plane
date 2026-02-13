@@ -23,46 +23,50 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
+import { loadConfig } from './config/api';
 import './index.css';
 
 const queryClient = new QueryClient();
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <OxygenUIThemeProvider
-      themes={[
-        {
-          key: 'acrylicOrange',
-          label: 'Acrylic Orange Theme',
-          theme: AcrylicOrangeTheme,
-        },
-        {
-          key: 'acrylicPurple',
-          label: 'Acrylic Purple Theme',
-          theme: AcrylicPurpleTheme,
-        },
-        { key: 'choreo', label: 'Choreo Theme', theme: ChoreoTheme },
-        {
-          key: 'highContrast',
-          label: 'High Contrast Theme',
-          theme: HighContrastTheme,
-        },
-        { key: 'classic', label: 'Classic Theme', theme: ClassicTheme },
-        { key: 'paleGray', label: 'Pale Gray Theme', theme: PaleGrayTheme },
-        {
-          key: 'paleIndigo',
-          label: 'Pale Indigo Theme',
-          theme: PaleIndigoTheme,
-        },
-      ]}
-      initialTheme="acrylicOrange">
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </OxygenUIThemeProvider>
-  </StrictMode>,
-);
+// Load runtime configuration before rendering the app
+loadConfig().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <OxygenUIThemeProvider
+        themes={[
+          {
+            key: 'acrylicOrange',
+            label: 'Acrylic Orange Theme',
+            theme: AcrylicOrangeTheme,
+          },
+          {
+            key: 'acrylicPurple',
+            label: 'Acrylic Purple Theme',
+            theme: AcrylicPurpleTheme,
+          },
+          { key: 'choreo', label: 'Choreo Theme', theme: ChoreoTheme },
+          {
+            key: 'highContrast',
+            label: 'High Contrast Theme',
+            theme: HighContrastTheme,
+          },
+          { key: 'classic', label: 'Classic Theme', theme: ClassicTheme },
+          { key: 'paleGray', label: 'Pale Gray Theme', theme: PaleGrayTheme },
+          {
+            key: 'paleIndigo',
+            label: 'Pale Indigo Theme',
+            theme: PaleIndigoTheme,
+          },
+        ]}
+        initialTheme="acrylicOrange">
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </OxygenUIThemeProvider>
+    </StrictMode>,
+  );
+});

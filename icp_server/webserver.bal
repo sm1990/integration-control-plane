@@ -22,6 +22,12 @@ import ballerina/log;
 service / on httpListener {
 
     function init() {
+        // Update config.json with runtime configuration
+        error? updateResult = updateFrontendConfig();
+        if updateResult is error {
+            log:printWarn("Failed to update frontend config.json: " + updateResult.message());
+        }
+
         log:printInfo("Starting console on " + serverHost + ":" + serverPort.toString());
         log:printInfo("--------------------------------");
         log:printInfo("WSO2 Integrator: ICP Console started at https://localhost:" + serverPort.toString());
@@ -77,6 +83,7 @@ service / on httpListener {
 
         return response;
     }
+
 }
 
 // Helper function to determine content type
@@ -112,4 +119,20 @@ function getContentType(string filePath) returns string {
     } else {
         return "application/octet-stream";
     }
+}
+
+// Update frontend config.json with runtime backend URLs
+function updateFrontendConfig() returns error? {
+    string configPath = "../www/config.json";
+
+    // Create config JSON with runtime values
+    json configJson = {
+        "VITE_GRAPHQL_URL": backendGraphqlEndpoint,
+        "VITE_AUTH_BASE_URL": backendAuthBaseUrl,
+        "VITE_OBSERVABILITY_URL": backendObservabilityEndpoint
+    };
+
+    // Write to config.json
+    check io:fileWriteJson(configPath, configJson);
+    log:printInfo("Updated frontend config.json with backend URLs");
 }

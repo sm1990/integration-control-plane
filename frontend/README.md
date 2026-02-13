@@ -23,8 +23,67 @@ This test app showcases:
 
 From the test app directory:
 
-````bash
+```bash
 pnpm install
+```
+
+### Configuration
+
+The application uses **runtime configuration** via `public/config.json`. This allows you to change backend API URLs **without rebuilding** the application.
+
+**Configure backend URLs:**
+
+Edit `public/config.json` (or `dist/config.json` after build):
+
+```json
+{
+  "VITE_GRAPHQL_URL": "https://localhost:9446/graphql",
+  "VITE_AUTH_BASE_URL": "https://localhost:9445/auth",
+  "VITE_OBSERVABILITY_URL": "https://localhost:9448/icp/observability"
+}
+```
+
+**For local development:**
+
+- Edit `public/config.json` with your backend URLs
+- Restart the dev server
+
+**For production/Docker deployments:**
+
+- Modify `dist/config.json` after building, or
+- Generate it dynamically from environment variables (see example below)
+
+**Docker deployment example:**
+
+```dockerfile
+# Build the app
+FROM node:20 AS builder
+WORKDIR /app
+COPY . .
+RUN pnpm install && pnpm build
+
+# Production image
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Override config.json at container startup
+COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+ENTRYPOINT ["/docker-entrypoint.sh"]
+```
+
+```bash
+# docker-entrypoint.sh
+#!/bin/sh
+cat > /usr/share/nginx/html/config.json <<EOF
+{
+  "VITE_GRAPHQL_URL": "${GRAPHQL_URL}",
+  "VITE_AUTH_BASE_URL": "${AUTH_BASE_URL}",
+  "VITE_LOGS_URL": "${LOGS_URL}"
+}
+EOF
+nginx -g 'daemon off;'
+```
 
 ### Development
 
@@ -32,7 +91,7 @@ Run the development server:
 
 ```bash
 pnpm dev
-````
+```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 

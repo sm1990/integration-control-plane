@@ -33,7 +33,7 @@ export interface MetricsResponse {
 }
 
 async function fetchMetrics(req: MetricsRequest): Promise<MetricEntry[]> {
-  const res = await authenticatedFetch(observabilityMetricsApiUrl, {
+  const res = await authenticatedFetch(observabilityMetricsApiUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),

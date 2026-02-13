@@ -230,7 +230,7 @@ const ARTIFACT_QUERY_MAP: Record<string, { queryName: string; field: string; fie
   },
 };
 
-export function useArtifacts(artifactType: string, envId: string, componentId: string) {
+export function useArtifacts(artifactType: string, envId: string, componentId: string, options?: { enabled?: boolean }) {
   const mapping = ARTIFACT_QUERY_MAP[artifactType];
   return useQuery({
     queryKey: ['artifacts', artifactType, envId, componentId],
@@ -242,7 +242,7 @@ export function useArtifacts(artifactType: string, envId: string, componentId: s
       });
       return data[mapping.field] ?? [];
     },
-    enabled: !!artifactType && !!envId && !!componentId && !!mapping,
+    enabled: !!artifactType && !!envId && !!componentId && !!mapping && (options?.enabled ?? true),
   });
 }
 

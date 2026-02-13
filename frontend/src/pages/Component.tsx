@@ -97,6 +97,8 @@ const ENTRY_POINT_CONFIG: Record<string, { label: string; color: string; bgColor
   ProxyService: { label: 'Proxy', color: '#e65100', bgColor: '#fff3e0' },
   InboundEndpoint: { label: 'Inbound', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol' },
   Task: { label: 'Task', color: '#00695c', bgColor: '#e0f2f1' },
+  Service: { label: 'Service', color: '#4a148c', bgColor: '#f3e5f5', metaField: 'basePath' },
+  Listener: { label: 'Listener', color: '#bf360c', bgColor: '#fbe9e7' },
 };
 
 const ENTRY_POINT_DETAIL_TABS: Record<string, string[]> = {
@@ -104,6 +106,8 @@ const ENTRY_POINT_DETAIL_TABS: Record<string, string[]> = {
   ProxyService: ['Overview', 'Runtimes'],
   InboundEndpoint: ['Overview', 'Runtimes'],
   Task: ['Runtimes'],
+  Service: ['Overview', 'Resources', 'Runtimes'],
+  Listener: ['Overview', 'Runtimes'],
 };
 
 interface SelectedArtifact {
@@ -723,22 +727,22 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
   );
 }
 
-function EntryPointsList({ envId, componentId, projectId, onOpenDrawer }: { envId: string; componentId: string; projectId: string; onOpenDrawer: (a: GqlArtifact, type: string, envId: string, tab: string) => void }) {
+function EntryPointsList({ envId, componentId, projectId, componentType, onOpenDrawer }: { envId: string; componentId: string; projectId: string; componentType: string; onOpenDrawer: (a: GqlArtifact, type: string, envId: string, tab: string) => void }) {
   const [selectedKey, setSelectedKey] = useState('');
+  const isMI = componentType === 'MI';
 
-  const { data: apis = [], isLoading: loadingApis } = useArtifacts('RestApi', envId, componentId);
-  const { data: proxies = [], isLoading: loadingProxies } = useArtifacts('ProxyService', envId, componentId);
-  const { data: inboundEps = [], isLoading: loadingInbound } = useArtifacts('InboundEndpoint', envId, componentId);
-  const { data: tasks = [], isLoading: loadingTasks } = useArtifacts('Task', envId, componentId);
+  const { data: apis = [], isLoading: loadingApis } = useArtifacts('RestApi', envId, componentId, { enabled: isMI });
+  const { data: proxies = [], isLoading: loadingProxies } = useArtifacts('ProxyService', envId, componentId, { enabled: isMI });
+  const { data: inboundEps = [], isLoading: loadingInbound } = useArtifacts('InboundEndpoint', envId, componentId, { enabled: isMI });
+  const { data: tasks = [], isLoading: loadingTasks } = useArtifacts('Task', envId, componentId, { enabled: isMI });
+  const { data: services = [], isLoading: loadingServices } = useArtifacts('Service', envId, componentId, { enabled: !isMI });
+  const { data: listeners = [], isLoading: loadingListeners } = useArtifacts('Listener', envId, componentId, { enabled: !isMI });
 
-  const isLoading = loadingApis || loadingProxies || loadingInbound || loadingTasks;
+  const isLoading = isMI ? loadingApis || loadingProxies || loadingInbound || loadingTasks : loadingServices || loadingListeners;
 
-  const allEntryPoints = [
-    ...apis.map((a) => ({ artifact: a, type: 'RestApi' })),
-    ...proxies.map((a) => ({ artifact: a, type: 'ProxyService' })),
-    ...inboundEps.map((a) => ({ artifact: a, type: 'InboundEndpoint' })),
-    ...tasks.map((a) => ({ artifact: a, type: 'Task' })),
-  ];
+  const allEntryPoints = isMI
+    ? [...apis.map((a) => ({ artifact: a, type: 'RestApi' })), ...proxies.map((a) => ({ artifact: a, type: 'ProxyService' })), ...inboundEps.map((a) => ({ artifact: a, type: 'InboundEndpoint' })), ...tasks.map((a) => ({ artifact: a, type: 'Task' }))]
+    : [...services.map((a) => ({ artifact: a, type: 'Service' })), ...listeners.map((a) => ({ artifact: a, type: 'Listener' }))];
 
   const allKeys = new Set(allEntryPoints.map(({ artifact: a, type }) => `${type}::${a.name}`));
   const firstKey = allEntryPoints.length > 0 ? `${allEntryPoints[0].type}::${allEntryPoints[0].artifact.name}` : '';
@@ -814,12 +818,14 @@ function Environment({
   env,
   componentId,
   projectId,
+  componentType,
   onSelectArtifact,
   onOpenDrawerForTab,
 }: {
   env: GqlEnvironment;
   componentId: string;
   projectId: string;
+  componentType: string;
   onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void;
   onOpenDrawerForTab: (a: GqlArtifact, type: string, envId: string, tab: string) => void;
 }) {
@@ -857,19 +863,21 @@ function Environment({
           </Stack>
         </Stack>
         <Divider sx={{ my: 2 }} />
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-          <Typography variant="overline">VIEW MODE</Typography>
-          <Stack direction="row">
-            <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
-              Entry Points
-            </Button>
-            <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
-              All Artifacts
-            </Button>
+        {componentType === 'MI' && (
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+            <Typography variant="overline">VIEW MODE</Typography>
+            <Stack direction="row">
+              <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+                Entry Points
+              </Button>
+              <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
+                All Artifacts
+              </Button>
+            </Stack>
           </Stack>
-        </Stack>
-        {viewMode === 'entryPoints' && <EntryPointsList envId={env.id} componentId={componentId} projectId={projectId} onOpenDrawer={onOpenDrawerForTab} />}
-        {viewMode === 'allArtifacts' && <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />}
+        )}
+        {(componentType !== 'MI' || viewMode === 'entryPoints') && <EntryPointsList envId={env.id} componentId={componentId} projectId={projectId} componentType={componentType} onOpenDrawer={onOpenDrawerForTab} />}
+        {componentType === 'MI' && viewMode === 'allArtifacts' && <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />}
       </CardContent>
     </Card>
   );
@@ -915,6 +923,7 @@ export default function Component(scope: ComponentScope): JSX.Element {
               env={env}
               componentId={component.id}
               projectId={scope.project}
+              componentType={component.componentType}
               onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId: scope.project })}
               onOpenDrawerForTab={(a, type, envId, tab) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId: scope.project, initialTab: tab })}
             />

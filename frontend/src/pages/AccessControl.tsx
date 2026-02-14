@@ -787,7 +787,7 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
               <TableHead>
                 <TableRow>
                   <TableCell>Role Name</TableCell>
-                  <TableCell>Mapping Level</TableCell>
+                  <TableCell align="center">Mapping Level</TableCell>
                   <TableCell align="center">Applicable Environment</TableCell>
                   <Authorized permissions={roleModifyPerms}>
                     <TableCell align="right">Action</TableCell>
@@ -798,7 +798,7 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                 {filteredRoles.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{r.roleName}</TableCell>
-                    <TableCell>
+                    <TableCell align="center">
                       <Chip label={mappingLevel(r)} size="small" />
                     </TableCell>
                     <TableCell align="center">

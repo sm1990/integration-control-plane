@@ -16,7 +16,7 @@
 
 services:
   opensearch:
-    image: opensearchproject/opensearch:latest
+    image: opensearchproject/opensearch:3.5.0
     container_name: opensearch
     env_file:
       - ./resources/observability/opensearch-observability-dashboard/config/.env
@@ -49,7 +49,7 @@ services:
       start_period: 60s
 
   opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:latest
+    image: opensearchproject/opensearch-dashboards:3.5.0
     container_name: opensearch-dashboards
     ports:
       - "5601:5601"
@@ -82,7 +82,7 @@ services:
         condition: service_healthy
 
   fluent-bit:
-    image: fluent/fluent-bit:latest
+    image: fluent/fluent-bit:4.2.2
     container_name: fluent-bit
     ports:
       - "2020:2020"
@@ -93,7 +93,7 @@ services:
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/scripts:/fluent-bit/scripts
       - ./resources/observability/opensearch-observability-dashboard/logs/ballerina:/var/log/ballerina:ro
-      - ${MI_LOG_FILE_PATH}/${MI_LOG_FILE_NAME}:/var/log/mi/${MI_LOG_FILE_NAME}:ro
+      - ${MI_LOG_FILE_PATH}:/var/log/mi:ro
       # Persist position database
       - fluent-bit-db:/fluent-bit/db
       # Persist buffer storage
@@ -127,7 +127,7 @@ services:
     restart: no
 
   opensearch-setup:
-    image: curlimages/curl:latest
+    image: curlimages/curl:8.18.0
     container_name: opensearch-setup
     env_file:
       - ./resources/observability/opensearch-observability-dashboard/config/.env

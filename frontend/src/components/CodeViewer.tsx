@@ -49,10 +49,13 @@ export default function CodeViewer({ code, language = 'xml', title, showCopyButt
 
   const handleCopy = useCallback(() => {
     if (!code || !navigator.clipboard?.writeText) return;
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    }, () => {});
+    navigator.clipboard.writeText(code).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
   }, [code]);
 
   return (

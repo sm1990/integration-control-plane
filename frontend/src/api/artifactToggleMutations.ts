@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type MutateOptions } from '@tanstack/react-query';
 import { gql } from './graphql';
 import type { GqlArtifact } from './queries';
 
@@ -93,12 +93,14 @@ export function useUpdateArtifactToggleStatus(kind: ArtifactToggleKind) {
   });
 }
 
+type ToggleMutateOptions = MutateOptions<{ status: string; message: string }, Error, ArtifactToggleStatusInput>;
+
 export function useUpdateArtifactTracingStatus() {
   const mutation = useUpdateArtifactToggleStatus('tracing');
 
   return {
     ...mutation,
-    mutate: (input: ArtifactTracingInput) => mutation.mutate({ ...input, value: input.trace }),
+    mutate: (input: ArtifactTracingInput, options?: ToggleMutateOptions) => mutation.mutate({ ...input, value: input.trace }, options),
     mutateAsync: (input: ArtifactTracingInput) => mutation.mutateAsync({ ...input, value: input.trace }),
   };
 }
@@ -108,7 +110,7 @@ export function useUpdateArtifactStatisticsStatus() {
 
   return {
     ...mutation,
-    mutate: (input: ArtifactStatisticsInput) => mutation.mutate({ ...input, value: input.statistics }),
+    mutate: (input: ArtifactStatisticsInput, options?: ToggleMutateOptions) => mutation.mutate({ ...input, value: input.statistics }, options),
     mutateAsync: (input: ArtifactStatisticsInput) => mutation.mutateAsync({ ...input, value: input.statistics }),
   };
 }

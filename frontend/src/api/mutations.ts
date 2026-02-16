@@ -237,6 +237,7 @@ const UPDATE_ARTIFACT_TRACING = `
   }`;
 
 export interface ArtifactTracingInput {
+  envId: string;
   componentId: string;
   artifactType: string;
   artifactName: string;
@@ -248,11 +249,13 @@ export function useUpdateArtifactTracing() {
   return useMutation({
     mutationFn: (input: ArtifactTracingInput) =>
       gql<{ updateArtifactTracingStatus: { status: string; message: string } }>(UPDATE_ARTIFACT_TRACING, {
-        input: { componentId: input.componentId, artifactType: toKebab(input.artifactType), artifactName: input.artifactName, trace: input.trace },
+        input: { componentId: input.componentId, artifactType: toBackendArtifactType(input.artifactType), artifactName: input.artifactName, trace: input.trace },
       }).then((d) => d.updateArtifactTracingStatus),
     onMutate: async (input) => {
-      await qc.cancelQueries({ queryKey: ['artifacts', input.artifactType] });
-      qc.setQueriesData<GqlArtifact[]>({ queryKey: ['artifacts', input.artifactType] }, (old) => old?.map((a) => (a.name === input.artifactName ? { ...a, tracing: input.trace } : a)));
+      const key = ['artifacts', input.artifactType, input.envId, input.componentId];
+      await qc.cancelQueries({ queryKey: key });
+      const newValue = input.trace === 'enable' ? 'enabled' : 'disabled';
+      qc.setQueriesData<GqlArtifact[]>({ queryKey: key }, (old) => old?.map((a) => (a.name === input.artifactName ? { ...a, tracing: newValue } : a)));
     },
   });
 }

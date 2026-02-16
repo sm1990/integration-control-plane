@@ -109,6 +109,8 @@ export default function AppLayout(): JSX.Element {
         return 'runtimes';
       case 'environments':
         return 'environments';
+      default:
+        return 'overview';
     }
   };
 

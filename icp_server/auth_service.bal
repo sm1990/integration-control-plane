@@ -642,16 +642,25 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function get orgs/[string orgHandle]/groups(http:Request req) returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
-        log:printInfo("Fetching groups for organization", orgHandle = orgHandle);
+    isolated resource function get orgs/[string orgHandle]/groups(http:Request req, string? projectId = (), string? integrationId = ()) returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+        log:printInfo("Fetching groups for organization", orgHandle = orgHandle, projectId = projectId ?: "N/A", integrationId = integrationId ?: "N/A");
 
-        // Permission check: user must have any of these permissions at any level
+        // Permission check: user must have any of these permissions at specified scope level
         types:UserContextV2|error userContext = extractUserContextFromRequest(req);
         if userContext is error {
             return utils:createUnauthorizedError("Invalid or missing authentication token");
         }
-        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
-        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], orgScope);
+        
+        // Build scope based on provided parameters
+        types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
+        if projectId is string {
+            scope.projectUuid = projectId;
+        }
+        if integrationId is string {
+            scope.integrationUuid = integrationId;
+        }
+        
+        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], scope);
         if hasPermission is error {
             log:printError("Error checking permissions", hasPermission, userId = userContext.userId);
             return utils:createInternalServerError("Error checking permissions");
@@ -1585,18 +1594,27 @@ service /auth on httpListener {
             }
         ]
     }
-    resource function get orgs/[string orgHandle]/groups/[string groupId]/roles(http:Request req)
+    resource function get orgs/[string orgHandle]/groups/[string groupId]/roles(http:Request req, string? projectId = (), string? integrationId = ())
             returns http:Ok|http:NotFound|http:Forbidden|http:Unauthorized|http:InternalServerError|error {
 
-        log:printInfo("Fetching role assignments for group", orgHandle = orgHandle, groupId = groupId);
+        log:printInfo("Fetching role assignments for group", orgHandle = orgHandle, groupId = groupId, projectId = projectId ?: "N/A", integrationId = integrationId ?: "N/A");
 
-        // Permission check: org-level group/role management
+        // Permission check at specified scope level
         types:UserContextV2|error userContext = extractUserContextFromRequest(req);
         if userContext is error {
             return utils:createUnauthorizedError("Invalid or missing authentication token");
         }
-        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
-        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], orgScope);
+        
+        // Build scope based on provided parameters
+        types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
+        if projectId is string {
+            scope.projectUuid = projectId;
+        }
+        if integrationId is string {
+            scope.integrationUuid = integrationId;
+        }
+        
+        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_USER_MANAGE_USERS, auth:PERMISSION_USER_UPDATE_USERS, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], scope);
         if hasPermission is error {
             log:printError("Error checking permissions", hasPermission, userId = userContext.userId);
             return utils:createInternalServerError("Error checking permissions");
@@ -1924,16 +1942,25 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function get orgs/[string orgHandle]/roles(http:Request req) returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
-        log:printInfo("Fetching all roles for organization", orgHandle = orgHandle);
+    isolated resource function get orgs/[string orgHandle]/roles(http:Request req, string? projectId = (), string? integrationId = ()) returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+        log:printInfo("Fetching all roles for organization", orgHandle = orgHandle, projectId = projectId ?: "N/A", integrationId = integrationId ?: "N/A");
 
-        // Permission check: user must have any of these permissions at any level
+        // Permission check: user must have any of these permissions at specified scope level
         types:UserContextV2|error userContext = extractUserContextFromRequest(req);
         if userContext is error {
             return utils:createUnauthorizedError("Invalid or missing authentication token");
         }
-        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
-        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], orgScope);
+        
+        // Build scope based on provided parameters
+        types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
+        if projectId is string {
+            scope.projectUuid = projectId;
+        }
+        if integrationId is string {
+            scope.integrationUuid = integrationId;
+        }
+        
+        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], scope);
         if hasPermission is error {
             log:printError("Error checking permissions", hasPermission, userId = userContext.userId);
             return utils:createInternalServerError("Error checking permissions");
@@ -2066,16 +2093,25 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function get orgs/[string orgHandle]/roles/[string roleId](http:Request req) returns http:Ok|http:NotFound|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
-        log:printInfo("Fetching role details", orgHandle = orgHandle, roleId = roleId);
+    isolated resource function get orgs/[string orgHandle]/roles/[string roleId](http:Request req, string? projectId = (), string? integrationId = ()) returns http:Ok|http:NotFound|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+        log:printInfo("Fetching role details", orgHandle = orgHandle, roleId = roleId, projectId = projectId ?: "N/A", integrationId = integrationId ?: "N/A");
 
-        // Permission check: user must have any of these permissions at any level
+        // Permission check: user must have any of these permissions at specified scope level
         types:UserContextV2|error userContext = extractUserContextFromRequest(req);
         if userContext is error {
             return utils:createUnauthorizedError("Invalid or missing authentication token");
         }
-        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
-        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], orgScope);
+        
+        // Build scope based on provided parameters
+        types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
+        if projectId is string {
+            scope.projectUuid = projectId;
+        }
+        if integrationId is string {
+            scope.integrationUuid = integrationId;
+        }
+        
+        boolean|error hasPermission = auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_UPDATE_GROUP_ROLES, auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], scope);
         if hasPermission is error {
             log:printError("Error checking permissions", hasPermission, userId = userContext.userId);
             return utils:createInternalServerError("Error checking permissions");
@@ -2311,21 +2347,30 @@ service /auth on httpListener {
             }
         ]
     }
-    isolated resource function get orgs/[string orgHandle]/roles/[string roleId]/groups(http:Request req) returns http:Ok|http:NotFound|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
-        log:printInfo("Fetching group assignments for role", orgHandle = orgHandle, roleId = roleId);
+    isolated resource function get orgs/[string orgHandle]/roles/[string roleId]/groups(http:Request req, string? projectId = (), string? integrationId = ()) returns http:Ok|http:NotFound|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+        log:printInfo("Fetching group assignments for role", orgHandle = orgHandle, roleId = roleId, projectId = projectId ?: "N/A", integrationId = integrationId ?: "N/A");
 
-        // Permission check - loosened for role-assignment UX (check at any level)
+        // Permission check at specified scope level
         types:UserContextV2|error userContext = extractUserContextFromRequest(req);
         if userContext is error {
             return utils:createUnauthorizedError("Invalid or missing authentication token");
         }
-        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
+        
+        // Build scope based on provided parameters
+        types:AccessScope scope = {orgUuid: storage:DEFAULT_ORG_ID};
+        if projectId is string {
+            scope.projectUuid = projectId;
+        }
+        if integrationId is string {
+            scope.integrationUuid = integrationId;
+        }
+        
         boolean|error hasPermission = auth:hasAnyPermission(
             userContext.userId,
             [auth:PERMISSION_USER_MANAGE_ROLES, auth:PERMISSION_USER_MANAGE_GROUPS, auth:PERMISSION_USER_UPDATE_GROUP_ROLES,
              auth:PERMISSION_PROJECT_EDIT, auth:PERMISSION_PROJECT_MANAGE,
              auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE],
-            orgScope
+            scope
         );
         if hasPermission is error {
             log:printError("Error checking permissions", hasPermission, userId = userContext.userId);

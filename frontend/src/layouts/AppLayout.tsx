@@ -51,6 +51,8 @@ import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
 import { loginUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
+import { useAccessControl } from '../contexts/AccessControlContext';
+import { ALL_USER_MGT_PERMISSIONS, Permissions } from '../constants/permissions';
 
 const SIDEBAR_ICONS: Record<Resource, JSX.Element> = {
   overview: <LayoutDashboard size={20} />,
@@ -66,6 +68,7 @@ export default function AppLayout(): JSX.Element {
   const resource = useResource();
 
   const { username, displayName, logout } = useAuth();
+  const { hasAnyPermission } = useAccessControl();
 
   const { state: shell, actions } = useAppShell({ initialCollapsed: true });
   const [tabIndex, setTabIndex] = useState(0);
@@ -83,7 +86,19 @@ export default function AppLayout(): JSX.Element {
   const { data: projects = [] } = useProjects();
   const { data: components = [] } = useComponents(scope.org, hasProject(scope) ? scope.project : '');
 
-  const items = sidebarItems(scope, resource);
+  // Find component UUID for permission checks
+  const currentComponent = hasComponent(scope) ? components.find((c) => c.handler === scope.component) : undefined;
+  const componentId = currentComponent?.id;
+
+  const accessControlPerms: string[] = [...ALL_USER_MGT_PERMISSIONS];
+  if (hasProject(scope)) {
+    accessControlPerms.push(Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE);
+  }
+  if (hasComponent(scope)) {
+    accessControlPerms.push(Permissions.INTEGRATION_EDIT, Permissions.INTEGRATION_MANAGE);
+  }
+  const canSeeAccessControl = hasAnyPermission(accessControlPerms, hasProject(scope) ? scope.project : undefined, componentId);
+  const items = sidebarItems(scope, resource).filter((item) => item.resource !== 'access-control' || canSeeAccessControl);
 
   return (
     <AppShell>

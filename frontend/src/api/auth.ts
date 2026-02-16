@@ -34,6 +34,27 @@ export function authDelete<T>(path: string): Promise<T> {
   return authFetch<T>(path, { method: 'DELETE' });
 }
 
+// ── Permission fetching ──
+
+interface UserPermissionsResponse {
+  userId: string;
+  scope: { orgUuid: number; projectUuid?: string; integrationUuid?: string; envUuid?: string };
+  permissions: { permissionId: number; permissionName: string; permissionDomain: string; description: string }[];
+  permissionNames: string[];
+}
+
+export function fetchOrgPermissions(orgHandle: string, userId: string): Promise<UserPermissionsResponse> {
+  return authGet<UserPermissionsResponse>(`/orgs/${orgHandle}/users/${userId}/permissions`);
+}
+
+export function fetchProjectPermissions(orgHandle: string, userId: string, projectId: string): Promise<UserPermissionsResponse> {
+  return authGet<UserPermissionsResponse>(`/orgs/${orgHandle}/users/${userId}/permissions?projectId=${projectId}`);
+}
+
+export function fetchComponentPermissions(orgHandle: string, userId: string, projectId: string, componentId: string): Promise<UserPermissionsResponse> {
+  return authGet<UserPermissionsResponse>(`/orgs/${orgHandle}/users/${userId}/permissions?projectId=${projectId}&integrationId=${componentId}`);
+}
+
 // ── Types ──
 
 export interface User {

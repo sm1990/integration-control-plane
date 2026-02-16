@@ -49,17 +49,27 @@ export function useDeleteUser(orgHandler: string) {
 
 // ── Roles ──
 
-export function useRoles(orgHandler: string) {
+export function useRoles(orgHandler: string, projectId?: string, integrationId?: string) {
+  const queryParams = new URLSearchParams();
+  if (projectId) queryParams.append('projectId', projectId);
+  if (integrationId) queryParams.append('integrationId', integrationId);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   return useQuery({
-    queryKey: ['roles', orgHandler],
-    queryFn: () => authGet<Role[]>(`/orgs/${orgHandler}/roles`),
+    queryKey: ['roles', orgHandler, projectId, integrationId],
+    queryFn: () => authGet<Role[]>(`/orgs/${orgHandler}/roles${queryString}`),
   });
 }
 
-export function useRoleDetail(orgHandler: string, roleId: string) {
+export function useRoleDetail(orgHandler: string, roleId: string, projectId?: string, integrationId?: string) {
+  const queryParams = new URLSearchParams();
+  if (projectId) queryParams.append('projectId', projectId);
+  if (integrationId) queryParams.append('integrationId', integrationId);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   return useQuery({
-    queryKey: ['roleDetail', orgHandler, roleId],
-    queryFn: () => authGet<RoleDetail>(`/orgs/${orgHandler}/roles/${roleId}`),
+    queryKey: ['roleDetail', orgHandler, roleId, projectId, integrationId],
+    queryFn: () => authGet<RoleDetail>(`/orgs/${orgHandler}/roles/${roleId}${queryString}`),
     enabled: !!roleId,
   });
 }
@@ -99,20 +109,30 @@ export function useDeleteRole(orgHandler: string) {
   });
 }
 
-export function useRoleGroups(orgHandler: string, roleId: string) {
+export function useRoleGroups(orgHandler: string, roleId: string, projectId?: string, integrationId?: string) {
+  const queryParams = new URLSearchParams();
+  if (projectId) queryParams.append('projectId', projectId);
+  if (integrationId) queryParams.append('integrationId', integrationId);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   return useQuery({
-    queryKey: ['roleGroups', orgHandler, roleId],
-    queryFn: () => authGet<{ mappings: RoleGroupMapping[] }>(`/orgs/${orgHandler}/roles/${roleId}/groups`).then((d) => d.mappings ?? []),
+    queryKey: ['roleGroups', orgHandler, roleId, projectId, integrationId],
+    queryFn: () => authGet<{ mappings: RoleGroupMapping[] }>(`/orgs/${orgHandler}/roles/${roleId}/groups${queryString}`).then((d) => d.mappings ?? []),
     enabled: !!roleId,
   });
 }
 
 // ── Groups ──
 
-export function useGroups(orgHandler: string) {
+export function useGroups(orgHandler: string, projectId?: string, integrationId?: string) {
+  const queryParams = new URLSearchParams();
+  if (projectId) queryParams.append('projectId', projectId);
+  if (integrationId) queryParams.append('integrationId', integrationId);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   return useQuery({
-    queryKey: ['groups', orgHandler],
-    queryFn: () => authGet<Group[]>(`/orgs/${orgHandler}/groups`),
+    queryKey: ['groups', orgHandler, projectId, integrationId],
+    queryFn: () => authGet<Group[]>(`/orgs/${orgHandler}/groups${queryString}`),
   });
 }
 
@@ -140,19 +160,24 @@ export function useDeleteGroup(orgHandler: string) {
   });
 }
 
-export function useGroupRoles(orgHandler: string, groupId: string) {
+export function useGroupRoles(orgHandler: string, groupId: string, projectId?: string, integrationId?: string) {
+  const queryParams = new URLSearchParams();
+  if (projectId) queryParams.append('projectId', projectId);
+  if (integrationId) queryParams.append('integrationId', integrationId);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   return useQuery({
-    queryKey: ['groupRoles', orgHandler, groupId],
-    queryFn: () => authGet<{ mappings: GroupRoleMapping[] }>(`/orgs/${orgHandler}/groups/${groupId}/roles`).then((d) => d.mappings ?? []),
+    queryKey: ['groupRoles', orgHandler, groupId, projectId, integrationId],
+    queryFn: () => authGet<{ mappings: GroupRoleMapping[] }>(`/orgs/${orgHandler}/groups/${groupId}/roles${queryString}`).then((d) => d.mappings ?? []),
     enabled: !!groupId,
   });
 }
 
-export function useGroupUsers(orgHandler: string, groupId: string) {
+export function useGroupUsers(orgHandler: string, groupId: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['groupUsers', orgHandler, groupId],
     queryFn: () => authGet<{ users: GroupUser[] }>(`/orgs/${orgHandler}/groups/${groupId}/users`).then((d) => d.users ?? []),
-    enabled: !!groupId,
+    enabled: !!groupId && (options?.enabled ?? true),
   });
 }
 

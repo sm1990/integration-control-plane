@@ -24,6 +24,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
 import { loadConfig } from './config/api';
+import { AccessControlProvider } from './contexts/AccessControlContext';
 import './index.css';
 
 const queryClient = new QueryClient();
@@ -62,7 +63,9 @@ loadConfig().then(() => {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
             <AuthProvider>
-              <App />
+              <AccessControlProvider>
+                <App />
+              </AccessControlProvider>
             </AuthProvider>
           </BrowserRouter>
         </QueryClientProvider>

@@ -165,7 +165,9 @@ function resolveResource(pathname: string, scope: Scope): Resource | null {
   for (const [resource, def] of Object.entries(MATRIX) as [Resource, (typeof MATRIX)[Resource]][]) {
     if (!def.levels.includes(scope.level)) continue;
     // Convert segment pattern to regex, replacing :param with [^/]+
-    const pattern = '^' + def.segment.replace(/:[^/]+/g, '[^/]+') + '$';
+    const segmentPattern = def.segment.replace(/:[^/]+/g, '[^/]+');
+    // Exact match for empty segments (overview), prefix match for others so sub-pages (e.g. role detail) still resolve
+    const pattern = segmentPattern ? '^' + segmentPattern + '($|/)' : '^$';
     if (new RegExp(pattern).test(rest)) return resource;
   }
   return null;

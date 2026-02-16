@@ -8,16 +8,16 @@ import { saveTokens, clearTokens, getAccessToken, revokeToken, setOnAuthFailure,
 const USER_KEY = 'icp_user';
 
 interface UserInfo {
+  userId: string;
   username: string;
   displayName: string;
-  permissions: string[];
 }
 
 interface AuthContextValue {
   isAuthenticated: boolean;
+  userId: string;
   username: string;
   displayName: string;
-  permissions: string[];
   login: (username: string, password: string) => Promise<void>;
   loginWithOIDC: () => Promise<void>;
   handleOIDCCallback: (code: string, state: string | null) => Promise<void>;
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean } = await res.json();
     saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
 
-    const user: UserInfo = { username: data.username, displayName: data.displayName, permissions: data.permissions };
+    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     setUserInfo(user);
     setIsAuthenticated(true);
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     }
     const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean } = await res.json();
     saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
-    const user: UserInfo = { username: data.username, displayName: data.displayName, permissions: data.permissions };
+    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     setUserInfo(user);
     setIsAuthenticated(true);
@@ -115,9 +115,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const value = useMemo<AuthContextValue>(
     () => ({
       isAuthenticated,
+      userId: userInfo?.userId ?? '',
       username: userInfo?.username ?? '',
       displayName: userInfo?.displayName ?? '',
-      permissions: userInfo?.permissions ?? [],
       login,
       loginWithOIDC,
       handleOIDCCallback,

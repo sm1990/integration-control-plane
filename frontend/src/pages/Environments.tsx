@@ -29,6 +29,9 @@ import { useUpdateEnvironment, useDeleteEnvironment } from '../api/mutations';
 import EmptyListing from '../components/EmptyListing';
 import { formatDistanceToNow } from '../utils/time';
 import { newEnvironmentUrl, type OrgScope, type ProjectScope } from '../nav';
+import { useAccessControl } from '../contexts/AccessControlContext';
+import { Permissions } from '../constants/permissions';
+import Authorized from '../components/Authorized';
 
 function EditDialog({ env, onClose }: { env: GqlEnvironment; onClose: () => void }) {
   const [name, setName] = useState(env.name);
@@ -95,6 +98,8 @@ function DeleteDialog({ env, onClose }: { env: GqlEnvironment; onClose: () => vo
 
 export default function Environments(scope: OrgScope | ProjectScope): JSX.Element {
   const navigate = useNavigate();
+  const { hasOrgPermission } = useAccessControl();
+  const canManageEnv = hasOrgPermission(Permissions.ENVIRONMENT_MANAGE);
   const { data: environments, isLoading } = useAllEnvironments();
   const [editing, setEditing] = useState<GqlEnvironment | null>(null);
   const [deleting, setDeleting] = useState<GqlEnvironment | null>(null);
@@ -103,17 +108,19 @@ export default function Environments(scope: OrgScope | ProjectScope): JSX.Elemen
     <PageContent>
       <PageTitle>
         <PageTitle.Header>Environments</PageTitle.Header>
-        <PageTitle.Actions>
-          <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newEnvironmentUrl(scope))}>
-            Create
-          </Button>
-        </PageTitle.Actions>
+        <Authorized permissions={Permissions.ENVIRONMENT_MANAGE}>
+          <PageTitle.Actions>
+            <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newEnvironmentUrl(scope))}>
+              Create
+            </Button>
+          </PageTitle.Actions>
+        </Authorized>
       </PageTitle>
 
       {isLoading ? (
         <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
       ) : !environments?.length ? (
-        <EmptyListing icon={<Layers size={48} />} title="No environments found" description="Create your first environment to get started" showAction actionLabel="Create Environment" onAction={() => navigate(newEnvironmentUrl(scope))} />
+        <EmptyListing icon={<Layers size={48} />} title="No environments found" description="Create your first environment to get started" showAction={canManageEnv} actionLabel="Create Environment" onAction={() => navigate(newEnvironmentUrl(scope))} />
       ) : (
         <Table>
           <TableHead>
@@ -142,14 +149,16 @@ export default function Environments(scope: OrgScope | ProjectScope): JSX.Elemen
                     {env.createdAt ? formatDistanceToNow(env.createdAt) : '—'}
                   </Stack>
                 </TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => setEditing(env)}>
-                    <Pencil size={16} />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => setDeleting(env)}>
-                    <Trash2 size={16} />
-                  </IconButton>
-                </TableCell>
+                <Authorized permissions={Permissions.ENVIRONMENT_MANAGE} fallback={<TableCell align="right" />}>
+                  <TableCell align="right">
+                    <IconButton size="small" onClick={() => setEditing(env)}>
+                      <Pencil size={16} />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => setDeleting(env)}>
+                      <Trash2 size={16} />
+                    </IconButton>
+                  </TableCell>
+                </Authorized>
               </TableRow>
             ))}
           </TableBody>

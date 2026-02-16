@@ -16,11 +16,19 @@
  * under the License.
  */
 
-import { Outlet } from 'react-router';
+import { Navigate, Outlet } from 'react-router';
 import { Box, ColorSchemeToggle, Layout, ParticleBackground, Stack, ThemeSwitcher } from '@wso2/oxygen-ui';
 import type { JSX } from 'react';
+import { useAuth } from '../auth/AuthContext';
+import { orgUrl } from '../paths';
 
 export default function PublicLayout(): JSX.Element {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated) {
+    return <Navigate to={orgUrl('default')} replace />;
+  }
+
   return (
     <Layout.Content>
       <ParticleBackground opacity={0.5} />

@@ -33,6 +33,8 @@ import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SearchField from '../components/SearchField';
 import { useRoleDetail, useRoleGroups, useGroups, useAddRolesToGroup, useRemoveRoleFromGroup } from '../api/authQueries';
+import { Permissions, ALL_ROLE_MODIFY_PERMISSIONS } from '../constants/permissions';
+import Authorized from '../components/Authorized';
 import type { RoleGroupMapping, Group } from '../api/auth';
 import { useAllEnvironments } from '../api/queries';
 import { projectAccessControlUrl } from '../paths';
@@ -42,7 +44,7 @@ function Loading() {
 }
 
 function AssignRoleToGroupsDialog({ orgHandler, projectId, roleId, roleName, existingGroupIds, onClose }: { orgHandler: string; projectId: string; roleId: string; roleName: string; existingGroupIds: string[]; onClose: () => void }) {
-  const { data: allGroups = [] } = useGroups(orgHandler);
+  const { data: allGroups = [] } = useGroups(orgHandler, projectId);
   const { data: allEnvironments = [] } = useAllEnvironments();
   const mutation = useAddRolesToGroup(orgHandler, projectId);
   const [selected, setSelected] = useState<Group[]>([]);
@@ -126,8 +128,10 @@ const envLabel = (m: { envUuid?: string | null }, environments: { id: string; na
 export default function ProjectRoleDetail(): JSX.Element {
   const { orgHandler = 'default', projectId = '', roleId = '' } = useParams();
   const navigate = useNavigate();
-  const { data: role, isLoading: loadingRole } = useRoleDetail(orgHandler, roleId);
-  const { data: roleGroups = [], isLoading: loadingGroups } = useRoleGroups(orgHandler, roleId);
+  const roleModifyPerms = [...ALL_ROLE_MODIFY_PERMISSIONS, Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE];
+
+  const { data: role, isLoading: loadingRole } = useRoleDetail(orgHandler, roleId, projectId);
+  const { data: roleGroups = [], isLoading: loadingGroups } = useRoleGroups(orgHandler, roleId, projectId);
   const { data: allEnvironments = [] } = useAllEnvironments();
   const removeMutation = useRemoveRoleFromGroup(orgHandler);
   const [search, setSearch] = useState('');
@@ -183,9 +187,11 @@ export default function ProjectRoleDetail(): JSX.Element {
 
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
         <SearchField value={search} onChange={setSearch} />
-        <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingGroups(true)}>
-          Add Group
-        </Button>
+        <Authorized permissions={roleModifyPerms}>
+          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingGroups(true)}>
+            Add Group
+          </Button>
+        </Authorized>
       </Stack>
 
       {loadingGroups ? (
@@ -201,7 +207,9 @@ export default function ProjectRoleDetail(): JSX.Element {
               <TableCell>Group Name</TableCell>
               <TableCell>Mapping Level</TableCell>
               <TableCell align="center">Applicable Environment</TableCell>
-              <TableCell width={80}>Actions</TableCell>
+              <Authorized permissions={roleModifyPerms}>
+                <TableCell width={80}>Actions</TableCell>
+              </Authorized>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -214,15 +222,17 @@ export default function ProjectRoleDetail(): JSX.Element {
                 <TableCell align="center">
                   <Chip label={envLabel(g, allEnvironments)} size="small" />
                 </TableCell>
-                <TableCell>
-                  <Tooltip title={!g.projectUuid ? 'Org-level mapping' : ''} placement="right">
-                    <span>
-                      <IconButton size="small" onClick={() => handleDeleteGroup(g)} disabled={removeMutation.isPending || Boolean(!g.projectUuid)}>
-                        <Trash2 size={16} />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </TableCell>
+                <Authorized permissions={roleModifyPerms}>
+                  <TableCell>
+                    <Tooltip title={!g.projectUuid ? 'Org-level mapping' : ''} placement="right">
+                      <span>
+                        <IconButton size="small" onClick={() => handleDeleteGroup(g)} disabled={removeMutation.isPending || Boolean(!g.projectUuid)}>
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </TableCell>
+                </Authorized>
               </TableRow>
             ))}
           </TableBody>

@@ -182,3 +182,4 @@ frontend/.vite
 # Instruction and context files for agents
 frontend/agent-contexts
 frontend/net-dump
+.serena

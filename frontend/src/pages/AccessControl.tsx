@@ -35,6 +35,9 @@ import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SearchField from '../components/SearchField';
 import { useAuth } from '../auth/AuthContext';
+import { useAccessControl } from '../contexts/AccessControlContext';
+import { Permissions, ALL_ROLE_MODIFY_PERMISSIONS } from '../constants/permissions';
+import Authorized from '../components/Authorized';
 import { orgRoleDetailUrl, projectRoleDetailUrl, componentRoleDetailUrl, componentAccessControlUrl } from '../paths';
 import {
   useUsers,
@@ -166,6 +169,8 @@ function AssignGroupsDialog({ orgHandler, user, onClose }: { orgHandler: string;
 
 function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user: User; onBack: () => void }) {
   const { username: currentUsername } = useAuth();
+  const { hasOrgPermission } = useAccessControl();
+  const canManageUsers = hasOrgPermission(Permissions.USER_MANAGE_USERS);
   const isSelf = user.username === currentUsername;
   const removeUserMutation = useRemoveUserFromGroup(orgHandler);
   const [search, setSearch] = useState('');
@@ -192,9 +197,11 @@ function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
         <SearchField value={search} onChange={setSearch} />
         {!isSelf && (
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAssigning(true)}>
-            Assign Groups
-          </Button>
+          <Authorized permissions={Permissions.USER_MANAGE_USERS}>
+            <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAssigning(true)}>
+              Assign Groups
+            </Button>
+          </Authorized>
         )}
       </Stack>
       <Table>
@@ -202,13 +209,17 @@ function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user
           <TableRow>
             <TableCell>Group Name</TableCell>
             <TableCell>Description</TableCell>
-            {!isSelf && <TableCell align="right">Action</TableCell>}
+            {!isSelf && (
+              <Authorized permissions={Permissions.USER_MANAGE_USERS}>
+                <TableCell align="right">Action</TableCell>
+              </Authorized>
+            )}
           </TableRow>
         </TableHead>
         <TableBody>
           {filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={isSelf ? 2 : 3} align="center">
+              <TableCell colSpan={!isSelf && canManageUsers ? 3 : 2} align="center">
                 No groups assigned
               </TableCell>
             </TableRow>
@@ -218,11 +229,13 @@ function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user
                 <TableCell>{g.groupName}</TableCell>
                 <TableCell>{g.groupDescription}</TableCell>
                 {!isSelf && (
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => setRemovingGroupId(g.groupId)}>
-                      <Trash2 size={16} />
-                    </IconButton>
-                  </TableCell>
+                  <Authorized permissions={Permissions.USER_MANAGE_USERS}>
+                    <TableCell align="right">
+                      <IconButton size="small" onClick={() => setRemovingGroupId(g.groupId)}>
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </TableCell>
+                  </Authorized>
                 )}
               </TableRow>
             ))
@@ -267,9 +280,11 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
         <SearchField value={search} onChange={setSearch} />
-        <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setCreating(true)}>
-          Create User
-        </Button>
+        <Authorized permissions={Permissions.USER_MANAGE_USERS}>
+          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setCreating(true)}>
+            Create User
+          </Button>
+        </Authorized>
       </Stack>
       <Table>
         <TableHead>
@@ -296,7 +311,7 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
               </TableCell>
               <TableCell align="right">
                 {!u.isSuperAdmin && (
-                  <>
+                  <Authorized permissions={Permissions.USER_MANAGE_USERS}>
                     <IconButton
                       size="small"
                       onClick={(e) => {
@@ -313,7 +328,7 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
                       }}>
                       <Trash2 size={16} />
                     </IconButton>
-                  </>
+                  </Authorized>
                 )}
               </TableCell>
             </TableRow>
@@ -429,7 +444,12 @@ function CreateRoleDialog({ orgHandler, allPermissions, onClose }: { orgHandler:
 
 export function RolesTab({ orgHandler, projectId, componentHandler, readOnly }: { orgHandler: string; projectId?: string; componentHandler?: string; readOnly?: boolean }) {
   const navigate = useNavigate();
-  const { data: roles, isLoading } = useRoles(orgHandler);
+  const { hasOrgPermission } = useAccessControl();
+  const canManageRoles = hasOrgPermission(Permissions.USER_MANAGE_ROLES);
+  const effectiveReadOnly = readOnly || !canManageRoles;
+  const { data: componentData } = useComponentByHandler(projectId ?? '', componentHandler);
+  const componentId = componentData?.id;
+  const { data: roles, isLoading } = useRoles(orgHandler, projectId, componentId);
   const { data: allPermsData } = useAllPermissions();
   const deleteMutation = useDeleteRole(orgHandler);
   const [search, setSearch] = useState('');
@@ -448,7 +468,7 @@ export function RolesTab({ orgHandler, projectId, componentHandler, readOnly }: 
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
         <SearchField value={search} onChange={setSearch} />
-        {!readOnly && (
+        {!effectiveReadOnly && (
           <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setCreating(true)}>
             Create Role
           </Button>
@@ -476,7 +496,7 @@ export function RolesTab({ orgHandler, projectId, componentHandler, readOnly }: 
                   }}>
                   <Pencil size={16} />
                 </IconButton>
-                {!readOnly && (
+                {!effectiveReadOnly && (
                   <IconButton
                     size="small"
                     onClick={(e) => {
@@ -557,7 +577,7 @@ function AddToGroupDialog<T>({
 }
 
 function AddRolesToGroupDialog({ orgHandler, projectId, componentId, groupId, existingRoleIds, onClose }: { orgHandler: string; projectId?: string; componentId?: string; groupId: string; existingRoleIds: string[]; onClose: () => void }) {
-  const { data: allRoles = [] } = useRoles(orgHandler);
+  const { data: allRoles = [] } = useRoles(orgHandler, projectId, componentId);
   const { data: allEnvironments = [] } = useAllEnvironments();
   const mutation = useAddRolesToGroup(orgHandler, projectId, componentId);
   const [selected, setSelected] = useState<Role[]>([]);
@@ -648,8 +668,12 @@ function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose }
 }
 
 function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, showUsers = true }: { orgHandler: string; projectId?: string; componentId?: string; group: Group; onBack: () => void; showUsers?: boolean }) {
-  const { data: groupRoles = [], isLoading: loadingRoles } = useGroupRoles(orgHandler, group.groupId);
-  const { data: groupUsers = [], isLoading: loadingUsers } = useGroupUsers(orgHandler, group.groupId);
+  const roleModifyPerms: string[] = [...ALL_ROLE_MODIFY_PERMISSIONS];
+  if (projectId) roleModifyPerms.push(Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE);
+  if (componentId) roleModifyPerms.push(Permissions.INTEGRATION_EDIT, Permissions.INTEGRATION_MANAGE);
+
+  const { data: groupRoles = [], isLoading: loadingRoles } = useGroupRoles(orgHandler, group.groupId, projectId, componentId);
+  const { data: groupUsers = [], isLoading: loadingUsers } = useGroupUsers(orgHandler, group.groupId, { enabled: showUsers });
   const { data: allEnvironments = [] } = useAllEnvironments();
   const removeRoleMutation = useRemoveRoleFromGroup(orgHandler);
   const removeUserMutation = useRemoveUserFromGroup(orgHandler);
@@ -691,9 +715,11 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
         <>
           <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
             <SearchField value={search} onChange={setSearch} />
-            <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingUsers(true)}>
-              Add Users
-            </Button>
+            <Authorized permissions={Permissions.USER_MANAGE_GROUPS}>
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingUsers(true)}>
+                Add Users
+              </Button>
+            </Authorized>
           </Stack>
           {loadingUsers ? (
             <Loading />
@@ -703,7 +729,9 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                 <TableRow>
                   <TableCell>User</TableCell>
                   <TableCell>Username</TableCell>
-                  <TableCell align="right">Action</TableCell>
+                  <Authorized permissions={Permissions.USER_MANAGE_GROUPS}>
+                    <TableCell align="right">Action</TableCell>
+                  </Authorized>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -711,11 +739,13 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                   <TableRow key={u.userId}>
                     <TableCell>{u.displayName}</TableCell>
                     <TableCell>{u.username}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => setRemovingUser(u)}>
-                        <Trash2 size={16} />
-                      </IconButton>
-                    </TableCell>
+                    <Authorized permissions={Permissions.USER_MANAGE_GROUPS}>
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={() => setRemovingUser(u)}>
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </TableCell>
+                    </Authorized>
                   </TableRow>
                 ))}
               </TableBody>
@@ -744,9 +774,11 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
         <>
           <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
             <SearchField value={search} onChange={setSearch} />
-            <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingRoles(true)}>
-              Add Roles
-            </Button>
+            <Authorized permissions={roleModifyPerms}>
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingRoles(true)}>
+                Add Roles
+              </Button>
+            </Authorized>
           </Stack>
           {loadingRoles ? (
             <Loading />
@@ -755,30 +787,34 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
               <TableHead>
                 <TableRow>
                   <TableCell>Role Name</TableCell>
-                  <TableCell>Mapping Level</TableCell>
+                  <TableCell align="center">Mapping Level</TableCell>
                   <TableCell align="center">Applicable Environment</TableCell>
-                  <TableCell align="right">Action</TableCell>
+                  <Authorized permissions={roleModifyPerms}>
+                    <TableCell align="right">Action</TableCell>
+                  </Authorized>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredRoles.map((r) => (
                   <TableRow key={r.id}>
                     <TableCell>{r.roleName}</TableCell>
-                    <TableCell>
+                    <TableCell align="center">
                       <Chip label={mappingLevel(r)} size="small" />
                     </TableCell>
                     <TableCell align="center">
                       <Chip label={envLabel(r, allEnvironments)} size="small" />
                     </TableCell>
-                    <TableCell align="right">
-                      <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : '') : projectId && !r.projectUuid ? 'Org-level mapping' : ''} placement="right">
-                        <span>
-                          <IconButton size="small" onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })} disabled={componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)}>
-                            <Trash2 size={16} />
-                          </IconButton>
-                        </span>
-                      </Tooltip>
-                    </TableCell>
+                    <Authorized permissions={roleModifyPerms}>
+                      <TableCell align="right">
+                        <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : '') : projectId && !r.projectUuid ? 'Org-level mapping' : ''} placement="right">
+                          <span>
+                            <IconButton size="small" onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })} disabled={componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)}>
+                              <Trash2 size={16} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </TableCell>
+                    </Authorized>
                   </TableRow>
                 ))}
               </TableBody>
@@ -819,8 +855,13 @@ function CreateGroupDialog({ orgHandler, onClose }: { orgHandler: string; onClos
   );
 }
 
-export function GroupsTab({ orgHandler, projectId, componentId, readOnly }: { orgHandler: string; projectId?: string; componentId?: string; readOnly?: boolean }) {
-  const { data: groups, isLoading } = useGroups(orgHandler);
+export function GroupsTab({ orgHandler, projectId, componentHandler, readOnly }: { orgHandler: string; projectId?: string; componentHandler?: string; readOnly?: boolean }) {
+  const { hasOrgPermission } = useAccessControl();
+  const canManageGroups = hasOrgPermission(Permissions.USER_MANAGE_GROUPS);
+  const effectiveReadOnly = readOnly || !canManageGroups;
+  const { data: componentData } = useComponentByHandler(projectId ?? '', componentHandler);
+  const componentId = componentData?.id;
+  const { data: groups, isLoading } = useGroups(orgHandler, projectId, componentId);
   const deleteMutation = useDeleteGroup(orgHandler);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
@@ -829,12 +870,12 @@ export function GroupsTab({ orgHandler, projectId, componentId, readOnly }: { or
   const filtered = useFiltered(groups ?? [], search, (g) => g.groupName);
 
   if (isLoading) return <Loading />;
-  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} projectId={projectId} componentId={componentId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!readOnly} />;
+  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} projectId={projectId} componentId={componentId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!projectId && !effectiveReadOnly} />;
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
         <SearchField value={search} onChange={setSearch} />
-        {!readOnly && (
+        {!effectiveReadOnly && (
           <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setCreating(true)}>
             Create Group
           </Button>
@@ -862,7 +903,7 @@ export function GroupsTab({ orgHandler, projectId, componentId, readOnly }: { or
                   }}>
                   <Pencil size={16} />
                 </IconButton>
-                {!readOnly && (
+                {!effectiveReadOnly && (
                   <IconButton
                     size="small"
                     onClick={(e) => {
@@ -991,8 +1032,6 @@ export function ComponentAccessControl({ org, project, component }: ComponentSco
       </PageContent>
     );
 
-  const componentId = componentData.id;
-
   return (
     <PageContent>
       <PageTitle>
@@ -1003,7 +1042,7 @@ export function ComponentAccessControl({ org, project, component }: ComponentSco
         <Tab label="Groups" />
       </Tabs>
       {safeIndex === 0 && <RolesTab orgHandler={org} projectId={project} componentHandler={component} readOnly />}
-      {safeIndex === 1 && <GroupsTab orgHandler={org} projectId={project} componentId={componentId} readOnly />}
+      {safeIndex === 1 && <GroupsTab orgHandler={org} projectId={project} componentHandler={component} readOnly />}
     </PageContent>
   );
 }

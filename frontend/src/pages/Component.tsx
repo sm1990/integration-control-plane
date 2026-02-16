@@ -1,4 +1,5 @@
 import {
+  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -14,13 +15,12 @@ import {
   Drawer,
   Grid,
   IconButton,
+  InputAdornment,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  MenuItem,
   PageContent,
-  Select,
   Stack,
   Switch,
   Tab,
@@ -31,12 +31,12 @@ import {
   TablePagination,
   TableRow,
   Tabs,
+  TextField,
   Typography,
 } from '@wso2/oxygen-ui';
 import { ChevronRight, Maximize2, RefreshCw, X, ListFilter, LayoutGrid } from '@wso2/oxygen-ui-icons-react';
 import { Globe, Link2, ListOrdered, Clock, FolderArchive, Package, Plug, FileText, Radio, Server, Wifi, Layers } from '@wso2/oxygen-ui-icons-react';
-import SearchField from '../components/SearchField';
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, useMemo, useState, type JSX } from 'react';
 import {
   useProjectByHandler,
   useComponentByHandler,
@@ -54,6 +54,8 @@ import {
 import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutations';
 import { useUpdateArtifactTracingStatus, useUpdateArtifactStatisticsStatus } from '../api/artifactToggleMutations';
 import NotFound from '../components/NotFound';
+import CodeViewer from '../components/CodeViewer';
+import SearchField from '../components/SearchField';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 import { useLoadComponentPermissions } from '../hooks/usePermissionLoader';
 
@@ -83,25 +85,25 @@ const ARTIFACT_ICONS: Record<string, JSX.Element> = {
 };
 
 const ARTIFACT_TABS: Record<string, string[]> = {
-  RestApi: ['Overview', 'Source', 'API definition', 'Runtimes'],
-  ProxyService: ['Overview', 'Endpoints', 'WSDL', 'Runtimes'],
+  RestApi: ['Source', 'Runtimes'],
+  ProxyService: ['Endpoints', 'WSDL', 'Runtimes'],
   Task: ['Runtimes'],
   LocalEntry: ['Value', 'Runtimes'],
   CarbonApp: ['Artifacts', 'Runtimes'],
   Connector: ['Runtimes'],
   RegistryResource: ['Runtimes'],
-  Listener: ['Overview', 'Runtimes'],
-  Service: ['Overview', 'Resources', 'Runtimes'],
+  Listener: ['Runtimes'],
+  Service: ['Runtimes'],
 };
-const DEFAULT_ARTIFACT_TABS = ['Overview', 'Source', 'Runtimes'];
+const DEFAULT_ARTIFACT_TABS = ['Source', 'Runtimes'];
 
-const ENTRY_POINT_CONFIG: Record<string, { label: string; color: string; bgColor: string; metaField?: string }> = {
-  RestApi: { label: 'API', color: '#1565c0', bgColor: '#e3f2fd', metaField: 'context' },
-  ProxyService: { label: 'Proxy', color: '#e65100', bgColor: '#fff3e0' },
-  InboundEndpoint: { label: 'Inbound', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol' },
-  Task: { label: 'Task', color: '#00695c', bgColor: '#e0f2f1' },
-  Service: { label: 'Service', color: '#4a148c', bgColor: '#f3e5f5', metaField: 'basePath' },
-  Listener: { label: 'Listener', color: '#bf360c', bgColor: '#fbe9e7' },
+const ENTRY_POINT_CONFIG: Record<string, { label: string; detailLabel: string; color: string; bgColor: string; metaField?: string; overviewFields?: string }> = {
+  RestApi: { label: 'API', detailLabel: 'REST API', color: '#1565c0', bgColor: '#e3f2fd', metaField: 'context', overviewFields: 'context, url' },
+  ProxyService: { label: 'Proxy', detailLabel: 'PROXY SERVICE', color: '#e65100', bgColor: '#fff3e0', overviewFields: 'state' },
+  InboundEndpoint: { label: 'Inbound', detailLabel: 'INBOUND ENDPOINT', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol', overviewFields: 'protocol, sequence, onError' },
+  Task: { label: 'Task', detailLabel: 'TASK', color: '#00695c', bgColor: '#e0f2f1', overviewFields: 'group' },
+  Service: { label: 'Service', detailLabel: 'SERVICE', color: '#4a148c', bgColor: '#f3e5f5', metaField: 'basePath', overviewFields: 'package, basePath, type' },
+  Listener: { label: 'Listener', detailLabel: 'LISTENER', color: '#bf360c', bgColor: '#fbe9e7', overviewFields: 'package, protocol, host, port' },
 };
 
 const ENTRY_POINT_DETAIL_TABS: Record<string, string[]> = {
@@ -123,8 +125,6 @@ interface SelectedArtifact {
 }
 
 const cellSx = { borderBottom: '1px solid', borderColor: 'divider' };
-const labelSx = { ...cellSx, fontWeight: 600, textTransform: 'capitalize', width: 180 };
-const preSx = { p: 2, bgcolor: 'action.hover', borderRadius: 1, overflow: 'auto', fontSize: 12, fontFamily: 'monospace', maxHeight: 500 };
 const emptySx = { color: 'text.secondary', py: 2 };
 
 function ListenerConfirmDialog({ open, action, listenerName, onConfirm, onCancel }: { open: boolean; action: 'START' | 'STOP'; listenerName: string; onConfirm: () => void; onCancel: () => void }) {
@@ -145,17 +145,6 @@ function ListenerConfirmDialog({ open, action, listenerName, onConfirm, onCancel
         </Button>
       </DialogActions>
     </Dialog>
-  );
-}
-
-function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange?: (checked: boolean) => void; disabled?: boolean }) {
-  return (
-    <Stack direction="row" alignItems="center" gap={1}>
-      <Switch size="small" checked={checked} onChange={(e) => onChange?.(e.target.checked)} disabled={disabled} />
-      <Typography variant="body2" color="text.secondary">
-        {checked ? 'Enabled' : 'Disabled'}
-      </Typography>
-    </Stack>
   );
 }
 
@@ -191,125 +180,12 @@ function DataTable({ headers, rows, emptyMsg }: { headers?: string[]; rows: (str
 
 type TabProps = SelectedArtifact;
 
-function ArtifactOverview({ artifact, artifactType, envId, componentId }: TabProps) {
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: 'START' | 'STOP' } | null>(null);
-  const toggleStatus = useUpdateArtifactStatus();
-  const updateListenerState = useUpdateListenerState();
-
-  const artifactMapping = ARTIFACT_QUERY_MAP[artifactType];
-  if (!artifactMapping) return null;
-  const isProxyService = artifactType === 'ProxyService';
-  const hasToggle = ['ProxyService', 'Listener'].includes(artifactType);
-  const hasTracing = !['Service', 'Listener'].includes(artifactType);
-  const fields = artifactMapping.fields.split(', ').filter((f) => !(artifactType === 'RestApi' && (f === 'state' || f === 'version')));
-  const tracing = (artifact.tracing ?? 'disabled').toString().toLowerCase();
-  const artifactState = (artifact.state ?? '').toString().toLowerCase();
-  const endpoints = (artifact.endpoints as string[] | undefined) ?? [];
-  const attributes = (artifact.attributes as Array<{ name: string; value?: string }> | undefined) ?? [];
-
-  const formatFieldValue = (f: string) => {
-    const val = artifact[f];
-    return f === 'version' && !val ? 'N/A' : (val ?? 'N/A').toString();
-  };
-
-  const handleToggle = (enabled: boolean) => {
-    if (artifactType === 'Listener') {
-      setConfirmDialog({
-        open: true,
-        action: enabled ? 'STOP' : 'START',
-      });
-    } else {
-      toggleStatus.mutate({
-        envId,
-        componentId,
-        artifactType,
-        artifactName: artifact.name?.toString() ?? '',
-        status: enabled ? 'inactive' : 'active',
-      });
-    }
-  };
-
-  const handleConfirmListenerToggle = () => {
-    if (!confirmDialog) return;
-    const runtimes = (artifact.runtimes as Array<{ runtimeId: string }> | undefined) ?? [];
-    const runtimeIds = runtimes.map((r) => r.runtimeId);
-
-    updateListenerState.mutate({
-      runtimeIds,
-      listenerName: artifact.name?.toString() ?? '',
-      action: confirmDialog.action,
-    });
-
-    setConfirmDialog(null);
-  };
-
-  return (
-    <Stack gap={2}>
-      <Table size="small">
-        <TableBody>
-          {fields.map((f) => (
-            <TableRow key={f}>
-              <TableCell sx={labelSx}>{f}</TableCell>
-              <TableCell sx={cellSx}>{hasToggle && f === 'state' ? <Chip label={formatFieldValue(f).toUpperCase()} size="small" color={artifactState === 'enabled' ? 'success' : 'default'} /> : formatFieldValue(f)}</TableCell>
-            </TableRow>
-          ))}
-          {hasToggle && (
-            <TableRow>
-              <TableCell sx={labelSx}>Enable/Disable</TableCell>
-              <TableCell sx={cellSx}>
-                <Toggle checked={artifactState === 'enabled'} onChange={() => handleToggle(artifactState === 'enabled')} disabled={toggleStatus.isPending || updateListenerState.isPending} />
-              </TableCell>
-            </TableRow>
-          )}
-          {hasTracing && (
-            <TableRow>
-              <TableCell sx={labelSx}>Tracing</TableCell>
-              <TableCell sx={cellSx}>
-                <Toggle checked={tracing === 'enabled'} />
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      {isProxyService && endpoints.length > 0 && (
-        <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Endpoints
-          </Typography>
-          <DataTable
-            rows={endpoints.map((ep) => [
-              <Typography key={ep} variant="body2" sx={{ fontFamily: 'monospace' }}>
-                {ep}
-              </Typography>,
-            ])}
-          />
-        </>
-      )}
-      {attributes.length > 0 && (
-        <>
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-            Attributes
-          </Typography>
-          <DataTable headers={['Name', 'Value']} rows={attributes.map((a) => [a.name.toString(), (a.value ?? '').toString()])} />
-        </>
-      )}
-
-      {/* Listener State Confirmation Dialog */}
-      <ListenerConfirmDialog open={confirmDialog?.open ?? false} action={confirmDialog?.action ?? 'START'} listenerName={artifact.name?.toString() ?? ''} onConfirm={handleConfirmListenerToggle} onCancel={() => setConfirmDialog(null)} />
-    </Stack>
-  );
-}
-
 function ArtifactSource({ envId, componentId, artifactType, artifact }: TabProps) {
   const sourceType = ARTIFACT_TYPE_TO_SOURCE_TYPE[artifactType] ?? artifactType.toLowerCase();
   const { data: source, isLoading, error } = useArtifactSource(envId, componentId, sourceType, artifact.name?.toString() ?? '');
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
   if (error || !source) return <Typography sx={emptySx}>No source content available.</Typography>;
-  return (
-    <Box component="pre" sx={preSx}>
-      {source}
-    </Box>
-  );
+  return <CodeViewer code={source} language="xml" />;
 }
 
 function ArtifactApiDefinition({ artifact }: TabProps) {
@@ -354,7 +230,8 @@ function ServiceResources({ artifact }: TabProps) {
         <Typography sx={emptySx}>No resources available.</Typography>
       ) : (
         resources.map((r, i) => {
-          const methods = r.methods ?? [];
+          const raw = r.methods ?? [];
+          const methods = Array.isArray(raw) ? raw : [String(raw)];
           return (
             <Box key={i} sx={{ bgcolor: '#e8f5e9', p: 1.5, borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
               {methods.map((method, idx) => (
@@ -372,25 +249,19 @@ function ServiceResources({ artifact }: TabProps) {
   );
 }
 
-function ArtifactWsdl(_wsdlProps: TabProps) {
-  void _wsdlProps;
-  return <Typography sx={emptySx}>No WSDL content available.</Typography>;
+function ArtifactWsdl({ envId, componentId, artifactType, artifact }: TabProps) {
+  const sourceType = ARTIFACT_TYPE_TO_SOURCE_TYPE[artifactType] ?? artifactType.toLowerCase();
+  const { data: source, isLoading, error } = useArtifactSource(envId, componentId, sourceType, artifact.name?.toString() ?? '');
+  if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
+  if (error || !source) return <Typography sx={emptySx}>No WSDL content available.</Typography>;
+  return <CodeViewer code={source} language="xml" />;
 }
 
 function ArtifactValue({ artifact, envId, componentId }: TabProps) {
   const { data: value, isLoading } = useLocalEntryValue(componentId, artifact.name?.toString() ?? '', envId);
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
   if (!value) return <Typography sx={emptySx}>No value available.</Typography>;
-  return (
-    <>
-      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-        Value: {artifact.name?.toString()}
-      </Typography>
-      <Box component="pre" sx={preSx}>
-        {value}
-      </Box>
-    </>
-  );
+  return <CodeViewer code={value} language="xml" />;
 }
 
 function ArtifactCarbonArtifacts({ artifact }: TabProps) {
@@ -443,8 +314,6 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
 
   const renderActiveTab = () => {
     switch (activeTab) {
-      case 'Overview':
-        return <ArtifactOverview {...tabProps} />;
       case 'Source':
         return <ArtifactSource {...tabProps} />;
       case 'API definition':
@@ -457,8 +326,6 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
         return <ArtifactValue {...tabProps} />;
       case 'Artifacts':
         return <ArtifactCarbonArtifacts {...tabProps} />;
-      case 'Resources':
-        return <ServiceResources {...tabProps} />;
       case 'Runtimes':
         return <ArtifactRuntimes {...tabProps} />;
       default:
@@ -482,12 +349,16 @@ function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifact | nu
         </Stack>
       </Stack>
       <Box sx={{ px: 2 }}>
-        <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
-          {tabs.map((t) => (
-            <Tab key={t} label={t} />
-          ))}
-        </Tabs>
-        {renderActiveTab()}
+        {tabs.length > 0 && (
+          <>
+            <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
+              {tabs.map((t) => (
+                <Tab key={t} label={t} />
+              ))}
+            </Tabs>
+            {renderActiveTab()}
+          </>
+        )}
       </Box>
     </Drawer>
   );
@@ -563,10 +434,10 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
                   ))}
                   {hasStateField && (
                     <Grid size={{ xs: columnSize }}>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                         State
                       </Typography>
-                      <Chip label={(a.state ?? '—').toString().toUpperCase()} size="small" color={enabled ? 'success' : 'default'} />
+                      <Chip label={(a.state ?? '—').toString().charAt(0).toUpperCase() + (a.state ?? '—').toString().slice(1).toLowerCase()} size="small" variant="outlined" color={enabled ? 'success' : 'default'} sx={{ fontSize: '0.875rem' }} />
                     </Grid>
                   )}
                 </Grid>
@@ -662,20 +533,17 @@ function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId:
   );
 }
 
-function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected: SelectedArtifact; onViewSource: () => void; onViewRuntimes: () => void }) {
-  const [activeTabIndex, setActiveTabIndex] = useState(0);
+function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArtifact; onOpenDrawerTab: (tab: string) => void }) {
   const [tracingEnabled, setTracingEnabled] = useState(false);
   const [statisticsEnabled, setStatisticsEnabled] = useState(false);
   const { artifact, artifactType, envId, componentId, projectId } = selected;
   const updateTracingStatus = useUpdateArtifactTracingStatus();
   const updateStatisticsStatus = useUpdateArtifactStatisticsStatus();
   const config = ENTRY_POINT_CONFIG[artifactType];
-  const tabs = ENTRY_POINT_DETAIL_TABS[artifactType] ?? ['Overview', 'Runtimes'];
-  const validTabIndex = Math.min(activeTabIndex, tabs.length - 1);
-  const activeTab = tabs[validTabIndex];
   const tabProps: TabProps = { artifact, artifactType, envId, componentId, projectId };
-  const container = artifact.container?.toString();
-  const context = artifact.context?.toString();
+  const carbonApp = artifact.carbonApp?.toString();
+  const drawerTabs = ARTIFACT_TABS[artifactType] ?? DEFAULT_ARTIFACT_TABS;
+  const overviewFields = (config?.overviewFields ?? '').split(', ').filter(Boolean);
   const showTracingToggle = ['RestApi', 'ProxyService', 'InboundEndpoint'].includes(artifactType);
   const showStatisticsToggle = ['RestApi', 'ProxyService', 'InboundEndpoint'].includes(artifactType);
   const toEnabled = (value: unknown) => {
@@ -685,15 +553,6 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
   };
 
   const artifactKey = `${artifactType}-${artifact.name}`;
-  useEffect(() => {
-    if (selected.initialTab) {
-      const idx = tabs.indexOf(selected.initialTab);
-      setActiveTabIndex(idx >= 0 ? idx : 0);
-    } else {
-      setActiveTabIndex(0);
-    }
-  }, [artifactKey, selected.initialTab]);
-
   useEffect(() => {
     setTracingEnabled(toEnabled(artifact.tracing));
     setStatisticsEnabled(toEnabled(artifact.statistics));
@@ -723,38 +582,18 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
     });
   };
 
-  const renderActiveTab = () => {
-    switch (activeTab) {
-      case 'Overview':
-        return <ArtifactOverview {...tabProps} />;
-      case 'Resources':
-        return <ArtifactApiDefinition {...tabProps} />;
-      case 'Runtimes':
-        return <ArtifactRuntimes {...tabProps} />;
-      default:
-        return null;
-    }
-  };
-
   return (
-    <Box sx={{ mt: 2, borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
-      <Stack direction="row" alignItems="center" flexWrap="wrap" gap={1.5} sx={{ mb: 2 }}>
-        <Chip label={(config?.label ?? artifactType).toUpperCase()} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11 }} />
-        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-          {artifact.name?.toString()}
-        </Typography>
-        {container && <Chip label={`C-App: ${container}`} size="small" variant="outlined" sx={{ bgcolor: '#e8eaf6', color: '#3949ab', fontSize: 11 }} />}
-        {context && (
-          <Typography variant="body2" color="text.secondary">
-            Context: {context}
-          </Typography>
-        )}
+    <Box sx={{ mt: 2 }}>
+      {/* Header row */}
+      <Stack direction="row" alignItems="center" gap={1.5} sx={{ px: 2, py: 1.5 }}>
+        {carbonApp && <Chip label={`C-App: ${carbonApp}`} size="small" variant="outlined" sx={{ bgcolor: '#e8eaf6', color: '#3949ab', fontSize: 11 }} />}
+        {carbonApp && <Divider orientation="vertical" flexItem />}
         {showTracingToggle && (
-          <Stack direction="row" alignItems="center" gap={1} sx={{ ml: 'auto' }}>
+          <Stack direction="row" alignItems="center" gap={1}>
             <Typography variant="body2" color="text.secondary">
               Tracing
             </Typography>
-            <Toggle checked={tracingEnabled} onChange={handleToggleTracing} disabled={updateTracingStatus.isPending} />
+            <Switch size="small" checked={tracingEnabled} onChange={(e) => handleToggleTracing(e.target.checked)} disabled={updateTracingStatus.isPending} />
           </Stack>
         )}
         {showStatisticsToggle && (
@@ -762,26 +601,43 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
             <Typography variant="body2" color="text.secondary">
               Statistics
             </Typography>
-            <Toggle checked={statisticsEnabled} onChange={handleToggleStatistics} disabled={updateStatisticsStatus.isPending} />
+            <Switch size="small" checked={statisticsEnabled} onChange={(e) => handleToggleStatistics(e.target.checked)} disabled={updateStatisticsStatus.isPending} />
           </Stack>
         )}
-        {(ARTIFACT_TABS[artifactType] ?? DEFAULT_ARTIFACT_TABS).includes('Source') && (
-          <Button variant="outlined" size="small" onClick={onViewSource}>
-            View Source
-          </Button>
-        )}
-        <Button variant="outlined" size="small" onClick={onViewRuntimes}>
-          View Runtimes
-        </Button>
-      </Stack>
-      {tabs.length > 1 && (
-        <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
-          {tabs.map((t) => (
-            <Tab key={t} label={t} />
+        <Stack direction="row" gap={1} sx={{ ml: 'auto' }}>
+          {drawerTabs.map((tab) => (
+            <Button key={tab} variant="outlined" size="small" onClick={() => onOpenDrawerTab(tab)}>
+              View {tab}
+            </Button>
           ))}
-        </Tabs>
+        </Stack>
+      </Stack>
+      {/* Overview columns */}
+      {overviewFields.length > 0 && (
+        <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${overviewFields.length}, 1fr)` }}>
+          {overviewFields.map((f, i) => (
+            <Box key={f} sx={{ px: 2, py: 1.5, ...(i < overviewFields.length - 1 && { borderRight: '1px solid', borderColor: 'divider' }) }}>
+              <Typography variant="overline" color="text.secondary" sx={{ fontSize: 10, fontWeight: 600, display: 'block' }}>
+                {f.toUpperCase()}
+              </Typography>
+              {f === 'state' ? (
+                <Chip
+                  label={artifact[f] ? artifact[f].toString().charAt(0).toUpperCase() + artifact[f].toString().slice(1).toLowerCase() : '—'}
+                  size="small"
+                  variant="outlined"
+                  color={artifact[f]?.toString().toLowerCase() === 'enabled' ? 'success' : 'default'}
+                  sx={{ mt: 0.5, fontSize: 13 }}
+                />
+              ) : (
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {artifact[f] ? artifact[f].toString() : '—'}
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
       )}
-      {renderActiveTab()}
+      {(ENTRY_POINT_DETAIL_TABS[artifactType] ?? []).includes('Resources') && <Box sx={{ px: 2, py: 1.5 }}>{artifactType === 'RestApi' ? <ArtifactApiDefinition {...tabProps} /> : <ServiceResources {...tabProps} />}</Box>}
     </Box>
   );
 }
@@ -799,14 +655,18 @@ function EntryPointsList({ envId, componentId, projectId, componentType, onOpenD
 
   const isLoading = isMI ? loadingApis || loadingProxies || loadingInbound || loadingTasks : loadingServices || loadingListeners;
 
-  const allEntryPoints = isMI
-    ? [...apis.map((a) => ({ artifact: a, type: 'RestApi' })), ...proxies.map((a) => ({ artifact: a, type: 'ProxyService' })), ...inboundEps.map((a) => ({ artifact: a, type: 'InboundEndpoint' })), ...tasks.map((a) => ({ artifact: a, type: 'Task' }))]
-    : [...services.map((a) => ({ artifact: a, type: 'Service' })), ...listeners.map((a) => ({ artifact: a, type: 'Listener' }))];
+  const allEntryPoints = useMemo(
+    () =>
+      isMI
+        ? [...apis.map((a) => ({ artifact: a, type: 'RestApi' })), ...proxies.map((a) => ({ artifact: a, type: 'ProxyService' })), ...inboundEps.map((a) => ({ artifact: a, type: 'InboundEndpoint' })), ...tasks.map((a) => ({ artifact: a, type: 'Task' }))]
+        : [...services.map((a) => ({ artifact: a, type: 'Service' })), ...listeners.map((a) => ({ artifact: a, type: 'Listener' }))],
+    [isMI, apis, proxies, inboundEps, tasks, services, listeners],
+  );
 
   const allKeys = new Set(allEntryPoints.map(({ artifact: a, type }) => `${type}::${a.name}`));
   const firstKey = allEntryPoints.length > 0 ? `${allEntryPoints[0].type}::${allEntryPoints[0].artifact.name}` : '';
   const activeKey = selectedKey && allKeys.has(selectedKey) ? selectedKey : firstKey;
-  const selectedEntry = allEntryPoints.find(({ artifact: a, type }) => `${type}::${a.name}` === activeKey);
+  const selectedEntry = useMemo(() => allEntryPoints.find(({ artifact: a, type }) => `${type}::${a.name}` === activeKey), [allEntryPoints, activeKey]);
 
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
   if (allEntryPoints.length === 0)
@@ -818,57 +678,57 @@ function EntryPointsList({ envId, componentId, projectId, componentType, onOpenD
 
   return (
     <>
-      <Select
-        value={activeKey}
-        onChange={(e) => setSelectedKey(e.target.value as string)}
+      <Autocomplete
+        value={selectedEntry ?? null}
+        onChange={(_, newValue) => setSelectedKey(newValue ? `${newValue.type}::${newValue.artifact.name}` : '')}
+        options={allEntryPoints}
+        autoHighlight
         fullWidth
-        renderValue={(value) => {
-          const entry = allEntryPoints.find(({ artifact: a, type }) => `${type}::${a.name}` === value);
-          if (!entry) return value;
-          const config = ENTRY_POINT_CONFIG[entry.type];
-          const meta = config?.metaField ? entry.artifact[config.metaField]?.toString() : undefined;
+        getOptionLabel={(option) => option.artifact.name?.toString() ?? ''}
+        isOptionEqualToValue={(a, b) => a.type === b.type && a.artifact.name === b.artifact.name}
+        renderOption={(props, { artifact: a, type }) => {
+          const { key, ...optionProps } = props;
+          const cfg = ENTRY_POINT_CONFIG[type];
+          const meta = cfg?.metaField ? a[cfg.metaField]?.toString() : undefined;
           return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Chip label={config?.label} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11, minWidth: 60, justifyContent: 'center' }} />
-              <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                {entry.artifact.name?.toString()}
+            <Box key={key} component="li" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }} {...optionProps}>
+              <Chip label={cfg?.label} size="small" sx={{ bgcolor: cfg?.bgColor, color: cfg?.color, fontWeight: 700, fontSize: 11, minWidth: 60, justifyContent: 'center' }} />
+              <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
+                {a.name?.toString()}
               </Typography>
               {meta && (
-                <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
+                <Typography variant="body2" color="text.secondary">
                   {meta}
                 </Typography>
               )}
             </Box>
           );
-        }}>
-        {allEntryPoints.map(({ artifact: a, type }) => {
-          const key = `${type}::${a.name}`;
-          const config = ENTRY_POINT_CONFIG[type];
-          const meta = config?.metaField ? a[config.metaField]?.toString() : undefined;
+        }}
+        renderInput={(params) => {
+          const cfg = selectedEntry ? ENTRY_POINT_CONFIG[selectedEntry.type] : undefined;
+          const chipAdornment = cfg ? (
+            <InputAdornment position="start">
+              <Chip label={cfg.label} size="small" sx={{ bgcolor: cfg.bgColor, color: cfg.color, fontWeight: 700, fontSize: 11, minWidth: 60, justifyContent: 'center' }} />
+            </InputAdornment>
+          ) : null;
           return (
-            <MenuItem key={key} value={key}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, width: '100%' }}>
-                <Chip label={config?.label} size="small" sx={{ bgcolor: config?.bgColor, color: config?.color, fontWeight: 700, fontSize: 11, minWidth: 60, justifyContent: 'center' }} />
-                <Typography variant="body2" sx={{ fontWeight: 500, flex: 1 }}>
-                  {a.name?.toString()}
-                </Typography>
-                {meta && (
-                  <Typography variant="body2" color="text.secondary">
-                    {meta}
-                  </Typography>
-                )}
-              </Box>
-            </MenuItem>
+            <TextField
+              {...params}
+              placeholder="Search entry points..."
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <>
+                    {chipAdornment}
+                    {params.InputProps.startAdornment}
+                  </>
+                ),
+              }}
+            />
           );
-        })}
-      </Select>
-      {selectedEntry && (
-        <EntryPointDetail
-          selected={{ artifact: selectedEntry.artifact, artifactType: selectedEntry.type, envId, componentId, projectId }}
-          onViewSource={() => onOpenDrawer(selectedEntry.artifact, selectedEntry.type, envId, 'Source')}
-          onViewRuntimes={() => onOpenDrawer(selectedEntry.artifact, selectedEntry.type, envId, 'Runtimes')}
-        />
-      )}
+        }}
+      />
+      {selectedEntry && <EntryPointDetail selected={{ artifact: selectedEntry.artifact, artifactType: selectedEntry.type, envId, componentId, projectId }} onOpenDrawerTab={(tab) => onOpenDrawer(selectedEntry.artifact, selectedEntry.type, envId, tab)} />}
     </>
   );
 }

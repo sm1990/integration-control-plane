@@ -221,7 +221,7 @@ public isolated function getServicesForRuntime(string runtimeId) returns types:S
     types:Service[] serviceList = [];
     stream<types:ServiceRecordInDB, sql:Error?> serviceStream = dbClient->query(`
         SELECT service_name, service_package, base_path, state 
-        FROM runtime_services 
+        FROM bi_service_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -239,7 +239,7 @@ public isolated function getListenersForRuntime(string runtimeId) returns types:
     types:Listener[] listenerList = [];
     stream<types:Listener, sql:Error?> listenerStream = dbClient->query(`
         SELECT listener_name, listener_package, protocol, state, listener_host, listener_port 
-        FROM runtime_listeners 
+        FROM bi_runtime_listener_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -266,7 +266,7 @@ public isolated function getApisForRuntime(string runtimeId) returns types:RestA
         string? carbon_app;
     |}, sql:Error?> apiStream = dbClient->query(`
         SELECT api_name, url, urls, context, version, state, tracing, statistics, carbon_app
-        FROM runtime_apis
+        FROM mi_api_artifacts
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -307,7 +307,7 @@ isolated function getApiResourcesForRuntime(string runtimeId, string apiName) re
 
     stream<record {|string resource_path; string methods;|}, sql:Error?> resourceStream = dbClient->query(`
         SELECT resource_path, methods
-        FROM runtime_api_resources
+        FROM mi_api_resource_artifacts
         WHERE runtime_id = ${runtimeId} AND api_name = ${apiName}
     `);
 
@@ -330,7 +330,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
     map<string[]> endpointMap = {};
     stream<record {|string proxy_name; string endpoint_url;|}, sql:Error?> epStream = dbClient->query(`
         SELECT proxy_name, endpoint_url
-        FROM runtime_proxy_service_endpoints
+        FROM mi_proxy_service_endpoint_artifacts
         WHERE runtime_id = ${runtimeId}
     `);
     check from record {|string proxy_name; string endpoint_url;|} ep in epStream
@@ -342,7 +342,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
 
     stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(`
         SELECT proxy_name, state, tracing, statistics, carbon_app
-        FROM runtime_proxy_services
+        FROM mi_proxy_service_artifacts
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -368,7 +368,7 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
     types:Endpoint[] endpointList = [];
     stream<types:EndpointRecordInDB, sql:Error?> endpointStream = dbClient->query(`
         SELECT endpoint_name, endpoint_type, state, tracing, statistics, carbon_app
-        FROM runtime_endpoints
+        FROM mi_endpoint_artifacts
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -390,7 +390,7 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
         types:Endpoint ep = endpointList[i];
         stream<types:EndpointAttribute, sql:Error?> attrStream = dbClient->query(`
             SELECT attribute_name, attribute_value
-            FROM runtime_endpoint_attributes
+            FROM mi_endpoint_attribute_artifacts
             WHERE runtime_id = ${runtimeId} AND endpoint_name = ${ep.name}
         `);
         types:EndpointAttribute[] attrs = [];
@@ -414,13 +414,13 @@ public isolated function getInboundEndpointsForRuntime(string runtimeId) returns
     if isMSSQL() {
         query = `
             SELECT inbound_name, protocol, sequence, state, [statistics], on_error, tracing, carbon_app
-            FROM runtime_inbound_endpoints 
+            FROM mi_inbound_endpoint_artifacts 
             WHERE runtime_id = ${runtimeId}
         `;
     } else {
         query = `
             SELECT inbound_name, protocol, sequence, state, statistics, on_error, tracing, carbon_app
-            FROM runtime_inbound_endpoints 
+            FROM mi_inbound_endpoint_artifacts 
             WHERE runtime_id = ${runtimeId}
         `;
     }
@@ -439,7 +439,7 @@ public isolated function getSequencesForRuntime(string runtimeId) returns types:
     types:Sequence[] sequenceList = [];
     stream<types:SequenceRecordInDB, sql:Error?> sequenceStream = dbClient->query(`
         SELECT sequence_name, sequence_type, container, state, tracing, statistics, carbon_app
-        FROM runtime_sequences
+        FROM mi_sequence_artifacts
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -465,7 +465,7 @@ public isolated function getTasksForRuntime(string runtimeId) returns types:Task
     types:Task[] taskList = [];
     stream<types:TaskRecordInDB, sql:Error?> taskStream = dbClient->query(`
         SELECT task_name, task_class, task_group, state, carbon_app
-        FROM runtime_tasks 
+        FROM mi_task_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -489,7 +489,7 @@ public isolated function getTemplatesForRuntime(string runtimeId) returns types:
     types:Template[] templateList = [];
     stream<types:Template, sql:Error?> templateStream = dbClient->query(`
         SELECT template_name, template_type, carbon_app
-        FROM runtime_templates 
+        FROM mi_template_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -507,7 +507,7 @@ public isolated function getMessageStoresForRuntime(string runtimeId) returns ty
     types:MessageStore[] storeList = [];
     stream<types:MessageStoreRecordInDB, sql:Error?> storeStream = dbClient->query(`
         SELECT store_name, store_type, size, carbon_app
-        FROM runtime_message_stores 
+        FROM mi_message_store_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -530,7 +530,7 @@ public isolated function getMessageProcessorsForRuntime(string runtimeId) return
     types:MessageProcessor[] processorList = [];
     stream<types:MessageProcessorRecordInDB, sql:Error?> processorStream = dbClient->query(`
         SELECT processor_name, processor_type, processor_class, state, carbon_app
-        FROM runtime_message_processors 
+        FROM mi_message_processor_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -554,7 +554,7 @@ public isolated function getLocalEntriesForRuntime(string runtimeId) returns typ
     types:LocalEntry[] entryList = [];
     stream<types:LocalEntryRecordInDB, sql:Error?> entryStream = dbClient->query(`
         SELECT entry_name, entry_type, entry_value, state, carbon_app
-        FROM runtime_local_entries 
+        FROM mi_local_entry_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -578,7 +578,7 @@ public isolated function getDataServicesForRuntime(string runtimeId) returns typ
     types:DataService[] serviceList = [];
     stream<types:DataService, sql:Error?> serviceStream = dbClient->query(`
         SELECT service_name, description, wsdl, state, carbon_app
-        FROM runtime_data_services 
+        FROM mi_data_service_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -596,7 +596,7 @@ public isolated function getCarbonAppsForRuntime(string runtimeId) returns types
     // Include artifacts column (serialized JSON string) if present
     stream<record {string app_name; string version; types:DeploymentState state; string artifacts?;}, sql:Error?> appStream = dbClient->query(`
         SELECT app_name, version, state, artifacts
-        FROM runtime_carbon_apps 
+        FROM mi_carbon_app_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -648,7 +648,7 @@ public isolated function getDataSourcesForRuntime(string runtimeId) returns type
     types:DataSource[] sourceList = [];
     stream<types:DataSource, sql:Error?> sourceStream = dbClient->query(`
         SELECT datasource_name, datasource_type, driver, url, username, state, carbon_app
-        FROM runtime_data_sources 
+        FROM mi_data_source_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -665,7 +665,7 @@ public isolated function getConnectorsForRuntime(string runtimeId) returns types
     types:Connector[] connectorList = [];
     stream<types:Connector, sql:Error?> connectorStream = dbClient->query(`
         SELECT connector_name, package, version, state
-        FROM runtime_connectors 
+        FROM mi_connector_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -682,7 +682,7 @@ public isolated function getRegistryResourcesForRuntime(string runtimeId) return
     types:RegistryResource[] resourceList = [];
     stream<types:RegistryResourceRecordInDB, sql:Error?> resourceStream = dbClient->query(`
         SELECT resource_name, resource_type
-        FROM runtime_registry_resources 
+        FROM mi_registry_resource_artifacts 
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -800,7 +800,7 @@ public isolated function mapToService(types:ServiceRecordInDB serviceRecord, str
 
     stream<types:ResourceRecord, sql:Error?> resourceStream = dbClient->query(`
         SELECT resource_url, methods 
-        FROM service_resources 
+        FROM bi_service_resource_artifacts 
         WHERE runtime_id = ${runtimeId} AND service_name = ${serviceName}
     `);
 

@@ -398,88 +398,88 @@ public isolated function getArtifactTypesForComponent(string componentId, types:
 
     sql:ParameterizedQuery countQuery = `SELECT COUNT(*) as count FROM `;
 
-    int serviceCount = check getCount(sql:queryConcat(countQuery, `runtime_services `, runtimeInClause));
+    int serviceCount = check getCount(sql:queryConcat(countQuery, `bi_service_artifacts `, runtimeInClause));
     if serviceCount > 0 {
         artifactTypes.push({artifactType: types:SERVICE, artifactCount: serviceCount});
     }
 
-    int listenerCount = check getCount(sql:queryConcat(countQuery, `runtime_listeners `, runtimeInClause));
+    int listenerCount = check getCount(sql:queryConcat(countQuery, `bi_runtime_listener_artifacts `, runtimeInClause));
     if listenerCount > 0 {
         artifactTypes.push({artifactType: types:LISTENER, artifactCount: listenerCount});
     }
 
     if componentType == types:MI {
-        int apiCount = check getCount(sql:queryConcat(countQuery, `runtime_apis `, runtimeInClause));
+        int apiCount = check getCount(sql:queryConcat(countQuery, `mi_api_artifacts `, runtimeInClause));
         if apiCount > 0 {
             artifactTypes.push({artifactType: types:RESTAPI, artifactCount: apiCount});
         }
 
-        int proxyCount = check getCount(sql:queryConcat(countQuery, `runtime_proxy_services `, runtimeInClause));
+        int proxyCount = check getCount(sql:queryConcat(countQuery, `mi_proxy_service_artifacts `, runtimeInClause));
         if proxyCount > 0 {
             artifactTypes.push({artifactType: types:PROXYSERVICE, artifactCount: proxyCount});
         }
 
-        int endpointCount = check getCount(sql:queryConcat(countQuery, `runtime_endpoints `, runtimeInClause));
+        int endpointCount = check getCount(sql:queryConcat(countQuery, `mi_endpoint_artifacts `, runtimeInClause));
         if endpointCount > 0 {
             artifactTypes.push({artifactType: types:ENDPOINT, artifactCount: endpointCount});
         }
 
-        int inboundCount = check getCount(sql:queryConcat(countQuery, `runtime_inbound_endpoints `, runtimeInClause));
+        int inboundCount = check getCount(sql:queryConcat(countQuery, `mi_inbound_endpoint_artifacts `, runtimeInClause));
         if inboundCount > 0 {
             artifactTypes.push({artifactType: types:INBOUNDENDPOINT, artifactCount: inboundCount});
         }
 
-        int sequenceCount = check getCount(sql:queryConcat(countQuery, `runtime_sequences `, runtimeInClause));
+        int sequenceCount = check getCount(sql:queryConcat(countQuery, `mi_sequence_artifacts `, runtimeInClause));
         if sequenceCount > 0 {
             artifactTypes.push({artifactType: types:SEQUENCE, artifactCount: sequenceCount});
         }
 
-        int taskCount = check getCount(sql:queryConcat(countQuery, `runtime_tasks `, runtimeInClause));
+        int taskCount = check getCount(sql:queryConcat(countQuery, `mi_task_artifacts `, runtimeInClause));
         if taskCount > 0 {
             artifactTypes.push({artifactType: types:TASK, artifactCount: taskCount});
         }
 
-        int templateCount = check getCount(sql:queryConcat(countQuery, `runtime_templates `, runtimeInClause));
+        int templateCount = check getCount(sql:queryConcat(countQuery, `mi_template_artifacts `, runtimeInClause));
         if templateCount > 0 {
             artifactTypes.push({artifactType: types:TEMPLATE, artifactCount: templateCount});
         }
 
-        int storeCount = check getCount(sql:queryConcat(countQuery, `runtime_message_stores `, runtimeInClause));
+        int storeCount = check getCount(sql:queryConcat(countQuery, `mi_message_store_artifacts `, runtimeInClause));
         if storeCount > 0 {
             artifactTypes.push({artifactType: types:MESSAGESTORE, artifactCount: storeCount});
         }
 
-        int processorCount = check getCount(sql:queryConcat(countQuery, `runtime_message_processors `, runtimeInClause));
+        int processorCount = check getCount(sql:queryConcat(countQuery, `mi_message_processor_artifacts `, runtimeInClause));
         if processorCount > 0 {
             artifactTypes.push({artifactType: types:MESSAGEPROCESSOR, artifactCount: processorCount});
         }
 
-        int entryCount = check getCount(sql:queryConcat(countQuery, `runtime_local_entries `, runtimeInClause));
+        int entryCount = check getCount(sql:queryConcat(countQuery, `mi_local_entry_artifacts `, runtimeInClause));
         if entryCount > 0 {
             artifactTypes.push({artifactType: types:LOCALENTRY, artifactCount: entryCount});
         }
 
-        int dataServiceCount = check getCount(sql:queryConcat(countQuery, `runtime_data_services `, runtimeInClause));
+        int dataServiceCount = check getCount(sql:queryConcat(countQuery, `mi_data_service_artifacts `, runtimeInClause));
         if dataServiceCount > 0 {
             artifactTypes.push({artifactType: types:DATASERVICE, artifactCount: dataServiceCount});
         }
 
-        int appCount = check getCount(sql:queryConcat(countQuery, `runtime_carbon_apps `, runtimeInClause));
+        int appCount = check getCount(sql:queryConcat(countQuery, `mi_carbon_app_artifacts `, runtimeInClause));
         if appCount > 0 {
             artifactTypes.push({artifactType: types:CARBONAPP, artifactCount: appCount});
         }
 
-        int sourceCount = check getCount(sql:queryConcat(countQuery, `runtime_data_sources `, runtimeInClause));
+        int sourceCount = check getCount(sql:queryConcat(countQuery, `mi_data_source_artifacts `, runtimeInClause));
         if sourceCount > 0 {
             artifactTypes.push({artifactType: types:DATASOURCE, artifactCount: sourceCount});
         }
 
-        int connectorCount = check getCount(sql:queryConcat(countQuery, `runtime_connectors `, runtimeInClause));
+        int connectorCount = check getCount(sql:queryConcat(countQuery, `mi_connector_artifacts `, runtimeInClause));
         if connectorCount > 0 {
             artifactTypes.push({artifactType: types:CONNECTOR, artifactCount: connectorCount});
         }
 
-        int resourceCount = check getCount(sql:queryConcat(countQuery, `runtime_registry_resources `, runtimeInClause));
+        int resourceCount = check getCount(sql:queryConcat(countQuery, `mi_registry_resource_artifacts `, runtimeInClause));
         if resourceCount > 0 {
             artifactTypes.push({artifactType: types:REGISTRYRESOURCE, artifactCount: resourceCount});
         }

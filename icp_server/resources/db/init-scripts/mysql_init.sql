@@ -556,7 +556,7 @@ CREATE TABLE runtimes (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Services deployed on a runtime
-CREATE TABLE runtime_services (
+CREATE TABLE bi_service_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     service_name VARCHAR(100) NOT NULL,
     service_package VARCHAR(200) NOT NULL,
@@ -568,7 +568,7 @@ CREATE TABLE runtime_services (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, service_name, service_package),
-    CONSTRAINT fk_runtime_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_bi_service_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_service_name (service_name),
     INDEX idx_service_package (service_package),
@@ -576,7 +576,7 @@ CREATE TABLE runtime_services (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Resources inside a service (HTTP resources etc.)
-CREATE TABLE service_resources (
+CREATE TABLE bi_service_resource_artifacts (
   runtime_id    VARCHAR(100) NOT NULL,
   service_name  VARCHAR(100) NOT NULL,
   resource_url  VARCHAR(1000) NOT NULL,
@@ -592,7 +592,7 @@ method_first  VARCHAR(20)
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
   PRIMARY KEY (runtime_id, service_name, resource_url(255)),
-  CONSTRAINT fk_service_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes(runtime_id) ON DELETE CASCADE,
+  CONSTRAINT fk_bi_service_resource_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes(runtime_id) ON DELETE CASCADE,
 
   INDEX idx_runtime_service (runtime_id, service_name),
   INDEX idx_resource_url (resource_url(255)),
@@ -600,7 +600,7 @@ method_first  VARCHAR(20)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Listeners bound to a runtime (e.g., HTTP/HTTPS)
-CREATE TABLE runtime_listeners (
+CREATE TABLE bi_runtime_listener_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     listener_name VARCHAR(100) NOT NULL,
     listener_package VARCHAR(200) NOT NULL,
@@ -614,7 +614,7 @@ CREATE TABLE runtime_listeners (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, listener_name),
-    CONSTRAINT fk_runtime_listeners_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_bi_runtime_listener_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_listener_name (listener_name),
     INDEX idx_protocol (protocol),
@@ -626,7 +626,7 @@ CREATE TABLE runtime_listeners (
 -- ============================================================================
 
 -- REST APIs (MI)
-CREATE TABLE runtime_apis (
+CREATE TABLE mi_api_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     api_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -644,7 +644,7 @@ CREATE TABLE runtime_apis (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, api_name),
-    CONSTRAINT fk_runtime_apis_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_api_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_api_name (api_name),
     INDEX idx_artifact_id (artifact_id),
@@ -652,7 +652,7 @@ CREATE TABLE runtime_apis (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- API Resources (MI) - Resources inside an API
-CREATE TABLE runtime_api_resources (
+CREATE TABLE mi_api_resource_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     api_name VARCHAR(200) NOT NULL,
     resource_path VARCHAR(1000) NOT NULL,
@@ -660,14 +660,14 @@ CREATE TABLE runtime_api_resources (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, api_name, resource_path(255)),
-    CONSTRAINT fk_runtime_api_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_api_resource_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_api (runtime_id, api_name),
     INDEX idx_resource_path (resource_path (255)),
     INDEX idx_methods (methods)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Proxy Services (MI)
-CREATE TABLE runtime_proxy_services (
+CREATE TABLE mi_proxy_service_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -681,7 +681,7 @@ CREATE TABLE runtime_proxy_services (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, proxy_name),
-    CONSTRAINT fk_runtime_proxy_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_proxy_service_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_proxy_name (proxy_name),
     INDEX idx_artifact_id (artifact_id),
@@ -689,20 +689,20 @@ CREATE TABLE runtime_proxy_services (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Proxy Service Endpoints (MI)
-CREATE TABLE runtime_proxy_service_endpoints (
+CREATE TABLE mi_proxy_service_endpoint_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name VARCHAR(200) NOT NULL,
     endpoint_url VARCHAR(500) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, proxy_name, endpoint_url(255)),
-    CONSTRAINT fk_runtime_proxy_service_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
-    INDEX idx_runtime_proxy_service_endpoints_runtime_id (runtime_id),
-    INDEX idx_runtime_proxy_service_endpoints_proxy_name (proxy_name)
+    CONSTRAINT fk_mi_proxy_service_endpoint_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    INDEX idx_mi_proxy_service_endpoint_artifacts_runtime_id (runtime_id),
+    INDEX idx_mi_proxy_service_endpoint_artifacts_proxy_name (proxy_name)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Endpoints (MI)
-CREATE TABLE runtime_endpoints (
+CREATE TABLE mi_endpoint_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     endpoint_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -717,7 +717,7 @@ CREATE TABLE runtime_endpoints (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, endpoint_name),
-    CONSTRAINT fk_runtime_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_endpoint_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_endpoint_name (endpoint_name),
     INDEX idx_artifact_id (artifact_id),
@@ -726,7 +726,7 @@ CREATE TABLE runtime_endpoints (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Endpoint Attributes (MI)
-CREATE TABLE runtime_endpoint_attributes (
+CREATE TABLE mi_endpoint_attribute_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     endpoint_name VARCHAR(200) NOT NULL,
     attribute_name VARCHAR(200) NOT NULL,
@@ -734,14 +734,14 @@ CREATE TABLE runtime_endpoint_attributes (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, endpoint_name, attribute_name),
-    CONSTRAINT fk_runtime_endpoint_attributes_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
-    INDEX idx_runtime_endpoint_attributes_runtime_id (runtime_id),
-    INDEX idx_runtime_endpoint_attributes_endpoint_name (endpoint_name),
-    INDEX idx_runtime_endpoint_attributes_attribute_name (attribute_name)
+    CONSTRAINT fk_mi_endpoint_attribute_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    INDEX idx_mi_endpoint_attribute_artifacts_runtime_id (runtime_id),
+    INDEX idx_mi_endpoint_attribute_artifacts_endpoint_name (endpoint_name),
+    INDEX idx_mi_endpoint_attribute_artifacts_attribute_name (attribute_name)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Inbound Endpoints (MI)
-CREATE TABLE runtime_inbound_endpoints (
+CREATE TABLE mi_inbound_endpoint_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     inbound_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -758,7 +758,7 @@ CREATE TABLE runtime_inbound_endpoints (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, inbound_name),
-    CONSTRAINT fk_runtime_inbound_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_inbound_endpoint_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_inbound_name (inbound_name),
     INDEX idx_artifact_id (artifact_id),
@@ -767,7 +767,7 @@ CREATE TABLE runtime_inbound_endpoints (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Sequences (MI)
-CREATE TABLE runtime_sequences (
+CREATE TABLE mi_sequence_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     sequence_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -783,7 +783,7 @@ CREATE TABLE runtime_sequences (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, sequence_name),
-    CONSTRAINT fk_runtime_sequences_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_sequence_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_sequence_name (sequence_name),
     INDEX idx_artifact_id (artifact_id),
@@ -792,7 +792,7 @@ CREATE TABLE runtime_sequences (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Tasks (MI)
-CREATE TABLE runtime_tasks (
+CREATE TABLE mi_task_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     task_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -806,7 +806,7 @@ CREATE TABLE runtime_tasks (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, task_name),
-    CONSTRAINT fk_runtime_tasks_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_task_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_task_name (task_name),
     INDEX idx_artifact_id (artifact_id),
@@ -814,7 +814,7 @@ CREATE TABLE runtime_tasks (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Templates (MI)
-CREATE TABLE runtime_templates (
+CREATE TABLE mi_template_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     template_name VARCHAR(200) NOT NULL,
     template_type VARCHAR(100) NOT NULL,
@@ -824,14 +824,14 @@ CREATE TABLE runtime_templates (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, template_name),
-    CONSTRAINT fk_runtime_templates_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_template_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_template_name (template_name),
     INDEX idx_template_type (template_type)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Message Stores (MI)
-CREATE TABLE runtime_message_stores (
+CREATE TABLE mi_message_store_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     store_name VARCHAR(200) NOT NULL,
     store_type VARCHAR(100) NOT NULL,
@@ -840,14 +840,14 @@ CREATE TABLE runtime_message_stores (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, store_name),
-    CONSTRAINT fk_runtime_message_stores_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_message_store_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_store_name (store_name),
     INDEX idx_store_type (store_type)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Message Processors (MI)
-CREATE TABLE runtime_message_processors (
+CREATE TABLE mi_message_processor_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     processor_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -861,7 +861,7 @@ CREATE TABLE runtime_message_processors (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, processor_name),
-    CONSTRAINT fk_runtime_message_processors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_message_processor_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_processor_name (processor_name),
     INDEX idx_artifact_id (artifact_id),
@@ -870,7 +870,7 @@ CREATE TABLE runtime_message_processors (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Local Entries (MI)
-CREATE TABLE runtime_local_entries (
+CREATE TABLE mi_local_entry_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     entry_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -884,7 +884,7 @@ CREATE TABLE runtime_local_entries (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, entry_name),
-    CONSTRAINT fk_runtime_local_entries_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_local_entry_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_entry_name (entry_name),
     INDEX idx_artifact_id (artifact_id),
@@ -893,7 +893,7 @@ CREATE TABLE runtime_local_entries (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Data Services (MI)
-CREATE TABLE runtime_data_services (
+CREATE TABLE mi_data_service_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     service_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -907,7 +907,7 @@ CREATE TABLE runtime_data_services (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, service_name),
-    CONSTRAINT fk_runtime_data_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_data_service_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_service_name (service_name),
     INDEX idx_artifact_id (artifact_id),
@@ -915,7 +915,7 @@ CREATE TABLE runtime_data_services (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Carbon Apps (MI)
-CREATE TABLE runtime_carbon_apps (
+CREATE TABLE mi_carbon_app_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     app_name VARCHAR(200) NOT NULL,
     version VARCHAR(50) NULL,
@@ -924,14 +924,14 @@ CREATE TABLE runtime_carbon_apps (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, app_name),
-    CONSTRAINT fk_runtime_carbon_apps_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_carbon_app_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_app_name (app_name),
     INDEX idx_state (state)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Data Sources (MI)
-CREATE TABLE runtime_data_sources (
+CREATE TABLE mi_data_source_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     datasource_name VARCHAR(200) NOT NULL,
     datasource_type VARCHAR(100) NULL,
@@ -942,11 +942,10 @@ CREATE TABLE runtime_data_sources (
         'enabled',
         'disabled'
     ) NOT NULL DEFAULT 'enabled',
-    carbon_app VARCHAR(200) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, datasource_name),
-    CONSTRAINT fk_runtime_data_sources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_data_source_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_datasource_name (datasource_name),
     INDEX idx_datasource_type (datasource_type),
@@ -954,7 +953,7 @@ CREATE TABLE runtime_data_sources (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Connectors (MI)
-CREATE TABLE runtime_connectors (
+CREATE TABLE mi_connector_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     connector_name VARCHAR(200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -967,7 +966,7 @@ CREATE TABLE runtime_connectors (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, connector_name, package),
-    CONSTRAINT fk_runtime_connectors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_connector_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_connector_name (connector_name),
     INDEX idx_artifact_id (artifact_id),
@@ -975,14 +974,14 @@ CREATE TABLE runtime_connectors (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Registry Resources (MI)
-CREATE TABLE runtime_registry_resources (
+CREATE TABLE mi_registry_resource_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     resource_name VARCHAR(200) NOT NULL,
     resource_type VARCHAR(100) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (runtime_id, resource_name),
-    CONSTRAINT fk_runtime_registry_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_registry_resource_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_resource_name (resource_name)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;

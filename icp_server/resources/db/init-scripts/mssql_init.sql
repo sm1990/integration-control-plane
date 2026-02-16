@@ -1000,7 +1000,7 @@ END;
 GO
 
 -- Services deployed on a runtime
-CREATE TABLE runtime_services (
+CREATE TABLE bi_service_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     service_name NVARCHAR (100) NOT NULL,
     service_package NVARCHAR (200) NOT NULL,
@@ -1018,7 +1018,7 @@ CREATE TABLE runtime_services (
         service_name,
         service_package
     ),
-    CONSTRAINT fk_runtime_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_bi_service_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_service_name (service_name),
     INDEX idx_service_package (service_package),
@@ -1026,15 +1026,15 @@ CREATE TABLE runtime_services (
 );
 GO
 
-CREATE TRIGGER trg_runtime_services_updated_at
-ON runtime_services
+CREATE TRIGGER trg_bi_service_artifacts_updated_at
+ON bi_service_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_services
+    UPDATE bi_service_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_services rs
+    FROM bi_service_artifacts rs
     INNER JOIN inserted i ON rs.runtime_id = i.runtime_id 
         AND rs.service_name = i.service_name 
         AND rs.service_package = i.service_package;
@@ -1042,7 +1042,7 @@ END;
 GO
 
 -- Resources inside a service (HTTP resources etc.)
-CREATE TABLE service_resources (
+CREATE TABLE bi_service_resource_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     service_name NVARCHAR (100) NOT NULL,
     resource_url NVARCHAR (300) NOT NULL,
@@ -1055,20 +1055,20 @@ CREATE TABLE service_resources (
         service_name,
         resource_url
     ),
-    CONSTRAINT fk_service_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_bi_service_resource_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_service (runtime_id, service_name)
 );
 GO
 
-CREATE TRIGGER trg_service_resources_updated_at
-ON service_resources
+CREATE TRIGGER trg_bi_service_resource_artifacts_updated_at
+ON bi_service_resource_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE service_resources
+    UPDATE bi_service_resource_artifacts
     SET updated_at = GETDATE()
-    FROM service_resources sr
+    FROM bi_service_resource_artifacts sr
     INNER JOIN inserted i ON sr.runtime_id = i.runtime_id 
         AND sr.service_name = i.service_name 
         AND sr.resource_url = i.resource_url;
@@ -1076,7 +1076,7 @@ END;
 GO
 
 -- Listeners bound to a runtime (e.g., HTTP/HTTPS)
-CREATE TABLE runtime_listeners (
+CREATE TABLE bi_runtime_listener_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     listener_name NVARCHAR (100) NOT NULL,
     listener_package NVARCHAR (200) NOT NULL,
@@ -1092,7 +1092,7 @@ CREATE TABLE runtime_listeners (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, listener_name),
-    CONSTRAINT fk_runtime_listeners_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_bi_runtime_listener_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_listener_name (listener_name),
     INDEX idx_protocol (protocol),
@@ -1100,15 +1100,15 @@ CREATE TABLE runtime_listeners (
 );
 GO
 
-CREATE TRIGGER trg_runtime_listeners_updated_at
-ON runtime_listeners
+CREATE TRIGGER trg_bi_runtime_listener_artifacts_updated_at
+ON bi_runtime_listener_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_listeners
+    UPDATE bi_runtime_listener_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_listeners rl
+    FROM bi_runtime_listener_artifacts rl
     INNER JOIN inserted i ON rl.runtime_id = i.runtime_id 
         AND rl.listener_name = i.listener_name;
 END;
@@ -1119,7 +1119,7 @@ GO
 -- ============================================================================
 
 -- REST APIs (MI)
-CREATE TABLE runtime_apis (
+CREATE TABLE mi_api_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     api_name NVARCHAR (150) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1139,7 +1139,7 @@ CREATE TABLE runtime_apis (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, api_name),
-    CONSTRAINT fk_runtime_apis_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_api_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_api_name (api_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1147,22 +1147,22 @@ CREATE TABLE runtime_apis (
 );
 GO
 
-CREATE TRIGGER trg_runtime_apis_updated_at
-ON runtime_apis
+CREATE TRIGGER trg_mi_api_artifacts_updated_at
+ON mi_api_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_apis
+    UPDATE mi_api_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_apis ra
+    FROM mi_api_artifacts ra
     INNER JOIN inserted i ON ra.runtime_id = i.runtime_id 
         AND ra.api_name = i.api_name;
 END;
 GO
 
 -- API Resources (MI) - Resources inside an API
-CREATE TABLE runtime_api_resources (
+CREATE TABLE mi_api_resource_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     api_name NVARCHAR (150) NOT NULL,
     resource_path NVARCHAR (250) NOT NULL,
@@ -1174,21 +1174,21 @@ CREATE TABLE runtime_api_resources (
         api_name,
         resource_path
     ),
-    CONSTRAINT fk_runtime_api_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_api_resource_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_api (runtime_id, api_name),
     INDEX idx_methods (methods)
 );
 GO
 
-CREATE TRIGGER trg_runtime_api_resources_updated_at
-ON runtime_api_resources
+CREATE TRIGGER trg_mi_api_resource_artifacts_updated_at
+ON mi_api_resource_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_api_resources
+    UPDATE mi_api_resource_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_api_resources rar
+    FROM mi_api_resource_artifacts rar
     INNER JOIN inserted i ON rar.runtime_id = i.runtime_id 
         AND rar.api_name = i.api_name 
         AND rar.resource_path = i.resource_path;
@@ -1196,7 +1196,7 @@ END;
 GO
 
 -- Proxy Services (MI)
-CREATE TABLE runtime_proxy_services (
+CREATE TABLE mi_proxy_service_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name NVARCHAR (150) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1212,7 +1212,7 @@ CREATE TABLE runtime_proxy_services (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, proxy_name),
-    CONSTRAINT fk_runtime_proxy_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_proxy_service_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_proxy_name (proxy_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1220,22 +1220,22 @@ CREATE TABLE runtime_proxy_services (
 );
 GO
 
-CREATE TRIGGER trg_runtime_proxy_services_updated_at
-ON runtime_proxy_services
+CREATE TRIGGER trg_mi_proxy_service_artifacts_updated_at
+ON mi_proxy_service_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_proxy_services
+    UPDATE mi_proxy_service_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_proxy_services rps
+    FROM mi_proxy_service_artifacts rps
     INNER JOIN inserted i ON rps.runtime_id = i.runtime_id 
         AND rps.proxy_name = i.proxy_name;
 END;
 GO
 
 -- Proxy Service Endpoints (MI)
-CREATE TABLE runtime_proxy_service_endpoints (
+CREATE TABLE mi_proxy_service_endpoint_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     proxy_name NVARCHAR (150) NOT NULL,
     endpoint_url NVARCHAR (250) NOT NULL,
@@ -1246,21 +1246,21 @@ CREATE TABLE runtime_proxy_service_endpoints (
         proxy_name,
         endpoint_url
     ),
-    CONSTRAINT fk_runtime_proxy_service_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
-    INDEX idx_runtime_proxy_service_endpoints_runtime_id (runtime_id),
-    INDEX idx_runtime_proxy_service_endpoints_proxy_name (proxy_name)
+    CONSTRAINT fk_mi_proxy_service_endpoint_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    INDEX idx_mi_proxy_service_endpoint_artifacts_runtime_id (runtime_id),
+    INDEX idx_mi_proxy_service_endpoint_artifacts_proxy_name (proxy_name)
 );
 GO
 
-CREATE TRIGGER trg_runtime_proxy_service_endpoints_updated_at
-ON runtime_proxy_service_endpoints
+CREATE TRIGGER trg_mi_proxy_service_endpoint_artifacts_updated_at
+ON mi_proxy_service_endpoint_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_proxy_service_endpoints
+    UPDATE mi_proxy_service_endpoint_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_proxy_service_endpoints rpse
+    FROM mi_proxy_service_endpoint_artifacts rpse
     INNER JOIN inserted i ON rpse.runtime_id = i.runtime_id 
         AND rpse.proxy_name = i.proxy_name 
         AND rpse.endpoint_url = i.endpoint_url;
@@ -1268,7 +1268,7 @@ END;
 GO
 
 -- Endpoints (MI)
-CREATE TABLE runtime_endpoints (
+CREATE TABLE mi_endpoint_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     endpoint_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1285,7 +1285,7 @@ CREATE TABLE runtime_endpoints (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, endpoint_name),
-    CONSTRAINT fk_runtime_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_endpoint_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_endpoint_name (endpoint_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1294,22 +1294,22 @@ CREATE TABLE runtime_endpoints (
 );
 GO
 
-CREATE TRIGGER trg_runtime_endpoints_updated_at
-ON runtime_endpoints
+CREATE TRIGGER trg_mi_endpoint_artifacts_updated_at
+ON mi_endpoint_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_endpoints
+    UPDATE mi_endpoint_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_endpoints re
+    FROM mi_endpoint_artifacts re
     INNER JOIN inserted i ON re.runtime_id = i.runtime_id 
         AND re.endpoint_name = i.endpoint_name;
 END;
 GO
 
 -- Endpoint Attributes (MI)
-CREATE TABLE runtime_endpoint_attributes (
+CREATE TABLE mi_endpoint_attribute_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     endpoint_name NVARCHAR (200) NOT NULL,
     attribute_name NVARCHAR (200) NOT NULL,
@@ -1321,22 +1321,22 @@ CREATE TABLE runtime_endpoint_attributes (
         endpoint_name,
         attribute_name
     ),
-    CONSTRAINT fk_runtime_endpoint_attributes_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
-    INDEX idx_runtime_endpoint_attributes_runtime_id (runtime_id),
-    INDEX idx_runtime_endpoint_attributes_endpoint_name (endpoint_name),
-    INDEX idx_runtime_endpoint_attributes_attribute_name (attribute_name)
+    CONSTRAINT fk_mi_endpoint_attribute_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    INDEX idx_mi_endpoint_attribute_artifacts_runtime_id (runtime_id),
+    INDEX idx_mi_endpoint_attribute_artifacts_endpoint_name (endpoint_name),
+    INDEX idx_mi_endpoint_attribute_artifacts_attribute_name (attribute_name)
 );
 GO
 
-CREATE TRIGGER trg_runtime_endpoint_attributes_updated_at
-ON runtime_endpoint_attributes
+CREATE TRIGGER trg_mi_endpoint_attribute_artifacts_updated_at
+ON mi_endpoint_attribute_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_endpoint_attributes
+    UPDATE mi_endpoint_attribute_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_endpoint_attributes rea
+    FROM mi_endpoint_attribute_artifacts rea
     INNER JOIN inserted i ON rea.runtime_id = i.runtime_id 
         AND rea.endpoint_name = i.endpoint_name 
         AND rea.attribute_name = i.attribute_name;
@@ -1344,7 +1344,7 @@ END;
 GO
 
 -- Inbound Endpoints (MI)
-CREATE TABLE runtime_inbound_endpoints (
+CREATE TABLE mi_inbound_endpoint_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     inbound_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1363,7 +1363,7 @@ CREATE TABLE runtime_inbound_endpoints (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, inbound_name),
-    CONSTRAINT fk_runtime_inbound_endpoints_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_inbound_endpoint_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_inbound_name (inbound_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1372,22 +1372,22 @@ CREATE TABLE runtime_inbound_endpoints (
 );
 GO
 
-CREATE TRIGGER trg_runtime_inbound_endpoints_updated_at
-ON runtime_inbound_endpoints
+CREATE TRIGGER trg_mi_inbound_endpoint_artifacts_updated_at
+ON mi_inbound_endpoint_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_inbound_endpoints
+    UPDATE mi_inbound_endpoint_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_inbound_endpoints rie
+    FROM mi_inbound_endpoint_artifacts rie
     INNER JOIN inserted i ON rie.runtime_id = i.runtime_id 
         AND rie.inbound_name = i.inbound_name;
 END;
 GO
 
 -- Sequences (MI)
-CREATE TABLE runtime_sequences (
+CREATE TABLE mi_sequence_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     sequence_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1405,7 +1405,7 @@ CREATE TABLE runtime_sequences (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, sequence_name),
-    CONSTRAINT fk_runtime_sequences_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_sequence_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_sequence_name (sequence_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1414,22 +1414,22 @@ CREATE TABLE runtime_sequences (
 );
 GO
 
-CREATE TRIGGER trg_runtime_sequences_updated_at
-ON runtime_sequences
+CREATE TRIGGER trg_mi_sequence_artifacts_updated_at
+ON mi_sequence_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_sequences
+    UPDATE mi_sequence_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_sequences rs
+    FROM mi_sequence_artifacts rs
     INNER JOIN inserted i ON rs.runtime_id = i.runtime_id 
         AND rs.sequence_name = i.sequence_name;
 END;
 GO
 
 -- Tasks (MI)
-CREATE TABLE runtime_tasks (
+CREATE TABLE mi_task_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     task_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1445,7 +1445,7 @@ CREATE TABLE runtime_tasks (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, task_name),
-    CONSTRAINT fk_runtime_tasks_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_task_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_task_name (task_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1453,22 +1453,22 @@ CREATE TABLE runtime_tasks (
 );
 GO
 
-CREATE TRIGGER trg_runtime_tasks_updated_at
-ON runtime_tasks
+CREATE TRIGGER trg_mi_task_artifacts_updated_at
+ON mi_task_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_tasks
+    UPDATE mi_task_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_tasks rt
+    FROM mi_task_artifacts rt
     INNER JOIN inserted i ON rt.runtime_id = i.runtime_id 
         AND rt.task_name = i.task_name;
 END;
 GO
 
 -- Templates (MI)
-CREATE TABLE runtime_templates (
+CREATE TABLE mi_template_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     template_name NVARCHAR (200) NOT NULL,
     template_type NVARCHAR (100) NOT NULL,
@@ -1478,29 +1478,29 @@ CREATE TABLE runtime_templates (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, template_name),
-    CONSTRAINT fk_runtime_templates_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_template_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_template_name (template_name),
     INDEX idx_template_type (template_type)
 );
 GO
 
-CREATE TRIGGER trg_runtime_templates_updated_at
-ON runtime_templates
+CREATE TRIGGER trg_mi_template_artifacts_updated_at
+ON mi_template_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_templates
+    UPDATE mi_template_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_templates rt
+    FROM mi_template_artifacts rt
     INNER JOIN inserted i ON rt.runtime_id = i.runtime_id 
         AND rt.template_name = i.template_name;
 END;
 GO
 
 -- Message Stores (MI)
-CREATE TABLE runtime_message_stores (
+CREATE TABLE mi_message_store_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     store_name NVARCHAR (200) NOT NULL,
     store_type NVARCHAR (100) NOT NULL,
@@ -1509,29 +1509,29 @@ CREATE TABLE runtime_message_stores (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, store_name),
-    CONSTRAINT fk_runtime_message_stores_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_message_store_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_store_name (store_name),
     INDEX idx_store_type (store_type)
 );
 GO
 
-CREATE TRIGGER trg_runtime_message_stores_updated_at
-ON runtime_message_stores
+CREATE TRIGGER trg_mi_message_store_artifacts_updated_at
+ON mi_message_store_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_message_stores
+    UPDATE mi_message_store_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_message_stores rms
+    FROM mi_message_store_artifacts rms
     INNER JOIN inserted i ON rms.runtime_id = i.runtime_id 
         AND rms.store_name = i.store_name;
 END;
 GO
 
 -- Message Processors (MI)
-CREATE TABLE runtime_message_processors (
+CREATE TABLE mi_message_processor_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     processor_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1547,7 +1547,7 @@ CREATE TABLE runtime_message_processors (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, processor_name),
-    CONSTRAINT fk_runtime_message_processors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_message_processor_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_processor_name (processor_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1556,22 +1556,22 @@ CREATE TABLE runtime_message_processors (
 );
 GO
 
-CREATE TRIGGER trg_runtime_message_processors_updated_at
-ON runtime_message_processors
+CREATE TRIGGER trg_mi_message_processor_artifacts_updated_at
+ON mi_message_processor_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_message_processors
+    UPDATE mi_message_processor_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_message_processors rmp
+    FROM mi_message_processor_artifacts rmp
     INNER JOIN inserted i ON rmp.runtime_id = i.runtime_id 
         AND rmp.processor_name = i.processor_name;
 END;
 GO
 
 -- Local Entries (MI)
-CREATE TABLE runtime_local_entries (
+CREATE TABLE mi_local_entry_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     entry_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1587,7 +1587,7 @@ CREATE TABLE runtime_local_entries (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, entry_name),
-    CONSTRAINT fk_runtime_local_entries_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_local_entry_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_entry_name (entry_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1596,22 +1596,22 @@ CREATE TABLE runtime_local_entries (
 );
 GO
 
-CREATE TRIGGER trg_runtime_local_entries_updated_at
-ON runtime_local_entries
+CREATE TRIGGER trg_mi_local_entry_artifacts_updated_at
+ON mi_local_entry_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_local_entries
+    UPDATE mi_local_entry_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_local_entries rle
+    FROM mi_local_entry_artifacts rle
     INNER JOIN inserted i ON rle.runtime_id = i.runtime_id 
         AND rle.entry_name = i.entry_name;
 END;
 GO
 
 -- Data Services (MI)
-CREATE TABLE runtime_data_services (
+CREATE TABLE mi_data_service_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     service_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1627,7 +1627,7 @@ CREATE TABLE runtime_data_services (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, service_name),
-    CONSTRAINT fk_runtime_data_services_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_data_service_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_service_name (service_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1635,22 +1635,22 @@ CREATE TABLE runtime_data_services (
 );
 GO
 
-CREATE TRIGGER trg_runtime_data_services_updated_at
-ON runtime_data_services
+CREATE TRIGGER trg_mi_data_service_artifacts_updated_at
+ON mi_data_service_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_data_services
+    UPDATE mi_data_service_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_data_services rds
+    FROM mi_data_service_artifacts rds
     INNER JOIN inserted i ON rds.runtime_id = i.runtime_id 
         AND rds.service_name = i.service_name;
 END;
 GO
 
 -- Carbon Apps (MI)
-CREATE TABLE runtime_carbon_apps (
+CREATE TABLE mi_carbon_app_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     app_name NVARCHAR (200) NOT NULL,
     version NVARCHAR (50) NULL,
@@ -1659,29 +1659,29 @@ CREATE TABLE runtime_carbon_apps (
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, app_name),
-    CONSTRAINT fk_runtime_carbon_apps_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_carbon_app_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_app_name (app_name),
     INDEX idx_state (state)
 );
 GO
 
-CREATE TRIGGER trg_runtime_carbon_apps_updated_at
-ON runtime_carbon_apps
+CREATE TRIGGER trg_mi_carbon_app_artifacts_updated_at
+ON mi_carbon_app_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_carbon_apps
+    UPDATE mi_carbon_app_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_carbon_apps rca
+    FROM mi_carbon_app_artifacts rca
     INNER JOIN inserted i ON rca.runtime_id = i.runtime_id 
         AND rca.app_name = i.app_name;
 END;
 GO
 
 -- Data Sources (MI)
-CREATE TABLE runtime_data_sources (
+CREATE TABLE mi_data_source_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     datasource_name NVARCHAR (200) NOT NULL,
     datasource_type NVARCHAR (100) NULL,
@@ -1694,11 +1694,10 @@ CREATE TABLE runtime_data_sources (
             'disabled'
         )
     ),
-    carbon_app NVARCHAR(200) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, datasource_name),
-    CONSTRAINT fk_runtime_data_sources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_data_source_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_datasource_name (datasource_name),
     INDEX idx_datasource_type (datasource_type),
@@ -1706,22 +1705,22 @@ CREATE TABLE runtime_data_sources (
 );
 GO
 
-CREATE TRIGGER trg_runtime_data_sources_updated_at
-ON runtime_data_sources
+CREATE TRIGGER trg_mi_data_source_artifacts_updated_at
+ON mi_data_source_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_data_sources
+    UPDATE mi_data_source_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_data_sources rds
+    FROM mi_data_source_artifacts rds
     INNER JOIN inserted i ON rds.runtime_id = i.runtime_id 
         AND rds.datasource_name = i.datasource_name;
 END;
 GO
 
 -- Connectors (MI)
-CREATE TABLE runtime_connectors (
+CREATE TABLE mi_connector_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     connector_name NVARCHAR (200) NOT NULL,
     artifact_id CHAR(36) NOT NULL UNIQUE,
@@ -1740,7 +1739,7 @@ CREATE TABLE runtime_connectors (
         connector_name,
         package
     ),
-    CONSTRAINT fk_runtime_connectors_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_connector_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_connector_name (connector_name),
     INDEX idx_artifact_id (artifact_id),
@@ -1748,15 +1747,15 @@ CREATE TABLE runtime_connectors (
 );
 GO
 
-CREATE TRIGGER trg_runtime_connectors_updated_at
-ON runtime_connectors
+CREATE TRIGGER trg_mi_connector_artifacts_updated_at
+ON mi_connector_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_connectors
+    UPDATE mi_connector_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_connectors rc
+    FROM mi_connector_artifacts rc
     INNER JOIN inserted i ON rc.runtime_id = i.runtime_id 
         AND rc.connector_name = i.connector_name 
         AND rc.package = i.package;
@@ -1764,28 +1763,28 @@ END;
 GO
 
 -- Registry Resources (MI)
-CREATE TABLE runtime_registry_resources (
+CREATE TABLE mi_registry_resource_artifacts (
     runtime_id VARCHAR(100) NOT NULL,
     resource_name NVARCHAR (200) NOT NULL,
     resource_type NVARCHAR (100) NULL,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     PRIMARY KEY (runtime_id, resource_name),
-    CONSTRAINT fk_runtime_registry_resources_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    CONSTRAINT fk_mi_registry_resource_artifacts_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
     INDEX idx_runtime_id (runtime_id),
     INDEX idx_resource_name (resource_name)
 );
 GO
 
-CREATE TRIGGER trg_runtime_registry_resources_updated_at
-ON runtime_registry_resources
+CREATE TRIGGER trg_mi_registry_resource_artifacts_updated_at
+ON mi_registry_resource_artifacts
 AFTER UPDATE
 AS
 BEGIN
     SET NOCOUNT ON;
-    UPDATE runtime_registry_resources
+    UPDATE mi_registry_resource_artifacts
     SET updated_at = GETDATE()
-    FROM runtime_registry_resources rrr
+    FROM mi_registry_resource_artifacts rrr
     INNER JOIN inserted i ON rrr.runtime_id = i.runtime_id 
         AND rrr.resource_name = i.resource_name;
 END;

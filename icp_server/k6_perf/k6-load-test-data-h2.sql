@@ -25,12 +25,12 @@ KEY(org_id)
 VALUES (1, 'Load Test Organization', 'loadtest-org', 'Organization for K6 load testing');
 
 -- Insert 3 environments (dev, staging, prod)
-MERGE INTO environments (environment_id, name, description, critical, region) 
+MERGE INTO environments (environment_id, name, description, critical, region)
 KEY(environment_id)
-VALUES 
+VALUES
   ('750e8400-e29b-41d4-a716-446655440001', 'dev', 'Development environment', FALSE, 'us-west-2'),
-  ('750e8400-e29b-41d4-a716-446655440002', 'staging', 'Staging environment', FALSE, 'us-west-2'),
-  ('750e8400-e29b-41d4-a716-446655440003', 'prod', 'Production environment', TRUE, 'us-east-1');
+  ('750e8400-e29b-41d4-a716-446655440003', 'staging', 'Staging environment', FALSE, 'us-west-2'),
+  ('750e8400-e29b-41d4-a716-446655440002', 'prod', 'Production environment', TRUE, 'us-east-1');
 
 -- Ensure all required roles exist (insert only if not exists to avoid conflicts)
 INSERT INTO roles_v2 (role_id, role_name, org_id, description)
@@ -348,9 +348,9 @@ SELECT
     CONCAT(c.name, '-staging-runtime'),
     c.project_id,
     c.component_id,
-    '750e8400-e29b-41d4-a716-446655440002',
+    '750e8400-e29b-41d4-a716-446655440003',
     c.component_type,
-    CASE 
+    CASE
         WHEN MOD(c.comp_num, 10) < 9 THEN 'RUNNING'
         ELSE 'OFFLINE'
     END,
@@ -388,7 +388,7 @@ SELECT
     CONCAT(c.name, '-prod-runtime'),
     c.project_id,
     c.component_id,
-    '750e8400-e29b-41d4-a716-446655440003',
+    '750e8400-e29b-41d4-a716-446655440002',
     c.component_type,
     'RUNNING',
     '1.0.0',
@@ -410,7 +410,7 @@ WHERE MOD(c.comp_num, 5) < 2; -- 40% of components have prod runtime
 -- 9. CREATE SERVICES (2-5 services per runtime)
 -- ============================================================================
 
-INSERT INTO runtime_services (
+INSERT INTO bi_service_artifacts (
     runtime_id,
     service_name,
     service_package,
@@ -422,7 +422,7 @@ SELECT
     CONCAT('Service-', CAST(i.X AS VARCHAR)),
     CONCAT('com.loadtest.service', CAST(i.X AS VARCHAR)),
     CONCAT('/api/v1/service', CAST(i.X AS VARCHAR)),
-    CASE WHEN MOD(r.runtime_num + i.X, 20) < 19 THEN 'ENABLED' ELSE 'DISABLED' END
+    CASE WHEN MOD(r.runtime_num + i.X, 20) < 19 THEN 'enabled' ELSE 'disabled' END
 FROM (
     SELECT runtime_id, ROW_NUMBER() OVER (ORDER BY name) as runtime_num
     FROM runtimes
@@ -433,7 +433,7 @@ CROSS JOIN SYSTEM_RANGE(1, 3) i; -- 3 services per runtime = 1500 total
 -- 10. CREATE SERVICE RESOURCES (2-4 resources per service)
 -- ============================================================================
 
-INSERT INTO service_resources (
+INSERT INTO bi_service_resource_artifacts (
     runtime_id,
     service_name,
     resource_url,
@@ -446,14 +446,14 @@ SELECT
     CONCAT('/', CASE WHEN i.X = 1 THEN 'list' WHEN i.X = 2 THEN 'get/[id]' ELSE 'create' END),
     CASE WHEN i.X = 1 THEN '["GET"]' WHEN i.X = 2 THEN '["GET"]' ELSE '["POST"]' END,
     CASE WHEN i.X = 1 THEN 'GET' WHEN i.X = 2 THEN 'GET' ELSE 'POST' END
-FROM runtime_services s
+FROM bi_service_artifacts s
 CROSS JOIN SYSTEM_RANGE(1, 3) i; -- 3 resources per service
 
 -- ============================================================================
 -- 11. CREATE LISTENERS (1-2 listeners per runtime)
 -- ============================================================================
 
-INSERT INTO runtime_listeners (
+INSERT INTO bi_runtime_listener_artifacts (
     runtime_id,
     listener_name,
     listener_package,
@@ -469,7 +469,7 @@ SELECT
     CASE WHEN i.X = 1 THEN 'HTTP' ELSE 'HTTPS' END,
     '0.0.0.0',
     CASE WHEN i.X = 1 THEN 8080 ELSE 8443 END,
-    'ENABLED'
+    'enabled'
 FROM runtimes r
 CROSS JOIN SYSTEM_RANGE(1, 2) i; -- 2 listeners per runtime = 1000 total
 
@@ -477,17 +477,19 @@ CROSS JOIN SYSTEM_RANGE(1, 2) i; -- 2 listeners per runtime = 1000 total
 -- 12. CREATE DATA SERVICES (For MI runtimes - 0-2 per runtime)
 -- ============================================================================
 
-INSERT INTO runtime_data_services (
+INSERT INTO mi_data_service_artifacts (
     runtime_id,
     service_name,
+    artifact_id,
     description,
     state
 )
-SELECT 
+SELECT
     r.runtime_id,
     CONCAT('DataService-', CAST(i.X AS VARCHAR)),
+    RANDOM_UUID(),
     CONCAT('Data service ', CAST(i.X AS VARCHAR), ' for ', r.name),
-    'ENABLED'
+    'enabled'
 FROM (
     SELECT runtime_id, name, runtime_type, ROW_NUMBER() OVER (ORDER BY name) as runtime_num
     FROM runtimes
@@ -500,10 +502,12 @@ WHERE MOD(r.runtime_num, 3) < 2; -- Only ~67% of MI runtimes have data services
 -- 13. CREATE REST APIs (For MI runtimes - 1-3 per runtime)
 -- ============================================================================
 
-INSERT INTO runtime_apis (
+INSERT INTO mi_api_artifacts (
     runtime_id,
     api_name,
+    artifact_id,
     url,
+    urls,
     context,
     version,
     state
@@ -511,10 +515,12 @@ INSERT INTO runtime_apis (
 SELECT 
     r.runtime_id,
     CONCAT('API-', CAST(i.X AS VARCHAR)),
+    RANDOM_UUID(),
     CONCAT('http://api.loadtest.com/v1/resource', CAST(i.X AS VARCHAR)),
+    CONCAT('["http://api.loadtest.com/v1/resource', CAST(i.X AS VARCHAR), '","https://api.loadtest.com/v1/resource', CAST(i.X AS VARCHAR), '"]'),
     CONCAT('/api/v1/resource', CAST(i.X AS VARCHAR)),
     '1.0.0',
-    'ENABLED'
+    'enabled'
 FROM (
     SELECT runtime_id, name, ROW_NUMBER() OVER (ORDER BY name) as runtime_num
     FROM runtimes
@@ -526,7 +532,7 @@ CROSS JOIN SYSTEM_RANGE(1, 2) i; -- 2 APIs per MI runtime
 -- 14. CREATE API RESOURCES (2-4 resources per API)
 -- ============================================================================
 
-INSERT INTO runtime_api_resources (
+INSERT INTO mi_api_resource_artifacts (
     runtime_id,
     api_name,
     resource_path,
@@ -545,7 +551,7 @@ SELECT
         WHEN i.X = 2 THEN 'GET'
         ELSE 'POST'
     END
-FROM runtime_apis a
+FROM mi_api_artifacts a
 CROSS JOIN SYSTEM_RANGE(1, 3) i; -- 3 resources per API
 
 -- ============================================================================
@@ -569,17 +575,17 @@ SELECT 'Environments: ' || CAST(COUNT(*) AS VARCHAR) FROM environments
 UNION ALL
 SELECT 'Runtimes: ' || CAST(COUNT(*) AS VARCHAR) FROM runtimes
 UNION ALL
-SELECT 'Services: ' || CAST(COUNT(*) AS VARCHAR) FROM runtime_services
+SELECT 'Services: ' || CAST(COUNT(*) AS VARCHAR) FROM bi_service_artifacts
 UNION ALL
-SELECT 'Service Resources: ' || CAST(COUNT(*) AS VARCHAR) FROM service_resources
+SELECT 'Service Resources: ' || CAST(COUNT(*) AS VARCHAR) FROM bi_service_resource_artifacts
 UNION ALL
-SELECT 'Listeners: ' || CAST(COUNT(*) AS VARCHAR) FROM runtime_listeners
+SELECT 'Listeners: ' || CAST(COUNT(*) AS VARCHAR) FROM bi_runtime_listener_artifacts
 UNION ALL
-SELECT 'Data Services: ' || CAST(COUNT(*) AS VARCHAR) FROM runtime_data_services
+SELECT 'Data Services: ' || CAST(COUNT(*) AS VARCHAR) FROM mi_data_service_artifacts
 UNION ALL
-SELECT 'REST APIs: ' || CAST(COUNT(*) AS VARCHAR) FROM runtime_apis
+SELECT 'REST APIs: ' || CAST(COUNT(*) AS VARCHAR) FROM mi_api_artifacts
 UNION ALL
-SELECT 'API Resources: ' || CAST(COUNT(*) AS VARCHAR) FROM runtime_api_resources
+SELECT 'API Resources: ' || CAST(COUNT(*) AS VARCHAR) FROM mi_api_resource_artifacts
 UNION ALL
 SELECT 'Group-User Mappings: ' || CAST(COUNT(*) AS VARCHAR) FROM group_user_mapping
 UNION ALL

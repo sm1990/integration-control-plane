@@ -291,7 +291,10 @@ export default function RuntimeLogs(scope: ProjectScope | ComponentScope): JSX.E
             renderValue={(selected) => {
               const sel = selected as string[];
               if (sel.length === 0) return 'All Environments';
-              return environments.filter((env) => sel.includes(env.id)).map((env) => env.name).join(', ');
+              return environments
+                .filter((env) => sel.includes(env.id))
+                .map((env) => env.name)
+                .join(', ');
             }}
             size="small"
             sx={{ minWidth: 160 }}

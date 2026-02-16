@@ -514,6 +514,7 @@ public type ProxyServiceRecordInDB record {
     string proxy_name;
     ArtifactState state;
     string tracing;
+    string statistics = "disabled";
     string? carbon_app;
 };
 
@@ -522,6 +523,7 @@ public type EndpointRecordInDB record {
     string endpoint_type;
     ArtifactState state;
     string tracing;
+    string statistics = "disabled";
     string? carbon_app;
 };
 
@@ -531,6 +533,7 @@ public type SequenceRecordInDB record {
     string container?;
     ArtifactState state;
     string tracing;
+    string statistics = "disabled";
     string? carbon_app;
 };
 

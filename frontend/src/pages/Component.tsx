@@ -51,6 +51,7 @@ import {
   ARTIFACT_QUERY_MAP,
 } from '../api/queries';
 import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutations';
+import { useUpdateArtifactTracingStatus, useUpdateArtifactStatisticsStatus } from '../api/artifactToggleMutations';
 import NotFound from '../components/NotFound';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 import { useLoadComponentPermissions } from '../hooks/usePermissionLoader';
@@ -103,7 +104,7 @@ const ENTRY_POINT_CONFIG: Record<string, { label: string; color: string; bgColor
 };
 
 const ENTRY_POINT_DETAIL_TABS: Record<string, string[]> = {
-  RestApi: ['Overview', 'Resources', 'Runtimes'],
+  RestApi: ['Resources'],
   ProxyService: ['Overview', 'Runtimes'],
   InboundEndpoint: ['Overview', 'Runtimes'],
   Task: ['Runtimes'],
@@ -199,7 +200,7 @@ function ArtifactOverview({ artifact, artifactType, envId, componentId }: TabPro
   const isProxyService = artifactType === 'ProxyService';
   const hasToggle = ['ProxyService', 'Listener'].includes(artifactType);
   const hasTracing = !['Service', 'Listener'].includes(artifactType);
-  const fields = artifactMapping.fields.split(', ');
+  const fields = artifactMapping.fields.split(', ').filter((f) => !(artifactType === 'RestApi' && (f === 'state' || f === 'version')));
   const tracing = (artifact.tracing ?? 'disabled').toString().toLowerCase();
   const artifactState = (artifact.state ?? '').toString().toLowerCase();
   const endpoints = (artifact.endpoints as string[] | undefined) ?? [];
@@ -662,7 +663,11 @@ function ArtifactTypeSelector({ envId, componentId, onSelectArtifact }: { envId:
 
 function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected: SelectedArtifact; onViewSource: () => void; onViewRuntimes: () => void }) {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [tracingEnabled, setTracingEnabled] = useState(false);
+  const [statisticsEnabled, setStatisticsEnabled] = useState(false);
   const { artifact, artifactType, envId, componentId, projectId } = selected;
+  const updateTracingStatus = useUpdateArtifactTracingStatus();
+  const updateStatisticsStatus = useUpdateArtifactStatisticsStatus();
   const config = ENTRY_POINT_CONFIG[artifactType];
   const tabs = ENTRY_POINT_DETAIL_TABS[artifactType] ?? ['Overview', 'Runtimes'];
   const validTabIndex = Math.min(activeTabIndex, tabs.length - 1);
@@ -670,7 +675,13 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
   const tabProps: TabProps = { artifact, artifactType, envId, componentId, projectId };
   const container = artifact.container?.toString();
   const context = artifact.context?.toString();
-  const tracing = (artifact.tracing ?? 'disabled').toString().toLowerCase();
+  const showTracingToggle = ['RestApi', 'ProxyService', 'InboundEndpoint'].includes(artifactType);
+  const showStatisticsToggle = ['RestApi', 'ProxyService', 'InboundEndpoint'].includes(artifactType);
+  const toEnabled = (value: unknown) => {
+    if (typeof value === 'boolean') return value;
+    const normalized = (value ?? '').toString().toLowerCase();
+    return normalized === 'enabled' || normalized === 'active' || normalized === 'true';
+  };
 
   const artifactKey = `${artifactType}-${artifact.name}`;
   useEffect(() => {
@@ -681,6 +692,35 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
       setActiveTabIndex(0);
     }
   }, [artifactKey, selected.initialTab]);
+
+  useEffect(() => {
+    setTracingEnabled(toEnabled(artifact.tracing));
+    setStatisticsEnabled(toEnabled(artifact.statistics));
+  }, [artifactKey, artifact.tracing, artifact.statistics]);
+
+  const handleToggleTracing = (checked: boolean) => {
+    if (!showTracingToggle) return;
+    setTracingEnabled(checked);
+    updateTracingStatus.mutate({
+      envId,
+      componentId,
+      artifactType,
+      artifactName: artifact.name?.toString() ?? '',
+      trace: checked ? 'enable' : 'disable',
+    });
+  };
+
+  const handleToggleStatistics = (checked: boolean) => {
+    if (!showStatisticsToggle) return;
+    setStatisticsEnabled(checked);
+    updateStatisticsStatus.mutate({
+      envId,
+      componentId,
+      artifactType,
+      artifactName: artifact.name?.toString() ?? '',
+      statistics: checked ? 'enable' : 'disable',
+    });
+  };
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -708,7 +748,22 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
             Context: {context}
           </Typography>
         )}
-        <Chip label={tracing === 'enabled' ? 'Tracing Enabled' : 'Tracing Disabled'} size="small" color={tracing === 'enabled' ? 'success' : 'default'} variant="outlined" sx={{ ml: 'auto' }} />
+        {showTracingToggle && (
+          <Stack direction="row" alignItems="center" gap={1} sx={{ ml: 'auto' }}>
+            <Typography variant="body2" color="text.secondary">
+              Tracing
+            </Typography>
+            <Toggle checked={tracingEnabled} onChange={handleToggleTracing} disabled={updateTracingStatus.isPending} />
+          </Stack>
+        )}
+        {showStatisticsToggle && (
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Typography variant="body2" color="text.secondary">
+              Statistics
+            </Typography>
+            <Toggle checked={statisticsEnabled} onChange={handleToggleStatistics} disabled={updateStatisticsStatus.isPending} />
+          </Stack>
+        )}
         {(ARTIFACT_TABS[artifactType] ?? DEFAULT_ARTIFACT_TABS).includes('Source') && (
           <Button variant="outlined" size="small" onClick={onViewSource}>
             View Source
@@ -718,11 +773,13 @@ function EntryPointDetail({ selected, onViewSource, onViewRuntimes }: { selected
           View Runtimes
         </Button>
       </Stack>
-      <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
-        {tabs.map((t) => (
-          <Tab key={t} label={t} />
-        ))}
-      </Tabs>
+      {tabs.length > 1 && (
+        <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>
+          {tabs.map((t) => (
+            <Tab key={t} label={t} />
+          ))}
+        </Tabs>
+      )}
       {renderActiveTab()}
     </Box>
   );
@@ -866,13 +923,12 @@ function Environment({
         <Divider sx={{ my: 2 }} />
         {componentType === 'MI' && (
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-            <Typography variant="overline">VIEW MODE</Typography>
             <Stack direction="row">
               <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
                 Entry Points
               </Button>
               <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
-                All Artifacts
+                Supporting Artifacts
               </Button>
             </Stack>
           </Stack>

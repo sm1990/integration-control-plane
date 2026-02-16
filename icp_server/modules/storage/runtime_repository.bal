@@ -255,8 +255,8 @@ public isolated function getListenersForRuntime(string runtimeId) returns types:
 public isolated function getApisForRuntime(string runtimeId) returns types:RestApi[]|error {
     types:RestApi[] apiList = [];
     stream<types:RestApi, sql:Error?> apiStream = dbClient->query(`
-        SELECT api_name, url, context, version, state, tracing, carbon_app
-        FROM runtime_apis 
+        SELECT api_name, url, context, version, state, tracing, statistics, carbon_app
+        FROM runtime_apis
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -311,8 +311,8 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
         };
 
     stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(`
-        SELECT proxy_name, state, tracing, carbon_app
-        FROM runtime_proxy_services 
+        SELECT proxy_name, state, tracing, statistics, carbon_app
+        FROM runtime_proxy_services
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -322,6 +322,7 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
                 name: proxyRecord.proxy_name,
                 state: proxyRecord.state,
                 tracing: proxyRecord.tracing,
+                statistics: proxyRecord.statistics,
                 carbonApp: proxyRecord.carbon_app
             };
             string[] eps = endpointMap[proxyRecord.proxy_name] ?: [];
@@ -336,8 +337,8 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
 public isolated function getEndpointsForRuntime(string runtimeId) returns types:Endpoint[]|error {
     types:Endpoint[] endpointList = [];
     stream<types:EndpointRecordInDB, sql:Error?> endpointStream = dbClient->query(`
-        SELECT endpoint_name, endpoint_type, state, tracing, carbon_app
-        FROM runtime_endpoints 
+        SELECT endpoint_name, endpoint_type, state, tracing, statistics, carbon_app
+        FROM runtime_endpoints
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -348,6 +349,7 @@ public isolated function getEndpointsForRuntime(string runtimeId) returns types:
                 'type: endpointRecord.endpoint_type,
                 state: endpointRecord.state,
                 tracing: endpointRecord.tracing,
+                statistics: endpointRecord.statistics,
                 carbonApp: endpointRecord.carbon_app
             };
             endpointList.push(endpoint);
@@ -406,8 +408,8 @@ public isolated function getInboundEndpointsForRuntime(string runtimeId) returns
 public isolated function getSequencesForRuntime(string runtimeId) returns types:Sequence[]|error {
     types:Sequence[] sequenceList = [];
     stream<types:SequenceRecordInDB, sql:Error?> sequenceStream = dbClient->query(`
-        SELECT sequence_name, sequence_type, container, state, tracing, carbon_app
-        FROM runtime_sequences 
+        SELECT sequence_name, sequence_type, container, state, tracing, statistics, carbon_app
+        FROM runtime_sequences
         WHERE runtime_id = ${runtimeId}
     `);
 
@@ -419,6 +421,7 @@ public isolated function getSequencesForRuntime(string runtimeId) returns types:
                 container: sequenceRecord.container,
                 state: sequenceRecord.state,
                 tracing: sequenceRecord.tracing,
+                statistics: sequenceRecord.statistics,
                 carbonApp: sequenceRecord.carbon_app
             };
             sequenceList.push(sequence);

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
 import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject } from './queries';
+import { toBackendArtifactType } from './artifactToggleMutations';
 
 export interface CreateProjectInput {
   name: string;
@@ -133,11 +134,6 @@ export interface ListenerStateInput {
   action: 'START' | 'STOP';
 }
 
-/** PascalCase → kebab-case: "ProxyService" → "proxy-service" */
-function toKebab(s: string): string {
-  return s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-}
-
 // ── Component CRUD ──
 
 export interface CreateComponentInput {
@@ -204,7 +200,7 @@ export function useUpdateArtifactStatus() {
   return useMutation({
     mutationFn: (input: ArtifactStatusInput) =>
       gql<{ updateArtifactStatus: { status: string; message: string } }>(UPDATE_ARTIFACT_STATUS, {
-        input: { componentId: input.componentId, artifactType: toKebab(input.artifactType), artifactName: input.artifactName, status: input.status },
+        input: { componentId: input.componentId, artifactType: toBackendArtifactType(input.artifactType), artifactName: input.artifactName, status: input.status },
       }).then((d) => d.updateArtifactStatus),
     onMutate: async (input) => {
       const scope = (q: { queryKey: readonly unknown[] }) => q.queryKey[2] === input.envId && q.queryKey[3] === input.componentId;

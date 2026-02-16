@@ -134,10 +134,13 @@ export const support = {
 // ---------------------------------------------------------------------------
 // API URLs
 // ---------------------------------------------------------------------------
+
 // Re-export from config/api for backward compatibility
 // ---------------------------------------------------------------------------
 
 export { loginApiUrl, refreshTokenApiUrl, revokeTokenApiUrl, oidcAuthorizeApiUrl, oidcCallbackApiUrl } from './config/api';
 
 // Logs URL helper
-export const observabilityLogsApiUrl = (): string => window.API_CONFIG.logsUrl;
+export const observabilityLogsApiUrl = (): string => window.API_CONFIG.observabilityUrl + '/logs?live=true';
+// Metrics URL helper
+export const observabilityMetricsApiUrl = (): string => window.API_CONFIG.observabilityUrl + '/metrics';

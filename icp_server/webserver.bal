@@ -129,7 +129,7 @@ function updateFrontendConfig() returns error? {
     json configJson = {
         "VITE_GRAPHQL_URL": backendGraphqlEndpoint,
         "VITE_AUTH_BASE_URL": backendAuthBaseUrl,
-        "VITE_LOGS_URL": backendLogsEndpoint
+        "VITE_OBSERVABILITY_URL": backendObservabilityEndpoint
     };
 
     // Write to config.json

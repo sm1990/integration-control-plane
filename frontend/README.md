@@ -39,7 +39,7 @@ Edit `public/config.json` (or `dist/config.json` after build):
 {
   "VITE_GRAPHQL_URL": "https://localhost:9446/graphql",
   "VITE_AUTH_BASE_URL": "https://localhost:9445/auth",
-  "VITE_LOGS_URL": "https://localhost:9448/icp/observability/logs?live=true"
+  "VITE_OBSERVABILITY_URL": "https://localhost:9448/icp/observability"
 }
 ```
 

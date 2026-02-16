@@ -35,7 +35,7 @@ Edit `public/config.json` with your backend URLs, then restart the dev server:
 {
   "VITE_GRAPHQL_URL": "https://localhost:9446/graphql",
   "VITE_AUTH_BASE_URL": "https://localhost:9445/auth",
-  "VITE_LOGS_URL": "https://localhost:9448/icp/observability/logs?live=true"
+  "VITE_OBSERVABILITY_URL": "https://localhost:9448/icp/observability"
 }
 ```
 
@@ -146,6 +146,7 @@ If `config.json` fails to load:
 graphqlUrl: 'https://localhost:9446/graphql';
 authBaseUrl: 'https://localhost:9445/auth';
 logsUrl: 'https://localhost:9448/icp/observability/logs?live=true';
+metricsUrl: 'https://localhost:9448/icp/observability/metrics';
 ```
 
 ## Benefits

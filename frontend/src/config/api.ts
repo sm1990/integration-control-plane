@@ -25,13 +25,13 @@
 interface RuntimeConfig {
   VITE_GRAPHQL_URL?: string;
   VITE_AUTH_BASE_URL?: string;
-  VITE_LOGS_URL?: string;
+  VITE_OBSERVABILITY_URL?: string;
 }
 
 export interface ApiConfig {
   graphqlUrl: string;
   authBaseUrl: string;
-  logsUrl: string;
+  observabilityUrl: string;
 }
 
 // Extend window interface
@@ -45,7 +45,7 @@ declare global {
 const DEFAULT_CONFIG: ApiConfig = {
   graphqlUrl: 'https://localhost:9446/graphql',
   authBaseUrl: 'https://localhost:9445/auth',
-  logsUrl: 'https://localhost:9448/icp/observability/logs?live=true',
+  observabilityUrl: 'https://localhost:9448/icp/observability',
 };
 
 /**
@@ -64,7 +64,7 @@ export async function loadConfig(): Promise<void> {
     window.API_CONFIG = {
       graphqlUrl: config.VITE_GRAPHQL_URL || DEFAULT_CONFIG.graphqlUrl,
       authBaseUrl: config.VITE_AUTH_BASE_URL || DEFAULT_CONFIG.authBaseUrl,
-      logsUrl: config.VITE_LOGS_URL || DEFAULT_CONFIG.logsUrl,
+      observabilityUrl: config.VITE_OBSERVABILITY_URL || DEFAULT_CONFIG.observabilityUrl,
     };
 
     console.info('✓ Runtime configuration loaded from config.json');
@@ -81,7 +81,7 @@ function validateConfig(config: ApiConfig): void {
 
   if (!config.graphqlUrl) missing.push('VITE_GRAPHQL_URL');
   if (!config.authBaseUrl) missing.push('VITE_AUTH_BASE_URL');
-  if (!config.logsUrl) missing.push('VITE_LOGS_URL');
+  if (!config.observabilityUrl) missing.push('VITE_OBSERVABILITY_URL');
 
   if (missing.length > 0) {
     console.warn(`Warning: The following configuration values are not set: ${missing.join(', ')}. ` + 'Using default values.');

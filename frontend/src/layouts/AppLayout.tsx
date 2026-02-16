@@ -57,6 +57,7 @@ import { ALL_USER_MGT_PERMISSIONS, Permissions } from '../constants/permissions'
 const SIDEBAR_ICONS: Record<Resource, JSX.Element> = {
   overview: <LayoutDashboard size={20} />,
   logs: <ScrollText size={20} />,
+  metrics: <BarChart3 size={20} />,
   runtimes: <Settings size={20} />,
   environments: <Layers size={20} />,
   'access-control': <Shield size={20} />,
@@ -214,14 +215,6 @@ export default function AppLayout(): JSX.Element {
                       <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
                     </Sidebar.Item>
                   </Link>
-                  {hasProject(scope) && item.resource === 'logs' && (
-                    <Sidebar.Item id="metrics" key={`${item.resource}-metrics`}>
-                      <Sidebar.ItemIcon>
-                        <BarChart3 size={20} />
-                      </Sidebar.ItemIcon>
-                      <Sidebar.ItemLabel>Metrics</Sidebar.ItemLabel>
-                    </Sidebar.Item>
-                  )}
                 </React.Fragment>
               ))}
             </Sidebar.Category>

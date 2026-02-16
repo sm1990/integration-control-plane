@@ -52,9 +52,9 @@ configurable int defaultTokenExpiryTime = 3600; // 1 hour (in seconds)
 configurable string defaultRuntimeJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256";
 
 //Backend URLs for the frontend to call
-configurable string backendGraphqlEndpoint = "https://localhost:9445/graphql";
+configurable string backendGraphqlEndpoint = "https://localhost:9446/graphql";
 configurable string backendAuthBaseUrl = "https://localhost:9445/auth";
-configurable string backendLogsEndpoint = "https://localhost:9448/icp/observability/logs?live=true";
+configurable string backendObservabilityEndpoint = "https://localhost:9448/icp/observability";
 
 // Refresh token configuration
 configurable int refreshTokenExpiryTime = 86400; // 1 day (in seconds)

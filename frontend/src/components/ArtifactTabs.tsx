@@ -86,7 +86,7 @@ export function ArtifactWsdl({ envId, componentId, artifactType, artifact }: Tab
 export function ArtifactValue({ artifact, envId, componentId }: TabProps) {
   const { data: value, isLoading } = useLocalEntryValue(componentId, artifact.name?.toString() ?? '', envId);
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
-  if (!value) return <Typography sx={emptySx}>No value available.</Typography>;
+  if (value == null) return <Typography sx={emptySx}>No value available.</Typography>;
   return <CodeViewer code={value} language="xml" />;
 }
 

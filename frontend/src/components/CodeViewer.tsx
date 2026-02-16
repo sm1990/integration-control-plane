@@ -48,11 +48,11 @@ export default function CodeViewer({ code, language = 'xml', title, showCopyButt
   const formattedCode = useMemo(() => formatCode(code, language), [code, language]);
 
   const handleCopy = useCallback(() => {
-    if (!code) return;
+    if (!code || !navigator.clipboard?.writeText) return;
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    }, () => {});
   }, [code]);
 
   return (

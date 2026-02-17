@@ -156,6 +156,7 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
                       handleToggle(a, enabled);
                     }}
                     sx={{ mr: 1 }}
+                    aria-label={`${enabled ? 'Disable' : 'Enable'} ${a.name}`}
                   />
                 )}
                 <ChevronRight size={18} style={{ color: 'var(--oxygen-palette-text-secondary)', flexShrink: 0 }} />
@@ -290,7 +291,7 @@ export function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifa
           {artifact.name?.toString()}
         </Typography>
         <Stack direction="row" gap={0.5}>
-          <IconButton size="small" aria-label="maximize">
+          <IconButton size="small" aria-label="maximize" disabled>
             <Maximize2 size={16} />
           </IconButton>
           <IconButton size="small" aria-label="close" onClick={onClose}>

@@ -96,6 +96,8 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
     if (page > maxPage) setPage(maxPage);
   }, [page, maxPage]);
   const safePage = Math.min(page, maxPage);
+
+  if (!artifactMapping) return null;
   const paginatedArtifacts = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);
   const totalColumns = columns.length + (hasStateField ? 1 : 0);
   const columnSize = Math.floor(12 / totalColumns);

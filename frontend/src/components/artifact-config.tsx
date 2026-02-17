@@ -48,6 +48,8 @@ export const ARTIFACT_ICONS: Record<string, JSX.Element> = {
 export const ARTIFACT_TABS: Record<string, string[]> = {
   RestApi: ['Source', 'Runtimes'],
   ProxyService: ['Endpoints', 'WSDL', 'Runtimes'],
+  Endpoint: ['Source', 'Runtimes'],
+  Sequence: ['Source', 'Runtimes'],
   Task: ['Runtimes'],
   LocalEntry: ['Value', 'Runtimes'],
   CarbonApp: ['Artifacts', 'Runtimes'],

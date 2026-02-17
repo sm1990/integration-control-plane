@@ -169,7 +169,7 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
         <TablePagination
           component="div"
           count={filtered.length}
-          page={page}
+          page={safePage}
           onPageChange={(_, p) => setPage(p)}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={(e) => {

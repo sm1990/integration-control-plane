@@ -262,7 +262,7 @@ export default function Environment({
             {env.name}
           </Typography>
           <Stack direction="row" alignItems="center" gap={1}>
-            <IconButton size="small" onClick={handleRefresh} disabled={isRefreshing}>
+            <IconButton size="small" onClick={handleRefresh} disabled={isRefreshing} aria-label="Refresh">
               <RefreshCw
                 size={16}
                 style={{

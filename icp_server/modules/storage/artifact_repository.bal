@@ -182,6 +182,7 @@ public isolated function getServicesByEnvironmentAndComponent(string environment
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        s.runtimes = infos;
         serviceList.push(s);
     }
     log:printDebug("Services processed: " + serviceList.length().toString());
@@ -241,6 +242,7 @@ public isolated function getListenersByEnvironmentAndComponent(string environmen
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        l.runtimes = infos;
         listenerList.push(l);
     }
     log:printDebug("Listeners processed: " + listenerList.length().toString());
@@ -300,6 +302,7 @@ public isolated function getRestApisByEnvironmentAndComponent(string environment
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        api.runtimes = infos;
         apiList.push(api);
     }
 
@@ -359,6 +362,7 @@ public isolated function getCarbonAppsByEnvironmentAndComponent(string environme
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        app.runtimes = infos;
         appList.push(app);
     }
 
@@ -418,6 +422,7 @@ public isolated function getInboundEndpointsByEnvironmentAndComponent(string env
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        inbound.runtimes = infos;
         inboundList.push(inbound);
     }
 
@@ -477,6 +482,7 @@ public isolated function getEndpointsByEnvironmentAndComponent(string environmen
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        endpoint.runtimes = infos;
         endpointList.push(endpoint);
     }
 
@@ -536,6 +542,7 @@ public isolated function getSequencesByEnvironmentAndComponent(string environmen
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        sequence.runtimes = infos;
         sequenceList.push(sequence);
     }
 
@@ -619,6 +626,7 @@ public isolated function getProxyServicesByEnvironmentAndComponent(string enviro
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        proxy.runtimes = infos;
         proxyList.push(proxy);
     }
 
@@ -678,6 +686,7 @@ public isolated function getTasksByEnvironmentAndComponent(string environmentId,
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        task.runtimes = infos;
         taskList.push(task);
     }
 
@@ -737,6 +746,7 @@ public isolated function getTemplatesByEnvironmentAndComponent(string environmen
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        template.runtimes = infos;
         templateList.push(template);
     }
 
@@ -796,6 +806,7 @@ public isolated function getMessageStoresByEnvironmentAndComponent(string enviro
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        store.runtimes = infos;
         storeList.push(store);
     }
 
@@ -855,6 +866,7 @@ public isolated function getMessageProcessorsByEnvironmentAndComponent(string en
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        proc.runtimes = infos;
         processorList.push(proc);
     }
 
@@ -914,6 +926,7 @@ public isolated function getLocalEntriesByEnvironmentAndComponent(string environ
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        entry.runtimes = infos;
         entryList.push(entry);
     }
 
@@ -973,6 +986,7 @@ public isolated function getDataServicesByEnvironmentAndComponent(string environ
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        ds.runtimes = infos;
         dataServiceList.push(ds);
     }
 
@@ -1032,6 +1046,7 @@ public isolated function getDataSourcesByEnvironmentAndComponent(string environm
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        ds.runtimes = infos;
         sourceList.push(ds);
     }
 
@@ -1090,6 +1105,7 @@ public isolated function getRegistryResourcesByEnvironmentAndComponent(string en
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        res.runtimes = infos;
         resourceList.push(res);
     }
 
@@ -1150,6 +1166,7 @@ public isolated function getConnectorsByEnvironmentAndComponent(string environme
             string st = statusMap[rid] ?: "UNKNOWN";
             infos.push({runtimeId: rid, status: st});
         }
+        conn.runtimes = infos;
         connectorList.push(conn);
     }
 

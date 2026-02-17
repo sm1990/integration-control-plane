@@ -11,6 +11,14 @@ export function oidcCallbackUrl(): string {
   return '/auth/callback';
 }
 
+export function profileUrl(): string {
+  return '/profile';
+}
+
+export function forceChangePasswordUrl(): string {
+  return '/change-password';
+}
+
 // ---------------------------------------------------------------------------
 // Legacy path helpers — used by pages outside the nav matrix (Organizations,
 // Analytics, Components, ComponentEditor, Error, etc.). Migrate these pages
@@ -138,7 +146,7 @@ export const support = {
 // Re-export from config/api for backward compatibility
 // ---------------------------------------------------------------------------
 
-export { loginApiUrl, refreshTokenApiUrl, revokeTokenApiUrl, oidcAuthorizeApiUrl, oidcCallbackApiUrl } from './config/api';
+export { loginApiUrl, refreshTokenApiUrl, revokeTokenApiUrl, oidcAuthorizeApiUrl, oidcCallbackApiUrl, changePasswordApiUrl, forceChangePasswordApiUrl } from './config/api';
 
 // Logs URL helper
 export const observabilityLogsApiUrl = (): string => window.API_CONFIG.observabilityUrl + '/logs?live=true';

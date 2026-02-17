@@ -186,7 +186,8 @@ service /auth on httpListener {
                 username: username,
                 displayName: userDetails.displayName,
                 permissions: userPermissions,
-                isOidcUser: false
+                isOidcUser: false,
+                requirePasswordChange: userDetails.requirePasswordChange
             }
         };
     }
@@ -244,7 +245,7 @@ service /auth on httpListener {
                         userId = userInfo.userId,
                         username = userInfo.username);
 
-                json|error? createResult = storage:createUserV2(userInfo.userId, userInfo.username, userInfo.displayName, []);
+                json|error? createResult = storage:createUserV2(userInfo.userId, userInfo.username, userInfo.displayName, [], isOidcUser = true);
                 if createResult is error {
                     log:printError("Error creating OIDC user in database", createResult,
                             username = userInfo.username);
@@ -398,6 +399,148 @@ service /auth on httpListener {
                 username: userDetails.username,
                 displayName: userDetails.displayName,
                 permissions: userPermissions
+            }
+        };
+    }
+
+    // Change password endpoint - proxies to auth backend
+    // Requires JWT authentication to identify the user
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post 'change\-password(@http:Payload types:ChangePasswordRequest request, http:Request req) returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Password change requested");
+
+        // Extract user context from current JWT
+        types:UserContextV2|error userContext = extractUserContextFromRequest(req);
+        if userContext is error {
+            log:printError("Failed to extract user context for password change", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+
+        // Forward to auth backend with userId from JWT
+        json changePasswordPayload = {
+            userId: userContext.userId,
+            currentPassword: request.currentPassword,
+            newPassword: request.newPassword
+        };
+
+        http:Response|error authResponse = authBackendClient->post("/change-password", changePasswordPayload, {
+            "X-API-Key": authBackendApiKey
+        });
+
+        if authResponse is error {
+            log:printError("Error calling auth backend for password change", authResponse);
+            return utils:createInternalServerError("Password change service unavailable");
+        }
+
+        if authResponse.statusCode == http:STATUS_BAD_REQUEST {
+            json|error errorBody = authResponse.getJsonPayload();
+            if errorBody is json {
+                json|error messageField = errorBody.message;
+                string message = messageField is string ? messageField : "Invalid password change request";
+                return utils:createBadRequestError(message);
+            }
+            return utils:createBadRequestError("Invalid password change request");
+        }
+
+        if authResponse.statusCode == http:STATUS_UNAUTHORIZED {
+            return utils:createUnauthorizedError("Current password is incorrect");
+        }
+
+        if authResponse.statusCode != http:STATUS_OK {
+            log:printError("Unexpected status code from auth backend for password change", statusCode = authResponse.statusCode);
+            return utils:createInternalServerError("Password change failed");
+        }
+
+        // Clear require_password_change flag if it was set
+        error? flagResult = storage:setRequirePasswordChange(userContext.userId, false);
+        if flagResult is error {
+            log:printWarn("Could not clear require_password_change flag after password change", userId = userContext.userId);
+        }
+
+        log:printInfo("Password changed successfully", userId = userContext.userId, username = userContext.username);
+        return <http:Ok>{
+            body: {
+                message: "Password changed successfully"
+            }
+        };
+    }
+
+    // Force change password endpoint - used after admin password reset
+    // Requires JWT auth but does NOT require current password
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post 'force\-change\-password(@http:Payload types:ForceChangePasswordRequest request, http:Request req) returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError {
+        log:printInfo("Force password change requested");
+
+        types:UserContextV2|error userContext = extractUserContextFromRequest(req);
+        if userContext is error {
+            log:printError("Failed to extract user context for force password change", userContext);
+            return utils:createUnauthorizedError("Invalid authorization token");
+        }
+
+        json payload = {
+            newPassword: request.newPassword
+        };
+
+        http:Response|error authResponse = authBackendClient->post(string `/force-change-password?userId=${userContext.userId}`, payload, {
+            "X-API-Key": authBackendApiKey
+        });
+
+        if authResponse is error {
+            log:printError("Error calling auth backend for force password change", authResponse);
+            return utils:createInternalServerError("Password change service unavailable");
+        }
+
+        if authResponse.statusCode == http:STATUS_BAD_REQUEST {
+            json|error errorBody = authResponse.getJsonPayload();
+            if errorBody is json {
+                json|error messageField = errorBody.message;
+                string message = messageField is string ? messageField : "Invalid request";
+                return utils:createBadRequestError(message);
+            }
+            return utils:createBadRequestError("Invalid request");
+        }
+
+        if authResponse.statusCode != http:STATUS_OK {
+            log:printError("Unexpected status code from auth backend for force password change", statusCode = authResponse.statusCode);
+            return utils:createInternalServerError("Password change failed");
+        }
+
+        // Clear require_password_change flag in main DB
+        error? flagResult = storage:setRequirePasswordChange(userContext.userId, false);
+        if flagResult is error {
+            log:printError("Error clearing require_password_change flag", flagResult, userId = userContext.userId);
+            // Don't fail the request - the password was already changed successfully
+            log:printWarn("Password changed but require_password_change flag could not be cleared");
+        }
+
+        log:printInfo("Password force-changed successfully", userId = userContext.userId);
+        return <http:Ok>{
+            body: {
+                message: "Password changed successfully"
             }
         };
     }
@@ -1922,6 +2065,157 @@ service /auth on httpListener {
         log:printInfo(string `Successfully deleted user ${userId}`);
 
         return <http:NoContent>{};
+    }
+
+    // POST /auth/orgs/{orgHandle}/users/{userId}/reset-password - Admin password reset
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post orgs/[string orgHandle]/users/[string userId]/'reset\-password(http:Request req) returns http:Ok|http:BadRequest|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+        log:printInfo("Admin password reset requested", orgHandle = orgHandle, targetUserId = userId);
+
+        // Permission check: org-level user management
+        types:UserContextV2|error userContext = extractUserContextFromRequest(req);
+        if userContext is error {
+            return utils:createUnauthorizedError("Invalid or missing authentication token");
+        }
+        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
+        boolean|error hasPermission = auth:hasPermission(userContext.userId, auth:PERMISSION_USER_MANAGE_USERS, orgScope);
+        if hasPermission is error {
+            log:printError("Error checking permissions", hasPermission, userId = userContext.userId);
+            return utils:createInternalServerError("Error checking permissions");
+        }
+        if !hasPermission {
+            return <http:Forbidden>{
+                body: {
+                    message: "Insufficient permissions to reset user passwords"
+                }
+            };
+        }
+
+        // Proxy to auth backend
+        json resetPayload = {
+            userId: userId
+        };
+
+        http:Response|error authResponse = authBackendClient->post("/reset-password", resetPayload, {
+            "X-API-Key": authBackendApiKey
+        });
+
+        if authResponse is error {
+            log:printError("Error calling auth backend for password reset", authResponse);
+            return utils:createInternalServerError("Password reset service unavailable");
+        }
+
+        if authResponse.statusCode == http:STATUS_BAD_REQUEST {
+            json|error errorBody = authResponse.getJsonPayload();
+            if errorBody is json {
+                json|error messageField = errorBody.message;
+                string message = messageField is string ? messageField : "Invalid request";
+                return utils:createBadRequestError(message);
+            }
+            return utils:createBadRequestError("Invalid request");
+        }
+
+        if authResponse.statusCode != http:STATUS_OK {
+            log:printError("Unexpected status from auth backend for password reset", statusCode = authResponse.statusCode);
+            return utils:createInternalServerError("Password reset failed");
+        }
+
+        // Set require_password_change flag in main DB
+        error? flagResult = storage:setRequirePasswordChange(userId, true);
+        if flagResult is error {
+            log:printError("Error setting require_password_change flag", flagResult, userId = userId);
+            return utils:createInternalServerError("Password reset succeeded but failed to set password change flag");
+        }
+
+        // Revoke all existing refresh tokens so the user must re-authenticate
+        error? revokeResult = storage:revokeAllUserRefreshTokens(userId);
+        if revokeResult is error {
+            log:printWarn("Failed to revoke refresh tokens after password reset", userId = userId);
+        }
+
+        // Return the generated password to the admin
+        json|error responseBody = authResponse.getJsonPayload();
+        if responseBody is error {
+            log:printError("Error reading auth backend response", responseBody);
+            return utils:createInternalServerError("Password reset succeeded but failed to read response");
+        }
+
+        log:printInfo("Password reset successfully by admin", targetUserId = userId, adminUserId = userContext.userId);
+        return <http:Ok>{
+            body: responseBody
+        };
+    }
+
+    // POST /auth/orgs/{orgHandle}/users/{userId}/revoke-tokens - Revoke all user sessions
+    @http:ResourceConfig {
+        auth: [
+            {
+                jwtValidatorConfig: {
+                    issuer: frontendJwtIssuer,
+                    audience: frontendJwtAudience,
+                    signatureConfig: {
+                        secret: defaultJwtHMACSecret
+                    }
+                }
+            }
+        ]
+    }
+    isolated resource function post orgs/[string orgHandle]/users/[string userId]/'revoke\-tokens(http:Request req) returns http:Ok|http:Unauthorized|http:Forbidden|http:InternalServerError|error {
+        log:printInfo("Revoke tokens requested", orgHandle = orgHandle, targetUserId = userId);
+
+        // Permission check: org-level user management
+        types:UserContextV2|error userContext = extractUserContextFromRequest(req);
+        if userContext is error {
+            return utils:createUnauthorizedError("Invalid or missing authentication token");
+        }
+        types:AccessScope orgScope = {orgUuid: storage:DEFAULT_ORG_ID};
+        boolean|error hasPermission = auth:hasPermission(userContext.userId, auth:PERMISSION_USER_MANAGE_USERS, orgScope);
+        if hasPermission is error {
+            log:printError("Error checking permissions", hasPermission, userId = userContext.userId);
+            return utils:createInternalServerError("Error checking permissions");
+        }
+        if !hasPermission {
+            return <http:Forbidden>{
+                body: {
+                    message: "Insufficient permissions to revoke user sessions"
+                }
+            };
+        }
+
+        // Prevent revoking own tokens (admin should use regular logout)
+        if userContext.userId == userId {
+            return <http:Forbidden>{
+                body: {
+                    message: "Cannot revoke your own sessions. Use the regular logout instead."
+                }
+            };
+        }
+
+        // Revoke all refresh tokens
+        error? revokeResult = storage:revokeAllUserRefreshTokens(userId);
+        if revokeResult is error {
+            log:printError("Error revoking refresh tokens", revokeResult, userId = userId);
+            return utils:createInternalServerError("Failed to revoke user sessions");
+        }
+
+        log:printInfo("All sessions revoked successfully", targetUserId = userId, adminUserId = userContext.userId);
+        return <http:Ok>{
+            body: {
+                message: "All sessions revoked successfully"
+            }
+        };
     }
 
     // ============================================================================

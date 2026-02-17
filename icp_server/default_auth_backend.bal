@@ -55,30 +55,29 @@ service / on defaultAuthServiceListener {
     function init() {
         log:printInfo("Authentication service started at " + authServiceHost + ":" + authServicePort.toString());
     }
-
     resource function post authenticate(@http:Header {name: "X-API-Key"} string? apiKeyHeader, types:Credentials request) returns http:Ok|http:BadRequest|http:Unauthorized|error {
 
-        // TODO Validate API key
+        // TODO Remove API key. move to a different authn mechanism
         if apiKeyHeader is () || apiKeyHeader != apiKey {
             log:printWarn("Authentication attempt with invalid API key");
             return utils:createUnauthorizedError("Invalid API key");
         }
 
         // Perform authentication against database
-        types:User|error user = authenticateUser(request.username, request.password);
-        if user is error {
-            log:printError("Error authenticating user", user);
+        types:User|error authResult = authenticateUser(request.username, request.password);
+        if authResult is error {
+            log:printError("Error authenticating user", authResult);
             return utils:createUnauthorizedError("Invalid credentials");
         }
 
         // Create response timestamp
         string responseTimestamp = time:utcToString(time:utcNow());
-        log:printInfo("User authenticated successfully: " + user.username);
+        log:printInfo("User authenticated successfully: " + authResult.username);
         return <http:Ok>{
             body: {
                 authenticated: true,
-                userId: user.userId,
-                displayName: user.displayName,
+                userId: authResult.userId,
+                displayName: authResult.displayName,
                 timestamp: responseTimestamp
             }
         };
@@ -131,6 +130,7 @@ service / on defaultAuthServiceListener {
         }
 
         // Hash new password
+        //TODO add a salt
         string|crypto:Error newPasswordHash = crypto:hashBcrypt(request.newPassword);
         if newPasswordHash is crypto:Error {
             log:printError("Error hashing new password", newPasswordHash);
@@ -145,6 +145,81 @@ service / on defaultAuthServiceListener {
         }
 
         log:printInfo("Password changed successfully", userId = userId);
+        return <http:Ok>{
+            body: {
+                message: "Password changed successfully"
+            }
+        };
+    }
+
+    resource function post 'reset\-password(@http:Header {name: "X-API-Key"} string? apiKeyHeader, types:ResetPasswordRequest request) returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError|error {
+
+        if apiKeyHeader is () || apiKeyHeader != apiKey {
+            log:printWarn("Password reset attempt with invalid API key");
+            return utils:createUnauthorizedError("Invalid API key");
+        }
+
+        // Verify user exists
+        types:UserCredentials|error credentials = getUserCredentialsById(request.userId);
+        if credentials is error {
+            if credentials is sql:NoRowsError {
+                return utils:createBadRequestError("User not found or is an SSO user");
+            }
+            log:printError("Error fetching user credentials for reset", credentials);
+            return utils:createInternalServerError("Failed to fetch user credentials");
+        }
+
+        // Generate random one-time password
+        string otp = generateRandomPassword();
+
+        // Hash and store
+        string|crypto:Error otpHash = crypto:hashBcrypt(otp);
+        if otpHash is crypto:Error {
+            log:printError("Error hashing generated password", otpHash);
+            return utils:createInternalServerError("Failed to process password");
+        }
+
+        error? updateResult = resetUserPasswordInDb(request.userId, otpHash);
+        if updateResult is error {
+            log:printError("Error resetting password", updateResult, userId = request.userId);
+            return utils:createInternalServerError("Failed to reset password");
+        }
+
+        log:printInfo("Password reset successfully by admin", userId = request.userId);
+        return <http:Ok>{
+            body: {
+                password: otp,
+                message: "Password has been reset. The user must change it on next login."
+            }
+        };
+    }
+
+    resource function post 'force\-change\-password(@http:Header {name: "X-API-Key"} string? apiKeyHeader, types:ForceChangePasswordRequest request, string userId) returns http:Ok|http:BadRequest|http:Unauthorized|http:InternalServerError|error {
+
+        if apiKeyHeader is () || apiKeyHeader != apiKey {
+            log:printWarn("Force password change attempt with invalid API key");
+            return utils:createUnauthorizedError("Invalid API key");
+        }
+
+        if request.newPassword.trim().length() == 0 {
+            return utils:createBadRequestError("New password is required");
+        }
+
+        // Hash new password
+        string|crypto:Error newPasswordHash = crypto:hashBcrypt(request.newPassword);
+        if newPasswordHash is crypto:Error {
+            log:printError("Error hashing new password", newPasswordHash);
+            return utils:createInternalServerError("Failed to process new password");
+        }
+
+        // Update password and clear require_password_change flag
+        error? updateResult = forceUpdateUserPasswordInDb(userId, newPasswordHash);
+        if updateResult is error {
+            log:printError("Error force-changing password", updateResult, userId = userId);
+            return utils:createInternalServerError("Failed to change password");
+        }
+
+        log:printInfo("Password force-changed successfully", userId = userId);
         return <http:Ok>{
             body: {
                 message: "Password changed successfully"
@@ -216,9 +291,10 @@ isolated function authenticateUser(string username, string password) returns typ
     log:printDebug("Attempting to authenticate user: " + username);
     // Query user credentials table from separate credentials database
     types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
-        `SELECT user_id as userId, username, display_name as displayName, 
-                password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
-         FROM user_credentials 
+        `SELECT user_id as userId, username, display_name as displayName,
+                password_hash as passwordHash,
+                created_at as createdAt, updated_at as updatedAt
+         FROM user_credentials
          WHERE username = ${username}`
     );
 
@@ -252,9 +328,10 @@ isolated function authenticateUser(string username, string password) returns typ
 isolated function getUserCredentialsById(string userId) returns types:UserCredentials|error {
     log:printDebug(string `Fetching credentials for userId: ${userId}`);
     types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
-        `SELECT user_id as userId, username, display_name as displayName, 
-                password_hash as passwordHash, created_at as createdAt, updated_at as updatedAt
-         FROM user_credentials 
+        `SELECT user_id as userId, username, display_name as displayName,
+                password_hash as passwordHash,
+                created_at as createdAt, updated_at as updatedAt
+         FROM user_credentials
          WHERE user_id = ${userId}`
     );
 
@@ -270,8 +347,8 @@ isolated function updateUserPasswordInDb(string userId, string newPasswordHash) 
     log:printDebug(string `Updating password for user: ${userId}`);
 
     sql:ExecutionResult result = check credentialsDbClient->execute(
-        `UPDATE user_credentials 
-         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP 
+        `UPDATE user_credentials
+         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = ${userId}`
     );
 
@@ -281,6 +358,49 @@ isolated function updateUserPasswordInDb(string userId, string newPasswordHash) 
 
     log:printInfo(string `Successfully updated password for user ${userId}`);
     return ();
+}
+
+isolated function resetUserPasswordInDb(string userId, string newPasswordHash) returns error? {
+    log:printDebug(string `Admin resetting password for user: ${userId}`);
+
+    sql:ExecutionResult result = check credentialsDbClient->execute(
+        `UPDATE user_credentials
+         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ${userId}`
+    );
+
+    if result.affectedRowCount == 0 {
+        return error(string `User not found: ${userId}`);
+    }
+
+    log:printInfo(string `Successfully reset password for user ${userId}`);
+    return ();
+}
+
+isolated function forceUpdateUserPasswordInDb(string userId, string newPasswordHash) returns error? {
+    log:printDebug(string `Force-changing password for user: ${userId}`);
+
+    sql:ExecutionResult result = check credentialsDbClient->execute(
+        `UPDATE user_credentials
+         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ${userId}`
+    );
+
+    if result.affectedRowCount == 0 {
+        return error(string `User not found: ${userId}`);
+    }
+
+    log:printInfo(string `Successfully force-changed password for user ${userId}`);
+    return ();
+}
+
+isolated function generateRandomPassword() returns string {
+    // Generate a random 12-character password using two UUIDs
+    string id1 = uuid:createRandomUuid();
+    string id2 = uuid:createRandomUuid();
+    // Take first 6 chars from each UUID (skipping hyphens) for a 12-char password
+    string chars = id1.substring(0, 8) + id2.substring(0, 4);
+    return chars;
 }
 
 // Local helper: create user credentials only (auth backend manages user_credentials table in separate DB)

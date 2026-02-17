@@ -47,7 +47,7 @@ import { useArtifactTypes, useArtifacts, ARTIFACT_QUERY_MAP, type GqlArtifact } 
 import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutations';
 import SearchField from './SearchField';
 import { ARTIFACT_ICONS, ARTIFACT_TABS, DEFAULT_ARTIFACT_TABS, ENTRY_POINT_TYPE_SET, formatArtifactTypeName, typePlural, type SelectedArtifact, type TabProps } from './artifact-config';
-import { ArtifactSource, ArtifactApiDefinition, ArtifactEndpoints, ArtifactWsdl, ArtifactValue, ArtifactCarbonArtifacts, ArtifactRuntimes } from './ArtifactTabs';
+import { ArtifactSource, ArtifactEndpoints, ArtifactWsdl, ArtifactValue, ArtifactCarbonArtifacts, ArtifactRuntimes } from './ArtifactTabs';
 
 function ListenerConfirmDialog({ open, action, listenerName, error, isPending, onConfirm, onCancel }: { open: boolean; action: 'START' | 'STOP'; listenerName: string; error?: string; isPending?: boolean; onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -99,10 +99,8 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
 
   if (!artifactMapping) return null;
   const paginatedArtifacts = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);
-  const totalColumns = columns.length + (hasStateField ? 1 : 0);
+  const totalColumns = Math.max(1, columns.length + (hasStateField ? 1 : 0));
   const columnSize = Math.floor(12 / totalColumns);
-
-  if (!artifactMapping) return null;
 
   const handleToggle = (artifact: GqlArtifact, enabled: boolean) => {
     if (artifactType === 'Listener') {
@@ -241,8 +239,6 @@ export function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifa
     switch (activeTab) {
       case 'Source':
         return <ArtifactSource {...tabProps} />;
-      case 'API definition':
-        return <ArtifactApiDefinition {...tabProps} />;
       case 'Endpoints':
         return <ArtifactEndpoints {...tabProps} />;
       case 'WSDL':
@@ -273,7 +269,7 @@ export function ArtifactDetail({ selected, onClose }: { selected: SelectedArtifa
           </IconButton>
         </Stack>
       </Stack>
-      <Box sx={{ px: 2 }}>
+      <Box sx={{ px: 2, overflow: 'auto', flex: 1 }}>
         {tabs.length > 0 && (
           <>
             <Tabs value={validTabIndex} onChange={(_, v) => setActiveTabIndex(v)} sx={{ mb: 2 }}>

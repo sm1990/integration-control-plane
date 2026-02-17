@@ -28,7 +28,8 @@ export function ArtifactSource({ envId, componentId, artifactType, artifact }: T
   const sourceType = ARTIFACT_TYPE_TO_SOURCE_TYPE[artifactType] ?? artifactType.toLowerCase();
   const { data: source, isLoading, error } = useArtifactSource(envId, componentId, sourceType, artifact.name?.toString() ?? '');
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
-  if (error || !source) return <Typography sx={emptySx}>No source content available.</Typography>;
+  if (error) return <Typography sx={emptySx}>{error instanceof Error ? error.message : 'Failed to load source.'}</Typography>;
+  if (!source) return <Typography sx={emptySx}>No source content available.</Typography>;
   return <CodeViewer code={source} language="xml" />;
 }
 

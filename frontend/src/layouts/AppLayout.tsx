@@ -105,6 +105,8 @@ export default function AppLayout(): JSX.Element {
       }
       case 'logs':
         return 'logs';
+      case 'metrics':
+        return 'metrics';
       case 'runtimes':
         return 'runtimes';
       case 'environments':

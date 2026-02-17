@@ -30,6 +30,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
     check validateHeartbeatData(heartbeat);
 
     boolean isNewRegistration = false;
+    boolean fullHeartbeatRequired = false;
     types:ControlCommand[] pendingCommands = [];
 
     // Upsert runtime record
@@ -80,7 +81,10 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
         // Create audit log entry
         string action = isNewRegistration ? "REGISTER" : "HEARTBEAT";
         int totalArtifacts = countTotalArtifacts(heartbeat.artifacts);
-
+        if (totalArtifacts == 0) {
+            fullHeartbeatRequired = true;
+            log:printWarn(string `No artifacts reported in heartbeat for runtime ${heartbeat.runtime}`);
+        }
         _ = check dbClient->execute(`
             INSERT INTO audit_logs (
                 runtime_id, action, details
@@ -108,6 +112,7 @@ public isolated function processHeartbeat(types:Heartbeat heartbeat) returns typ
 
     return {
         acknowledged: true,
+        fullHeartbeatRequired: fullHeartbeatRequired,
         commands: pendingCommands
     };
 }

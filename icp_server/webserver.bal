@@ -41,13 +41,30 @@ service / on httpListener {
         // Build file path
         string filePath = path.length() == 0 ? "index.html" : string:'join("/", ...path);
 
+        // Security: Reject paths containing ".." to prevent path traversal attacks
+        if filePath.includes("..") {
+            response.statusCode = 400;
+            response.setTextPayload("Invalid path");
+            log:printWarn("Path traversal attempt detected: " + filePath);
+            return response;
+        }
+
         // If path is a directory, serve index.html
         if filePath.endsWith("/") {
             filePath = filePath + "index.html";
         }
 
-        // Full path to build directory
-        string fullPath = "../www/" + filePath;
+        // Security: Normalize paths and ensure they stay within the base directory
+        string baseDir = check file:getAbsolutePath("../www");
+        string fullPath = check file:getAbsolutePath("../www/" + filePath);
+
+        // Ensure resolved path is within base directory
+        if !fullPath.startsWith(baseDir) {
+            response.statusCode = 403;
+            response.setTextPayload("Access denied");
+            log:printWarn("Directory traversal attempt blocked: " + fullPath);
+            return response;
+        }
 
         // Check if file exists
         boolean fileExists = check file:test(fullPath, file:EXISTS);

@@ -58,7 +58,7 @@ public isolated function sendMIControlCommandAsync(string runtimeId, string arti
 
         http:Client mgmtClient = mgmtClientResult;
         string hmacToken = check issueRuntimeHmacToken();
-        
+
         string artifactPath;
         json payload;
 
@@ -216,7 +216,7 @@ isolated function sendPendingBIControlCommands(string runtimeId) returns types:C
             `);
         }
     }
-    log:printInfo("pending commands" , pendingCommands = pendingCommands);
+    log:printInfo("pending commands", pendingCommands = pendingCommands);
     return pendingCommands;
 }
 

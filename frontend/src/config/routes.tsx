@@ -19,6 +19,8 @@ import { OrgAccessControl, ProjectAccessControl, ComponentAccessControl } from '
 import RoleDetail from '../pages/RoleDetail';
 import ProjectRoleDetail from '../pages/ProjectRoleDetail';
 import ComponentRoleDetail from '../pages/ComponentRoleDetail';
+import Profile from '../pages/Profile';
+import ForceChangePassword from '../pages/ForceChangePassword';
 import { ScopeResolver, generateMatrixRoutes, withScope, type Matrix } from '../nav';
 import { createElement } from 'react';
 
@@ -45,6 +47,7 @@ const routes: AppRoute[] = [
   {
     element: <ProtectedRoute />,
     children: [
+      { path: '/change-password', element: <ForceChangePassword /> },
       {
         element: <ScopeResolver />,
         children: [
@@ -58,6 +61,7 @@ const routes: AppRoute[] = [
               { path: orgRoleDetailUrl(':orgHandler', ':roleId'), element: <RoleDetail /> },
               { path: projectRoleDetailUrl(':orgHandler', ':projectHandler', ':roleId'), element: <ProjectRoleDetail /> },
               { path: componentRoleDetailUrl(':orgHandler', ':projectHandler', ':componentHandler', ':roleId'), element: <ComponentRoleDetail /> },
+              { path: '/profile', element: <Profile /> },
             ],
           },
         ],

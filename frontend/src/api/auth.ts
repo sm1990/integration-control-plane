@@ -62,6 +62,7 @@ export interface User {
   username: string;
   displayName: string;
   isSuperAdmin: boolean;
+  isOidcUser: boolean;
   groups: { groupId: string; groupName: string; groupDescription: string }[];
   groupCount: number;
 }

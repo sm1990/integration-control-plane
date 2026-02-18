@@ -23,8 +23,8 @@ import ballerina/sql;
 public isolated function getUserDetailsById(string userId) returns types:User|error {
     log:printDebug(string `Fetching user details for userId: ${userId}`);
     types:User|sql:Error user = dbClient->queryRow(
-        `SELECT user_id, username, display_name, is_super_admin, is_project_author, created_at, updated_at 
-         FROM users 
+        `SELECT user_id, username, display_name, is_super_admin, is_project_author, is_oidc_user, require_password_change, created_at, updated_at
+         FROM users
          WHERE user_id = ${userId}`
         );
 
@@ -40,13 +40,41 @@ public isolated function getUserDetailsById(string userId) returns types:User|er
 // RBAC V2 - User Management Functions
 // ============================================================================
 
+// Get single user with group memberships (RBAC v2)
+public isolated function getUserWithGroupsById(string userId) returns json|error {
+    log:printDebug(string `Fetching user with group memberships for userId: ${userId}`);
+    
+    // Get user details
+    types:User|error user = getUserDetailsById(userId);
+    if user is error {
+        return user;
+    }
+
+    // Build user with groups
+    json userWithGroups = {
+        userId: user.userId,
+        username: user.username,
+        displayName: user.displayName,
+        isSuperAdmin: user.isSuperAdmin,
+        isProjectAuthor: user.isProjectAuthor,
+        isOidcUser: user.isOidcUser,
+        groups: check getGroupsForUser(user.userId),
+        groupCount: (check getGroupsForUser(user.userId)).length(),
+        createdAt: user?.createdAt,
+        updatedAt: user?.updatedAt
+    };
+
+    log:printInfo(string `Successfully fetched user ${user.username} with group memberships`);
+    return userWithGroups;
+}
+
 // Get all users with their group memberships (RBAC v2)
 public isolated function getAllUsersV2() returns json[]|error {
     log:printDebug("Fetching all users with group memberships (RBAC v2)");
     
     // Get all users
     stream<types:User, sql:Error?> userStream = dbClient->query(
-        `SELECT user_id, username, display_name, is_super_admin, is_project_author, created_at, updated_at
+        `SELECT user_id, username, display_name, is_super_admin, is_project_author, is_oidc_user, require_password_change, created_at, updated_at
          FROM users
          ORDER BY username ASC`
     );
@@ -63,6 +91,7 @@ public isolated function getAllUsersV2() returns json[]|error {
             displayName: user.displayName,
             isSuperAdmin: user.isSuperAdmin,
             isProjectAuthor: user.isProjectAuthor,
+            isOidcUser: user.isOidcUser,
             groups: check getGroupsForUser(user.userId),
             groupCount: (check getGroupsForUser(user.userId)).length(),
             createdAt: user?.createdAt,
@@ -97,7 +126,7 @@ isolated function getGroupsForUser(string userId) returns json[]|error {
 
 // Create a new user (RBAC v2) with optional group assignments
 // Note: This only creates the user record in the main DB. Credentials are managed separately by auth backend.
-public isolated function createUserV2(string userId, string username, string displayName, string[] groupIds) returns json|error {
+public isolated function createUserV2(string userId, string username, string displayName, string[] groupIds, boolean isOidcUser = false) returns json|error {
     log:printDebug(string `Creating user (RBAC v2): ${username} with userId: ${userId}`);
     
     // Check if user already exists in main DB
@@ -113,8 +142,8 @@ public isolated function createUserV2(string userId, string username, string dis
     transaction {
         // Insert user into main database
         sql:ExecutionResult _ = check dbClient->execute(
-            `INSERT INTO users (user_id, username, display_name, is_super_admin, is_project_author)
-             VALUES (${userId}, ${username}, ${displayName}, false, false)`
+            `INSERT INTO users (user_id, username, display_name, is_super_admin, is_project_author, is_oidc_user)
+             VALUES (${userId}, ${username}, ${displayName}, false, false, ${isOidcUser})`
         );
         
         // Add user to groups if specified
@@ -141,6 +170,7 @@ public isolated function createUserV2(string userId, string username, string dis
         displayName: displayName,
         isSuperAdmin: false,
         isProjectAuthor: false,
+        isOidcUser: isOidcUser,
         groups: groups,
         groupCount: groups.length()
     };
@@ -195,4 +225,22 @@ public isolated function deleteUserV2(string userId, string currentUserId) retur
         log:printError(string `Transaction failed while deleting user ${userId}`, e);
         return error(string `Failed to delete user ${userId}`, e);
     }
+}
+
+// Set or clear the require_password_change flag for a user in the main DB
+public isolated function setRequirePasswordChange(string userId, boolean requireChange) returns error? {
+    log:printDebug(string `Setting require_password_change=${requireChange.toString()} for user: ${userId}`);
+
+    sql:ExecutionResult result = check dbClient->execute(
+        `UPDATE users
+         SET require_password_change = ${requireChange}, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ${userId}`
+    );
+
+    if result.affectedRowCount == 0 {
+        return error(string `User not found: ${userId}`);
+    }
+
+    log:printInfo(string `Successfully set require_password_change=${requireChange.toString()} for user ${userId}`);
+    return ();
 }

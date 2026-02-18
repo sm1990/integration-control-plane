@@ -2,6 +2,38 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { authGet, authPost, authPut, authDelete } from './auth';
 import type { User, Role, RoleDetail, Group, GroupRoleMapping, GroupUser, PermissionsResponse, RoleGroupMapping } from './auth';
 
+export function useCurrentUser(orgHandler: string, userId: string) {
+  return useQuery({
+    queryKey: ['currentUser', orgHandler, userId],
+    queryFn: () => authGet<User>(`/orgs/${orgHandler}/users/${userId}`),
+    enabled: !!userId,
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { currentPassword: string; newPassword: string }) => authPost<{ message: string }>('/change-password', input),
+  });
+}
+
+export function useForceChangePassword() {
+  return useMutation({
+    mutationFn: (input: { newPassword: string }) => authPost<{ message: string }>('/force-change-password', input),
+  });
+}
+
+export function useResetPassword(orgHandler: string) {
+  return useMutation({
+    mutationFn: (userId: string) => authPost<{ password: string; message: string }>(`/orgs/${orgHandler}/users/${userId}/reset-password`, {}),
+  });
+}
+
+export function useRevokeUserTokens(orgHandler: string) {
+  return useMutation({
+    mutationFn: (userId: string) => authPost<{ message: string }>(`/orgs/${orgHandler}/users/${userId}/revoke-tokens`, {}),
+  });
+}
+
 export function useUsers(orgHandler: string) {
   return useQuery({
     queryKey: ['users', orgHandler],

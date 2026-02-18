@@ -1845,6 +1845,14 @@ public type User record {
     }
     boolean isProjectAuthor = false;
     @sql:Column {
+        name: "is_oidc_user"
+    }
+    boolean isOidcUser = false;
+    @sql:Column {
+        name: "require_password_change"
+    }
+    boolean requirePasswordChange = false;
+    @sql:Column {
         name: "created_at"
     }
     string? createdAt?;
@@ -1921,6 +1929,22 @@ public type UpdateProfileRequest record {
 public type ChangePasswordRequest record {
     string userId?;
     string currentPassword;
+    string newPassword;
+};
+
+// Input type for admin password reset
+public type ResetPasswordRequest record {
+    string userId;
+};
+
+// Response type for admin password reset
+public type ResetPasswordResponse record {
+    string password;
+    string message;
+};
+
+// Input type for force password change (no current password required)
+public type ForceChangePasswordRequest record {
     string newPassword;
 };
 

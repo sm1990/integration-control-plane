@@ -94,3 +94,5 @@ export const refreshTokenApiUrl = (): string => `${window.API_CONFIG.authBaseUrl
 export const revokeTokenApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/revoke-token`;
 export const oidcAuthorizeApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/oidc/authorize-url`;
 export const oidcCallbackApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/login/oidc`;
+export const changePasswordApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/change-password`;
+export const forceChangePasswordApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/force-change-password`;

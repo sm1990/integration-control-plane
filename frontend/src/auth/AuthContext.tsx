@@ -11,6 +11,8 @@ interface UserInfo {
   userId: string;
   username: string;
   displayName: string;
+  isOidcUser: boolean;
+  requirePasswordChange: boolean;
 }
 
 interface AuthContextValue {
@@ -18,6 +20,9 @@ interface AuthContextValue {
   userId: string;
   username: string;
   displayName: string;
+  isOidcUser: boolean;
+  requirePasswordChange: boolean;
+  clearRequirePasswordChange: () => void;
   login: (username: string, password: string) => Promise<void>;
   loginWithOIDC: () => Promise<void>;
   handleOIDCCallback: (code: string, state: string | null) => Promise<void>;
@@ -64,10 +69,10 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       const body = await res.text();
       throw new Error(body || `Login failed (${res.status})`);
     }
-    const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean } = await res.json();
+    const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean; requirePasswordChange?: boolean } = await res.json();
     saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
 
-    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName };
+    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName, isOidcUser: data.isOidcUser, requirePasswordChange: data.requirePasswordChange ?? false };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     setUserInfo(user);
     setIsAuthenticated(true);
@@ -97,10 +102,19 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     }
     const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean } = await res.json();
     saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
-    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName };
+    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName, isOidcUser: data.isOidcUser, requirePasswordChange: false };
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     setUserInfo(user);
     setIsAuthenticated(true);
+  }, []);
+
+  const clearRequirePasswordChange = useCallback(() => {
+    setUserInfo((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, requirePasswordChange: false };
+      localStorage.setItem(USER_KEY, JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   const logout = useCallback(async () => {
@@ -118,12 +132,15 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       userId: userInfo?.userId ?? '',
       username: userInfo?.username ?? '',
       displayName: userInfo?.displayName ?? '',
+      isOidcUser: userInfo?.isOidcUser ?? false,
+      requirePasswordChange: userInfo?.requirePasswordChange ?? false,
+      clearRequirePasswordChange,
       login,
       loginWithOIDC,
       handleOIDCCallback,
       logout,
     }),
-    [isAuthenticated, userInfo, login, loginWithOIDC, handleOIDCCallback, logout],
+    [isAuthenticated, userInfo, clearRequirePasswordChange, login, loginWithOIDC, handleOIDCCallback, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

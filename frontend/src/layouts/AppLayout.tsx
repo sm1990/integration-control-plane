@@ -49,7 +49,7 @@ import { BarChart3, Bell, Building, ChevronRight, Layers, LayoutDashboard, LogOu
 import { useProjectByHandler, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
-import { loginUrl } from '../paths';
+import { loginUrl, profileUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { ALL_USER_MGT_PERMISSIONS, Permissions } from '../constants/permissions';
@@ -229,7 +229,7 @@ export default function AppLayout(): JSX.Element {
             <UserMenu>
               <UserMenu.Trigger name={displayName || username || 'User'} />
               <UserMenu.Header name={displayName || username || 'User'} email={username} role="Admin" />
-              <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" />
+              <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" onClick={() => navigate(profileUrl())} />
               <UserMenu.Item icon={<Settings size={18} />} label="Settings" />
               <UserMenu.Divider />
               <UserMenu.Logout icon={<LogOut size={18} />} onClick={() => setConfirmDialogOpen(true)} />

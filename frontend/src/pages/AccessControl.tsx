@@ -30,7 +30,7 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui';
-import { ArrowLeft, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
+import { ArrowLeft, ChevronDown, ChevronUp, Key, LogOut, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useMemo, useCallback, useEffect, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SearchField from '../components/SearchField';
@@ -57,6 +57,8 @@ import {
   useAddUsersToGroup,
   useUpdateUserGroups,
   useRemoveUserFromGroup,
+  useResetPassword,
+  useRevokeUserTokens,
 } from '../api/authQueries';
 import type { User, Group, Permission, Role } from '../api/auth';
 import { useAllEnvironments, useProjectByHandler, useComponentByHandler } from '../api/queries';
@@ -266,10 +268,15 @@ function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user
 function UsersTab({ orgHandler }: { orgHandler: string }) {
   const { data: users, isLoading } = useUsers(orgHandler);
   const deleteMutation = useDeleteUser(orgHandler);
+  const resetPasswordMutation = useResetPassword(orgHandler);
+  const revokeTokensMutation = useRevokeUserTokens(orgHandler);
   const [search, setSearch] = useState('');
   const [creating, setCreating] = useState(false);
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const [revokingUserId, setRevokingUserId] = useState<string | null>(null);
+  const [resetPasswordResult, setResetPasswordResult] = useState<{ username: string; password: string } | null>(null);
   const getSearchStr = useCallback((u: User) => `${u.username} ${u.displayName}`, []);
   const filtered = useFiltered(users ?? [], search, getSearchStr);
   const viewingUser = viewingUserId ? users?.find((u) => u.userId === viewingUserId) : null;
@@ -298,7 +305,12 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
         <TableBody>
           {filtered.map((u) => (
             <TableRow key={u.userId} hover sx={{ cursor: 'pointer' }} onClick={() => setViewingUserId(u.userId)}>
-              <TableCell>{u.displayName}</TableCell>
+              <TableCell>
+                <Stack direction="row" alignItems="center" gap={1}>
+                  {u.displayName}
+                  {u.isOidcUser && <Chip label="OIDC" size="small" color="info" />}
+                </Stack>
+              </TableCell>
               <TableCell>{u.username}</TableCell>
               <TableCell>
                 {u.groupCount > 0 ? (
@@ -312,22 +324,49 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
               <TableCell align="right">
                 {!u.isSuperAdmin && (
                   <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setViewingUserId(u.userId);
-                      }}>
-                      <Pencil size={16} />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeletingUserId(u.userId);
-                      }}>
-                      <Trash2 size={16} />
-                    </IconButton>
+                    <Tooltip title={u.isOidcUser ? 'Cannot reset password of OIDC user' : 'Reset Password'}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          disabled={u.isOidcUser}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setResettingUserId(u.userId);
+                          }}>
+                          <Key size={16} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    <Tooltip title="Revoke Sessions">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRevokingUserId(u.userId);
+                        }}>
+                        <LogOut size={16} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Edit">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingUserId(u.userId);
+                        }}>
+                        <Pencil size={16} />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete">
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingUserId(u.userId);
+                        }}>
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </Tooltip>
                   </Authorized>
                 )}
               </TableCell>
@@ -356,7 +395,94 @@ function UsersTab({ orgHandler }: { orgHandler: string }) {
             </Dialog>
           ) : null;
         })()}
+      {resettingUserId &&
+        (() => {
+          const u = users?.find((x) => x.userId === resettingUserId);
+          return u ? (
+            <Dialog open onClose={() => setResettingUserId(null)} maxWidth="xs" fullWidth>
+              <DialogTitle>Reset Password</DialogTitle>
+              <DialogContent>
+                <Typography>
+                  Reset the password for <strong>{u.displayName}</strong> ({u.username})? This will generate a one-time password that the user must change on next login.
+                </Typography>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setResettingUserId(null)}>Cancel</Button>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={resetPasswordMutation.isPending}
+                  onClick={() =>
+                    resetPasswordMutation.mutate(u.userId, {
+                      onSuccess: (data) => {
+                        setResettingUserId(null);
+                        setResetPasswordResult({ username: u.username, password: data.password });
+                      },
+                    })
+                  }>
+                  Reset Password
+                </Button>
+              </DialogActions>
+            </Dialog>
+          ) : null;
+        })()}
+      {revokingUserId &&
+        (() => {
+          const u = users?.find((x) => x.userId === revokingUserId);
+          return u ? (
+            <Dialog open onClose={() => setRevokingUserId(null)} maxWidth="xs" fullWidth>
+              <DialogTitle>Revoke Sessions</DialogTitle>
+              <DialogContent>
+                <Typography>
+                  Revoke all sessions for <strong>{u.displayName}</strong> ({u.username})? This will log the user out of all devices.
+                </Typography>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setRevokingUserId(null)}>Cancel</Button>
+                <Button variant="contained" color="error" disabled={revokeTokensMutation.isPending} onClick={() => revokeTokensMutation.mutate(u.userId, { onSuccess: () => setRevokingUserId(null) })}>
+                  Revoke Sessions
+                </Button>
+              </DialogActions>
+            </Dialog>
+          ) : null;
+        })()}
+      {resetPasswordResult && <ResetPasswordDialog username={resetPasswordResult.username} password={resetPasswordResult.password} onClose={() => setResetPasswordResult(null)} />}
     </>
+  );
+}
+
+function ResetPasswordDialog({ username, password, onClose }: { username: string; password: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(password).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>Password Reset</DialogTitle>
+      <DialogContent>
+        <Typography sx={{ mb: 2 }}>
+          The password for <strong>{username}</strong> has been reset. Share this one-time password with the user. They will be required to change it on their next login.
+        </Typography>
+        <Stack direction="row" alignItems="center" gap={1} sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+          <Typography variant="body1" sx={{ fontFamily: 'monospace', fontWeight: 600, flex: 1 }}>
+            {password}
+          </Typography>
+          <Button size="small" variant="outlined" onClick={handleCopy}>
+            {copied ? 'Copied' : 'Copy'}
+          </Button>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button variant="contained" onClick={onClose}>
+          Done
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

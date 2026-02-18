@@ -64,6 +64,8 @@ CREATE TABLE users (
     display_name NVARCHAR (200) NOT NULL,
     is_super_admin BIT NOT NULL DEFAULT 0,
     is_project_author BIT NOT NULL DEFAULT 0,
+    is_oidc_user BIT NOT NULL DEFAULT 0,
+    require_password_change BIT NOT NULL DEFAULT 0,
     created_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     updated_at DATETIME2 NOT NULL DEFAULT GETDATE (),
     INDEX idx_username (username),

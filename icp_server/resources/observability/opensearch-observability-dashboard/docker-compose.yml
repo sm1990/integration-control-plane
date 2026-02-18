@@ -1,0 +1,158 @@
+version: '3.8'
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:latest
+    container_name: opensearch
+    env_file:
+      - ./config/.env
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx2g"
+      - "plugins.security.disabled=false"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=10s || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:latest
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      - 'OPENSEARCH_HOSTS=["https://opensearch:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=false"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./config/dashboards/opensearch_dashboards.yml:/usr/share/opensearch-dashboards/config/opensearch_dashboards.yml
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - observability
+
+  data-prepper:
+    image: opensearchproject/data-prepper:latest
+    container_name: data-prepper
+    ports:
+      - "4900:4900"
+      - "4317:4317"
+      - "8021:8021"
+    env_file:
+      - ./config/.env
+    volumes:
+      - data_prepper_config:/usr/share/data-prepper/pipelines
+    depends_on:
+      opensearch:
+        condition: service_healthy
+      envsubst-service:
+        condition: service_healthy
+    networks:
+      - observability
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: fluent-bit
+    ports:
+      - "2020:2020"
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./config/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./config/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf
+      - ./config/fluent-bit/scripts:/fluent-bit/scripts
+      - ./logs/ballerina:/var/log/ballerina:ro
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - observability
+
+  envsubst-service:
+    image: nginx:alpine
+    env_file:
+      - ./config/.env
+    command: >
+      /bin/sh -c "
+      apk add --no-cache gettext &&
+      envsubst < /templates/pipelines.yaml.template > /output/pipelines.yaml &&
+      echo 'Template processing complete' &&
+      sleep infinity
+      "
+    volumes:
+      - ./config/data-prepper/pipelines.yaml.template:/templates/pipelines.yaml.template
+      - data_prepper_config:/output
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "test", "-s", "/output/pipelines.yaml"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+    restart: no
+
+
+  opensearch-setup:
+    image: curlimages/curl:latest
+    container_name: opensearch-setup
+    env_file:
+      - ./config/.env
+    volumes:
+      - ./setup:/setup
+    networks:
+      - observability
+    depends_on:
+      opensearch-dashboards:
+        condition: service_started
+    command: >
+      sh -c "
+        echo 'Waiting for OpenSearch to be ready...' &&
+        until curl -ku admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD https://opensearch:9200/_cluster/health; do
+          echo 'Waiting for OpenSearch...' &&
+          sleep 10
+        done &&
+
+        echo 'Creating index templates...' &&
+        curl -X PUT 'https://opensearch:9200/_index_template/wso2_integration_application_log_template' -ku admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD -H 'Content-Type: application/json' -d @/setup/index-template-request.json &&
+
+        echo 'Waiting for OpenSearch Dashboards to be ready...' &&
+        until curl -f -u admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD http://opensearch-dashboards:5601/api/status; do
+          echo 'Waiting for OpenSearch Dashboards...' &&
+          sleep 10
+        done &&
+
+        echo 'Importing dashboards...' &&
+        curl -X POST 'http://opensearch-dashboards:5601/api/saved_objects/_import' -ku admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD -H 'osd-xsrf: true' -F file=@/setup/opensearch-dashboards-template.ndjson &&
+
+        echo 'Setup completed successfully!'
+      "
+
+volumes:
+  opensearch_data:
+  data_prepper_config:
+
+networks:
+  observability:
+    driver: bridge
+    external: true
+    name: observability_network

@@ -1,0 +1,8 @@
+# K6 test output files
+summary.html
+test-results.json
+*.log
+
+# Environment-specific config
+.env
+local-config.js

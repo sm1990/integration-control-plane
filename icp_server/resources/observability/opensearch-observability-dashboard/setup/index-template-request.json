@@ -1,0 +1,75 @@
+{
+    "index_patterns": [
+        "ballerina-application-logs-*", "mi-application-logs-*"
+    ],
+    "template": {
+        "mappings": {
+            "properties": {
+                "kubernetes": {
+                    "type": "object",
+                    "properties": {
+                        "labels": {
+                            "type": "object",
+                            "properties": {
+                                "app": {
+                                    "type": "keyword"
+                                },
+                                "component": {
+                                    "type": "keyword"
+                                }
+                            }
+                        }
+                    }
+                },
+                "level": {
+                    "type": "keyword"
+                },
+                "time": {
+                    "type": "date"
+                },
+                "integration": {
+                    "type": "keyword"
+                },
+                "message": {
+                    "type": "text"
+                },
+                "product": {
+                    "type": "keyword"
+                },
+                "component": {
+                    "type": "keyword"
+                },
+                "package": {
+                    "type": "keyword"
+                },
+                "log_type": {
+                    "type": "keyword"
+                },
+                "service_type": {
+                    "type": "keyword"
+                },
+                "app": {
+                    "type": "keyword"
+                },
+                "app_name": {
+                    "type": "keyword"
+                },
+                "deployment": {
+                    "type": "keyword"
+                },
+                "module": {
+                    "type": "keyword"
+                },
+                "class": {
+                    "type": "keyword"
+                },
+                "artifact_container": {
+                    "type": "keyword"
+                },
+                "icp_runtimeId": {
+                    "type": "keyword"
+                }
+            }
+        }
+    }
+}

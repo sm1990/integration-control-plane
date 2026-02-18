@@ -1,0 +1,1076 @@
+# ============================================
+# Query Type - Read Operations
+# ============================================
+type Query {
+  # Runtime Queries
+  runtimes(status: String, runtimeType: String, environmentId: String, projectId: String, componentId: String): [Runtime!]!
+  runtime(runtimeId: String!): Runtime
+  services(runtimeId: String!): [Service!]!
+  listeners(runtimeId: String!): [Listener!]!
+
+  # Environment Queries
+  environments(orgUuid: String, type: String, projectId: String): [Environment!]!
+  adminEnvironments: [Environment!]!
+
+  # Project Queries
+  projects(orgId: Int): [Project!]!
+  adminProjects: [Project!]!
+  project(orgId: Int, projectId: String!): Project
+  projectCreationEligibility(orgId: Int!, orgHandler: String!): ProjectCreationEligibility!
+  projectHandlerAvailability(orgId: Int!, projectHandlerCandidate: String!): ProjectHandlerAvailability!
+
+  # Component Queries
+  components(orgHandler: String!, projectId: String, options: ComponentOptionsInput): [Component!]!
+  component(componentId: String, projectId: String, componentHandler: String): Component
+  componentDeployment(orgHandler: String!, orgUuid: String!, componentId: String!, versionId: String!, environmentId: String!): ComponentDeployment
+  componentArtifactTypes(componentId: String!): ArtifactTypes!
+
+  # Artifact Queries by Environment and Component
+  servicesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Service!]!
+  listenersByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Listener!]!
+  restApisByEnvironmentAndComponent(environmentId: String!, componentId: String!): [RestApi!]!
+  proxyServicesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [ProxyService!]!
+  endpointsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [MIEndpoint!]!
+  inboundEndpointsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [InboundEndpoint!]!
+  sequencesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Sequence!]!
+  tasksByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Task!]!
+  templatesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Template!]!
+  messageStoresByEnvironmentAndComponent(environmentId: String!, componentId: String!): [MessageStore!]!
+  messageProcessorsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [MessageProcessor!]!
+  localEntriesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [LocalEntry!]!
+  dataServicesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [DataService!]!
+  dataSourcesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [DataSource!]!
+  carbonAppsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [CarbonApp!]!
+  connectorsByEnvironmentAndComponent(environmentId: String!, componentId: String!): [Connector!]!
+  registryResourcesByEnvironmentAndComponent(environmentId: String!, componentId: String!): [RegistryResource!]!
+}
+
+# ============================================
+# Mutation Type - Write Operations
+# ============================================
+type Mutation {
+  # Runtime Mutations
+  deleteRuntime(runtimeId: String!): Boolean!
+
+  # Environment Mutations
+  createEnvironment(environment: EnvironmentInput!): Environment
+  deleteEnvironment(environmentId: String!): Boolean!
+  updateEnvironment(environmentId: String!, name: String, description: String): Environment
+  updateEnvironmentProductionStatus(environmentId: String!, isProduction: Boolean!): Environment
+
+  # Project Mutations
+  createProject(project: ProjectInput!): Project
+  deleteProject(orgId: Int!, projectId: String!): DeleteResponse!
+  updateProject(project: ProjectUpdateInput!): Project
+
+  # Component Mutations
+  createComponent(component: ComponentInput!): Component
+  deleteComponent(componentId: String!): Boolean!
+  deleteComponentV2(orgHandler: String!, componentId: String!, projectId: String!): DeleteComponentV2Response!
+  updateComponent(component: ComponentUpdateInput!): Component!
+
+  # Artifact Control Mutations
+  updateArtifactStatus(input: ArtifactStatusChangeInput!): ArtifactStatusChangeResponse!
+  updateArtifactTracingStatus(input: ArtifactTracingChangeInput!): ArtifactTracingChangeResponse!
+  updateArtifactStatisticsStatus(input: ArtifactStatisticsChangeInput!): ArtifactStatisticsChangeResponse!
+
+  # Listener Control Mutations
+  updateListenerState(input: ListenerControlInput!): ListenerControlResponse!
+}
+
+# ============================================
+# Runtime Type - Runtime Instance Details
+# ============================================
+type Runtime {
+  runtimeId: String!
+  runtimeType: String!
+  status: String!
+  version: String
+  component: Component!
+  environment: Environment!
+  platformName: String
+  platformVersion: String
+  platformHome: String
+  osName: String
+  osVersion: String
+  registrationTime: String
+  lastHeartbeat: String
+  artifacts: Artifacts
+}
+
+# ============================================
+# Artifacts Type - Runtime Artifacts Container
+# ============================================
+type Artifacts {
+  listeners: [Listener!]!
+  services: [Service!]!
+  apis: [RestApi!]!
+  proxyServices: [ProxyService!]!
+  endpoints: [MIEndpoint!]!
+  inboundEndpoints: [InboundEndpoint!]!
+  sequences: [Sequence!]!
+  tasks: [Task!]!
+}
+
+# ============================================
+# Service Type - Service Artifacts
+# ============================================
+type Service {
+  name: String!
+  package: String!
+  basePath: String!
+  state: ArtifactState!
+  resources: [Resource!]!
+}
+
+# ============================================
+# Listener Type - Listener Artifacts
+# ============================================
+type Listener {
+  name: String!
+  package: String!
+  protocol: String!
+  state: ArtifactState!
+}
+
+# ============================================
+# Resource Type - Service Resources
+# ============================================
+type Resource {
+  methods: [String!]!
+  url: String!
+}
+
+# ============================================
+# RestApi Type - MI REST API Artifacts
+# ============================================
+type RestApi {
+  name: String!
+  url: String!
+  urls: [String!]!
+  context: String!
+  version: String
+  state: ArtifactState!
+  tracing: String!
+  statistics: String!
+  carbonApp: String
+  resources: [ApiResource!]!
+}
+
+# ============================================
+# ApiResource Type - API Resource Path and Methods
+# ============================================
+type ApiResource {
+  path: String!
+  methods: String!
+}
+
+# ============================================
+# ProxyService Type - MI Proxy Service Artifacts
+# ============================================
+type ProxyService {
+  name: String!
+  state: ArtifactState!
+  tracing: String!
+  statistics: String!
+  carbonApp: String
+  endpoints: [String!]
+}
+
+# ============================================
+# MIEndpoint Type - MI Endpoint Artifacts
+# ============================================
+type MIEndpoint {
+  name: String!
+  type: String!
+  state: ArtifactState!
+  tracing: String!
+  statistics: String!
+  carbonApp: String
+  attributes: [EndpointAttribute!]
+}
+
+# ============================================
+# EndpointAttribute Type - Endpoint Attribute Key-Value
+# ============================================
+type EndpointAttribute {
+  name: String!
+  value: String
+}
+
+# ============================================
+# InboundEndpoint Type - MI Inbound Endpoint Artifacts
+# ============================================
+type InboundEndpoint {
+  name: String!
+  protocol: String!
+  sequence: String
+  state: ArtifactState!
+  statistics: String
+  onError: String
+  tracing: String!
+  carbonApp: String
+}
+
+# ============================================
+# Sequence Type - MI Sequence Artifacts
+# ============================================
+type Sequence {
+  name: String!
+  type: String
+  container: String
+  state: ArtifactState!
+  tracing: String!
+  statistics: String!
+  carbonApp: String
+}
+
+# ============================================
+# Task Type - MI Scheduled Task Artifacts
+# ============================================
+type Task {
+  name: String!
+  group: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# Template Type - MI Template Artifacts
+# ============================================
+type Template {
+  name: String!
+  type: String!
+  statistics: String!
+  tracing: String!
+  carbonApp: String
+}
+
+# ============================================
+# MessageStore Type - MI Message Store Artifacts
+# ============================================
+type MessageStore {
+  name: String!
+  type: String!
+  size: Int!
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# MessageProcessor Type - MI Message Processor Artifacts
+# ============================================
+type MessageProcessor {
+  name: String!
+  type: String!
+  class: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# LocalEntry Type - MI Local Entry Artifacts
+# ============================================
+type LocalEntry {
+  name: String!
+  type: String!
+  value: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# DataService Type - MI Data Service Artifacts
+# ============================================
+type DataService {
+  name: String!
+  description: String
+  wsdl: String
+  state: ArtifactState!
+  carbonApp: String
+}
+
+# ============================================
+# DataSource Type - MI Data Source Artifacts
+# ============================================
+type DataSource {
+  name: String!
+  type: String
+  driver: String
+  url: String
+  username: String
+  state: ArtifactState!
+}
+
+# ============================================
+# CarbonApp Type - MI Carbon Application Artifacts
+# ============================================
+type CarbonApp {
+  name: String!
+  version: String
+  state: String!
+  artifacts: [CarbonAppArtifact!]
+}
+
+# ============================================
+# CarbonAppArtifact Type - Artifact within Carbon App
+# ============================================
+type CarbonAppArtifact {
+  name: String!
+  type: String!
+}
+
+# ============================================
+# Connector Type - MI Connector Artifacts
+# ============================================
+type Connector {
+  name: String!
+  package: String!
+  version: String
+  state: ArtifactState!
+}
+
+# ============================================
+# RegistryResource Type - MI Registry Resource Artifacts
+# ============================================
+type RegistryResource {
+  name: String!
+  type: String!
+}
+
+# ============================================
+# RuntimeType Enum - Component Runtime Type
+# ============================================
+enum RuntimeType {
+  MI
+  BI
+}
+
+# ============================================
+# ArtifactState Enum - Artifact Status
+# ============================================
+enum ArtifactState {
+  FAILED
+  STOPPING
+  STARTING
+  DISABLED
+  ENABLED
+}
+
+# ============================================
+# Component Type - Application Component
+# ============================================
+type Component {
+  # Basic Identity Fields
+  id: String!
+  projectId: String!
+  orgHandler: String!
+  orgId: Int
+
+  # Component Metadata
+  name: String!
+  handler: String!
+  displayName: String!
+  displayType: String!
+  description: String
+  ownerName: String
+
+  # Status Fields
+  status: String!
+  initStatus: String
+
+  # Version & Timestamps
+  version: String!
+  createdAt: String!
+  lastBuildDate: String
+  updatedAt: String
+
+  # Classification
+  componentSubType: String
+  componentType: RuntimeType!
+  labels: String
+
+  # System Component Flag
+  isSystemComponent: Boolean
+
+  # Component Configuration Flags
+  apiId: String
+  httpBased: Boolean
+  isMigrationCompleted: Boolean
+  skipDeploy: Boolean
+  endpointShortUrlEnabled: Boolean
+  isUnifiedConfigMapping: Boolean
+  serviceAccessMode: String
+
+  # Nested Objects
+  repository: Repository
+  apiVersions: [ApiVersion!]
+  deploymentTracks: [DeploymentTrack!]
+
+  # Git Integration (for components with source control)
+  gitProvider: String
+  gitOrganization: String
+  gitRepository: String
+  branch: String
+
+  # Advanced Fields (used in specific views)
+  endpoints: [Endpoint!]
+  environmentVariables: [EnvironmentVariable!]
+  secrets: [Secret!]
+
+  # Legacy fields for backward compatibility
+  createdBy: String
+  updatedBy: String
+  componentId: String
+  project: Project
+}
+
+# ============================================
+# Project Type - Project Details
+# ============================================
+type Project {
+  id: String!
+  projectId: String!
+  orgId: Int!
+  name: String!
+  version: String
+  createdDate: String
+  handler: String!
+  extendedHandler: String
+  region: String
+  description: String
+  owner: String
+  labels: [String!]
+  defaultDeploymentPipelineId: String
+  deploymentPipelineIds: [String!]
+  type: String
+  gitProvider: String
+  gitOrganization: String
+  repository: String
+  branch: String
+  secretRef: String
+  createdBy: String
+  updatedAt: String
+  updatedBy: String
+}
+
+# ============================================
+# Environment Type - Deployment Environment
+# ============================================
+type Environment {
+  # Core Identity
+  environmentId: String!
+  id: String!
+  name: String!
+  description: String
+  isProduction: Boolean!
+
+  # Infrastructure & Region Configuration
+  region: String
+  clusterId: String
+  dnsPrefix: String
+
+  # Choreo Environment Configuration
+  choreoEnv: String
+
+  # API Management Environment Names
+  externalApimEnvName: String
+  internalApimEnvName: String
+  sandboxApimEnvName: String
+
+  # Features & Flags
+  critical: Boolean
+
+  # Legacy Virtual Host Configuration (deprecated)
+  vhost: String
+  sandboxVhost: String
+
+  # Legacy API Management (deprecated)
+  apiEnvName: String
+  apimEnvId: String
+
+  # Legacy Migration & Deployment (deprecated)
+  isMigrating: Boolean
+  promoteFrom: String
+
+  # Legacy Infrastructure (deprecated)
+  namespace: String
+  dpId: String
+  templateId: String
+  isPdp: Boolean
+  scaleToZeroEnabled: Boolean
+
+  # Audit Fields
+  createdAt: String
+  updatedAt: String
+  updatedBy: String
+  createdBy: String
+}
+
+# ============================================
+# Repository Type - Build & Deploy Configuration
+# ============================================
+type Repository {
+  # Build Configurations
+  buildpackConfig: BuildpackConfig
+  byocWebAppBuildConfig: ByocWebAppBuildConfig
+  byocBuildConfig: ByocBuildConfig
+  dockerBuildConfig: DockerBuildConfig
+  testRunnerConfig: TestRunnerConfig
+
+  # Repository Source Information
+  repositoryType: String
+  repositoryBranch: String
+  repositorySubPath: String
+  repositoryUrl: String
+
+  # Git Provider Information
+  bitbucketServerUrl: String
+  serverUrl: String
+  gitProvider: String
+  nameApp: String
+  nameConfig: String
+  branch: String
+  branchApp: String
+  organizationApp: String
+  organizationConfig: String
+  appSubPath: String
+
+  # Repository Flags
+  isUserManage: Boolean
+  isAuthorizedRepo: Boolean
+  isBuildConfigurationMigrated: Boolean
+}
+
+# ============================================
+# Buildpack Configuration
+# ============================================
+type BuildpackConfig {
+  versionId: String
+  buildContext: String
+  languageVersion: String
+  buildCommand: String
+  runCommand: String
+  isUnitTestEnabled: Boolean
+  pullLatestSubmodules: Boolean
+  enableTrivyScan: Boolean
+  buildpack: Buildpack
+  keyValues: [KeyValue!]
+}
+
+type Buildpack {
+  id: String!
+  name: String
+  language: String!
+  version: String
+  description: String
+}
+
+# ============================================
+# BYOC Web App Build Configuration
+# ============================================
+type ByocWebAppBuildConfig {
+  id: String
+  containerId: String
+  componentId: String
+  repositoryId: String
+  dockerContext: String
+  webAppType: String
+  port: Int
+  imageUrl: String
+  registryId: String
+  dockerfile: String
+  buildCommand: String
+  packageManagerVersion: String
+  outputDirectory: String
+  enableTrivyScan: Boolean
+}
+
+# ============================================
+# Docker Build Configuration
+# ============================================
+type DockerBuildConfig {
+  id: String
+  dockerContext: String
+  dockerfile: String
+  port: Int
+  imageUrl: String
+  registryId: String
+}
+
+# ============================================
+# BYOC Build Configuration
+# ============================================
+type ByocBuildConfig {
+  id: String
+  isMainContainer: Boolean
+  containerId: String
+  componentId: String
+  repositoryId: String
+  dockerContext: String
+  dockerfilePath: String
+  oasFilePath: String
+}
+
+# ============================================
+# Test Runner Configuration
+# ============================================
+type TestRunnerConfig {
+  dockerContext: String
+  postmanDirectory: String
+  testRunnerType: String
+}
+
+# ============================================
+# Key Value Pair
+# ============================================
+type KeyValue {
+  id: String
+  key: String!
+  value: String
+}
+
+# ============================================
+# API Version Type - API Management
+# ============================================
+type ApiVersion {
+  # Identity
+  id: String!
+  apiVersion: String!
+  versionId: String
+
+  # Proxy Configuration
+  proxyName: String
+  proxyUrl: String
+  proxyId: String
+
+  # State Management
+  state: String!
+  latest: Boolean!
+
+  # Git Integration
+  branch: String
+
+  # Access Control
+  accessibility: String
+
+  # Deployment Settings
+  autoDeployEnabled: Boolean
+
+  # Environment Versions
+  appEnvVersions: [AppEnvVersion!]
+
+  # Observability
+  cellDiagram: CellDiagram
+
+  # API Specification
+  openApiSpec: String
+  graphqlSchema: String
+
+  # Metadata
+  createdAt: String
+  updatedAt: String
+  description: String
+}
+
+# ============================================
+# App Environment Version Type
+# ============================================
+type AppEnvVersion {
+  environmentId: String!
+  releaseId: String!
+  release: Release
+}
+
+type Release {
+  id: String!
+  metadata: ReleaseMetadata
+  environmentId: String
+  environment: String
+  gitHash: String
+  gitOpsHash: String
+}
+
+type ReleaseMetadata {
+  choreoEnv: String
+}
+
+# ============================================
+# Cell Diagram - Observability & Architecture View
+# ============================================
+type CellDiagram {
+  data: String
+  message: String
+  errorName: String
+  success: Boolean!
+}
+
+# ============================================
+# Deployment Track Type - CI/CD Configuration
+# ============================================
+type DeploymentTrack {
+  # Identity
+  id: String!
+  componentId: String!
+
+  # Timestamps
+  createdAt: String!
+  updatedAt: String!
+
+  # Version Configuration
+  apiVersion: String!
+  branch: String
+  latest: Boolean!
+  versionStrategy: String
+
+  # Deployment Settings
+  description: String
+  autoDeployEnabled: Boolean
+  autoBuildEnabled: Boolean
+
+  # Environment Settings
+  environmentName: String
+  environmentId: String
+
+  # Deployment Status
+  deploymentStatus: String
+  lastDeployedAt: String
+}
+
+# ============================================
+# Endpoint Type - Service Endpoints
+# ============================================
+type Endpoint {
+  id: String!
+  componentId: String!
+  name: String!
+  url: String!
+  type: String!
+  protocol: String
+  port: Int
+  visibility: String
+}
+
+# ============================================
+# Environment Variable Type
+# ============================================
+type EnvironmentVariable {
+  key: String!
+  value: String
+  isSecret: Boolean!
+  description: String
+}
+
+# ============================================
+# Secret Type
+# ============================================
+type Secret {
+  key: String!
+  description: String
+  createdAt: String
+  updatedAt: String
+}
+
+# ============================================
+# Input Types for Mutations
+# ============================================
+
+# Environment Input
+input EnvironmentInput {
+  name: String!
+  description: String
+  isProduction: Boolean
+}
+
+# Project Input
+input ProjectInput {
+  orgId: Int!
+  orgHandler: String!
+  name: String!
+  version: String
+  projectHandler: String!
+  handler: String
+  region: String
+  description: String
+  defaultDeploymentPipelineId: String
+  deploymentPipelineIds: [String!]
+  type: String
+  gitProvider: String
+  gitOrganization: String
+  repository: String
+  branch: String
+  secretRef: String
+}
+
+# Component Input
+input ComponentInput {
+  # Required Fields
+  projectId: String!
+  name: String!
+
+  # Recommended Fields
+  displayName: String
+  description: String
+
+  # Organization Context (optional - can derive from projectId)
+  orgId: Int
+  orgHandler: String
+
+  # Component Classification (optional - can have defaults)
+  componentType: RuntimeType
+  technology: String
+
+  # Repository Integration (optional - for future use)
+  repository: String
+  branch: String
+  directoryPath: String
+  secretRef: String
+  isPublicRepo: Boolean
+}
+
+# Project Update Input
+input ProjectUpdateInput {
+  id: String!
+  orgId: Int
+  name: String
+  version: String
+  description: String
+}
+
+# Component Update Input
+input ComponentUpdateInput {
+  # Required field - component ID to update
+  id: String!
+
+  # Basic fields that can be updated
+  name: String
+  displayName: String
+  description: String
+  componentType: RuntimeType
+  version: String
+  labels: String
+  serviceAccessMode: String
+
+  # Extended fields (accepted for compatibility but may not be persisted)
+  apiId: String
+  httpBased: Boolean
+  isMigrationCompleted: Boolean
+  skipDeploy: Boolean
+  endpointShortUrlEnabled: Boolean
+  isUnifiedConfigMapping: Boolean
+  componentSubType: String
+}
+
+# ============================================
+# Artifact Status Change Input/Response
+# ============================================
+
+# Input for changing artifact status
+input ArtifactStatusChangeInput {
+  componentId: String!
+  artifactType: String!
+  artifactName: String!
+  status: String!
+}
+
+# Response for artifact status change
+type ArtifactStatusChangeResponse {
+  status: String!
+  message: String!
+  successCount: Int!
+  failedCount: Int!
+  details: [String!]!
+}
+
+# Input for artifact tracing change
+input ArtifactTracingChangeInput {
+  componentId: String!
+  artifactType: String!
+  artifactName: String!
+  trace: String!
+}
+
+# Response for artifact tracing change
+type ArtifactTracingChangeResponse {
+  status: String!
+  message: String!
+  successCount: Int!
+  failedCount: Int!
+  details: [String!]!
+}
+
+# Input for artifact statistics change
+# Supported artifact types: proxy-service, endpoint, api, sequence, inbound-endpoint, template
+input ArtifactStatisticsChangeInput {
+  componentId: String!
+  artifactType: String!
+  artifactName: String!
+  statistics: String!
+}
+
+# Response for artifact statistics change
+type ArtifactStatisticsChangeResponse {
+  status: String!
+  message: String!
+  successCount: Int!
+  failedCount: Int!
+  details: [String!]!
+}
+
+# ============================================
+# Input Types for Queries
+# ============================================
+
+# Component Filter Input
+input ComponentFilterInput {
+  withSystemComponents: Boolean
+  displayType: String
+  status: String
+  componentSubType: String
+}
+
+# Component Sort Input
+input ComponentSortInput {
+  field: String!
+  order: String!
+}
+
+# Pagination Input
+input PaginationInput {
+  limit: Int
+  offset: Int
+  cursor: String
+}
+
+# Component Options Input
+input ComponentOptionsInput {
+  filter: ComponentFilterInput
+  sort: ComponentSortInput
+  pagination: PaginationInput
+}
+
+# ============================================
+# Project Creation Eligibility Type
+# ============================================
+type ProjectCreationEligibility {
+  isProjectCreationAllowed: Boolean!
+}
+
+# ============================================
+# Project Handler Availability Type
+# ============================================
+type ProjectHandlerAvailability {
+  handlerUnique: Boolean!
+  alternateHandlerCandidate: String
+}
+
+# ============================================
+# Delete Response Type
+# ============================================
+type DeleteResponse {
+  status: String!
+  details: String!
+}
+
+# ============================================
+# Delete Component V2 Response Type
+# ============================================
+type DeleteComponentV2Response {
+  status: String!
+  canDelete: Boolean!
+  message: String!
+  encodedData: String!
+}
+
+# ============================================
+# Artifact Types Type
+# ============================================
+type ArtifactTypes {
+  availableTypes: [String!]!
+  componentType: RuntimeType!
+}
+
+# ============================================
+# Component Deployment Type - Deployment Information
+# ============================================
+type ComponentDeployment {
+  environmentId: String!
+  configCount: Int!
+  apiId: String
+  releaseId: String!
+  apiRevision: ApiRevision
+  build: BuildInfo!
+  imageUrl: String!
+  invokeUrl: String!
+  versionId: String!
+  deploymentStatus: String!
+  deploymentStatusV2: String!
+  version: String
+  cron: String
+  cronTimezone: String
+}
+
+# ============================================
+# API Revision Type
+# ============================================
+type ApiRevision {
+  id: String!
+  displayName: String!
+}
+
+# ============================================
+# Build Info Type - Build Information
+# ============================================
+type BuildInfo {
+  buildId: String!
+  deployedAt: String
+  commit: CommitInfo
+  sourceConfigMigrationStatus: SourceConfigMigrationStatus
+  runId: String!
+}
+
+# ============================================
+# Commit Info Type - Git Commit Information
+# ============================================
+type CommitInfo {
+  author: AuthorInfo!
+  sha: String!
+  message: String!
+  isLatest: Boolean!
+}
+
+# ============================================
+# Author Info Type - Commit Author Information
+# ============================================
+type AuthorInfo {
+  name: String!
+  date: String!
+  email: String!
+  avatarUrl: String!
+}
+
+# ============================================
+# Source Config Migration Status Type
+# ============================================
+type SourceConfigMigrationStatus {
+  canMigrate: Boolean!
+  existingFileName: String!
+  existingFileSchemaVersion: String!
+}
+
+# ============================================
+# Listener Control Input - used for enabling/disabling listeners
+# ============================================
+input ListenerControlInput {
+  runtimeIds: [String!]!
+  listenerName: String!
+  action: ControlAction!
+}
+
+# ============================================
+# Listener Control Response
+# ============================================
+type ListenerControlResponse {
+  success: Boolean!\n  message: String!
+  commandIds: [String!]!
+}

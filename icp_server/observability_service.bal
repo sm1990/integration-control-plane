@@ -1,0 +1,235 @@
+// Copyright (c) 2025, WSO2 Inc. (http://www.wso2.org) All Rights Reserved.
+//
+// WSO2 Inc. licenses this file to you under the Apache License,
+// Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+import icp_server.storage as storage;
+import icp_server.types as types;
+
+import ballerina/http;
+import ballerina/log;
+
+// HTTP client for OpenSearch with SSL verification disabled
+final http:Client observabilityClient = check new (observabilityBackendURL,
+    config = {
+        secureSocket: {
+            enable: false
+        }
+    }
+);
+
+// HTTP service configuration
+listener http:Listener observabilityListener = new (observabilityServerPort,
+    config = {
+        host: serverHost,
+        secureSocket: {
+            key: {
+                path: keystorePath,
+                password: keystorePassword
+            }
+        }
+    }
+);
+
+@http:ServiceConfig {
+    auth: [
+        {
+            jwtValidatorConfig: {
+                issuer: frontendJwtIssuer,
+                audience: frontendJwtAudience,
+                signatureConfig: {
+                    secret: defaultobservabilityJwtHMACSecret
+                }
+            }
+        }
+    ],
+    cors: {
+        allowOrigins: ["*"],
+        allowHeaders: ["Content-Type", "Authorization"]
+    }
+}
+service /icp/observability on observabilityListener {
+
+    function init() {
+        log:printInfo("Observability service started at " + serverHost + ":" + observabilityServerPort.toString());
+    }
+
+    resource function post logs(http:Request request, types:ICPLogEntryRequest logRequest) returns types:LogEntriesResponse|error {
+        log:printInfo("Received log request: " + logRequest.toString());
+
+        // Transform ICPLogEntryRequest to LogEntryRequest by resolving component/environment filters to runtime IDs
+        string[] runtimeIdList = check resolveRuntimeIds({componentId: logRequest.componentId,
+                                                          componentIdList: logRequest.componentIdList,
+                                                          environmentId: logRequest.environmentId,
+                                                          environmentList: logRequest.environmentList});
+
+        // If component/environment filters were provided but no runtimes found, return empty result
+        boolean hasFilters = logRequest.componentId is string ||
+                            (logRequest.componentIdList is string[] && (<string[]>logRequest.componentIdList).length() > 0) ||
+                            logRequest.environmentId is string ||
+                            (logRequest.environmentList is string[] && (<string[]>logRequest.environmentList).length() > 0);
+
+        if (hasFilters && runtimeIdList.length() == 0) {
+            log:printInfo("No runtimes found for the given component/environment filters. Returning empty result.");
+            return {
+                columns: [],
+                rows: []
+            };
+        }
+
+        // Resolve runtime types to request
+        types:LogIndexRuntimeType componentType = check resolveComponentTypes(runtimeIdList);
+        log:printDebug("Resolved component type: " + componentType.toString() + " for log filtering");  
+
+        // Construct LogEntryRequest with resolved runtime IDs and copy other filter fields
+        types:LogEntryRequest adaptorRequest = {
+            runtimeIdList: runtimeIdList,
+            logLevels: logRequest.logLevels,
+            region: logRequest.region,
+            searchPhrase: logRequest.searchPhrase,
+            regexPhrase: logRequest.regexPhrase,
+            startTime: logRequest.startTime,
+            endTime: logRequest.endTime,
+            'limit: logRequest.'limit,
+            sort: logRequest.sort
+        };
+
+        log:printInfo("Invoking observability adapter with " + runtimeIdList.length().toString() + " runtime IDs");
+
+        // Invoke observability adapter service
+        return check observabilityClient->post(string `/observability/logs/${componentType.toString()}`, adaptorRequest);
+    }
+
+    resource function post metrics(http:Request request, types:ICPMetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
+        
+        log:printInfo("Received metric request: " + metricRequest.toString());
+
+        // Transform ICPMetricEntryRequest to MetricEntryRequest by resolving component/environment filters to runtime IDs
+        string[] runtimeIdList = check resolveRuntimeIds({componentId: metricRequest.componentId,
+                                                          componentIdList: metricRequest.componentIdList,
+                                                          environmentId: metricRequest.environmentId,
+                                                          environmentList: metricRequest.environmentList});
+
+        // If component/environment filters were provided but no runtimes found, return empty result
+        boolean hasFilters = metricRequest.componentId is string ||
+                            (metricRequest.componentIdList is string[] && (<string[]>metricRequest.componentIdList).length() > 0) ||
+                            metricRequest.environmentId is string ||
+                            (metricRequest.environmentList is string[] && (<string[]>metricRequest.environmentList).length() > 0);
+
+        if (hasFilters && runtimeIdList.length() == 0) {
+            log:printInfo("No runtimes found for the given component/environment filters. Returning empty result.");
+            return {
+                metrics: []
+            };
+        }
+
+        // Construct MetricEntryRequest with resolved runtime IDs and copy other filter fields
+        types:MetricEntryRequest adaptorRequest = {
+            runtimeIdList: runtimeIdList,
+            region: metricRequest.region,
+            startTime: metricRequest.startTime,
+            endTime: metricRequest.endTime,
+            resolutionInterval: metricRequest.resolutionInterval
+        };
+
+        log:printInfo("Invoking observability adapter with " + runtimeIdList.length().toString() + " runtime IDs");
+
+        // Invoke observability adapter service
+        return check observabilityClient->post("/observability/metrics/", adaptorRequest);
+    }
+}
+
+// Resolve component/environment filters to runtime IDs by querying the storage layer
+isolated function resolveRuntimeIds(types:IntegrationDetails integrationDetails) returns string[]|error { 
+    string[] runtimeIds = [];
+
+    // Build list of component IDs to query
+    string[] componentIds = [];
+    if integrationDetails.componentId is string {
+        componentIds.push(<string>integrationDetails.componentId);
+    }
+    if integrationDetails.componentIdList is string[] {
+        componentIds.push(...<string[]>integrationDetails.componentIdList);
+    }
+
+    // Build list of environment IDs to query
+    string[] environmentIds = [];
+    if integrationDetails.environmentId is string {
+        environmentIds.push(<string>integrationDetails.environmentId);
+    }
+    if integrationDetails.environmentList is string[] {
+        environmentIds.push(...<string[]>integrationDetails.environmentList);
+    }
+
+    // Query runtimes based on filters
+    if componentIds.length() > 0 || environmentIds.length() > 0 {
+        // If both component and environment filters exist, query for each component-environment combination
+        if componentIds.length() > 0 && environmentIds.length() > 0 {
+            foreach string componentId in componentIds {
+                foreach string environmentId in environmentIds {
+                    types:Runtime[] runtimes = check storage:getRuntimes((), (), environmentId, (), componentId);
+                    foreach types:Runtime runtime in runtimes {
+                        runtimeIds.push(runtime.runtimeId);
+                    }
+                }
+            }
+        }
+        // If only component IDs, query by component
+        else if componentIds.length() > 0 {
+            foreach string componentId in componentIds {
+                types:Runtime[] runtimes = check storage:getRuntimes((), (), (), (), componentId);
+                foreach types:Runtime runtime in runtimes {
+                    runtimeIds.push(runtime.runtimeId);
+                }
+            }
+        }
+        // If only environment IDs, query by environment
+        else {
+            foreach string environmentId in environmentIds {
+                types:Runtime[] runtimes = check storage:getRuntimes((), (), environmentId, (), ());
+                foreach types:Runtime runtime in runtimes {
+                    runtimeIds.push(runtime.runtimeId);
+                }
+            }
+        }
+    }
+
+    log:printInfo("Resolved " + runtimeIds.length().toString() + " runtime IDs from component/environment filters");
+    return runtimeIds;
+}
+
+isolated function resolveComponentTypes(string[] runtimeIdList) returns types:LogIndexRuntimeType|error {
+    boolean hasMIRuntime = false;
+    boolean hasBIRuntime = false;
+    foreach string runtimeId in runtimeIdList {
+        types:RuntimeTypeRecord? runtimeType = check storage:getRuntimeTypeById(runtimeId);
+        if !(runtimeType is ()) && runtimeType.runtimeType == "MI" {
+            hasMIRuntime = true;
+        } else if !(runtimeType is ()) && runtimeType.runtimeType == "BI" {
+            hasBIRuntime = true;
+        }
+        if hasMIRuntime && hasBIRuntime {
+            return "ALL";
+        }
+    }
+    if hasBIRuntime {
+        return "BI";
+    }else if hasMIRuntime {
+        return "MI";
+    } else {
+        string errorMsg = "Could not resolve component types for filtering logs";
+        log:printError(errorMsg);
+        return error(errorMsg);
+    }
+}

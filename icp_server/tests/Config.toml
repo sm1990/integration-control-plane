@@ -1,0 +1,65 @@
+# Test Configuration for ICP Server
+# This configuration is used when running tests
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+serverPort = 9445
+serverHost = "0.0.0.0"
+graphqlPort = 9446
+
+# =============================================================================
+# OPERATIONAL CONFIGURATION
+# =============================================================================
+schedulerIntervalSeconds = 600
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+logLevel = "DEBUG"
+enableAuditLogging = true
+enableMetrics = true
+
+# =============================================================================
+# AUTHENTICATION BACKEND CONFIGURATION
+# =============================================================================
+authBackendUrl = "https://localhost:9447"
+authBackendApiKey = "default-api-key"
+
+# JWT Configuration
+defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256"
+frontendJwtIssuer = "icp-frontend-jwt-issuer"
+frontendJwtAudience = "icp-server"
+defaultTokenExpiryTime = 3600
+
+# =============================================================================
+# SSO (OIDC) CONFIGURATION FOR TESTING
+# =============================================================================
+# Mock OIDC provider for integration tests
+ssoEnabled = true
+ssoIssuer = "http://localhost:9458/oauth2/token"
+ssoAuthorizationEndpoint = "http://localhost:9458/oauth2/authorize"
+ssoTokenEndpoint = "http://localhost:9458/oauth2/token"
+ssoLogoutEndpoint = "http://localhost:9458/oauth2/logout"
+ssoClientId = "test-client-id"
+ssoClientSecret = "test-client-secret"
+ssoRedirectUri = "http://localhost:3000/auth/callback"
+ssoUsernameClaim = "email"
+ssoScopes = ["openid", "email", "profile"]
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+[icp_server.storage]
+dbHost = "mysql-db"
+dbPort = 3306
+dbName = "icp_database"
+dbUser = "root"
+dbPassword = "my-secret-pw"
+dbType = "mysql"
+heartbeatTimeoutSeconds = 30
+
+[[ballerina.log.modules]]
+name = "wso2/icp_server"
+level = "DEBUG"
+

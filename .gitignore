@@ -104,7 +104,6 @@ typings/
 .yarn-integrity
 
 # dotenv environment variables file
-.env
 .env.test
 
 # parcel-bundler cache (https://parceljs.org/)
@@ -131,4 +130,59 @@ typings/
 # webpack
 dist/
 
+# Gradle Build Files
+.gradle/
+build/
+dist/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+out/
+bin/
+target/
 
+# Local Gradle cache
+.gradle
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+
+# Editor backups
+*.backup
+*.bak
+
+# H2 database
+database/
+
+www/*
+
+frontend/.vite
+
+# Instruction and context files for agents
+frontend/agent-contexts
+frontend/net-dump
+.serena

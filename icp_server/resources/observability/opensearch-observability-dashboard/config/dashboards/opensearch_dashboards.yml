@@ -1,0 +1,29 @@
+# Server configuration
+server.name: opensearch-dashboards
+server.host: "0.0.0.0"
+server.port: 5601
+
+# OpenSearch connection
+opensearch.hosts: ["https://opensearch:9200"]
+
+opensearch.ssl.verificationMode: none
+opensearch.username: "admin"
+opensearch.password: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+opensearch.requestHeadersWhitelist: [authorization, securitytenant]
+
+opensearch_security.multitenancy.enabled: true
+opensearch_security.multitenancy.tenants.preferred: [Private, Global]
+opensearch_security.readonly_mode.roles: [kibana_read_only]
+# Use this setting if you are running opensearch-dashboards without https
+opensearch_security.cookie.secure: false
+
+# Branding configuration
+opensearchDashboards.branding.logo.defaultUrl: "https://raw.githubusercontent.com/wso2/observability-resources/main/images/wso2-dashboard-logo.png"
+opensearchDashboards.branding.mark.defaultUrl: "https://raw.githubusercontent.com/wso2/observability-resources/main/images/wso2-dashboard-icon.png"
+opensearchDashboards.branding.loadingLogo.defaultUrl: "https://raw.githubusercontent.com/wso2/observability-resources/main/images/loading.png"
+opensearchDashboards.branding.applicationTitle: "WSO2 Dashboard"
+
+# Logging configuration for debugging
+logging.dest: stdout
+logging.silent: false
+logging.quiet: false

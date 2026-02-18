@@ -1,0 +1,171 @@
+# ICP Server Configuration File
+# This file contains all configurable parameters for the Integration Control Plane server
+
+# =============================================================================
+# SERVER CONFIGURATION
+# =============================================================================
+# HTTP server settings
+# serverPort = 9445
+# serverHost = "0.0.0.0"
+# graphqlPort = 9090
+
+# =============================================================================
+# OPERATIONAL CONFIGURATION
+# =============================================================================
+# Runtime management settings
+schedulerIntervalSeconds = 30  # 30 seconds
+
+# Refresh token cleanup settings
+# refreshTokenCleanupIntervalSeconds = 86400  # 24 hours - clean up expired/revoked tokens
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+# Logging and monitoring settings
+logLevel = "INFO"  # Options: DEBUG, INFO, WARN, ERROR
+enableAuditLogging = true
+enableMetrics = true
+
+# =============================================================================
+# AUTHENTICATION BACKEND CONFIGURATION
+# =============================================================================
+# Authentication backend service settings
+# URL of the authentication backend service (can be custom implementation)
+authBackendUrl = "https://localhost:9447"
+authBackendApiKey = "default-api-key"
+
+
+# =============================================================================
+# AUTH SERVICE CONFIGURATION
+# =============================================================================
+# Authorization service settings
+defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256"
+
+# Token expiry settings
+# defaultTokenExpiryTime = 3600  # 1 hour - JWT access token expiry
+# refreshTokenExpiryTime = 604800  # 7 days - Refresh token expiry
+
+# Refresh token security settings
+# enableRefreshTokenRotation = true  # Rotate refresh token on each use (recommended for security)
+# maxRefreshTokensPerUser = 10  # Maximum active refresh tokens per user (0 = unlimited)
+#                                # Useful to limit the number of devices/sessions per user
+
+
+# =============================================================================
+# SSO (OIDC) CONFIGURATION
+# =============================================================================
+# Single Sign-On using OpenID Connect (OIDC)
+# Enable this to allow users to authenticate with an external identity provider
+# This works alongside the pluggable authentication backend
+
+# Enable or disable SSO authentication
+# ssoEnabled = false
+
+# Example configuration for Asgardeo (WSO2's Identity Provider)
+# Replace {org_name} with your Asgardeo organization name
+# ssoIssuer = "https://api.asgardeo.io/t/{org_name}/oauth2/token"
+# ssoAuthorizationEndpoint = "https://api.asgardeo.io/t/{org_name}/oauth2/authorize"
+# ssoTokenEndpoint = "https://api.asgardeo.io/t/{org_name}/oauth2/token"
+# ssoLogoutEndpoint = "https://api.asgardeo.io/t/{org_name}/oidc/logout"
+# ssoClientId = "your-client-id-from-asgardeo"
+# ssoClientSecret = "your-client-secret-from-asgardeo"
+# ssoRedirectUri = "https://localhost:3000/auth/callback"
+# ssoUsernameClaim = "email"  # or "preferred_username"
+# ssoScopes = ["openid", "email", "profile"]
+
+# Example configuration for Okta
+# ssoIssuer = "https://{your-domain}.okta.com/oauth2/default"
+# ssoAuthorizationEndpoint = "https://{your-domain}.okta.com/oauth2/default/v1/authorize"
+# ssoTokenEndpoint = "https://{your-domain}.okta.com/oauth2/default/v1/token"
+# ssoLogoutEndpoint = "https://{your-domain}.okta.com/oauth2/default/v1/logout"
+# ssoClientId = "your-okta-client-id"
+# ssoClientSecret = "your-okta-client-secret"
+# ssoRedirectUri = "https://localhost:3000/auth/callback"
+# ssoUsernameClaim = "email"
+# ssoScopes = ["openid", "email", "profile"]
+
+# Example configuration for Auth0
+# ssoIssuer = "https://{your-domain}.auth0.com/"
+# ssoAuthorizationEndpoint = "https://{your-domain}.auth0.com/authorize"
+# ssoTokenEndpoint = "https://{your-domain}.auth0.com/oauth/token"
+# ssoLogoutEndpoint = "https://{your-domain}.auth0.com/v2/logout"
+# ssoClientId = "your-auth0-client-id"
+# ssoClientSecret = "your-auth0-client-secret"
+# ssoRedirectUri = "https://localhost:3000/auth/callback"
+# ssoUsernameClaim = "email"
+# ssoScopes = ["openid", "email", "profile"]
+
+# Notes:
+# - The 'openid' scope is required for OIDC authentication
+# - Use 'email' or 'profile' scopes to get additional user information
+# - The usernameClaim must be either 'email' or 'preferred_username'
+# - On first login, a new user will be created in the ICP database
+# - The redirect URI must match what's configured in your identity provider
+
+
+# =============================================================================
+# DATABASE CONFIGURATION
+# =============================================================================
+[icp_server.storage]
+# heartbeatTimeoutSeconds = 30
+# Primary database connection settings
+# Database type: h2 (in-memory), mysql, mssql, or postgresql. Default is h2
+
+# MySQL Configuration
+# dbHost = "mysql-db"
+# dbPort = 3306
+# dbName = "icp_database"
+# dbUser = "root"
+# dbPassword = "my-secret-pw"
+# maxOpenConnections = 10
+# minIdleConnections = 5
+# maxConnectionLifeTime = 1800.0  # 30 minutes
+# dbType = "mysql"
+
+# PostgreSQL Configuration (commented out)
+# dbHost = "localhost"
+# dbPort = 5432
+# dbName = "icp_database"
+# dbUser = "postgres"
+# dbPassword = "my-secret-pw"
+# maxOpenConnections = 10
+# minIdleConnections = 5
+# maxConnectionLifeTime = 1800.0  # 30 minutes
+# dbType = "postgresql"
+
+# Microsoft SQL Server (MSSQL) Configuration
+# dbHost = "localhost"
+# dbPort = 1433
+# dbName = "icp_database"
+# dbUser = "sa"
+# dbPassword = "YourStrong@Passw0rd"
+# maxOpenConnections = 10
+# minIdleConnections = 5
+# maxConnectionLifeTime = 1800.0
+# dbType = "mssql"
+
+
+[[ballerina.log.modules]]
+name = "wso2/icp_server"
+level = "DEBUG"
+
+[ballerina.http.traceLogAdvancedConfig]
+# Enable printing trace logs on the Console. The default value is `false`.
+console = false
+
+# =============================================================================
+# OBSERVABILITY CONFIGURATION
+# =============================================================================
+# observabilityEnabled = true
+
+# =============================================================================
+# OPENSEARCH CONFIGURATION
+# =============================================================================
+# opensearchUrl = "https://localhost:9200"
+# opensearchUsername = "admin"
+# opensearchPassword = "Ballerina@123"
+
+# =============================================================================
+# MI ARTIFACTS API CONFIGURATION
+# =============================================================================
+# artifactsApiAllowInsecureTLS = true  # set false in production with proper trust

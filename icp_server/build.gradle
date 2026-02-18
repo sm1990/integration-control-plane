@@ -1,0 +1,327 @@
+// ICP Server Build Configuration
+// This is a Ballerina project wrapper for Gradle
+
+description = 'WSO2 ICP Server - Ballerina Backend'
+
+// Build script dependencies for H2 database initialization
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.h2database:h2:2.2.224'
+    }
+}
+
+// Ballerina project tasks
+task ballerinaClean {
+    description = 'Clean Ballerina build artifacts'
+    doLast {
+        logger.lifecycle('Cleaning Ballerina artifacts...')
+        exec {
+            commandLine 'bal', 'clean'
+        }
+    }
+}
+
+task ballerinaBuild {
+    description = 'Build Ballerina project'
+    dependsOn ballerinaClean
+    doLast {
+        logger.lifecycle('Building Ballerina project...')
+        exec {
+            commandLine 'bal', 'build'
+        }
+        logger.lifecycle('Ballerina build complete')
+    }
+}
+
+task ballerinaTest {
+    description = 'Run Ballerina tests'
+    doLast {
+        logger.lifecycle('Running Ballerina tests...')
+        exec {
+            commandLine 'bal', 'test'
+        }
+        logger.lifecycle('Ballerina tests complete')
+    }
+}
+
+task ballerinaRun {
+    description = 'Run Ballerina application'
+    dependsOn ballerinaBuild
+    doLast {
+        logger.lifecycle('Starting Ballerina application...')
+        exec {
+            commandLine 'bal', 'run'
+        }
+    }
+}
+
+task ballerinaFormat {
+    description = 'Format Ballerina code'
+    doLast {
+        logger.lifecycle('Formatting Ballerina code...')
+        exec {
+            commandLine 'bal', 'format'
+        }
+    }
+}
+
+// Docker tasks for ICP Server
+task dockerBuild {
+    description = 'Build Docker image locally'
+    doLast {
+        logger.lifecycle('Building Docker image with docker-compose...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'build'
+        }
+    }
+}
+
+task dockerUp {
+    description = 'Start Docker containers'
+    dependsOn dockerBuild
+    doLast {
+        logger.lifecycle('Starting Docker containers...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'up', '-d'
+        }
+        logger.quiet("""
+        ╔════════════════════════════════════════╗
+        ║  ICP Server is starting...             ║
+        ║                                        ║
+        ║  Endpoints:                            ║
+        ║  - HTTP/GraphQL: http://localhost:9445 ║
+        ║  - GraphQL: http://localhost:9446      ║
+        ║  - Auth Backend: http://localhost:9447 ║
+        ║  - MySQL: localhost:3307               ║
+        ║                                        ║
+        ║  Logs: docker-compose logs -f          ║
+        ╚════════════════════════════════════════╝
+        """)
+    }
+}
+
+task dockerDown {
+    description = 'Stop Docker containers'
+    doLast {
+        logger.lifecycle('Stopping Docker containers...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'down'
+        }
+        logger.lifecycle('Docker containers stopped')
+    }
+}
+
+task dockerLogs {
+    description = 'View Docker logs'
+    doLast {
+        logger.lifecycle('Showing Docker logs (press Ctrl+C to exit)...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.local.yml', 'logs', '-f'
+        }
+    }
+}
+
+task dockerTestUp {
+    description = 'Start Docker containers for testing'
+    doLast {
+        logger.lifecycle('Starting test Docker containers...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.test.yml', 'up'
+        }
+    }
+}
+
+task dockerTestDown {
+    description = 'Stop test Docker containers'
+    doLast {
+        logger.lifecycle('Stopping test Docker containers...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.test.yml', 'down'
+        }
+    }
+}
+
+// Observability stack
+task observabilityUp {
+    description = 'Start observability stack (Prometheus, Grafana, etc.)'
+    doLast {
+        logger.lifecycle('Starting observability stack...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.observability.yml', 'up', '-d'
+        }
+        logger.quiet("""
+        Observability stack started:
+        - Grafana: http://localhost:3000
+        - Prometheus: http://localhost:9090
+        """)
+    }
+}
+
+task observabilityDown {
+    description = 'Stop observability stack'
+    doLast {
+        logger.lifecycle('Stopping observability stack...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.observability.yml', 'down'
+        }
+    }
+}
+
+// MySQL database tasks
+task dbUp {
+    description = 'Start MySQL database'
+    doLast {
+        logger.lifecycle('Starting MySQL database...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.mysql.yml', 'up', '-d'
+        }
+        logger.lifecycle('MySQL database started on localhost:3307')
+    }
+}
+
+task dbDown {
+    description = 'Stop MySQL database'
+    doLast {
+        logger.lifecycle('Stopping MySQL database...')
+        exec {
+            commandLine 'docker-compose', '-f', 'docker-compose.mysql.yml', 'down'
+        }
+    }
+}
+
+// H2 database initialization tasks
+task initH2Database {
+    description = 'Initialize main H2 database with schema from h2_init.sql'
+    
+    doLast {
+        logger.quiet('╔════════════════════════════════════════╗')
+        logger.quiet('║  Initializing Main H2 Database...      ║')
+        logger.quiet('╚════════════════════════════════════════╝')
+        
+        def h2InitScript = file('resources/db/init-scripts/h2_init.sql')
+        def h2DbFile = file('database/icpdb')
+        
+        if (!h2InitScript.exists()) {
+            throw new Exception("H2 init script not found at: ${h2InitScript.absolutePath}")
+        }
+        
+        logger.lifecycle("Using init script: ${h2InitScript.absolutePath}")
+        logger.lifecycle("Database file: ${h2DbFile.absolutePath}")
+        
+        // Execute H2 initialization using Ant SQL task
+        ant.sql(
+            driver: 'org.h2.Driver',
+            url: "jdbc:h2:file:${h2DbFile.absolutePath};MODE=MySQL;DB_CLOSE_DELAY=-1",
+            userid: 'sa',
+            password: '',
+            src: h2InitScript.absolutePath,
+            classpath: buildscript.configurations.classpath.asPath,
+            print: true,
+            showheaders: false,
+            showtrailers: false,
+            onerror: 'abort'
+        )
+        
+        logger.quiet('✓ Main H2 database initialized successfully!')
+        logger.lifecycle("Database location: ${h2DbFile.absolutePath}.mv.db")
+    }
+}
+
+task initH2CredentialsDatabase {
+    description = 'Initialize credentials H2 database with schema from credentials_h2_init.sql'
+    
+    doLast {
+        logger.quiet('╔════════════════════════════════════════╗')
+        logger.quiet('║  Initializing Credentials H2 DB...    ║')
+        logger.quiet('╚════════════════════════════════════════╝')
+        
+        def credentialsInitScript = file('resources/db/init-scripts/credentials_h2_init.sql')
+        def credentialsDbFile = file('database/credentialsdb')
+        
+        if (!credentialsInitScript.exists()) {
+            throw new Exception("Credentials init script not found at: ${credentialsInitScript.absolutePath}")
+        }
+        
+        logger.lifecycle("Using init script: ${credentialsInitScript.absolutePath}")
+        logger.lifecycle("Database file: ${credentialsDbFile.absolutePath}")
+        
+        // Execute H2 initialization using Ant SQL task
+        ant.sql(
+            driver: 'org.h2.Driver',
+            url: "jdbc:h2:file:${credentialsDbFile.absolutePath};MODE=MySQL;DB_CLOSE_DELAY=-1",
+            userid: 'sa',
+            password: '',
+            src: credentialsInitScript.absolutePath,
+            classpath: buildscript.configurations.classpath.asPath,
+            print: true,
+            showheaders: false,
+            showtrailers: false,
+            onerror: 'abort'
+        )
+        
+        logger.quiet('✓ Credentials H2 database initialized successfully!')
+        logger.lifecycle("Database location: ${credentialsDbFile.absolutePath}.mv.db")
+    }
+}
+
+task initAllH2Databases {
+    description = 'Initialize both main and credentials H2 databases'
+    dependsOn initH2Database, initH2CredentialsDatabase
+    
+    doLast {
+        logger.quiet('')
+        logger.quiet('╔════════════════════════════════════════╗')
+        logger.quiet('║  All H2 Databases Initialized! ✓      ║')
+        logger.quiet('╠════════════════════════════════════════╣')
+        logger.quiet('║  • Main DB: database/icpdb.mv.db      ║')
+        logger.quiet('║  • Credentials: database/credentialsdb║')
+        logger.quiet('╚════════════════════════════════════════╝')
+    }
+}
+
+task cleanH2Database {
+    description = 'Clean/delete all H2 database files (main and credentials)'
+    
+    doLast {
+        logger.lifecycle('Cleaning H2 database files...')
+        
+        def dbFiles = fileTree(dir: 'database', include: '*.db')
+        dbFiles.each { file ->
+            logger.lifecycle("Deleting: ${file.name}")
+            file.delete()
+        }
+        
+        logger.quiet('✓ All H2 database files cleaned')
+    }
+}
+
+// Convenience tasks
+task dev {
+    description = 'Start development environment (Docker + app)'
+    dependsOn dockerUp
+    doLast {
+        logger.lifecycle('Development environment started')
+    }
+}
+
+task devDown {
+    description = 'Stop development environment'
+    dependsOn dockerDown
+    doLast {
+        logger.lifecycle('Development environment stopped')
+    }
+}
+
+task devFull {
+    description = 'Start full development environment (app + observability)'
+    dependsOn observabilityUp, dockerUp
+    doLast {
+        logger.lifecycle('Full development environment started')
+    }
+}
+
+// Default task for this module
+defaultTasks 'ballerinaBuild'

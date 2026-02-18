@@ -1,0 +1,465 @@
+openapi: 3.1.0
+info:
+  title: ICP Authentication Backend API
+  version: 1.0.0
+  description: |
+    Authentication Backend API for Integration Control Plane (ICP).
+    
+    This specification defines the contract for authentication backends that can be integrated
+    with the ICP server. Users can implement their own authentication backends following this
+    specification to integrate with enterprise authentication systems (LDAP, OAuth, SSO, custom stores, etc.).
+    
+    ## Overview
+    
+    The authentication backend is responsible for:
+    - Verifying user credentials (username/password)
+    - Creating users when requested by ICP
+    - Changing user passwords when requested by ICP
+    - Returning user identity claims (userId, displayName)
+    - Operating independently from the ICP server
+    
+    ## Security
+    
+    All requests to the authentication backend must include an API key in the `X-API-Key` header.
+    This API key is configured in both the ICP server and the authentication backend.
+    
+    ## User Identity
+    
+    The authentication backend returns:
+    - `userId`: A UUID that uniquely identifies the user across systems
+    - `displayName`: The user's human-readable display name
+    
+    The username is provided in the request and does not need to be echoed back.
+  contact:
+    name: WSO2 Inc.
+    url: https://wso2.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: https://localhost:9447
+    description: Default authentication backend (local development)
+  - url: https://auth.example.com
+    description: Custom authentication backend (production example)
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /authenticate:
+    post:
+      summary: Authenticate user credentials
+      description: |
+        Authenticates a user with username and password credentials.
+        
+        The authentication backend should:
+        1. Verify the provided credentials against its user store
+        2. Return the user's UUID and display name if authentication succeeds
+        3. Return an error if authentication fails
+        
+        **Note:** The username is provided in the request and should not be returned
+        in the response. Only the userId and displayName are needed.
+      operationId: authenticateUser
+      tags:
+        - Authentication
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+            examples:
+              validCredentials:
+                summary: Valid user credentials
+                value:
+                  username: "admin"
+                  password: "admin"
+              invalidCredentials:
+                summary: Invalid credentials example
+                value:
+                  username: "user"
+                  password: "wrongpassword"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationResponse'
+              examples:
+                authenticatedUser:
+                  summary: Successfully authenticated user
+                  value:
+                    authenticated: true
+                    userId: "550e8400-e29b-41d4-a716-446655440000"
+                    displayName: "John Doe"
+                    timestamp: "2025-10-10T04:26:39.123Z"
+        '400':
+          description: Bad request (invalid API key or malformed request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidApiKey:
+                  summary: Invalid or missing API key
+                  value:
+                    message: "Invalid API key"
+        '401':
+          description: Authentication failed (invalid credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidCredentials:
+                  summary: Invalid username or password
+                  value:
+                    message: "Invalid credentials"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Internal server error
+                  value:
+                    message: "Internal server error"
+
+  /users:
+    post:
+      summary: Create user credentials
+      description: |
+        ICP will send username, displayName and password to your backend.
+        Your backend should add the user to your user store and return the created
+        user's identifiers.
+      operationId: createUser
+      tags:
+        - User Management
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              newUser:
+                summary: Create a new user
+                value:
+                  username: "johndoe"
+                  displayName: "John Doe"
+                  password: "securepassword123"
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+              examples:
+                userCreated:
+                  summary: Successfully created user
+                  value:
+                    userId: "550e8400-e29b-41d4-a716-446655440000"
+                    username: "johndoe"
+                    displayName: "John Doe"
+        '400':
+          description: Bad request (invalid input or API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidInput:
+                  summary: Invalid input data
+                  value:
+                    message: "Username is required"
+                duplicateUser:
+                  summary: Username already exists
+                  value:
+                    message: "Username already exists"
+        '401':
+          description: Unauthorized (invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidApiKey:
+                  summary: Invalid API key
+                  value:
+                    message: "Invalid API key"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Internal server error
+                  value:
+                    message: "Internal server error"
+
+  /change-password:
+    post:
+      summary: Change user password
+      description: |
+        ICP will send userId, currentPassword and newPassword to your backend.
+        Your backend should validate the current password, update the password
+        in your user store and return a success response.
+      operationId: changePassword
+      tags:
+        - User Management
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+            examples:
+              changePasswordExample:
+                summary: Change password request
+                value:
+                  userId: "550e8400-e29b-41d4-a716-446655440000"
+                  currentPassword: "oldpass"
+                  newPassword: "newpass123"
+      responses:
+        '200':
+          description: Password changed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePasswordResponse'
+              examples:
+                changed:
+                  summary: Password change success
+                  value:
+                    message: "Password changed successfully"
+        '400':
+          description: Bad request (validation failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                badRequest:
+                  summary: Validation error
+                  value:
+                    message: "Current password is incorrect"
+        '401':
+          description: Unauthorized (invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidApiKey:
+                  summary: Invalid API key
+                  value:
+                    message: "Invalid API key"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Internal server error
+                  value:
+                    message: "Internal server error"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authenticating requests to the authentication backend.
+        This key must be configured in both the ICP server and the authentication backend.
+
+  schemas:
+    AuthenticationRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: The username to authenticate
+          example: "admin"
+          minLength: 1
+          maxLength: 255
+        password:
+          type: string
+          format: password
+          description: The user's password
+          example: "admin"
+          minLength: 1
+      description: User credentials for authentication
+
+    AuthenticationResponse:
+      type: object
+      required:
+        - authenticated
+        - userId
+        - displayName
+        - timestamp
+      properties:
+        authenticated:
+          type: boolean
+          description: Whether authentication was successful
+          example: true
+        userId:
+          type: string
+          format: uuid
+          description: |
+            Unique identifier for the user (UUID format).
+            This ID should be consistent across all systems and used as the primary key.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        displayName:
+          type: string
+          description: User's display name for UI purposes
+          example: "John Doe"
+          minLength: 1
+          maxLength: 200
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the authentication response
+          example: "2025-10-10T04:26:39.123Z"
+      description: Response from successful authentication
+
+    CreateUserRequest:
+      type: object
+      required:
+        - username
+        - displayName
+        - password
+      properties:
+        username:
+          type: string
+          description: The username for the new user
+          example: "johndoe"
+          minLength: 1
+          maxLength: 255
+        displayName:
+          type: string
+          description: The user's display name
+          example: "John Doe"
+          minLength: 1
+          maxLength: 200
+        password:
+          type: string
+          format: password
+          description: The user's password (will be changed/stored per backend policy)
+          example: "securepassword123"
+          minLength: 6
+      description: Request to create a new user (implementation of storage is up to the backend)
+
+    CreateUserResponse:
+      type: object
+      required:
+        - userId
+        - username
+        - displayName
+      properties:
+        userId:
+          type: string
+          format: uuid
+          description: Unique identifier for the created user
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        username:
+          type: string
+          description: The username of the created user
+          example: "johndoe"
+        displayName:
+          type: string
+          description: The display name of the created user
+          example: "John Doe"
+      description: Response from successful user creation
+
+    ChangePasswordRequest:
+      type: object
+      required:
+        - userId
+        - currentPassword
+        - newPassword
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        currentPassword:
+          type: string
+          format: password
+          example: "oldpass"
+        newPassword:
+          type: string
+          format: password
+          example: "newpass123"
+      description: Request to change a user's password
+
+    ChangePasswordResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: "Password changed successfully"
+      description: Generic success response for password change
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Invalid credentials"
+      description: Error response format
+
+  examples:
+    AuthenticationRequestExample:
+      value:
+        username: "admin"
+        password: "admin"
+    
+    AuthenticationSuccessExample:
+      value:
+        authenticated: true
+        userId: "550e8400-e29b-41d4-a716-446655440000"
+        displayName: "John Doe"
+        timestamp: "2025-10-10T04:26:39.123Z"
+    
+    AuthenticationFailureExample:
+      value:
+        authenticated: false
+        userId: null
+        displayName: null
+        timestamp: "2025-10-10T04:26:39.123Z"
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+  - name: User Management
+    description: User credential management operations
+
+externalDocs:
+  description: ICP Server Documentation
+  url: https://github.com/wso2/integration-control-plane
+

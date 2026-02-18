@@ -292,46 +292,38 @@ service /observability on openSerachObservabilityListener {
                 // Add response time metrics - use actual values if available, otherwise use 0
                 if (docCount > 0) {
                     // Extract response time stats
-                    json? avgRT = check timeBucket.avg_response_time;
-                    if (avgRT is json) {
-                        decimal avgValue = check avgRT.value;
-                        avgResponseTimeTimeSeries[timestamp] = avgValue;
-                    }
+                    json avgRT = check timeBucket.avg_response_time;
+                    decimal avgValue = check avgRT.value;
+                    avgResponseTimeTimeSeries[timestamp] = avgValue;
 
-                    json? minRT = check timeBucket.min_response_time;
-                    if (minRT is json) {
-                        decimal minValue = check minRT.value;
-                        minResponseTimeTimeSeries[timestamp] = minValue;
-                    }
+                    json minRT = check timeBucket.min_response_time;
+                    decimal minValue = check minRT.value;
+                    minResponseTimeTimeSeries[timestamp] = minValue;
 
-                    json? maxRT = check timeBucket.max_response_time;
-                    if (maxRT is json) {
-                        decimal maxValue = check maxRT.value;
-                        maxResponseTimeTimeSeries[timestamp] = maxValue;
-                    }
+                    json maxRT = check timeBucket.max_response_time;
+                    decimal maxValue = check maxRT.value;
+                    maxResponseTimeTimeSeries[timestamp] = maxValue;
 
                     // Extract percentiles
-                    json? percentilesRT = check timeBucket.percentiles_response_time;
-                    if (percentilesRT is json) {
-                        json percentilesValues = check percentilesRT.values;
-                        map<json> percentilesMap = check percentilesValues.ensureType();
+                    json percentilesRT = check timeBucket.percentiles_response_time;
+                    json percentilesValues = check percentilesRT.values;
+                    map<json> percentilesMap = check percentilesValues.ensureType();
 
-                        // Extract each percentile value
-                        decimal p33 = check percentilesMap["33.0"];
-                        percentile33TimeSeries[timestamp] = p33;
+                    // Extract each percentile value
+                    decimal p33 = check percentilesMap["33.0"];
+                    percentile33TimeSeries[timestamp] = p33;
 
-                        decimal p50 = check percentilesMap["50.0"];
-                        percentile50TimeSeries[timestamp] = p50;
+                    decimal p50 = check percentilesMap["50.0"];
+                    percentile50TimeSeries[timestamp] = p50;
 
-                        decimal p66 = check percentilesMap["66.0"];
-                        percentile66TimeSeries[timestamp] = p66;
+                    decimal p66 = check percentilesMap["66.0"];
+                    percentile66TimeSeries[timestamp] = p66;
 
-                        decimal p95 = check percentilesMap["95.0"];
-                        percentile95TimeSeries[timestamp] = p95;
+                    decimal p95 = check percentilesMap["95.0"];
+                    percentile95TimeSeries[timestamp] = p95;
 
-                        decimal p99 = check percentilesMap["99.0"];
-                        percentile99TimeSeries[timestamp] = p99;
-                    }
+                    decimal p99 = check percentilesMap["99.0"];
+                    percentile99TimeSeries[timestamp] = p99;
                 } else {
                     // No requests, fill all response time metrics with 0
                     avgResponseTimeTimeSeries[timestamp] = 0;

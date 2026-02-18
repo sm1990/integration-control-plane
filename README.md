@@ -286,6 +286,5 @@ This project is licensed under the Apache License 2.0. See the [LICENSE](LICENSE
 
 ## Support
 
-- [Documentation](https://wso2.com/integration/integration-control-plane/)
 - [Issue Tracker](https://github.com/wso2/integration-control-plane/issues)
 - [WSO2 Support](https://wso2.com/support/)

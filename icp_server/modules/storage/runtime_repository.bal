@@ -774,6 +774,7 @@ public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) retur
         artifacts: {
             listeners: listenerList,
             services: serviceList,
+            main: (),
             apis: apiList,
             proxyServices: proxyList,
             endpoints: endpointList,

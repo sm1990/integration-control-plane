@@ -322,6 +322,30 @@ service /graphql on graphqlListener {
         return check storage:getListenersByEnvironmentAndComponent(environmentId, componentId);
     }
 
+    // Get automation artifacts for a specific environment and component
+    isolated resource function get automationsByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:Automation[]|error {
+        types:UserContextV2 userContext = check extractUserContext(context);
+
+        // Get project ID for the component (lightweight query for access control)
+        string projectId = check storage:getProjectIdByComponentId(componentId);
+
+        // Build scope with project, integration, and environment
+        types:AccessScope scope = {
+            orgUuid: 1,
+            projectUuid: projectId,
+            integrationUuid: componentId,
+            envUuid: environmentId
+        };
+
+        // Verify user has view, edit, or manage permission
+        if !check auth:hasAnyPermission(userContext.userId, [auth:PERMISSION_INTEGRATION_VIEW, auth:PERMISSION_INTEGRATION_EDIT, auth:PERMISSION_INTEGRATION_MANAGE], scope) {
+            log:printWarn("Attempt to access automations without permission", userId = userContext.userId, environmentId = environmentId, componentId = componentId);
+            return [];
+        }
+
+        return check storage:getAutomationsByEnvironmentAndComponent(environmentId, componentId);
+    }
+
     // Get REST APIs for a specific environment and component
     isolated resource function get restApisByEnvironmentAndComponent(graphql:Context context, string environmentId, string componentId) returns types:RestApi[]|error {
         types:UserContextV2 userContext = check extractUserContext(context);
@@ -1056,6 +1080,7 @@ service /graphql on graphqlListener {
         log:printInfo("Successfully retrieved project", projectId = projectId);
         return check storage:getProjectById(projectId);
     }
+
     // Check project creation eligibility for an organization
     isolated resource function get projectCreationEligibility(graphql:Context context, int orgId, string orgHandler) returns types:ProjectCreationEligibility|error {
         // Call storage layer to check eligibility

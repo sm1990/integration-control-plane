@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { observabilityLogsApiUrl } from '../paths';
 import { authenticatedFetch } from '../auth/tokenManager';
 
@@ -85,7 +85,7 @@ export async function fetchLogs(req: LogsRequest): Promise<LogRow[]> {
 }
 
 export function useInfiniteLogs(req: LogsRequest | null, refetchInterval: number | false = false) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['logs', req],
     queryFn: async ({ pageParam }) => {
       const pageReq = pageParam ? { ...req!, ...(req!.sort === 'desc' ? { endTime: pageParam } : { startTime: pageParam }) } : req!;

@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Autocomplete, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, IconButton, InputAdornment, Stack, Switch, TextField, Typography } from '@wso2/oxygen-ui';
+import { Autocomplete, Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, InputAdornment, Stack, Switch, TextField, Typography } from '@wso2/oxygen-ui';
 import { RefreshCw, ListFilter, LayoutGrid } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useArtifacts, useRefreshEnvironmentArtifacts, type GqlArtifact, type GqlEnvironment } from '../api/queries';
@@ -28,6 +28,7 @@ import { ARTIFACT_TABS, DEFAULT_ARTIFACT_TABS, ENTRY_POINT_CONFIG, ENTRY_POINT_D
 function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArtifact; onOpenDrawerTab: (tab: string) => void }) {
   const [tracingEnabled, setTracingEnabled] = useState(false);
   const [statisticsEnabled, setStatisticsEnabled] = useState(false);
+  const [pendingToggle, setPendingToggle] = useState<{ type: 'tracing' | 'statistics'; checked: boolean } | null>(null);
   const { artifact, artifactType, envId, componentId, projectId } = selected;
   const updateTracingStatus = useUpdateArtifactTracingStatus();
   const updateStatisticsStatus = useUpdateArtifactStatisticsStatus();
@@ -52,29 +53,57 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
 
   const handleToggleTracing = (checked: boolean) => {
     if (!showTracingToggle) return;
-    setTracingEnabled(checked);
-    updateTracingStatus.mutate({
-      envId,
-      componentId,
-      artifactType,
-      artifactName: artifact.name?.toString() ?? '',
-      trace: checked ? 'enable' : 'disable',
-    });
+    setPendingToggle({ type: 'tracing', checked });
   };
 
   const handleToggleStatistics = (checked: boolean) => {
     if (!showStatisticsToggle) return;
-    setStatisticsEnabled(checked);
-    updateStatisticsStatus.mutate({
-      envId,
-      componentId,
-      artifactType,
-      artifactName: artifact.name?.toString() ?? '',
-      statistics: checked ? 'enable' : 'disable',
-    });
+    setPendingToggle({ type: 'statistics', checked });
   };
 
+  const handleConfirmToggle = () => {
+    if (!pendingToggle) return;
+    if (pendingToggle.type === 'tracing') {
+      setTracingEnabled(pendingToggle.checked);
+      updateTracingStatus.mutate({
+        envId,
+        componentId,
+        artifactType,
+        artifactName: artifact.name?.toString() ?? '',
+        trace: pendingToggle.checked ? 'enable' : 'disable',
+      });
+    } else {
+      setStatisticsEnabled(pendingToggle.checked);
+      updateStatisticsStatus.mutate({
+        envId,
+        componentId,
+        artifactType,
+        artifactName: artifact.name?.toString() ?? '',
+        statistics: pendingToggle.checked ? 'enable' : 'disable',
+      });
+    }
+    setPendingToggle(null);
+  };
+
+  const toggleLabel = pendingToggle?.type === 'tracing' ? 'tracing' : 'statistics';
+  const toggleAction = pendingToggle?.checked ? 'enable' : 'disable';
+
   return (
+    <>
+      <Dialog open={pendingToggle !== null} onClose={() => setPendingToggle(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Confirm {toggleAction === 'enable' ? 'Enable' : 'Disable'} {toggleLabel.charAt(0).toUpperCase() + toggleLabel.slice(1)}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to {toggleAction} {toggleLabel} for <strong>{artifact.name?.toString()}</strong>?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingToggle(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirmToggle}>
+            {toggleAction === 'enable' ? 'Enable' : 'Disable'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     <Box sx={{ mt: 2 }}>
       {/* Header row */}
       <Stack direction="row" alignItems="center" gap={1.5} sx={{ px: 2, py: 1.5 }}>
@@ -132,6 +161,7 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
       )}
       {(ENTRY_POINT_DETAIL_TABS[artifactType] ?? []).includes('Resources') && <Box sx={{ px: 2, py: 1.5 }}>{artifactType === 'RestApi' ? <ArtifactApiDefinition {...tabProps} /> : <ServiceResources {...tabProps} />}</Box>}
     </Box>
+    </>
   );
 }
 

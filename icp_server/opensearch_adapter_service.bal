@@ -221,11 +221,18 @@ service /observability on openSerachObservabilityListener {
             rows.push(row);
         }
 
-        log:printInfo("Returning " + rows.length().toString() + " log entries");
+        // Deduplicate log entries before returning
+        json[][] deduplicatedRows = deduplicateLogEntries(rows);
+        int duplicatesRemoved = rows.length() - deduplicatedRows.length();
+        if duplicatesRemoved > 0 {
+            log:printInfo(string `Removed ${duplicatesRemoved} duplicate log entries`);
+        }
+
+        log:printInfo("Returning " + deduplicatedRows.length().toString() + " log entries");
 
         return {
             columns: columns,
-            rows: rows
+            rows: deduplicatedRows
         };
     }
 
@@ -498,6 +505,34 @@ function constructLogEntry(LogSource sourceData) returns string {
 
     // Construct the log entry in logfmt style
     return string `time=${time} level=${level}${serviceSpecificFields} message="${message}"${traceId}${spanId}${runtimeId}`;
+}
+
+// Helper function to deduplicate log entries based on composite key
+// Uses timestamp + level + logEntry + runtimeId as the unique identifier
+function deduplicateLogEntries(json[][] rows) returns json[][] {
+    map<boolean> seenEntries = {};
+    json[][] uniqueRows = [];
+
+    foreach json[] row in rows {
+        // Row structure: [timestamp, level, logEntry, class, logFilePath, appName, module, 
+        //                 serviceType, app, deployment, artifactContainer, product, icpRuntimeId, ...]
+        // Create composite key from critical fields
+        string timestamp = row[0] is string ? <string>row[0] : row[0].toString();
+        string level = row[1] is string ? <string>row[1] : row[1].toString();
+        string logEntry = row[2] is string ? <string>row[2] : row[2].toString();
+        string icpRuntimeId = row[12] is string ? <string>row[12] : "";
+
+        // Create a unique key combining these fields
+        string compositeKey = string `${timestamp}|${level}|${logEntry}|${icpRuntimeId}`;
+
+        // Only add if we haven't seen this combination before
+        if !seenEntries.hasKey(compositeKey) {
+            seenEntries[compositeKey] = true;
+            uniqueRows.push(row);
+        }
+    }
+
+    return uniqueRows;
 }
 
 function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {

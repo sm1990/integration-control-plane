@@ -117,3 +117,32 @@ function enrich_mi_logs(tag, timestamp, record)
 
     return 1, timestamp, record
 end
+
+-- Simple hash function for generating document IDs
+-- This helps prevent duplicates when Fluent Bit restarts without offset state
+function simple_hash(str)
+    local hash = 0
+    for i = 1, #str do
+        hash = (hash * 31 + string.byte(str, i)) % 2147483647
+    end
+    return string.format("%x", hash)
+end
+
+function generate_document_id(tag, timestamp, record)
+    -- Generate a consistent document ID based on key fields
+    -- This ensures that duplicate log entries overwrite instead of creating new documents
+    local timestamp_str = tostring(timestamp)
+    local message = record["message"] or ""
+    local level = record["level"] or ""
+    local runtime_id = record["icp_runtimeId"] or ""
+    local log_file_path = record["log_file_path"] or ""
+    
+    -- Create composite string for hashing
+    local composite = timestamp_str .. "|" .. message .. "|" .. level .. "|" .. runtime_id .. "|" .. log_file_path
+    
+    -- Generate hash-based ID
+    local doc_id = simple_hash(composite)
+    record["doc_id"] = doc_id
+    
+    return 1, timestamp, record
+end

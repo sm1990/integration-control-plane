@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Globe, Link2, ListOrdered, Clock, FolderArchive, Package, Plug, FileText, Radio, Server, Wifi, Layers, Zap } from '@wso2/oxygen-ui-icons-react';
+import { Globe, Link2, ListOrdered, Clock, FolderArchive, Package, Plug, FileText, Radio, Server, Wifi, Layers, Zap, Database, Cpu, LayoutTemplate, Table, HardDrive } from '@wso2/oxygen-ui-icons-react';
 import type { JSX } from 'react';
 import type { GqlArtifact } from '../api/queries';
 
@@ -44,6 +44,11 @@ export const ARTIFACT_ICONS: Record<string, JSX.Element> = {
   Listener: <Wifi size={18} />,
   Service: <Layers size={18} />,
   Automation: <Zap size={18} />,
+  MessageStore: <Database size={18} />,
+  MessageProcessor: <Cpu size={18} />,
+  Template: <LayoutTemplate size={18} />,
+  DataService: <Table size={18} />,
+  DataSource: <HardDrive size={18} />,
 };
 
 export const ARTIFACT_TABS: Record<string, string[]> = {
@@ -57,6 +62,11 @@ export const ARTIFACT_TABS: Record<string, string[]> = {
   Listener: ['Runtimes'],
   Service: ['Runtimes'],
   Automation: ['Executions', 'Runtimes'],
+  MessageStore: ['Runtimes'],
+  MessageProcessor: ['Runtimes'],
+  Template: ['Runtimes'],
+  DataService: ['Runtimes'],
+  DataSource: ['Runtimes'],
 };
 export const DEFAULT_ARTIFACT_TABS = ['Source', 'Runtimes'];
 

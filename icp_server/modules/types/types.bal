@@ -102,7 +102,7 @@ public type Main record {
 public type Artifacts record {
     Listener[] listeners = [];
     Service[] services = [];
-    Main? main;
+    Main? main = ();
     // MI-specific artifact types that may be present in heartbeat payloads
     RestApi[] apis = [];
     ProxyService[] proxyServices = [];
@@ -1520,29 +1520,29 @@ public type ComponentSecret record {
     string updatedAt?;
 };
 
-public type ComponentFilterInput record {
+public type ComponentFilterInput record {|
     boolean withSystemComponents?;
     string displayType?;
     string status?;
     string componentSubType?;
-};
+|};
 
-public type ComponentSortInput record {
+public type ComponentSortInput record {|
     string 'field;
     string 'order;
-};
+|};
 
-public type PaginationInput record {
+public type PaginationInput record {|
     int 'limit?;
     int offset?;
     string cursor?;
-};
+|};
 
-public type ComponentOptionsInput record {
+public type ComponentOptionsInput record {|
     ComponentFilterInput filter?;
     ComponentSortInput sort?;
     PaginationInput pagination?;
-};
+|};
 
 public type Environment record {
     // Core Identity (from DB)

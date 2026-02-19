@@ -263,6 +263,36 @@ const ARTIFACT_QUERY_MAP: Record<string, { queryName: string; field: string; fie
     fields: 'packageOrg, packageName, packageVersion',
     gqlFields: 'packageOrg, packageName, packageVersion, runtimeIds, runtimes { runtimeId, status, executionTimestamps }, executionTimestamp',
   },
+  MessageStore: {
+    queryName: 'messageStoresByEnvironmentAndComponent',
+    field: 'messageStoresByEnvironmentAndComponent',
+    fields: 'name, type, size',
+    gqlFields: 'name, type, size, carbonApp, runtimes { runtimeId, status }',
+  },
+  MessageProcessor: {
+    queryName: 'messageProcessorsByEnvironmentAndComponent',
+    field: 'messageProcessorsByEnvironmentAndComponent',
+    fields: 'name, type, state',
+    gqlFields: 'name, type, state, carbonApp, runtimes { runtimeId, status }',
+  },
+  Template: {
+    queryName: 'templatesByEnvironmentAndComponent',
+    field: 'templatesByEnvironmentAndComponent',
+    fields: 'name, type',
+    gqlFields: 'name, type, tracing, statistics, carbonApp, runtimes { runtimeId, status }',
+  },
+  DataService: {
+    queryName: 'dataServicesByEnvironmentAndComponent',
+    field: 'dataServicesByEnvironmentAndComponent',
+    fields: 'name, state',
+    gqlFields: 'name, description, state, carbonApp, runtimes { runtimeId, status }',
+  },
+  DataSource: {
+    queryName: 'dataSourcesByEnvironmentAndComponent',
+    field: 'dataSourcesByEnvironmentAndComponent',
+    fields: 'name, type, state',
+    gqlFields: 'name, type, driver, url, username, state, runtimes { runtimeId, status }',
+  },
 };
 
 export function useArtifacts(artifactType: string, envId: string, componentId: string, options?: { enabled?: boolean }) {

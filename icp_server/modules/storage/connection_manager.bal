@@ -59,7 +59,7 @@ public client class DatabaseConnectionManager {
             log:printInfo("PostgreSQL Database initialized successfully.");
         } else {
             log:printInfo("Initializing H2 Database...");
-            self.dbClient = check new jdbc:Client("jdbc:h2:file:./database/icpdb;MODE=MySQL;AUTO_SERVER=TRUE", dbUser, dbPassword);
+            self.dbClient = check new jdbc:Client(string `jdbc:h2:file:./database/${dbName};MODE=MySQL;AUTO_SERVER=TRUE`, dbUser, dbPassword);
             log:printInfo("H2 Database initialized successfully.");
         }
     }

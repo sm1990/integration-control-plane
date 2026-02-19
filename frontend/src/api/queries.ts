@@ -388,15 +388,16 @@ const ARTIFACT_PARAMS_QUERY = `
     }
   }`;
 
-export function useArtifactParams(componentId: string, artifactType: string, artifactName: string, envId: string) {
+export function useArtifactParams(componentId: string, artifactType: string, artifactName: string, envId: string, runtimeId?: string) {
   return useQuery({
-    queryKey: ['artifactParams', componentId, artifactType, artifactName, envId],
+    queryKey: ['artifactParams', componentId, artifactType, artifactName, envId, runtimeId],
     queryFn: () =>
       gql<{ artifactParametersByComponent: GqlArtifactParam[] }>(ARTIFACT_PARAMS_QUERY, {
         componentId,
         artifactType,
         artifactName,
         environmentId: envId,
+        runtimeId,
       }).then((d) => d.artifactParametersByComponent),
     enabled: !!componentId && !!artifactType && !!artifactName && !!envId,
   });

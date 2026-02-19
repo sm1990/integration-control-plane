@@ -225,33 +225,6 @@ export default function Project(scope: ProjectScope): JSX.Element {
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <Stack gap={3}>
-            <Card variant="outlined">
-              <CardContent>
-                <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    Architecture
-                  </Typography>
-                  <IconButton size="small">
-                    <RefreshCw size={16} />
-                  </IconButton>
-                </Stack>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    height: 250,
-                    border: '1px dashed',
-                    borderColor: 'divider',
-                    borderRadius: 1,
-                    color: 'text.secondary',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                  Architecture diagram
-                </Typography>
-              </CardContent>
-            </Card>
-
             <IntegrationTypesCard components={components} />
           </Stack>
         </Grid>

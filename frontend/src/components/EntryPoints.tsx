@@ -17,7 +17,7 @@
  */
 
 import { Autocomplete, Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Divider, IconButton, InputAdornment, Stack, Switch, TextField, Typography } from '@wso2/oxygen-ui';
-import { RefreshCw, ListFilter, LayoutGrid } from '@wso2/oxygen-ui-icons-react';
+import { RefreshCw, ListFilter, LayoutGrid, Settings, Copy, Check } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArtifacts, useRefreshEnvironmentArtifacts, type GqlArtifact, type GqlEnvironment } from '../api/queries';
@@ -380,7 +380,7 @@ integration = "${componentHandler}"
                 }}
               />
             </IconButton>
-            <Button variant="contained" onClick={() => setConfigDialogOpen(true)}>Configure Runtime</Button>
+            <Button variant="contained" startIcon={<Settings size={16} />} onClick={() => setConfigDialogOpen(true)}>Configure Runtime</Button>
           </Stack>
         </Stack>
         <Dialog open={configDialogOpen} onClose={() => setConfigDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -406,7 +406,7 @@ integration = "${componentHandler}"
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setConfigDialogOpen(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleCopyToClipboard}>
+            <Button variant="contained" startIcon={copySuccess ? <Check size={16} /> : <Copy size={16} />} onClick={handleCopyToClipboard}>
               {copySuccess ? 'Copied!' : 'Copy to Clipboard'}
             </Button>
           </DialogActions>

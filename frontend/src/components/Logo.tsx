@@ -19,35 +19,22 @@
 import { ColorSchemeImage, useThemeContent } from '@wso2/oxygen-ui';
 
 export default function Logo() {
-  const choreoLogo = (
+  const icpLogo = (
     <ColorSchemeImage
       src={{
-        light: `${import.meta.env.BASE_URL}assets/images/choreo-logo.svg`,
-        dark: `${import.meta.env.BASE_URL}assets/images/choreo-logo.svg`,
+        light: `${import.meta.env.BASE_URL}assets/images/icp-logo.svg`,
+        dark: `${import.meta.env.BASE_URL}assets/images/icp-logo.svg`,
       }}
-      alt={{ light: 'Choreo Logo (Light)', dark: 'Choreo Logo (Dark)' }}
+      alt={{ light: 'ICP Logo (Light)', dark: 'ICP Logo (Dark)' }}
       height={24}
       width="auto"
     />
   );
 
   const Logo = useThemeContent({
-    default: (
-      <ColorSchemeImage
-        src={{
-          light: `${import.meta.env.BASE_URL}assets/images/logo.svg`,
-          dark: `${import.meta.env.BASE_URL}assets/images/logo-inverted.svg`,
-        }}
-        alt={{ light: 'Asgardeo Logo (Light)', dark: 'Asgardeo Logo (Dark)' }}
-        height={17}
-        width="auto"
-        sx={{
-          marginTop: '-5px',
-        }}
-      />
-    ),
-    acrylicPurple: choreoLogo,
-    choreo: choreoLogo,
+    default: icpLogo,
+    acrylicPurple: icpLogo,
+    choreo: icpLogo,
   });
 
   return Logo;

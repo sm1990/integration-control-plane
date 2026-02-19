@@ -332,7 +332,7 @@ export default function Environment({
   const generateTomlConfig = () => {
     // Generate a runtime ID placeholder - in production, this should come from actual runtime data
     const runtimeId = '<Runtime ID>';
-    
+
     if (componentType === 'BI') {
       return `[ballerinax.wso2.controlplane]
 runtime="${runtimeId}"
@@ -380,15 +380,15 @@ integration = "${componentHandler}"
                 }}
               />
             </IconButton>
-            <Button variant="contained" startIcon={<Settings size={16} />} onClick={() => setConfigDialogOpen(true)}>Configure Runtime</Button>
+            <Button variant="contained" startIcon={<Settings size={16} />} onClick={() => setConfigDialogOpen(true)}>
+              Configure Runtime
+            </Button>
           </Stack>
         </Stack>
         <Dialog open={configDialogOpen} onClose={() => setConfigDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Configure Runtime - {env.name}</DialogTitle>
           <DialogContent>
-            <DialogContentText sx={{ mb: 2 }}>
-              Add the following configuration to your runtime's {componentType === 'BI' ? 'Config.toml' : 'deployment.toml'} file:
-            </DialogContentText>
+            <DialogContentText sx={{ mb: 2 }}>Add the following configuration to your runtime's {componentType === 'BI' ? 'Config.toml' : 'deployment.toml'} file:</DialogContentText>
             <Box
               component="pre"
               sx={{

@@ -300,6 +300,8 @@ export default function Environment({
   componentId,
   projectId,
   componentType,
+  componentHandler,
+  projectHandler,
   onSelectArtifact,
   onOpenDrawerForTab,
 }: {
@@ -307,12 +309,16 @@ export default function Environment({
   componentId: string;
   projectId: string;
   componentType: string;
+  componentHandler: string;
+  projectHandler: string;
   onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void;
   onOpenDrawerForTab: (a: GqlArtifact, type: string, envId: string, tab: string) => void;
 }) {
   const refreshEnvironmentArtifacts = useRefreshEnvironmentArtifacts();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'entryPoints' | 'allArtifacts'>('entryPoints');
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -320,6 +326,40 @@ export default function Environment({
       await refreshEnvironmentArtifacts(env.id, componentId);
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  const generateTomlConfig = () => {
+    // Generate a runtime ID placeholder - in production, this should come from actual runtime data
+    const runtimeId = '<Runtime ID>';
+    
+    if (componentType === 'BI') {
+      return `[ballerinax.wso2.controlplane]
+runtime="${runtimeId}"
+integration="${componentHandler}"
+project="${projectHandler}"
+environment="${env.name}"
+heartbeatInterval=10
+# serverUrl="https://localhost:9445"`;
+    } else {
+      // MI
+      return `[icp_config]
+enabled = true
+runtime = "${runtimeId}"
+environment = "${env.name}"
+project = "${projectHandler}"
+integration = "${componentHandler}"
+# icp_url = "https://icp-server:9443"`;
+    }
+  };
+
+  const handleCopyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(generateTomlConfig());
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
     }
   };
 
@@ -340,9 +380,37 @@ export default function Environment({
                 }}
               />
             </IconButton>
-            <Button variant="contained">Configure Runtime</Button>
+            <Button variant="contained" onClick={() => setConfigDialogOpen(true)}>Configure Runtime</Button>
           </Stack>
         </Stack>
+        <Dialog open={configDialogOpen} onClose={() => setConfigDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Configure Runtime - {env.name}</DialogTitle>
+          <DialogContent>
+            <DialogContentText sx={{ mb: 2 }}>
+              Add the following configuration to your runtime's {componentType === 'BI' ? 'Config.toml' : 'deployment.toml'} file:
+            </DialogContentText>
+            <Box
+              component="pre"
+              sx={{
+                bgcolor: 'grey.100',
+                p: 2,
+                borderRadius: 1,
+                overflow: 'auto',
+                fontFamily: 'monospace',
+                fontSize: 13,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}>
+              {generateTomlConfig()}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setConfigDialogOpen(false)}>Cancel</Button>
+            <Button variant="contained" onClick={handleCopyToClipboard}>
+              {copySuccess ? 'Copied!' : 'Copy to Clipboard'}
+            </Button>
+          </DialogActions>
+        </Dialog>
         <Divider sx={{ my: 2 }} />
         {componentType === 'MI' && (
           <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>

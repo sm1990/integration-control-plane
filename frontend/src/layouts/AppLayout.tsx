@@ -49,7 +49,7 @@ import { BarChart3, Bell, Building, ChevronRight, Layers, LayoutDashboard, LogOu
 import { useProjectByHandler, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
-import { loginUrl, profileUrl } from '../paths';
+import { loginUrl, profileUrl, orgUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { ALL_USER_MGT_PERMISSIONS, Permissions } from '../constants/permissions';
@@ -129,7 +129,9 @@ export default function AppLayout(): JSX.Element {
           <Header.Toggle collapsed={shell.sidebarCollapsed} onToggle={actions.toggleSidebar} />
           <Header.Brand>
             <Header.BrandLogo>
-              <Logo />
+              <NavLink to={orgUrl(scope.org)} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                <Logo />
+              </NavLink>
             </Header.BrandLogo>
           </Header.Brand>
           <Header.Switchers showDivider={false}>

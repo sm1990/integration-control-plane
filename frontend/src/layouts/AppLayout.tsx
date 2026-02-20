@@ -259,10 +259,10 @@ export default function AppLayout(): JSX.Element {
             </Sidebar.Category>
           </Sidebar.Nav>
 
-          <Sidebar.Footer>
-            <Sidebar.Category>
-              <Button variant="text" fullWidth onClick={actions.toggleSidebar} sx={{ minHeight: 'auto', py: 1, justifyContent: 'flex-start' }}>
-                <Sidebar.Item id="expand">
+          <Sidebar.Footer sx={{ py: 0 }}>
+            <Sidebar.Category sx={{ mb: 0 }}>
+              <Button variant="text" fullWidth onClick={actions.toggleSidebar} sx={{ minHeight: 'auto', py: 2, lineHeight: 1, justifyContent: 'flex-start' }}>
+                <Sidebar.Item id="expand" sx={{ minHeight: 0, py: 0 }}>
                   <Sidebar.ItemIcon>
                     <ChevronRight size={20} style={{ transform: shell.sidebarCollapsed ? 'none' : 'rotate(180deg)' }} />
                   </Sidebar.ItemIcon>

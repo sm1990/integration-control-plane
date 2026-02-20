@@ -202,7 +202,7 @@ task initH2Database {
         logger.quiet('╚════════════════════════════════════════╝')
         
         def h2InitScript = file('resources/db/init-scripts/h2_init.sql')
-        def h2DbFile = file('database/icpdb')
+        def h2DbFile = file('database/icp_db')
         
         if (!h2InitScript.exists()) {
             throw new Exception("H2 init script not found at: ${h2InitScript.absolutePath}")
@@ -239,7 +239,7 @@ task initH2CredentialsDatabase {
         logger.quiet('╚════════════════════════════════════════╝')
         
         def credentialsInitScript = file('resources/db/init-scripts/credentials_h2_init.sql')
-        def credentialsDbFile = file('database/credentialsdb')
+        def credentialsDbFile = file('database/credentials_db')
         
         if (!credentialsInitScript.exists()) {
             throw new Exception("Credentials init script not found at: ${credentialsInitScript.absolutePath}")

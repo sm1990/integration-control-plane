@@ -33,7 +33,7 @@ configurable string apiKey = "default-api-key";
 configurable string credentialsDbType = "h2";
 configurable string credentialsDbHost = "localhost";
 configurable int credentialsDbPort = 5432;
-configurable string credentialsDbName = "credentialsdb";
+configurable string credentialsDbName = "credentials_db";
 configurable string credentialsDbUser = "icp_user";
 configurable string credentialsDbPassword = "icp_password";
 

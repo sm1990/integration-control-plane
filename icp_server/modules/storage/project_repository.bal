@@ -43,9 +43,14 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
     string userId = userContext.userId;
     string displayName = userContext.displayName;
 
-    // Use projectHandler as the handler field, fallback to handler if projectHandler is not provided
+    if project.name.trim() == "" {
+        log:printWarn("Project creation attempted with empty name");
+        return error("Project name is required");
+    }
+
     string handler = project.projectHandler;
     if handler.trim() == "" {
+        log:printWarn("Project creation attempted without handler for project: " + project.name);
         return error("Project handler is required");
     }
 

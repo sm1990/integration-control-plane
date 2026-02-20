@@ -1,6 +1,7 @@
 import { type RouteProps, Navigate } from 'react-router';
 import { cookiePolicyUrl, orgRoleDetailUrl, privacyPolicyUrl, projectRoleDetailUrl, componentRoleDetailUrl } from '../paths';
 import PublicLayout from '../layouts/PublicLayout';
+import PolicyLayout from '../layouts/PolicyLayout';
 import Login from '../pages/Login';
 import CookiePolicy from '../pages/CookiePolicy';
 import PrivacyPolicy from '../pages/PrivacyPolicy';
@@ -43,8 +44,11 @@ const routes: AppRoute[] = [
   { path: '/', element: <Navigate to="/login" replace /> },
   {
     element: <PublicLayout />,
+    children: [{ path: '/login', element: <Login /> }],
+  },
+  {
+    element: <PolicyLayout />,
     children: [
-      { path: '/login', element: <Login /> },
       { path: cookiePolicyUrl(), element: <CookiePolicy /> },
       { path: privacyPolicyUrl(), element: <PrivacyPolicy /> },
     ],

@@ -19,15 +19,19 @@
 import { Box, Link, Stack, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
 import type { JSX } from 'react';
+import { useNavigate } from 'react-router';
 import { Link as NavLink } from 'react-router';
 import { cookiePolicyUrl, external, loginUrl } from '../paths';
 
 export default function PrivacyPolicy(): JSX.Element {
+  const navigate = useNavigate();
+  const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate(loginUrl()));
+
   return (
-    <Box sx={{ position: 'fixed', inset: 0, overflowY: 'auto', zIndex: 1, bgcolor: 'background.default' }}>
-      <Link component={NavLink} to={loginUrl()} sx={{ position: 'fixed', top: '5rem', left: '1.5rem', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+    <Box sx={{ position: 'fixed', inset: 0, overflowY: 'auto', zIndex: 1 }}>
+      <Link component="button" onClick={handleBack} sx={{ position: 'fixed', top: '5rem', left: '1.5rem', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
         <ArrowLeft size={16} />
-        Back to Login
+        Back
       </Link>
       <Box sx={{ maxWidth: 800, mx: 'auto', px: 4, py: 6 }}>
         <Typography variant="h1" gutterBottom>
@@ -42,7 +46,7 @@ export default function PrivacyPolicy(): JSX.Element {
 
         <Stack spacing={3}>
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Privacy Policy
             </Typography>
             <Typography variant="body1" paragraph>
@@ -59,7 +63,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               What is personal information?
             </Typography>
             <Typography variant="body1" paragraph>
@@ -100,7 +104,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Collection of personal information
             </Typography>
             <Typography variant="body1" paragraph>
@@ -120,7 +124,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Tracking Technologies
             </Typography>
             <Typography variant="body1" paragraph>
@@ -149,7 +153,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Use of personal information
             </Typography>
             <Typography variant="body1" paragraph>
@@ -206,7 +210,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Disclosure of personal information
             </Typography>
             <Typography variant="body1">
@@ -217,7 +221,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Legal process
             </Typography>
             <Typography variant="body1">
@@ -226,11 +230,11 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Storage of personal information
             </Typography>
 
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Where your personal information is stored
             </Typography>
             <Typography variant="body1" paragraph>
@@ -241,7 +245,7 @@ export default function PrivacyPolicy(): JSX.Element {
               WSO2 Integration Control Plane may use encryption to keep your personal data with an added level of security.
             </Typography>
 
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               How long your personal information is retained
             </Typography>
             <Typography variant="body1" paragraph>
@@ -259,7 +263,7 @@ export default function PrivacyPolicy(): JSX.Element {
               </li>
             </ul>
 
-            <Typography variant="h4" gutterBottom sx={{ mt: 2 }}>
+            <Typography variant="h4" component="h3" gutterBottom sx={{ mt: 2 }}>
               How to request removal of your personal information
             </Typography>
             <Typography variant="body1" paragraph>
@@ -269,11 +273,11 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               More information
             </Typography>
 
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Changes to this policy
             </Typography>
             <Typography variant="body1" paragraph>
@@ -284,7 +288,7 @@ export default function PrivacyPolicy(): JSX.Element {
               The organization will notify any changes to the privacy policy over our official public channels.
             </Typography>
 
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Your choices
             </Typography>
             <Typography variant="body1" paragraph>
@@ -294,7 +298,7 @@ export default function PrivacyPolicy(): JSX.Element {
               If you do not have an account and you do not agree with our privacy policy, you can choose not to create one.
             </Typography>
 
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Contact us
             </Typography>
             <Typography variant="body1" paragraph>
@@ -306,7 +310,7 @@ export default function PrivacyPolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Disclaimer
             </Typography>
             <ol style={{ margin: 0, paddingLeft: '2rem' }}>

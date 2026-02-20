@@ -20,14 +20,18 @@ import { Box, Link, Stack, Table, TableBody, TableCell, TableContainer, TableHea
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
 import type { JSX } from 'react';
 import { Link as NavLink } from 'react-router';
+import { useNavigate } from 'react-router';
 import { external, loginUrl, privacyPolicyUrl } from '../paths';
 
 export default function CookiePolicy(): JSX.Element {
+  const navigate = useNavigate();
+  const handleBack = () => (window.history.length > 1 ? navigate(-1) : navigate(loginUrl()));
+
   return (
-    <Box sx={{ position: 'fixed', inset: 0, overflowY: 'auto', zIndex: 1, bgcolor: 'background.default' }}>
-      <Link component={NavLink} to={loginUrl()} sx={{ position: 'fixed', top: '5rem', left: '1.5rem', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+    <Box sx={{ position: 'fixed', inset: 0, overflowY: 'auto', zIndex: 1 }}>
+      <Link component="button" onClick={handleBack} sx={{ position: 'fixed', top: '5rem', left: '1.5rem', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
         <ArrowLeft size={16} />
-        Back to Login
+        Back
       </Link>
       <Box sx={{ maxWidth: 800, mx: 'auto', px: 4, py: 6 }}>
         <Typography variant="h1" gutterBottom>
@@ -42,7 +46,7 @@ export default function CookiePolicy(): JSX.Element {
 
         <Stack spacing={3}>
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Cookie Policy
             </Typography>
             <Typography variant="body1">
@@ -51,7 +55,7 @@ export default function CookiePolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               How does WSO2 Integration Control Plane process cookies?
             </Typography>
             <Typography variant="body1" paragraph>
@@ -73,7 +77,7 @@ export default function CookiePolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               What is a cookie?
             </Typography>
             <Typography variant="body1">
@@ -83,7 +87,7 @@ export default function CookiePolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               What does WSO2 Integration Control Plane use cookies for?
             </Typography>
             <Typography variant="body1" paragraph>
@@ -100,7 +104,7 @@ export default function CookiePolicy(): JSX.Element {
             <Typography variant="body1" paragraph sx={{ mt: 2 }}>
               WSO2 Integration Control Plane uses cookies for the following purposes listed below.
             </Typography>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Preferences
             </Typography>
             <Typography variant="body1" paragraph>
@@ -109,7 +113,7 @@ export default function CookiePolicy(): JSX.Element {
             <Typography variant="body1" paragraph>
               These cookies can not be used to personally identify you.
             </Typography>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Security
             </Typography>
             <Typography variant="body1" paragraph>
@@ -126,20 +130,20 @@ export default function CookiePolicy(): JSX.Element {
               WSO2 Integration Control Plane may use permanent cookies to detect that you have previously used the same device to log in. This is to calculate the &quot;risk level&quot; associated with your current login attempt. This is primarily to protect
               you and your account from possible attack.
             </Typography>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Performance
             </Typography>
             <Typography variant="body1" paragraph>
               WSO2 Integration Control Plane may use cookies to allow &quot;Remember Me&quot; functionalities.
             </Typography>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h4" component="h3" gutterBottom>
               Analytics
             </Typography>
             <Typography variant="body1">WSO2 Integration Control Plane as a product does not use cookies for analytical purposes.</Typography>
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               What type of cookies does WSO2 Integration Control Plane use?
             </Typography>
             <Typography variant="body1" paragraph>
@@ -153,7 +157,7 @@ export default function CookiePolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               How do I control my cookies?
             </Typography>
             <Typography variant="body1" paragraph>
@@ -164,7 +168,7 @@ export default function CookiePolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               What are the cookies used?
             </Typography>
             <TableContainer>
@@ -193,7 +197,7 @@ export default function CookiePolicy(): JSX.Element {
           </section>
 
           <section>
-            <Typography variant="h3" gutterBottom>
+            <Typography variant="h3" component="h2" gutterBottom>
               Disclaimer
             </Typography>
             <Typography variant="body1" paragraph>

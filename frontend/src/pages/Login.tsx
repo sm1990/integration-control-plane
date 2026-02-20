@@ -40,38 +40,39 @@ export default function Login(): JSX.Element {
   const base = import.meta.env.BASE_URL;
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', bgcolor: 'background.default' }}>
+    <Box sx={{ height: '100vh', display: 'flex' }}>
       <Grid container sx={{ flex: 1 }}>
         <Grid
           size={{ xs: 12, md: 8 }}
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+            alignItems: 'flex-start', // Move content to the left
             justifyContent: 'center',
             padding: { xs: 4, md: 8 },
             position: 'relative',
             overflow: 'hidden',
           }}>
-          <Stack direction="column" alignItems="flex-start" gap={0.5} maxWidth={520} display={{ xs: 'none', md: 'flex' }} sx={{ width: '100%' }}>
-            <img src={`${base}assets/images/icp-logo.svg`} alt="ICP Logo" height={60} />
-            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
+          <Stack direction="column" alignItems="flex-start" gap={3} display={{ xs: 'none', md: 'flex' }} sx={{ width: '100%' }}>
+            <img src={`${base}assets/images/icp-logo.svg`} alt="ICP Logo" height={60} style={{ alignSelf: 'flex-start' }} />
+            <Typography variant="h3" component="h1" sx={{ textAlign: 'left', width: '100%' }}>
               Get Started with WSO2 Integrator: ICP
             </Typography>
-            <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              A centralized platform for controlling, managing, and observing your integration solutions with confidence and scale.
-            </Typography>
+            <Box sx={{ maxWidth: 520, width: '100%' }}>
+              <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'left', width: '100%' }}>
+                A centralized platform for controlling, managing, and observing your integration solutions with confidence and scale.
+              </Typography>
+            </Box>
           </Stack>
           <Box
             sx={{
               display: { xs: 'none', md: 'flex' },
-              justifyContent: 'center',
+              justifyContent: 'flex-end',
               alignItems: 'center',
-              flex: 1,
               mt: 2,
               width: '100%',
             }}>
-            <img src={`${base}assets/images/icp-login.svg`} alt="ICP Login Illustration" style={{ maxWidth: '90%', maxHeight: '480px', objectFit: 'contain' }} />
+            <img src={`${base}assets/images/icp-login.svg`} alt="ICP Login Illustration" style={{ maxWidth: '90%', maxHeight: '280px', objectFit: 'contain' }} />
           </Box>
         </Grid>
 
@@ -89,6 +90,9 @@ export default function Login(): JSX.Element {
               maxWidth: 400,
               margin: '0 auto',
             }}>
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 3 }}>
+              <img src={`${base}assets/images/icp-logo.svg`} alt="ICP Logo" height={48} />
+            </Box>
             <LoginForm />
             <Footer />
           </Box>

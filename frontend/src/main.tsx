@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { OxygenUIThemeProvider, AcrylicOrangeTheme, AcrylicPurpleTheme, ChoreoTheme, ClassicTheme, HighContrastTheme, PaleGrayTheme, PaleIndigoTheme } from '@wso2/oxygen-ui';
+import { OxygenUIThemeProvider, AcrylicOrangeTheme } from '@wso2/oxygen-ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router';
 import { StrictMode } from 'react';
@@ -34,31 +34,7 @@ loadConfig().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <OxygenUIThemeProvider
-        themes={[
-          {
-            key: 'acrylicOrange',
-            label: 'Acrylic Orange Theme',
-            theme: AcrylicOrangeTheme,
-          },
-          {
-            key: 'acrylicPurple',
-            label: 'Acrylic Purple Theme',
-            theme: AcrylicPurpleTheme,
-          },
-          { key: 'choreo', label: 'Choreo Theme', theme: ChoreoTheme },
-          {
-            key: 'highContrast',
-            label: 'High Contrast Theme',
-            theme: HighContrastTheme,
-          },
-          { key: 'classic', label: 'Classic Theme', theme: ClassicTheme },
-          { key: 'paleGray', label: 'Pale Gray Theme', theme: PaleGrayTheme },
-          {
-            key: 'paleIndigo',
-            label: 'Pale Indigo Theme',
-            theme: PaleIndigoTheme,
-          },
-        ]}
+        themes={[{ key: 'acrylicOrange', label: 'Acrylic Orange Theme', theme: AcrylicOrangeTheme }]}  
         initialTheme="acrylicOrange">
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>

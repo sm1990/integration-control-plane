@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2025, WSO2 LLC. (https://www.wso2.com).
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
@@ -16,22 +16,13 @@
  * under the License.
  */
 
-import { Navigate, Outlet } from 'react-router';
-import { Box, ColorSchemeToggle, Layout, ParticleBackground, Stack } from '@wso2/oxygen-ui';
+import { Outlet } from 'react-router';
+import { Box, ColorSchemeToggle, Layout, Stack } from '@wso2/oxygen-ui';
 import type { JSX } from 'react';
-import { useAuth } from '../auth/AuthContext';
-import { orgUrl } from '../paths';
 
-export default function PublicLayout(): JSX.Element {
-  const { isAuthenticated } = useAuth();
-
-  if (isAuthenticated) {
-    return <Navigate to={orgUrl('default')} replace />;
-  }
-
+export default function PolicyLayout(): JSX.Element {
   return (
     <Layout.Content>
-      <ParticleBackground opacity={0.5} />
       <Box sx={{ height: '100%' }}>
         <Stack
           direction="row"
@@ -40,7 +31,7 @@ export default function PublicLayout(): JSX.Element {
             position: 'fixed',
             top: '1.5rem',
             right: '1.5rem',
-            zIndex: 2,
+            zIndex: 3,
           }}>
           <ColorSchemeToggle />
         </Stack>

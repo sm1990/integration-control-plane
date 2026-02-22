@@ -88,13 +88,22 @@ task testICP {
 
 task buildFrontend {
     description = 'Build the frontend application'
+
+    inputs.dir('frontend/src')
+    inputs.file('frontend/package.json')
+    outputs.dir('frontend/dist')
+
     doLast {
         logger.info('Building frontend...')
         exec {
             workingDir 'frontend'
-            commandLine 'pnpm', 'build'
+            commandLine 'pnpm', 'install'
         }
-        logger.info('Frontend build complete')
+        exec {
+            workingDir 'frontend'
+            commandLine 'pnpm', 'build'
+            logger.info('Frontend build complete')
+        }
     }
 }
 

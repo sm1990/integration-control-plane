@@ -38,6 +38,7 @@ export default function SearchField({ value, onChange, placeholder = 'Search...'
       size={size}
       sx={sx}
       slotProps={{
+        htmlInput: { 'aria-label': placeholder },
         input: {
           startAdornment: (
             <InputAdornment position="start">

@@ -27,6 +27,7 @@ function ProjectCard({ project, onClick }: { project: GqlProject; onClick: () =>
         </Typography>
         <IconButton
           size="small"
+          aria-label={`Settings for ${project.name}`}
           onClick={(e) => {
             e.stopPropagation();
           }}>
@@ -53,17 +54,17 @@ export default function Projects(scope: OrgScope): JSX.Element {
         <PageTitle.Header>
           <Stack direction="row" alignItems="center" gap={1}>
             All Projects
-            <IconButton size="small" onClick={() => refetch()}>
+            <IconButton size="small" aria-label="Refresh projects" onClick={() => refetch()}>
               <RefreshCw size={18} />
             </IconButton>
           </Stack>
         </PageTitle.Header>
         <PageTitle.Actions>
           <ToggleButtonGroup value={view} exclusive onChange={(_, v) => v && setView(v)} size="small">
-            <ToggleButton value="grid">
+            <ToggleButton value="grid" aria-label="Grid view">
               <LayoutGrid size={18} />
             </ToggleButton>
-            <ToggleButton value="list">
+            <ToggleButton value="list" aria-label="List view">
               <List size={18} />
             </ToggleButton>
           </ToggleButtonGroup>

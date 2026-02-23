@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Box, Divider, Grid, Link, Stack, Typography } from '@wso2/oxygen-ui';
+import { Box, ColorSchemeImage, Divider, Grid, Link, Stack, Typography } from '@wso2/oxygen-ui';
 import { type JSX } from 'react';
 import { Link as NavLink } from 'react-router';
 import LoginForm from '../components/LoginForm';
@@ -54,7 +54,7 @@ export default function Login(): JSX.Element {
             overflow: 'hidden',
           }}>
           <Stack direction="column" alignItems="flex-start" gap={3} display={{ xs: 'none', md: 'flex' }} sx={{ width: '100%' }}>
-            <img src={`${base}assets/images/icp-logo.svg`} alt="ICP Logo" height={60} style={{ alignSelf: 'flex-start' }} />
+            <ColorSchemeImage src={{ light: `${base}assets/images/icp-logo.svg`, dark: `${base}assets/images/icp-logo-white.svg` }} alt={{ light: 'ICP Logo', dark: 'ICP Logo' }} height={60} width="auto" style={{ alignSelf: 'flex-start' }} />
             <Typography variant="h3" component="h1" sx={{ textAlign: 'left', width: '100%' }}>
               Get Started with WSO2 Integrator: ICP
             </Typography>
@@ -91,7 +91,7 @@ export default function Login(): JSX.Element {
               margin: '0 auto',
             }}>
             <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 3 }}>
-              <img src={`${base}assets/images/icp-logo.svg`} alt="ICP Logo" height={48} />
+              <ColorSchemeImage src={{ light: `${base}assets/images/icp-logo.svg`, dark: `${base}assets/images/icp-logo-white.svg` }} alt={{ light: 'ICP Logo', dark: 'ICP Logo' }} height={48} width="auto" />
             </Box>
             <LoginForm />
             <Footer />

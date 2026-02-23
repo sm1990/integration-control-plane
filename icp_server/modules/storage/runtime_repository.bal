@@ -755,6 +755,12 @@ public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) retur
         lastHeartbeatStr = time:utcToString(heartbeatTime);
     }
 
+    // Get log levels for BI runtimes only (null for MI runtimes)
+    types:RuntimeLogLevelRecord[]? logLevels = ();
+    if runtimeRecord.runtime_type == types:BI {
+        logLevels = check getLogLevelsForRuntime(runtimeRecord.runtime_id);
+    }
+
     return {
         runtimeId: runtimeRecord.runtime_id,
         runtimeType: runtimeRecord.runtime_type,
@@ -790,7 +796,8 @@ public isolated function mapToRuntime(types:RuntimeDBRecord runtimeRecord) retur
             dataSources: sourceList,
             connectors: connectorList,
             registryResources: resourceList
-        }
+        },
+        logLevels: logLevels
     };
 }
 
@@ -829,4 +836,77 @@ public isolated function mapToService(types:ServiceRecordInDB serviceRecord, str
         resources: resourceList,
         listeners: [] // Empty listeners array
     };
+}
+
+// Get log levels for a specific runtime
+public isolated function getLogLevelsForRuntime(string runtimeId) returns types:RuntimeLogLevelRecord[]|error {
+    types:RuntimeLogLevelRecord[] logLevelList = [];
+    stream<types:RuntimeLogLevelRecord, sql:Error?> logLevelStream = dbClient->query(`
+        SELECT runtime_id, component_name, log_level
+        FROM bi_runtime_log_levels 
+        WHERE runtime_id = ${runtimeId}
+        ORDER BY component_name
+    `);
+
+    check from types:RuntimeLogLevelRecord logLevelRecord in logLevelStream
+        do {
+            logLevelList.push(logLevelRecord);
+        };
+
+    return logLevelList;
+}
+
+// Update or insert a log level for a specific runtime and component
+public isolated function upsertLogLevel(string runtimeId, string componentName, string logLevel) returns error? {
+    if dbType == MSSQL {
+        _ = check dbClient->execute(`
+            MERGE INTO bi_runtime_log_levels AS target
+            USING (VALUES (${runtimeId}, ${componentName}, ${logLevel}))
+                   AS source (runtime_id, component_name, log_level)
+            ON (target.runtime_id = source.runtime_id AND target.component_name = source.component_name)
+            WHEN MATCHED THEN
+                UPDATE SET log_level = source.log_level, updated_at = GETDATE()
+            WHEN NOT MATCHED THEN
+                INSERT (runtime_id, component_name, log_level)
+                VALUES (source.runtime_id, source.component_name, source.log_level);
+        `);
+    } else if dbType == POSTGRESQL {
+        _ = check dbClient->execute(`
+            INSERT INTO bi_runtime_log_levels (
+                runtime_id, component_name, log_level
+            ) VALUES (
+                ${runtimeId}, ${componentName}, ${logLevel}
+            )
+            ON CONFLICT (runtime_id, component_name) DO UPDATE SET
+                log_level = EXCLUDED.log_level,
+                updated_at = CURRENT_TIMESTAMP
+        `);
+    } else {
+        _ = check dbClient->execute(`
+            INSERT INTO bi_runtime_log_levels (
+                runtime_id, component_name, log_level
+            ) VALUES (
+                ${runtimeId}, ${componentName}, ${logLevel}
+            )
+            ON DUPLICATE KEY UPDATE
+                log_level = VALUES(log_level),
+                updated_at = CURRENT_TIMESTAMP
+        `);
+    }
+}
+
+// Delete log level for a specific runtime and component
+public isolated function deleteLogLevel(string runtimeId, string componentName) returns error? {
+    _ = check dbClient->execute(`
+        DELETE FROM bi_runtime_log_levels 
+        WHERE runtime_id = ${runtimeId} AND component_name = ${componentName}
+    `);
+}
+
+// Delete all log levels for a specific runtime
+public isolated function deleteAllLogLevels(string runtimeId) returns error? {
+    _ = check dbClient->execute(`
+        DELETE FROM bi_runtime_log_levels 
+        WHERE runtime_id = ${runtimeId}
+    `);
 }

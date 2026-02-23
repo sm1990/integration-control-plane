@@ -1124,6 +1124,35 @@ BEGIN
 END;
 GO
 
+-- Runtime log levels for BI components
+CREATE TABLE bi_runtime_log_levels (
+    runtime_id VARCHAR(100) NOT NULL,
+    component_name NVARCHAR(200) NOT NULL,
+    log_level NVARCHAR(20) NOT NULL CHECK (log_level IN ('DEBUG', 'ERROR', 'INFO', 'WARN')),
+    created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+    updated_at DATETIME2 NOT NULL DEFAULT GETDATE(),
+    PRIMARY KEY (runtime_id, component_name),
+    CONSTRAINT fk_bi_runtime_log_levels_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE,
+    INDEX idx_runtime_id (runtime_id),
+    INDEX idx_component_name (component_name),
+    INDEX idx_log_level (log_level)
+);
+GO
+
+CREATE TRIGGER trg_bi_runtime_log_levels_updated_at
+ON bi_runtime_log_levels
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE bi_runtime_log_levels
+    SET updated_at = GETDATE()
+    FROM bi_runtime_log_levels rll
+    INNER JOIN inserted i ON rll.runtime_id = i.runtime_id 
+        AND rll.component_name = i.component_name;
+END;
+GO
+
 -- ============================================================================
 -- MI-SPECIFIC ARTIFACT TABLES
 -- ============================================================================

@@ -794,6 +794,23 @@ CREATE INDEX idx_bi_automation_artifacts_package_name ON bi_automation_artifacts
 
 CREATE INDEX idx_bi_automation_artifacts_execution_timestamp ON bi_automation_artifacts (execution_timestamp);
 
+-- Runtime log levels for BI components
+CREATE TABLE bi_runtime_log_levels (
+    runtime_id VARCHAR(100) NOT NULL,
+    component_name VARCHAR(200) NOT NULL,
+    log_level VARCHAR(20) NOT NULL CHECK (log_level IN ('DEBUG', 'ERROR', 'INFO', 'WARN')),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (runtime_id, component_name),
+    CONSTRAINT fk_bi_runtime_log_levels_runtime FOREIGN KEY (runtime_id) REFERENCES runtimes (runtime_id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_bi_runtime_log_levels_runtime_id ON bi_runtime_log_levels (runtime_id);
+
+CREATE INDEX idx_bi_runtime_log_levels_component_name ON bi_runtime_log_levels (component_name);
+
+CREATE INDEX idx_bi_runtime_log_levels_log_level ON bi_runtime_log_levels (log_level);
+
 -- ============================================================================
 -- MI-SPECIFIC ARTIFACT TABLES
 -- ============================================================================

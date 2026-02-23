@@ -96,6 +96,7 @@ type Runtime {
   registrationTime: String
   lastHeartbeat: String
   artifacts: Artifacts
+  logLevels: [RuntimeLogLevel!]
 }
 
 # ============================================
@@ -336,6 +337,15 @@ type Connector {
 type RegistryResource {
   name: String!
   type: String!
+}
+
+# ============================================
+# RuntimeLogLevel Type - Runtime Log Level Configuration
+# ============================================
+type RuntimeLogLevel {
+  runtimeId: String!
+  componentName: String!
+  logLevel: String!
 }
 
 # ============================================

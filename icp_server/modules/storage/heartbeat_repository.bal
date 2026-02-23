@@ -785,79 +785,52 @@ isolated function upsertRuntime(types:Heartbeat heartbeat) returns boolean|error
 
 // Insert all runtime artifacts
 isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns error? {
-    // Insert services with UPSERT logic
+    // Delete existing BI services and resources for this runtime before inserting
+    _ = check dbClient->execute(`DELETE FROM bi_service_resource_artifacts WHERE runtime_id = ${heartbeat.runtime}`);
+    _ = check dbClient->execute(`DELETE FROM bi_service_artifacts WHERE runtime_id = ${heartbeat.runtime}`);
+
+    // Insert services
     foreach types:Service serviceDetail in heartbeat.artifacts.services {
-        if dbType == MSSQL {
-            _ = check dbClient->execute(`
-                MERGE INTO bi_service_artifacts AS target
-                USING (VALUES (${heartbeat.runtime}, ${serviceDetail.name}, ${serviceDetail.package}, 
-                       ${serviceDetail.basePath}, ${serviceDetail.state})) 
-                       AS source (runtime_id, service_name, service_package, base_path, state)
-                ON (target.runtime_id = source.runtime_id AND target.service_name = source.service_name 
-                    AND target.service_package = source.service_package)
-                WHEN MATCHED THEN
-                    UPDATE SET base_path = source.base_path, state = source.state, updated_at = CURRENT_TIMESTAMP
-                WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, service_name, service_package, base_path, state)
-                    VALUES (source.runtime_id, source.service_name, source.service_package, source.base_path, source.state);
-            `);
-        } else if dbType == POSTGRESQL {
-            _ = check dbClient->execute(`
-                INSERT INTO bi_service_artifacts (
-                    runtime_id, service_name, service_package, base_path, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${serviceDetail.name},
-                    ${serviceDetail.package}, ${serviceDetail.basePath},
-                    ${serviceDetail.state}
-                )
-                ON CONFLICT (runtime_id, service_name, service_package) DO UPDATE SET
-                    base_path = EXCLUDED.base_path,
-                    state = EXCLUDED.state,
-                    updated_at = CURRENT_TIMESTAMP
-            `);
-        } else {
-            _ = check dbClient->execute(`
-                INSERT INTO bi_service_artifacts (
-                    runtime_id, service_name, service_package, base_path, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${serviceDetail.name},
-                    ${serviceDetail.package}, ${serviceDetail.basePath},
-                    ${serviceDetail.state}
-                )
-                ON DUPLICATE KEY UPDATE
-                    base_path = VALUES(base_path),
-                    state = VALUES(state),
-                    updated_at = CURRENT_TIMESTAMP
-            `);
+        _ = check dbClient->execute(`
+            INSERT INTO bi_service_artifacts (
+                runtime_id, service_name, service_package, base_path, state
+            ) VALUES (
+                ${heartbeat.runtime}, ${serviceDetail.name},
+                ${serviceDetail.package}, ${serviceDetail.basePath},
+                ${serviceDetail.state}
+            )
+        `);
+
+        // Group resources by URL and merge methods to handle duplicates
+        map<string[]> resourcesByUrl = {};
+        foreach types:Resource resourceDetail in serviceDetail.resources {
+            string url = resourceDetail.url;
+            if resourcesByUrl.hasKey(url) {
+                // Merge methods - combine with existing methods
+                string[] existingMethods = resourcesByUrl.get(url);
+                foreach string method in resourceDetail.methods {
+                    // Add method if not already present
+                    if existingMethods.indexOf(method) is () {
+                        existingMethods.push(method);
+                    }
+                }
+            } else {
+                // First occurrence of this URL
+                resourcesByUrl[url] = resourceDetail.methods.clone();
+            }
         }
 
-        // Upsert resources for this service
-        foreach types:Resource resourceDetail in serviceDetail.resources {
-            string methodsJson = resourceDetail.methods.toJsonString();
-            if dbType == MSSQL {
-                _ = check dbClient->execute(`
-                    MERGE INTO bi_service_resource_artifacts AS target
-                    USING (VALUES (${heartbeat.runtime}, ${serviceDetail.name}, ${resourceDetail.url}, ${methodsJson}))
-                           AS source (runtime_id, service_name, resource_url, methods)
-                    ON (target.runtime_id = source.runtime_id AND target.service_name = source.service_name 
-                        AND target.resource_url = source.resource_url)
-                    WHEN MATCHED THEN
-                        UPDATE SET methods = source.methods, updated_at = CURRENT_TIMESTAMP
-                    WHEN NOT MATCHED THEN
-                        INSERT (runtime_id, service_name, resource_url, methods)
-                        VALUES (source.runtime_id, source.service_name, source.resource_url, source.methods);
-                `);
-            } else if dbType == POSTGRESQL {
+        // Insert deduplicated resources
+        foreach [string, string[]] [url, methods] in resourcesByUrl.entries() {
+            string methodsJson = methods.toJsonString();
+            if dbType == POSTGRESQL {
                 _ = check dbClient->execute(`
                     INSERT INTO bi_service_resource_artifacts (
                         runtime_id, service_name, resource_url, methods
                     ) VALUES (
                         ${heartbeat.runtime}, ${serviceDetail.name},
-                        ${resourceDetail.url}, ${methodsJson}::jsonb
+                        ${url}, ${methodsJson}::jsonb
                     )
-                    ON CONFLICT (runtime_id, service_name, resource_url) DO UPDATE SET
-                        methods = EXCLUDED.methods,
-                        updated_at = CURRENT_TIMESTAMP
                 `);
             } else {
                 _ = check dbClient->execute(`
@@ -865,93 +838,42 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
                         runtime_id, service_name, resource_url, methods
                     ) VALUES (
                         ${heartbeat.runtime}, ${serviceDetail.name},
-                        ${resourceDetail.url}, ${methodsJson}
+                        ${url}, ${methodsJson}
                     )
-                    ON DUPLICATE KEY UPDATE
-                        methods = VALUES(methods),
-                        updated_at = CURRENT_TIMESTAMP
                 `);
             }
         }
     }
 
-    // Insert listeners with UPSERT logic
+    // Delete existing BI listeners for this runtime before inserting
+    _ = check dbClient->execute(`DELETE FROM bi_runtime_listener_artifacts WHERE runtime_id = ${heartbeat.runtime}`);
+
+    // Insert listeners
     foreach types:Listener listenerDetail in heartbeat.artifacts.listeners {
         string? host = listenerDetail?.host;
         int? port = listenerDetail?.port;
-        if dbType == MSSQL {
-            _ = check dbClient->execute(`
-                MERGE INTO bi_runtime_listener_artifacts AS target
-                USING (VALUES (${heartbeat.runtime}, ${listenerDetail.name}, ${listenerDetail.package}, 
-                       ${listenerDetail.protocol}, ${host}, ${port}, ${listenerDetail.state})) 
-                       AS source (runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state)
-                ON (target.runtime_id = source.runtime_id AND target.listener_name = source.listener_name)
-                WHEN MATCHED THEN
-                    UPDATE SET listener_package = source.listener_package, protocol = source.protocol,
-                               listener_host = source.listener_host, listener_port = source.listener_port,
-                               state = source.state, updated_at = CURRENT_TIMESTAMP
-                WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state)
-                    VALUES (source.runtime_id, source.listener_name, source.listener_package, source.protocol,
-                            source.listener_host, source.listener_port, source.state);
-            `);
-        } else if dbType == POSTGRESQL {
-            _ = check dbClient->execute(`
-                INSERT INTO bi_runtime_listener_artifacts (
-                    runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${listenerDetail.name},
-                    ${listenerDetail.package}, ${listenerDetail.protocol},
-                    ${host}, ${port},
-                    ${listenerDetail.state}
-                )
-                ON CONFLICT (runtime_id, listener_name) DO UPDATE SET
-                    listener_package = EXCLUDED.listener_package,
-                    protocol = EXCLUDED.protocol,
-                    listener_host = EXCLUDED.listener_host,
-                    listener_port = EXCLUDED.listener_port,
-                    state = EXCLUDED.state,
-                    updated_at = CURRENT_TIMESTAMP
-            `);
-        } else {
-            _ = check dbClient->execute(`
-                INSERT INTO bi_runtime_listener_artifacts (
-                    runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state
-                ) VALUES (
-                    ${heartbeat.runtime}, ${listenerDetail.name},
-                    ${listenerDetail.package}, ${listenerDetail.protocol},
-                    ${host}, ${port},
-                    ${listenerDetail.state}
-                )
-                ON DUPLICATE KEY UPDATE
-                    listener_package = VALUES(listener_package),
-                    protocol = VALUES(protocol),
-                    listener_host = VALUES(listener_host),
-                    listener_port = VALUES(listener_port),
-                    state = VALUES(state),
-                    updated_at = CURRENT_TIMESTAMP
-            `);
-        }
+        _ = check dbClient->execute(`
+            INSERT INTO bi_runtime_listener_artifacts (
+                runtime_id, listener_name, listener_package, protocol, listener_host, listener_port, state
+            ) VALUES (
+                ${heartbeat.runtime}, ${listenerDetail.name},
+                ${listenerDetail.package}, ${listenerDetail.protocol},
+                ${host}, ${port},
+                ${listenerDetail.state}
+            )
+        `);
     }
 
     // Handle automation artifacts for BI integrations (main function)
+    // Delete existing automation artifacts first
+    _ = check dbClient->execute(`DELETE FROM bi_automation_artifacts WHERE runtime_id = ${heartbeat.runtime}`);
+
     // Only store automation when runtime type is BI, there are no listeners or services, and main artifact exists
     if heartbeat.runtimeType == "BI" && heartbeat.artifacts.listeners.length() == 0 && heartbeat.artifacts.services.length() == 0 {
         types:Main? mainArtifact = heartbeat.artifacts.main;
         if mainArtifact is types:Main {
             string executionTimeStr = check convertUtcToDbDateTime(heartbeat.timestamp);
-            if dbType == MSSQL {
-                _ = check dbClient->execute(`
-                    MERGE INTO bi_automation_artifacts AS target
-                    USING (VALUES (${heartbeat.runtime}, ${mainArtifact.packageOrg}, ${mainArtifact.packageName}, 
-                           ${mainArtifact.packageVersion}, ${executionTimeStr})) 
-                           AS source (runtime_id, package_org, package_name, package_version, execution_timestamp)
-                    ON (target.runtime_id = source.runtime_id AND target.execution_timestamp = source.execution_timestamp)
-                    WHEN NOT MATCHED THEN
-                        INSERT (runtime_id, package_org, package_name, package_version, execution_timestamp)
-                        VALUES (source.runtime_id, source.package_org, source.package_name, source.package_version, source.execution_timestamp);
-                `);
-            } else if dbType == POSTGRESQL {
+            if dbType == POSTGRESQL {
                 _ = check dbClient->execute(`
                     INSERT INTO bi_automation_artifacts (
                         runtime_id, package_org, package_name, package_version, execution_timestamp
@@ -959,7 +881,6 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
                         ${heartbeat.runtime}, ${mainArtifact.packageOrg}, ${mainArtifact.packageName},
                         ${mainArtifact.packageVersion}, ${executionTimeStr}::timestamp
                     )
-                    ON CONFLICT (runtime_id, execution_timestamp) DO NOTHING
                 `);
             } else {
                 _ = check dbClient->execute(`
@@ -969,26 +890,14 @@ isolated function insertRuntimeArtifacts(types:Heartbeat heartbeat) returns erro
                         ${heartbeat.runtime}, ${mainArtifact.packageOrg}, ${mainArtifact.packageName},
                         ${mainArtifact.packageVersion}, ${executionTimeStr}
                     )
-                    ON DUPLICATE KEY UPDATE
-                        package_org = VALUES(package_org),
-                        package_name = VALUES(package_name),
-                        package_version = VALUES(package_version),
-                        updated_at = CURRENT_TIMESTAMP
                 `);
             }
-        } else {
-            // If runtime type is BI but main artifact is absent, clean up any existing automation artifacts
-            _ = check dbClient->execute(`DELETE FROM bi_automation_artifacts WHERE runtime_id = ${heartbeat.runtime}`);
         }
-    } else {
-        // If runtime type is not BI, or listeners/services are present, clean up any existing automation artifacts
-        // This handles the case where runtime transitions from automation mode to listener/service mode
-        // or when a non-BI runtime has stale automation data
-        _ = check dbClient->execute(`DELETE FROM bi_automation_artifacts WHERE runtime_id = ${heartbeat.runtime}`);
     }
 
     check insertMIArtifacts(heartbeat);
     check insertAdditionalMIArtifacts(heartbeat);
+    check insertRuntimeLogLevels(heartbeat);
 }
 
 // Delete existing artifacts
@@ -997,6 +906,7 @@ isolated function deleteExistingArtifacts(string runtimeId) returns error? {
     _ = check dbClient->execute(`DELETE FROM bi_runtime_listener_artifacts WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM bi_service_resource_artifacts WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM bi_automation_artifacts WHERE runtime_id = ${runtimeId}`);
+    _ = check dbClient->execute(`DELETE FROM bi_runtime_log_levels WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM mi_api_resource_artifacts WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM mi_api_artifacts WHERE runtime_id = ${runtimeId}`);
     _ = check dbClient->execute(`DELETE FROM mi_proxy_service_artifacts WHERE runtime_id = ${runtimeId}`);
@@ -1850,6 +1760,55 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
                     ${heartbeat.runtime}, ${registryResource.name}, ${registryResource.'type}
                 )
                 ON DUPLICATE KEY UPDATE
+                    updated_at = CURRENT_TIMESTAMP
+            `);
+        }
+    }
+}
+
+// Insert runtime log levels for BI components
+isolated function insertRuntimeLogLevels(types:Heartbeat heartbeat) returns error? {
+    // Only process log levels if they exist in the heartbeat
+    map<log:Level>? logLevels = heartbeat.logLevels;
+    if logLevels is () {
+        return;
+    }
+
+    // Iterate through each component and its log level
+    foreach var [componentName, logLevel] in logLevels.entries() {
+        string logLevelStr = logLevel.toString();
+        if dbType == MSSQL {
+            _ = check dbClient->execute(`
+                MERGE INTO bi_runtime_log_levels AS target
+                USING (VALUES (${heartbeat.runtime}, ${componentName}, ${logLevelStr}))
+                       AS source (runtime_id, component_name, log_level)
+                ON (target.runtime_id = source.runtime_id AND target.component_name = source.component_name)
+                WHEN MATCHED THEN
+                    UPDATE SET log_level = source.log_level, updated_at = GETDATE()
+                WHEN NOT MATCHED THEN
+                    INSERT (runtime_id, component_name, log_level)
+                    VALUES (source.runtime_id, source.component_name, source.log_level);
+            `);
+        } else if dbType == POSTGRESQL {
+            _ = check dbClient->execute(`
+                INSERT INTO bi_runtime_log_levels (
+                    runtime_id, component_name, log_level
+                ) VALUES (
+                    ${heartbeat.runtime}, ${componentName}, ${logLevelStr}
+                )
+                ON CONFLICT (runtime_id, component_name) DO UPDATE SET
+                    log_level = EXCLUDED.log_level,
+                    updated_at = CURRENT_TIMESTAMP
+            `);
+        } else {
+            _ = check dbClient->execute(`
+                INSERT INTO bi_runtime_log_levels (
+                    runtime_id, component_name, log_level
+                ) VALUES (
+                    ${heartbeat.runtime}, ${componentName}, ${logLevelStr}
+                )
+                ON DUPLICATE KEY UPDATE
+                    log_level = VALUES(log_level),
                     updated_at = CURRENT_TIMESTAMP
             `);
         }

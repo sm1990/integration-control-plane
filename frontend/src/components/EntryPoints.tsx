@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArtifacts, useRefreshEnvironmentArtifacts, type GqlArtifact, type GqlEnvironment } from '../api/queries';
 import { useUpdateArtifactTracingStatus, useUpdateArtifactStatisticsStatus } from '../api/artifactToggleMutations';
+import { useUpdateListenerState } from '../api/mutations';
 import { ArtifactApiDefinition, ServiceResources, AutomationExecutions } from './ArtifactTabs';
 import { ArtifactTypeSelector } from './ArtifactDetail';
 import { ENTRY_POINT_CONFIG, ENTRY_POINT_DETAIL_TABS, type SelectedArtifact, type TabProps } from './artifact-config';
@@ -29,11 +30,14 @@ import { ENTRY_POINT_CONFIG, ENTRY_POINT_DETAIL_TABS, type SelectedArtifact, typ
 function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArtifact; onOpenDrawerTab: (tab: string) => void }) {
   const [tracingEnabled, setTracingEnabled] = useState(false);
   const [statisticsEnabled, setStatisticsEnabled] = useState(false);
+  const [listenerEnabled, setListenerEnabled] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{ type: 'tracing' | 'statistics'; checked: boolean } | null>(null);
+  const [pendingListenerToggle, setPendingListenerToggle] = useState<{ checked: boolean } | null>(null);
   const { artifact, artifactType, envId, componentId, projectId } = selected;
   const queryClient = useQueryClient();
   const updateTracingStatus = useUpdateArtifactTracingStatus();
   const updateStatisticsStatus = useUpdateArtifactStatisticsStatus();
+  const updateListenerState = useUpdateListenerState();
   const config = ENTRY_POINT_CONFIG[artifactType];
   const tabProps: TabProps = { artifact, artifactType, envId, componentId, projectId };
   const carbonApp = artifact.carbonApp?.toString();
@@ -44,6 +48,7 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
   const showSourceButton = artifactType === 'RestApi';
   const showWsdlButton = artifactType === 'ProxyService';
   const showStatisticsToggle = ['RestApi', 'ProxyService', 'InboundEndpoint'].includes(artifactType);
+  const showListenerToggle = artifactType === 'Listener';
   const toEnabled = (value: unknown) => {
     if (typeof value === 'boolean') return value;
     const normalized = (value ?? '').toString().toLowerCase();
@@ -55,7 +60,8 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
   useEffect(() => {
     setTracingEnabled(toEnabled(artifact.tracing));
     setStatisticsEnabled(toEnabled(artifact.statistics));
-  }, [artifactKey, artifact.tracing, artifact.statistics]);
+    setListenerEnabled(toEnabled(artifact.state));
+  }, [artifactKey, artifact.tracing, artifact.statistics, artifact.state]);
 
   const handleToggleTracing = (checked: boolean) => {
     if (!showTracingToggle) return;
@@ -65,6 +71,11 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
   const handleToggleStatistics = (checked: boolean) => {
     if (!showStatisticsToggle) return;
     setPendingToggle({ type: 'statistics', checked });
+  };
+
+  const handleToggleListener = (checked: boolean) => {
+    if (!showListenerToggle) return;
+    setPendingListenerToggle({ checked });
   };
 
   const handleConfirmToggle = () => {
@@ -94,8 +105,34 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
     setPendingToggle(null);
   };
 
+  const handleConfirmListenerToggle = () => {
+    if (!pendingListenerToggle) return;
+
+    const runtimes = (artifact.runtimes as Array<{ runtimeId: string }> | undefined) ?? [];
+    const runtimeIds = runtimes.map((r) => r.runtimeId);
+    const previousValue = listenerEnabled;
+
+    setListenerEnabled(pendingListenerToggle.checked);
+    const artifactQueryKey = ['artifacts', artifactType, envId, componentId];
+
+    updateListenerState.mutate(
+      {
+        runtimeIds,
+        listenerName: artifactName,
+        action: pendingListenerToggle.checked ? 'START' : 'STOP',
+      },
+      {
+        onError: () => setListenerEnabled(previousValue),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: artifactQueryKey }),
+      },
+    );
+
+    setPendingListenerToggle(null);
+  };
+
   const toggleLabel = pendingToggle?.type === 'tracing' ? 'tracing' : 'statistics';
   const toggleAction = pendingToggle?.checked ? 'enable' : 'disable';
+  const listenerAction = pendingListenerToggle?.checked ? 'enable' : 'disable';
 
   return (
     <>
@@ -112,6 +149,22 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
           <Button onClick={() => setPendingToggle(null)}>Cancel</Button>
           <Button variant="contained" onClick={handleConfirmToggle}>
             {toggleAction === 'enable' ? 'Enable' : 'Disable'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={pendingListenerToggle !== null} onClose={() => setPendingListenerToggle(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          {listenerAction === 'enable' ? 'Enable Listener' : 'Disable Listener'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to {listenerAction} the listener <strong>{artifactName}</strong>?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPendingListenerToggle(null)}>Cancel</Button>
+          <Button variant="contained" color={listenerAction === 'disable' ? 'error' : 'primary'} onClick={handleConfirmListenerToggle}>
+            {listenerAction === 'enable' ? 'Enable' : 'Disable'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -135,6 +188,15 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
                 Statistics
               </Typography>
               <Switch size="small" checked={statisticsEnabled} onChange={(e) => handleToggleStatistics(e.target.checked)} disabled={updateStatisticsStatus.isPending} aria-label="Enable statistics" />
+            </Stack>
+          )}
+          {(showTracingToggle || showStatisticsToggle) && showListenerToggle && <Divider orientation="vertical" flexItem />}
+          {showListenerToggle && (
+            <Stack direction="row" alignItems="center" gap={1}>
+              <Typography variant="body2" color="text.secondary">
+                State
+              </Typography>
+              <Switch size="small" checked={listenerEnabled} onChange={(e) => handleToggleListener(e.target.checked)} disabled={updateListenerState.isPending} aria-label="Enable listener" />
             </Stack>
           )}
           {showSourceButton && (

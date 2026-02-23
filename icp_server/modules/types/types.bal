@@ -14,6 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+import ballerina/log;
 import ballerina/sql;
 import ballerina/time;
 
@@ -153,6 +154,7 @@ public type Heartbeat record {|
     Artifacts artifacts;
     string runtimeHash;
     time:Utc timestamp;
+    map<log:Level> logLevels?; // BI log levels from heartbeat payload
 |};
 
 // Delta heartbeat with hash value
@@ -495,6 +497,7 @@ public type Runtime record {
     }
     string lastHeartbeat?;
     Artifacts artifacts?;
+    RuntimeLogLevelRecord[] logLevels?;
 };
 
 public type ServiceRecordInDB record {
@@ -596,6 +599,21 @@ public type CarbonAppRecordInDB record {
 public type RegistryResourceRecordInDB record {
     string resource_name;
     string resource_type = "";
+};
+
+public type RuntimeLogLevelRecord record {
+    @sql:Column {
+        name: "runtime_id"
+    }
+    string runtimeId;
+    @sql:Column {
+        name: "component_name"
+    }
+    string componentName;
+    @sql:Column {
+        name: "log_level"
+    }
+    string logLevel;
 };
 
 public type ResourceRecord record {

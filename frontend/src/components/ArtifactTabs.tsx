@@ -142,12 +142,20 @@ export function InboundEndpointParameters({ artifact, envId, componentId, artifa
   for (const p of params) {
     if (p.name === 'parameters') {
       try {
-        const parsed = JSON.parse(p.value) as Array<{ name: string; value: string }>;
-        for (const item of parsed) {
-          rows.push([item.name, item.value]);
+        const parsed = JSON.parse(p.value);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (typeof item.name === 'string' && typeof item.value === 'string') {
+              rows.push([item.name, item.value]);
+            }
+          }
+        } else {
+          rows.push([p.name, p.value]);
         }
-      } catch {
-        rows.push([p.name, p.value]);
+      } catch (e) {
+        if (e instanceof SyntaxError) {
+          rows.push([p.name, p.value]);
+        }
       }
     } else {
       rows.push([p.name, p.value]);

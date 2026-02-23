@@ -1418,19 +1418,3 @@ VALUES (
         'Mozilla/5.0 (Test Browser)',
         '127.0.0.1'
     );
-
--- ============================================================================
--- SCHEDULED EVENTS
--- ============================================================================
-
--- Enable event scheduler (required for scheduled events to run)
-SET GLOBAL event_scheduler = ON;
-
--- Create scheduled event to clean up expired and revoked refresh tokens
--- Runs daily at 2:00 AM
-CREATE EVENT IF NOT EXISTS cleanup_expired_refresh_tokens
-ON SCHEDULE EVERY 1 DAY
-STARTS (TIMESTAMP(CURRENT_DATE) + INTERVAL 1 DAY + INTERVAL 2 HOUR)
-DO
-  DELETE FROM refresh_tokens 
-  WHERE expires_at < NOW() OR revoked = TRUE;

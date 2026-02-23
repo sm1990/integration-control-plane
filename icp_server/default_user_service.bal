@@ -25,9 +25,14 @@ import ballerina/sql;
 import ballerina/time;
 import ballerina/uuid;
 
+type PasswordHash record {|
+    string hash;
+    string? salt;
+|};
+
 configurable int authServicePort = 9447;
 configurable string authServiceHost = "0.0.0.0";
-configurable string apiKey = "default-api-key";
+configurable string passwordHashingAlgorithm = "bcrypt";
 
 // Credentials DB
 configurable string credentialsDbType = "h2";
@@ -126,25 +131,24 @@ service / on defaultAuthServiceListener {
         }
 
         // Verify current password
-        boolean|crypto:Error? matches = crypto:verifyBcrypt(request.currentPassword, credentials.passwordHash);
-        if matches is crypto:Error {
+        boolean|error matches = verifyPassword(request.currentPassword, credentials.passwordHash, credentials.passwordSalt);
+        if matches is error {
             log:printError("Error verifying current password", matches);
             return utils:createInternalServerError("Failed to verify current password");
-        } else if matches is boolean && !matches {
+        } else if !matches {
             log:printWarn("User provided incorrect current password", userId = request.userId);
             return utils:createBadRequestError("Current password is incorrect");
         }
 
         // Hash new password
-        //TODO add a salt
-        string|crypto:Error newPasswordHash = crypto:hashBcrypt(request.newPassword);
-        if newPasswordHash is crypto:Error {
+        PasswordHash|error newPasswordHash = hashPassword(request.newPassword);
+        if newPasswordHash is error {
             log:printError("Error hashing new password", newPasswordHash);
             return utils:createInternalServerError("Failed to process new password");
         }
 
         // Update password
-        error? updateResult = updateUserPasswordInDb(userId, newPasswordHash);
+        error? updateResult = updateUserPasswordInDb(userId, newPasswordHash.hash, newPasswordHash.salt);
         if updateResult is error {
             log:printError("Error updating password", updateResult, userId = userId);
             return utils:createInternalServerError("Failed to update password");
@@ -173,13 +177,13 @@ service / on defaultAuthServiceListener {
         string otp = generateRandomPassword();
 
         // Hash and store
-        string|crypto:Error otpHash = crypto:hashBcrypt(otp);
-        if otpHash is crypto:Error {
+        PasswordHash|error otpHash = hashPassword(otp);
+        if otpHash is error {
             log:printError("Error hashing generated password", otpHash);
             return utils:createInternalServerError("Failed to process password");
         }
 
-        error? updateResult = resetUserPasswordInDb(request.userId, otpHash);
+        error? updateResult = resetUserPasswordInDb(request.userId, otpHash.hash, otpHash.salt);
         if updateResult is error {
             log:printError("Error resetting password", updateResult, userId = request.userId);
             return utils:createInternalServerError("Failed to reset password");
@@ -200,14 +204,14 @@ service / on defaultAuthServiceListener {
         }
 
         // Hash new password
-        string|crypto:Error newPasswordHash = crypto:hashBcrypt(request.newPassword);
-        if newPasswordHash is crypto:Error {
+        PasswordHash|error newPasswordHash = hashPassword(request.newPassword);
+        if newPasswordHash is error {
             log:printError("Error hashing new password", newPasswordHash);
             return utils:createInternalServerError("Failed to process new password");
         }
 
         // Update password and clear require_password_change flag
-        error? updateResult = forceUpdateUserPasswordInDb(userId, newPasswordHash);
+        error? updateResult = forceUpdateUserPasswordInDb(userId, newPasswordHash.hash, newPasswordHash.salt);
         if updateResult is error {
             log:printError("Error force-changing password", updateResult, userId = userId);
             return utils:createInternalServerError("Failed to change password");
@@ -221,13 +225,7 @@ service / on defaultAuthServiceListener {
         };
     }
 
-    resource function post users(@http:Header {name: "X-API-Key"} string? apiKeyHeader, types:CreateUserInput request) returns http:Created|http:BadRequest|http:Unauthorized|http:InternalServerError|error {
-
-        // Validate API key
-        if apiKeyHeader is () || apiKeyHeader != apiKey {
-            log:printWarn("User creation attempt with invalid API key");
-            return utils:createUnauthorizedError("Invalid API key");
-        }
+    resource function post users(types:CreateUserInput request) returns http:Created|http:BadRequest|http:Unauthorized|http:InternalServerError|error {
 
         // Validate input
         if request.username.trim().length() == 0 {
@@ -241,8 +239,8 @@ service / on defaultAuthServiceListener {
         }
 
         // Hash password
-        string|crypto:Error passwordHash = crypto:hashBcrypt(request.password);
-        if passwordHash is crypto:Error {
+        PasswordHash|error passwordHash = hashPassword(request.password);
+        if passwordHash is error {
             log:printError("Error hashing password during user creation", passwordHash);
             return utils:createInternalServerError("Failed to process password");
         }
@@ -259,7 +257,7 @@ service / on defaultAuthServiceListener {
 
         // Create user credentials only (auth backend manages user_credentials table)
         string userId = uuid:createRandomUuid();
-        error? createResult = createUserCredentials(userId, request.username, request.displayName, passwordHash);
+        error? createResult = createUserCredentials(userId, request.username, request.displayName, passwordHash.hash, passwordHash.salt);
 
         if createResult is error {
             log:printError("Error creating user credentials in auth backend", createResult, username = request.username);
@@ -286,7 +284,7 @@ isolated function authenticateUser(string username, string password) returns typ
     // Query user credentials table from separate credentials database
     types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
         `SELECT user_id as userId, username, display_name as displayName,
-                password_hash as passwordHash,
+                password_hash as passwordHash, password_salt as passwordSalt,
                 created_at as createdAt, updated_at as updatedAt
          FROM user_credentials
          WHERE username = ${username}`
@@ -297,12 +295,12 @@ isolated function authenticateUser(string username, string password) returns typ
         return error("Invalid credentials");
     }
 
-    // Validate password using bcrypt
-    boolean|crypto:Error? matches = crypto:verifyBcrypt(password, credentials.passwordHash);
-    if matches is crypto:Error {
+    // Validate password
+    boolean|error matches = verifyPassword(password, credentials.passwordHash, credentials.passwordSalt);
+    if matches is error {
         log:printError("Unable to verify password", matches);
         return error("Invalid credentials");
-    } else if matches is boolean && !matches {
+    } else if !matches {
         log:printError("Invalid password", username = username);
         return error("Invalid credentials");
     }
@@ -323,7 +321,7 @@ isolated function getUserCredentialsById(string userId) returns types:UserCreden
     log:printDebug(string `Fetching credentials for userId: ${userId}`);
     types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
         `SELECT user_id as userId, username, display_name as displayName,
-                password_hash as passwordHash,
+                password_hash as passwordHash, password_salt as passwordSalt,
                 created_at as createdAt, updated_at as updatedAt
          FROM user_credentials
          WHERE user_id = ${userId}`
@@ -337,12 +335,12 @@ isolated function getUserCredentialsById(string userId) returns types:UserCreden
     return credentials;
 }
 
-isolated function updateUserPasswordInDb(string userId, string newPasswordHash) returns error? {
+isolated function updateUserPasswordInDb(string userId, string newPasswordHash, string? newPasswordSalt) returns error? {
     log:printDebug(string `Updating password for user: ${userId}`);
 
     sql:ExecutionResult result = check credentialsDbClient->execute(
         `UPDATE user_credentials
-         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
+         SET password_hash = ${newPasswordHash}, password_salt = ${newPasswordSalt}, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = ${userId}`
     );
 
@@ -354,12 +352,12 @@ isolated function updateUserPasswordInDb(string userId, string newPasswordHash) 
     return ();
 }
 
-isolated function resetUserPasswordInDb(string userId, string newPasswordHash) returns error? {
+isolated function resetUserPasswordInDb(string userId, string newPasswordHash, string? newPasswordSalt) returns error? {
     log:printDebug(string `Admin resetting password for user: ${userId}`);
 
     sql:ExecutionResult result = check credentialsDbClient->execute(
         `UPDATE user_credentials
-         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
+         SET password_hash = ${newPasswordHash}, password_salt = ${newPasswordSalt}, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = ${userId}`
     );
 
@@ -371,12 +369,12 @@ isolated function resetUserPasswordInDb(string userId, string newPasswordHash) r
     return ();
 }
 
-isolated function forceUpdateUserPasswordInDb(string userId, string newPasswordHash) returns error? {
+isolated function forceUpdateUserPasswordInDb(string userId, string newPasswordHash, string? newPasswordSalt) returns error? {
     log:printDebug(string `Force-changing password for user: ${userId}`);
 
     sql:ExecutionResult result = check credentialsDbClient->execute(
         `UPDATE user_credentials
-         SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
+         SET password_hash = ${newPasswordHash}, password_salt = ${newPasswordSalt}, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = ${userId}`
     );
 
@@ -397,13 +395,101 @@ isolated function generateRandomPassword() returns string {
     return chars;
 }
 
+// hashWithDigest computes Base64(digest(password+salt)) matching the v1 JDBCUserStoreManager
+// algorithm. `salt` is appended to the password string before hashing, mirroring the v1
+// behaviour of Secret.addChars(salt). Returns a standard Base64-encoded string.
+isolated function hashWithDigest(string password, string? salt) returns string {
+    string input = salt is () ? password : password + salt;
+    byte[] inputBytes = input.toBytes();
+    byte[] hashBytes;
+    match passwordHashingAlgorithm.toLowerAscii() {
+        "sha-1"|"sha1"|"sha" => {
+            hashBytes = crypto:hashSha1(inputBytes);
+        }
+        "md5" => {
+            hashBytes = crypto:hashMd5(inputBytes);
+        }
+        "sha-384"|"sha384" => {
+            hashBytes = crypto:hashSha384(inputBytes);
+        }
+        "sha-512"|"sha512" => {
+            hashBytes = crypto:hashSha512(inputBytes);
+        }
+        _ => {
+            // Covers "sha-256", "sha256" and any unrecognised digest value
+            hashBytes = crypto:hashSha256(inputBytes);
+        }
+    }
+    return hashBytes.toBase64();
+}
+
+isolated function hashPassword(string password) returns PasswordHash|error {
+    match passwordHashingAlgorithm.toLowerAscii() {
+        "argon2" => {
+            string|crypto:Error h = crypto:hashArgon2(password);
+            if h is crypto:Error {
+                return h;
+            }
+            return {hash: h, salt: ()};
+        }
+        "pbkdf2" => {
+            string|crypto:Error h = crypto:hashPbkdf2(password);
+            if h is crypto:Error {
+                return h;
+            }
+            return {hash: h, salt: ()};
+        }
+        "sha-256"|"sha256"|"sha-1"|"sha1"|"sha"|"md5"|"sha-384"|"sha384"|"sha-512"|"sha512" => {
+            // Generate a random salt and produce a v1-compatible Base64(digest(password+salt)) hash
+            string salt = uuid:createRandomUuid();
+            return {hash: hashWithDigest(password, salt), salt: salt};
+        }
+        "plain_text"|"plaintext" => {
+            // No hashing; password stored as-is (no salt generated in v2)
+            return {hash: password, salt: ()};
+        }
+        _ => {
+            // Default: bcrypt
+            string|crypto:Error h = crypto:hashBcrypt(password);
+            if h is crypto:Error {
+                return h;
+            }
+            return {hash: h, salt: ()};
+        }
+    }
+}
+
+isolated function verifyPassword(string password, string storedHash, string? storedSalt) returns boolean|error {
+    match passwordHashingAlgorithm.toLowerAscii() {
+        "argon2" => {
+            return crypto:verifyArgon2(password, storedHash);
+        }
+        "pbkdf2" => {
+            return crypto:verifyPbkdf2(password, storedHash);
+        }
+        "sha-256"|"sha256"|"sha-1"|"sha1"|"sha"|"md5"|"sha-384"|"sha384"|"sha-512"|"sha512" => {
+            // Re-derive Base64(digest(password+salt)) and compare
+            return hashWithDigest(password, storedSalt) == storedHash;
+        }
+        "plain_text"|"plaintext" => {
+            // v1 stored password+salt (or just password) as plain text
+            string expected = storedSalt is () ? password : password + storedSalt;
+            return expected == storedHash;
+        }
+        _ => {
+            // Default: bcrypt
+            return crypto:verifyBcrypt(password, storedHash);
+        }
+    }
+}
+
 // Local helper: create user credentials only (auth backend manages user_credentials table in separate DB)
-isolated function createUserCredentials(string userId, string username, string displayName, string passwordHash) returns error? {
+isolated function createUserCredentials(string userId, string username, string displayName, string passwordHash, string? passwordSalt) returns error? {
     log:printDebug(string `Auth backend creating user credentials: ${username} (${userId})`);
 
     sql:ExecutionResult|error insertError = credentialsDbClient->execute(
-        `INSERT INTO user_credentials (user_id, username, display_name, password_hash)
-         VALUES (${userId}, ${username}, ${displayName}, ${passwordHash})`
+        `INSERT INTO user_credentials (user_id, username, display_name, password_hash, password_salt)
+         VALUES (${userId}, ${username}, ${displayName}, ${passwordHash}, ${passwordSalt})`
     );
 
     if insertError is error {

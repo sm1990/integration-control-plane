@@ -1362,27 +1362,6 @@ ORDER BY micc.issued_at ASC;
 
 -- Note: Default organization and super admin user are created in RBAC V2 SEED DATA section above
 
--- Insert additional test users
-INSERT INTO
-    users (
-        user_id,
-        username,
-        display_name,
-        is_super_admin
-    )
-VALUES (
-        '660e8400-e29b-41d4-a716-446655440002',
-        'testuser',
-        'Test User for Role Management',
-        FALSE
-    ),
-    (
-        '660e8400-e29b-41d4-a716-446655440003',
-        'targetuser',
-        'Target User for Role Updates',
-        FALSE
-    );
-
 -- Note: User credentials are stored in a separate H2 database (credentialsdb)
 -- accessed only by the default auth backend. See resources/db/init-scripts/credentials_h2_init.sql
 

@@ -1904,8 +1904,9 @@ public type UserCredentials record {
     string username;
     string displayName;
     string passwordHash;
-    string? createdAt?;
-    string? updatedAt?;
+    string passwordSalt?;
+    string createdAt?;
+    string updatedAt?;
 };
 
 // UserContext V2 - RBAC V2 permission-based authorization

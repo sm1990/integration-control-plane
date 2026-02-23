@@ -15,6 +15,7 @@ BEGIN
         username NVARCHAR(255) NOT NULL UNIQUE,
         display_name NVARCHAR(200) NOT NULL,
         password_hash NVARCHAR(255) NOT NULL,
+        password_salt NVARCHAR(255) NULL,
         created_at DATETIME2 NOT NULL DEFAULT GETDATE(),
         updated_at DATETIME2 NOT NULL DEFAULT GETDATE()
     );
@@ -42,24 +43,6 @@ BEGIN
             'admin',
             'System Administrator',
             '$2a$12$ZbcSg6botbwvmQV3/wBAfEozQoOn+5V7F8s/5evMUNb7L6FgCmFaEQ=='
-        ),
-        (
-            '660e8400-e29b-41d4-a716-446655440001',
-            'newuser',
-            'New Test User',
-            '$2a$12$qJcaAGnurmpgmAPywgMocpUJQCDt3aPTknPZeItz3vEyca46bbg4Kw=='
-        ),
-        (
-            '660e8400-e29b-41d4-a716-446655440002',
-            'testuser',
-            'Test User for Role Management',
-            '$2a$12$OpZbPCxn781N0UM9vAU0uVISXHldE54QcbkrkWTTqWAY+XgQ53p+tQ=='
-        ),
-        (
-            '660e8400-e29b-41d4-a716-446655440003',
-            'targetuser',
-            'Target User for Role Updates',
-            '$2a$12$6POmY2tusrinXSmAJy78aZj+IYh6bK2XpdqbCiwsUFdx9P+oC54t7Q=='
         );
 END;
 GO

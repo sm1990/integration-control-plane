@@ -69,7 +69,6 @@ configurable int maxRefreshTokensPerUser = 10; // Maximum number of active refre
 
 // Authentication backend configuration 
 configurable string authBackendUrl = "https://localhost:9447";
-configurable string authBackendApiKey = "default-api-key";
 
 // SSO (OIDC) configuration
 configurable boolean ssoEnabled = false;

@@ -1474,27 +1474,6 @@ WHERE micc.status IN ('pending', 'sent');
 
 -- Note: Default organization and super admin user are created in RBAC V2 SEED DATA section above
 
--- Insert additional test users
-INSERT INTO
-    users (
-        user_id,
-        username,
-        display_name,
-        is_super_admin
-    )
-VALUES (
-        '660e8400-e29b-41d4-a716-446655440002',
-        'testuser',
-        'Test User for Role Management',
-        FALSE
-    ),
-    (
-        '660e8400-e29b-41d4-a716-446655440003',
-        'targetuser',
-        'Target User for Role Updates',
-        FALSE
-    );
-
 -- Insert sample project
 INSERT INTO
     projects (

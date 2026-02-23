@@ -243,12 +243,12 @@ export default function AppLayout(): JSX.Element {
       </AppShell.Navbar>
 
       <AppShell.Sidebar>
-        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={resource ?? 'overview'} expandedMenus={shell.expandedMenus} onSelect={() => {}} onToggleExpand={actions.toggleMenu}>
+        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={resource ?? 'overview'} expandedMenus={shell.expandedMenus} onSelect={() => {}} onToggleExpand={actions.toggleMenu} sx={{ backgroundColor: 'background.acrylic', backdropFilter: 'blur(3px)' }}>
           <Sidebar.Nav>
             <Sidebar.Category>
               {items.map((item, index) => (
                 <React.Fragment key={`${item.resource}-${index}`}>
-                  <Link component={NavLink} to={item.url}>
+                  <Link component={NavLink} to={item.url} sx={{ color: 'inherit' }}>
                     <Sidebar.Item id={item.resource}>
                       <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
                       <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
@@ -283,7 +283,6 @@ export default function AppLayout(): JSX.Element {
           <Footer.Link href="#privacy">Privacy Policy</Footer.Link>
           <Footer.Link href="#cookies">Cookie Policy</Footer.Link>
           <Footer.Link href="#support">Support</Footer.Link>
-          <Footer.Divider />
           <Footer.Copyright>&copy; {new Date().getFullYear()}, WSO2 LLC.</Footer.Copyright>
         </Footer>
       </AppShell.Footer>

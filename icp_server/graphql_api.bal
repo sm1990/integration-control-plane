@@ -2348,6 +2348,7 @@ service /graphql on graphqlListener {
             params.push({name: "payload", value: payload});
         } else {
             log:printWarn("Unexpected inbound parameters JSON shape", inboundName = inboundName);
+            log:printDebug("Processing inbound parameters for GraphQL service", inboundName = inboundName, paramCount = params.length());
         }
 
         log:printInfo("Successfully fetched inbound endpoint parameters",
@@ -2487,6 +2488,7 @@ service /graphql on graphqlListener {
             params.push({name: "payload", value: payload});
         } else {
             log:printWarn("Unexpected artifact parameters JSON shape", artifactType = artifactType, artifactName = artifactName);
+            log:printDebug("Processing artifact parameters", artifactType = artifactType, artifactName = artifactName, paramCount = params.length());
         }
 
         log:printInfo("Successfully fetched artifact parameters",

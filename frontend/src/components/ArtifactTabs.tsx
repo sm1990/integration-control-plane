@@ -94,7 +94,7 @@ export function ServiceResources({ artifact }: TabProps) {
 
 export function ArtifactWsdl({ envId, componentId, artifactType, artifact }: TabProps) {
   const backendType = ARTIFACT_TYPE_TO_SOURCE_TYPE[artifactType] ?? artifactType.toLowerCase();
-  const { data: wsdl, isLoading, error } = useArtifactWsdl(componentId, backendType, artifact.name?.toString() ?? '', envId);
+  const { data: wsdl, isLoading, error } = useArtifactWsdl(componentId, backendType, artifact.name, envId);
   if (isLoading) return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
   if (error || !wsdl) return <Typography sx={emptySx}>No WSDL content available.</Typography>;
   return <CodeViewer code={wsdl} language="xml" />;

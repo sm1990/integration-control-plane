@@ -139,6 +139,58 @@ function simple_hash(str)
     return string.format("%08x%08x", hash1, hash2)
 end
 
+-- ========== MI Metrics (synapse-analytics.log) ==========
+
+-- Enrich MI metrics records with common metadata fields
+function enrich_mi_metrics(tag, timestamp, record)
+    record["product"] = "Micro Integrator"
+    record["service_type"] = "MI"
+    record["log_type"] = "metrics"
+    return 1, timestamp, record
+end
+
+-- Generate a document ID from metrics-specific fields for deduplication in OpenSearch
+function generate_mi_metrics_document_id(tag, timestamp, record)
+    local timestamp_str
+    if type(timestamp) == "table" then
+        timestamp_str = string.format("%d.%09d",
+            timestamp.sec or timestamp[1] or 0,
+            timestamp.nsec or timestamp[2] or 0)
+    else
+        timestamp_str = tostring(timestamp)
+    end
+
+    -- Use the MI metrics timestamp if available (milliseconds epoch in JSON)
+    local metrics_ts = tostring(record["timestamp"] or "")
+
+    -- Pull identifying fields from the structured JSON
+    local entity_type = ""
+    local entity_name = ""
+    local server_id   = ""
+
+    if record["payload"] and type(record["payload"]) == "table" then
+        entity_type = tostring(record["payload"]["entityType"] or "")
+        entity_name = tostring(
+            record["payload"]["entityName"] or
+            record["payload"]["apiName"]    or
+            record["payload"]["proxyName"]  or
+            record["payload"]["sequenceName"] or
+            record["payload"]["endpointName"] or
+            record["payload"]["inboundEndpointName"] or "")
+    end
+
+    if record["serverInfo"] and type(record["serverInfo"]) == "table" then
+        server_id = tostring(record["serverInfo"]["id"] or "")
+    end
+
+    local delimiter = string.char(31)  -- U+001F unit separator
+    local composite = timestamp_str .. delimiter .. metrics_ts .. delimiter ..
+                      entity_type .. delimiter .. entity_name .. delimiter .. server_id
+    record["doc_id"] = simple_hash(composite)
+
+    return 1, timestamp, record
+end
+
 function generate_document_id(tag, timestamp, record)
     -- Generate a consistent document ID based on key fields
     -- This ensures that duplicate log entries overwrite instead of creating new documents

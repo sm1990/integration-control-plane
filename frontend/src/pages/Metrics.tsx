@@ -262,6 +262,9 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
       </PageContent>
     );
   }
+  if (!project) {
+    return <NotFound message="Project not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Organization" />;
+  }
   if (isComponent && !singleComponent) {
     return <NotFound message="Component not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Project" />;
   }

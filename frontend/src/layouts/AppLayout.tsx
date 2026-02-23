@@ -243,12 +243,12 @@ export default function AppLayout(): JSX.Element {
       </AppShell.Navbar>
 
       <AppShell.Sidebar>
-        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={resource ?? 'overview'} expandedMenus={shell.expandedMenus} onSelect={() => {}} onToggleExpand={actions.toggleMenu}>
+        <Sidebar collapsed={shell.sidebarCollapsed} activeItem={resource ?? 'overview'} expandedMenus={shell.expandedMenus} onSelect={() => {}} onToggleExpand={actions.toggleMenu} sx={{ backgroundColor: 'background.acrylic', backdropFilter: 'blur(3px)' }}>
           <Sidebar.Nav>
             <Sidebar.Category>
               {items.map((item, index) => (
                 <React.Fragment key={`${item.resource}-${index}`}>
-                  <Link component={NavLink} to={item.url}>
+                  <Link component={NavLink} to={item.url} sx={{ color: 'inherit' }}>
                     <Sidebar.Item id={item.resource}>
                       <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
                       <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
@@ -259,10 +259,10 @@ export default function AppLayout(): JSX.Element {
             </Sidebar.Category>
           </Sidebar.Nav>
 
-          <Sidebar.Footer>
-            <Sidebar.Category>
-              <Button variant="text" fullWidth onClick={actions.toggleSidebar} sx={{ minHeight: 'auto', py: 1, justifyContent: 'flex-start' }}>
-                <Sidebar.Item id="expand">
+          <Sidebar.Footer sx={{ py: 0 }}>
+            <Sidebar.Category sx={{ mb: 0 }}>
+              <Button variant="text" fullWidth onClick={actions.toggleSidebar} sx={{ minHeight: 'auto', py: 2, lineHeight: 1, justifyContent: 'flex-start' }}>
+                <Sidebar.Item id="expand" sx={{ minHeight: 0, py: 0 }}>
                   <Sidebar.ItemIcon>
                     <ChevronRight size={20} style={{ transform: shell.sidebarCollapsed ? 'none' : 'rotate(180deg)' }} />
                   </Sidebar.ItemIcon>
@@ -283,7 +283,6 @@ export default function AppLayout(): JSX.Element {
           <Footer.Link href="#privacy">Privacy Policy</Footer.Link>
           <Footer.Link href="#cookies">Cookie Policy</Footer.Link>
           <Footer.Link href="#support">Support</Footer.Link>
-          <Footer.Divider />
           <Footer.Copyright>&copy; {new Date().getFullYear()}, WSO2 LLC.</Footer.Copyright>
         </Footer>
       </AppShell.Footer>

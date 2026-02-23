@@ -146,7 +146,10 @@ SALT_LEN  = 16
 raw_salt = os.urandom(SALT_LEN)
 dk = hashlib.pbkdf2_hmac("sha256", PASSWORD.encode("utf-8"), raw_salt, ROUNDS)
 
-# Ballerina's crypto uses standard Base64 (with padding) for both salt and hash
+# Verified via source: the Ballerina crypto library uses Bouncy Castle's
+# org.bouncycastle.util.encoders.Base64 (standard RFC 4648, alphabet A-Za-z0-9+/=)
+# and the verifier regex requires that exact alphabet. Python's base64.b64encode()
+# produces identical output.
 salt_b64 = base64.b64encode(raw_salt).decode()
 hash_b64  = base64.b64encode(dk).decode()
 
@@ -154,25 +157,11 @@ print(f"$pbkdf2-sha256$i={ROUNDS}${salt_b64}${hash_b64}")
 EOF
 ```
 
-#### Option C — passlib with MCF string fix
-
-If you must use passlib, patch the iteration field after generation:
-
-```bash
-# Requires: pip install passlib
-python3 - <<'EOF'
-import re
-from passlib.hash import pbkdf2_sha256
-
-ROUNDS = 10000   # see OWASP note above
-
-raw = pbkdf2_sha256.using(rounds=ROUNDS).hash("admin")
-# passlib emits  $pbkdf2-sha256$10000$...
-# Ballerina wants $pbkdf2-sha256$i=10000$...
-fixed = re.sub(r"(\$pbkdf2-sha256\$)(\d+\$)", r"\1i=\2", raw)
-print(fixed)
-EOF
-```
+> **Note — do not use passlib to generate PBKDF2 hashes for this service.** Passlib
+> encodes salt and checksum with its own "adapted base64" variant (substitutes `.` for `+`
+> and omits `=` padding). The Ballerina verifier regex only accepts `[A-Za-z0-9+/=]+`, so
+> a passlib-produced MCF string will fail format validation even if the `i=` iteration
+> prefix is patched in.
 
 ---
 

@@ -61,7 +61,7 @@ async function fetchMetrics(req: MetricsRequest): Promise<MetricsResponse> {
     throw new Error(`${res.status}: ${body}`);
   }
   const json: MetricsResponse = await res.json();
-  return { inboundMetrics: json.inboundMetrics ?? [], outboundMetrics: json.outboundMetrics ?? [] };
+  return json;
 }
 
 export function useMetrics(req: MetricsRequest | null) {

@@ -163,7 +163,6 @@ public isolated function processDeltaHeartbeat(types:DeltaHeartbeat deltaHeartbe
     // Hash matches, process delta heartbeat
 
     // Update the heartbeat timestamp using database's native timestamp function
-    
     sql:ExecutionResult|error timestampResult = dbClient->execute(`
         UPDATE runtimes
         SET last_heartbeat = CURRENT_TIMESTAMP, status = 'RUNNING'

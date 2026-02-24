@@ -14,32 +14,16 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import icp_server.secrets as sec;
+import icp_server.utils;
 
 import ballerina/sql;
 
-isolated sql:Client? _dbClient = ();
+// Initialized at module load time with resolved (decrypted) credentials.
+final sql:Client dbClient = check createDbClient();
 
-// Resolves DB credentials via the secrets module and establishes the connection.
-public function initDb() returns error? {
-    string resolvedUser = check sec:resolveConfig(dbUser);
-    string resolvedPassword = check sec:resolveConfig(dbPassword);
+function createDbClient() returns sql:Client|error {
+    string resolvedUser = check utils:resolveConfig(dbUser, secrets);
+    string resolvedPassword = check utils:resolveConfig(dbPassword, secrets);
     DatabaseConnectionManager dbManager = check new (dbType, dbHost, dbPort, dbName, resolvedUser, resolvedPassword);
-    lock {
-        _dbClient = dbManager.getClient();
-    }
-}
-
-// Returns the initialized DB client.
-// Panics with a clear message if called before initDb()
-isolated function getDb() returns sql:Client {
-    sql:Client? dbClient;
-    lock {
-        dbClient = _dbClient;
-    }
-    // c = dbRecord._dbClient;
-    if dbClient is sql:Client {
-        return dbClient;
-    }
-    panic error("Database client not initialized.");
+    return dbManager.getClient();
 }

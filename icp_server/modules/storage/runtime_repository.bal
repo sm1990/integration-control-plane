@@ -48,7 +48,6 @@ public isolated function getRuntimes(string? status, string? runtimeType, string
                  registration_time, last_heartbeat FROM runtimes `;
     sql:ParameterizedQuery orderByClause = ` ORDER BY registration_time DESC `;
     sql:ParameterizedQuery query = sql:queryConcat(selectClause, whereClause, whereConditions, orderByClause);
-    
     stream<types:RuntimeDBRecord, sql:Error?> runtimeStream = dbClient->query(query);
 
     check from types:RuntimeDBRecord runtime in runtimeStream

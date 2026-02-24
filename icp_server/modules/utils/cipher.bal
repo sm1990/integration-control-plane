@@ -18,6 +18,7 @@ import ballerina/crypto;
 import ballerina/file;
 import ballerina/os;
 import ballerina/lang.array;
+import ballerina/log;
 
 // Cipher tool keystore configuration.
 // This keystore is separate from the Ballerina TLS keystore (ballerinaKeystore.p12)
@@ -41,13 +42,11 @@ configurable string cipherKeystoreAlias = "localhost";
 
 final string resolvedKeystorePassword = check resolvePassword(
         "ICP_CIPHER_KEYSTORE_PASSWORD", cipherKeystorePassword,
-        "Cipher keystore password is not configured. " +
-        "Set the ICP_CIPHER_KEYSTORE_PASSWORD environment variable.");
+        "Cipher keystore password is not configured.");
 
 final string resolvedPrivateKeyPassword = check resolvePassword(
         "ICP_PRIVATE_KEY_PASSWORD", cipherPrivateKeyPassword,
-        "Cipher private key password is not configured. " +
-        "Set the ICP_PRIVATE_KEY_PASSWORD environment variable.");
+        "Cipher private key password is not configured.");
 
 function resolvePassword(string envVar, string fallback, string errorMsg) returns string|error {
     string val = os:getEnv(envVar);
@@ -58,6 +57,21 @@ function resolvePassword(string envVar, string fallback, string errorMsg) return
         return error(errorMsg);
     }
     return val;
+}
+
+// Resolves a configurable value that may reference an encrypted secret.
+// If configValue matches "$secret{alias}", looks up alias in secrets, decrypts, and returns the plaintext.
+public isolated function resolveConfig(string configValue, map<string> secrets) returns string|error {
+    if configValue.startsWith("$secret{") && configValue.endsWith("}") {
+        string alias = configValue.substring(8, configValue.length() - 1);
+        string? encrypted = secrets[alias];
+        if encrypted is () {
+            log:printError("Secret alias '${alias}' not found in secrets table.");
+            return error(string `Secret alias '${alias}' not found in secrets table.`);
+        }
+        return decrypt(encrypted);
+    }
+    return configValue;
 }
 
 // Decrypts a value encrypted by the WSO2 cipher tool using asymmetric RSA/ECB/OAEPwithSHA1andMGF1Padding.

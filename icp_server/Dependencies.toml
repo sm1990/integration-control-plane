@@ -671,7 +671,6 @@ modules = [
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.auth"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.observability"},
-	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.secrets"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.storage"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.types"},
 	{org = "wso2", packageName = "icp_server", moduleName = "icp_server.utils"}

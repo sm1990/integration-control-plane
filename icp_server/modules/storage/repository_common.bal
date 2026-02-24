@@ -14,8 +14,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import icp_server.secrets as sec;
 import icp_server.types as types;
+import icp_server.utils;
 
 import ballerina/http;
 import ballerina/jwt;
@@ -942,7 +942,7 @@ public isolated function sendArtifactTracingChange(types:Runtime runtime, string
 
 // Helper: generate HMAC JWT used to call ICP internal APIs
 public isolated function issueRuntimeHmacToken() returns string|error {
-    string hmacSecret = check sec:resolveConfig(defaultRuntimeJwtHMACSecret);
+    string hmacSecret = check utils:resolveConfig(defaultRuntimeJwtHMACSecret, secrets);
     jwt:IssuerConfig issConfig = {
         username: "icp-artifact-fetcher",
         issuer: jwtIssuer,

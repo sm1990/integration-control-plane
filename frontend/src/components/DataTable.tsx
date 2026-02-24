@@ -19,7 +19,9 @@
 import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@wso2/oxygen-ui';
 import type { JSX } from 'react';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const cellSx = { borderBottom: '1px solid', borderColor: 'divider' };
+// eslint-disable-next-line react-refresh/only-export-components
 export const emptySx = { color: 'text.secondary', py: 2 };
 
 export default function DataTable({ headers, rows, emptyMsg }: { headers?: string[]; rows: (string | JSX.Element)[][]; emptyMsg?: string }) {

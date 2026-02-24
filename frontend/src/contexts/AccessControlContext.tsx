@@ -102,6 +102,7 @@ export function AccessControlProvider({ children }: { children: ReactNode }): JS
   return <AccessControlContext.Provider value={value}>{children}</AccessControlContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAccessControl(): AccessControlContextType {
   const context = useContext(AccessControlContext);
   if (!context) {

@@ -220,7 +220,7 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
   }, [isComponent, componentId, effectiveEnvId, timeRange, resolution]);
 
   const { data: metricsData, isLoading, error, refetch } = useMetrics(metricsRequest);
-  const inboundMetrics = metricsData?.inboundMetrics ?? [];
+  const inboundMetrics = useMemo(() => metricsData?.inboundMetrics ?? [], [metricsData]);
 
   // Client-side integration filter (project-level only)
   const integrations = useMemo(() => {

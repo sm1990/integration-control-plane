@@ -26,6 +26,14 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
   const mutation = useCreateComponent();
 
   const effectiveHandler = handlerEdited ? handler : toHandler(displayName);
+  const nameError = displayName.trim() && (effectiveHandler.length < 3 || effectiveHandler.length > 64);
+  const isDuplicateError = !!mutation.error && /already taken/i.test(mutation.error.message);
+  const alertError = isDuplicateError ? null : mutation.error;
+  const alertMessage = alertError?.message === 'Failed to fetch' ? 'Unable to connect to the server. Please check that the server is running and try again.' : alertError?.message;
+
+  const resetError = () => {
+    if (mutation.error) mutation.reset();
+  };
 
   const submit = () => {
     const input: CreateComponentInput = {
@@ -54,15 +62,27 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
         Create New Integration
       </Typography>
 
-      {mutation.error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {mutation.error.message || 'Failed to create integration. Please try again.'}
+      {alertError && (
+        <Alert severity="error" role="alert" sx={{ mb: 5 }}>
+          {alertMessage}
         </Alert>
       )}
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <TextField label="Display Name" placeholder="Enter display name here" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }} />
+          <TextField
+            label="Display Name"
+            placeholder="Enter display name here"
+            value={displayName}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              resetError();
+            }}
+            fullWidth
+            error={!!nameError || isDuplicateError}
+            helperText={nameError ? 'Integration name must be between 3 and 64 characters.' : isDuplicateError ? mutation.error!.message : undefined}
+            slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -71,6 +91,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
             onChange={(e) => {
               setHandler(e.target.value);
               setHandlerEdited(true);
+              resetError();
             }}
             fullWidth
             disabled={!handlerEdited}
@@ -110,7 +131,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
         <Button variant="outlined" onClick={() => navigate(resourceUrl(scope, 'overview'))}>
           Cancel
         </Button>
-        <Button variant="contained" onClick={submit} disabled={!displayName.trim() || !effectiveHandler || mutation.isPending}>
+        <Button variant="contained" onClick={submit} disabled={!displayName.trim() || effectiveHandler.length < 3 || effectiveHandler.length > 64 || mutation.isPending}>
           Create
         </Button>
       </Stack>

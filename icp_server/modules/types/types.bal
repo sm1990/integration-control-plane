@@ -214,7 +214,7 @@ public type ControlCommand record {
     ControlAction action;
     time:Utc issuedAt;
     ControlCommandStatus status; // pending, sent, acknowledged, failed
-    string? payload?; // JSON payload for actions that need additional data
+    string payload?; // JSON payload for actions that need additional data
 };
 
 public type HeartbeatResponse record {

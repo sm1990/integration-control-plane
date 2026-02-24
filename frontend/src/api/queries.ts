@@ -294,7 +294,7 @@ const ARTIFACT_QUERY_MAP: Record<string, { queryName: string; field: string; fie
     queryName: 'messageProcessorsByEnvironmentAndComponent',
     field: 'messageProcessorsByEnvironmentAndComponent',
     fields: 'name, type, state',
-    gqlFields: 'name, type, state, carbonApp, runtimes { runtimeId, status }',
+    gqlFields: 'name, type, state, tracing, carbonApp, runtimes { runtimeId, status }',
   },
   Template: {
     queryName: 'templatesByEnvironmentAndComponent',

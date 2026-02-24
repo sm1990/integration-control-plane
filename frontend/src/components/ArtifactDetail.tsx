@@ -45,9 +45,21 @@ import { ChevronRight, Maximize2, X } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useState } from 'react';
 import { useArtifactTypes, useArtifacts, ARTIFACT_QUERY_MAP, type GqlArtifact } from '../api/queries';
 import { useUpdateArtifactStatus, useUpdateListenerState } from '../api/mutations';
+import { useUpdateArtifactTracingStatus, useUpdateArtifactStatisticsStatus } from '../api/artifactToggleMutations';
 import SearchField from './SearchField';
 import { ArtifactSource, ArtifactApiDefinition, ArtifactEndpoints, ArtifactWsdl, ArtifactValue, ArtifactCarbonArtifacts, ArtifactRuntimes, InboundEndpointParameters, AutomationExecutions } from './ArtifactTabs';
 import { ARTIFACT_ICONS, ARTIFACT_TABS, DEFAULT_ARTIFACT_TABS, ENTRY_POINT_TYPE_SET, formatArtifactTypeName, typePlural, type SelectedArtifact, type TabProps } from './artifact-config';
+import { useQueryClient } from '@tanstack/react-query';
+
+/**
+ * Normalizes state/tracing/statistics values to a boolean.
+ * Handles string values like "enabled"/"disabled" (case-insensitive) and boolean values.
+ */
+function toEnabled(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  const strValue = (value ?? '').toString().toLowerCase();
+  return strValue === 'enabled' || strValue === 'true';
+}
 
 function ListenerConfirmDialog({ open, action, listenerName, onConfirm, onCancel }: { open: boolean; action: 'START' | 'STOP'; listenerName: string; onConfirm: () => void; onCancel: () => void }) {
   return (
@@ -74,8 +86,11 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; artifact: GqlArtifact | null; action: 'START' | 'STOP' } | null>(null);
+  const qc = useQueryClient();
   const toggleStatus = useUpdateArtifactStatus();
   const updateListenerState = useUpdateListenerState();
+  const updateTracingStatus = useUpdateArtifactTracingStatus();
+  const updateStatisticsStatus = useUpdateArtifactStatisticsStatus();
   const artifactMapping = ARTIFACT_QUERY_MAP[artifactType];
   if (!artifactMapping) return null;
 
@@ -94,12 +109,35 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
     return a.name?.toString().toLowerCase().includes(searchQuery);
   });
   const supportsToggle = ['Endpoint', 'Listener'].includes(artifactType);
-  const hasStateField = ['Connector', 'Listener'].includes(artifactType);
+  const hasStateField = ['Connector'].includes(artifactType);
   const maxPage = Math.max(0, Math.ceil(filtered.length / rowsPerPage) - 1);
   const safePage = Math.min(page, maxPage);
   const paginatedArtifacts = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);
-  const totalColumns = columns.length + (hasStateField ? 1 : 0);
-  const columnSize = Math.floor(12 / totalColumns);
+
+  // Calculate max toggle columns across all artifacts (for consistent sizing)
+  const maxToggleColumns = (() => {
+    let max = 0;
+    paginatedArtifacts.forEach((a) => {
+      const artifactType_ = a.type?.toString().toLowerCase() ?? '';
+      let count = 0;
+      if (hasStateField) count++;
+      if (supportsToggle) count++;
+      // Statistics: Endpoint, InboundEndpoint, Sequence, and Templates with type=sequence
+      if (['Endpoint', 'InboundEndpoint', 'Sequence'].includes(artifactType) || (artifactType === 'Template' && artifactType_ === 'sequence')) count++;
+      // Tracing: Endpoint, InboundEndpoint, MessageProcessor, Sequence
+      if (['Endpoint', 'InboundEndpoint', 'MessageProcessor', 'Sequence'].includes(artifactType)) count++;
+      max = Math.max(max, count);
+    });
+    return max;
+  })();
+
+  // Calculate column sizes: use integers to avoid subpixel rendering
+  const toggleColumnSize = 1; // Each toggle gets 1 unit (integer)
+  const toggleColumnsSpace = maxToggleColumns * toggleColumnSize; // Total space for toggles
+  const dataColumnsSpace = 12 - toggleColumnsSpace; // Remaining space for data columns
+  const dataColumnSize = Math.floor(dataColumnsSpace / columns.length); // Integer division
+  // Calculate how many extra columns to distribute (remainder)
+  const extraColumns = dataColumnsSpace - dataColumnSize * columns.length;
 
   const handleToggle = (artifact: GqlArtifact, enabled: boolean) => {
     if (artifactType === 'Listener') {
@@ -113,6 +151,44 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
       // Direct toggle for other artifact types
       toggleStatus.mutate({ envId, componentId, artifactType, artifactName: artifact.name?.toString() ?? '', status: enabled ? 'inactive' : 'active' });
     }
+  };
+
+  const handleTracingToggle = (artifact: GqlArtifact, enabled: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateTracingStatus.mutate(
+      {
+        envId,
+        componentId,
+        artifactType,
+        artifactName: artifact.name?.toString() ?? '',
+        trace: enabled ? 'disable' : 'enable',
+      },
+      {
+        onSettled: () => {
+          // Invalidate and refetch the artifact list to sync with server
+          qc.invalidateQueries({ queryKey: ['artifacts', artifactType, envId, componentId] });
+        },
+      },
+    );
+  };
+
+  const handleStatisticsToggle = (artifact: GqlArtifact, enabled: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    updateStatisticsStatus.mutate(
+      {
+        envId,
+        componentId,
+        artifactType,
+        artifactName: artifact.name?.toString() ?? '',
+        statistics: enabled ? 'disable' : 'enable',
+      },
+      {
+        onSettled: () => {
+          // Invalidate and refetch the artifact list to sync with server
+          qc.invalidateQueries({ queryKey: ['artifacts', artifactType, envId, componentId] });
+        },
+      },
+    );
   };
 
   const handleConfirmListenerToggle = () => {
@@ -134,43 +210,75 @@ function SelectedTypeArtifacts({ artifacts, artifactType, envId, componentId, qu
     <>
       <Stack gap={1.5}>
         {paginatedArtifacts.map((a, i) => {
-          const artifactState = (a.state ?? '').toString().toLowerCase();
-          const enabled = artifactState === 'enabled';
+          const enabled = toEnabled(a.state);
+          const tracingEnabled = toEnabled(a.tracing);
+          const statisticsEnabled = toEnabled(a.statistics);
+          const artifactTypeField = a.type?.toString().toLowerCase() ?? '';
+
+          // Check if this specific artifact supports statistics and tracing
+          const showStatistics = ['Endpoint', 'InboundEndpoint', 'Sequence'].includes(artifactType) || (artifactType === 'Template' && artifactTypeField === 'sequence');
+          const showTracing = ['Endpoint', 'InboundEndpoint', 'MessageProcessor', 'Sequence'].includes(artifactType);
+
           return (
             <Card key={i} variant="outlined" sx={{ cursor: 'pointer', width: '100%', '&:hover': { boxShadow: 1 } }} onClick={() => onSelect(a)}>
               <CardContent sx={{ display: 'flex', alignItems: 'center', py: 1.5, '&:last-child': { pb: 1.5 } }}>
                 <Grid container spacing={2} sx={{ flex: 1 }}>
-                  {columns.map((col) => (
-                    <Grid key={col} size={{ xs: columnSize }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                        {col}
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {(a[col] ?? '—').toString()}
-                      </Typography>
-                    </Grid>
-                  ))}
+                  {columns.map((col, colIndex) => {
+                    // Distribute extra columns to first N data columns to reach exactly 12
+                    const columnSize = dataColumnSize + (colIndex < extraColumns ? 1 : 0);
+                    return (
+                      <Grid key={col} size={{ xs: columnSize }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                          {col === 'size' ? 'Message Count' : col}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {(a[col] ?? '—').toString()}
+                        </Typography>
+                      </Grid>
+                    );
+                  })}
                   {hasStateField && (
-                    <Grid size={{ xs: columnSize }}>
+                    <Grid size={{ xs: toggleColumnSize }}>
                       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                         State
                       </Typography>
                       <Chip label={(a.state ?? '—').toString().charAt(0).toUpperCase() + (a.state ?? '—').toString().slice(1).toLowerCase()} size="small" variant="outlined" color={enabled ? 'success' : 'default'} sx={{ fontSize: '0.875rem' }} />
                     </Grid>
                   )}
+                  {supportsToggle && (
+                    <Grid size={{ xs: toggleColumnSize }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Status
+                      </Typography>
+                      <Switch
+                        name="status"
+                        size="small"
+                        checked={enabled}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggle(a, enabled);
+                        }}
+                        aria-label={`${enabled ? 'Disable' : 'Enable'} ${a.name}`}
+                      />
+                    </Grid>
+                  )}
+                  {showStatistics && (
+                    <Grid size={{ xs: toggleColumnSize }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Statistics
+                      </Typography>
+                      <Switch name="statistics" size="small" checked={statisticsEnabled} onClick={(e) => handleStatisticsToggle(a, statisticsEnabled, e)} aria-label={`${statisticsEnabled ? 'Disable' : 'Enable'} statistics for ${a.name}`} />
+                    </Grid>
+                  )}
+                  {showTracing && (
+                    <Grid size={{ xs: toggleColumnSize }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Tracing
+                      </Typography>
+                      <Switch name="tracing" size="small" checked={tracingEnabled} onClick={(e) => handleTracingToggle(a, tracingEnabled, e)} aria-label={`${tracingEnabled ? 'Disable' : 'Enable'} tracing for ${a.name}`} />
+                    </Grid>
+                  )}
                 </Grid>
-                {supportsToggle && (
-                  <Switch
-                    size="small"
-                    checked={enabled}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleToggle(a, enabled);
-                    }}
-                    sx={{ mr: 1 }}
-                    aria-label={`${enabled ? 'Disable' : 'Enable'} ${a.name}`}
-                  />
-                )}
                 <ChevronRight size={18} style={{ color: 'var(--oxygen-palette-text-secondary)', flexShrink: 0 }} />
               </CardContent>
             </Card>

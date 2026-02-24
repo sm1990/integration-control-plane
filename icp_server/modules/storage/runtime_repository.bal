@@ -488,8 +488,8 @@ public isolated function getTasksForRuntime(string runtimeId) returns types:Task
 public isolated function getTemplatesForRuntime(string runtimeId) returns types:Template[]|error {
     types:Template[] templateList = [];
     stream<types:Template, sql:Error?> templateStream = dbClient->query(`
-        SELECT template_name, template_type, carbon_app
-        FROM mi_template_artifacts 
+        SELECT template_name, template_type, tracing, statistics, carbon_app
+        FROM mi_template_artifacts
         WHERE runtime_id = ${runtimeId}
     `);
 

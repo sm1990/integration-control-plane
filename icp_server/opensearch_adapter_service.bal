@@ -276,7 +276,7 @@ service /observability on openSerachObservabilityListener {
         };
     }
 
-    resource function post metrics(@http:Header {name: "X-API-Key"} string? apiKeyHeader, http:Request request, types:MetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
+    isolated resource function post metrics(@http:Header {name: "X-API-Key"} string? apiKeyHeader, http:Request request, types:MetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
         log:printInfo("Received metric request: " + metricRequest.toString());
 
         // Build OpenSearch query for metrics
@@ -587,7 +587,45 @@ function deduplicateLogEntries(json[][] rows) returns json[][] {
     return uniqueRows;
 }
 
-function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {
+// Predefined set of Ballerina metrics tag fields used in composite aggregation.
+// These are the known fields emitted by the Ballerina metrics publisher, excluding
+// high-cardinality or non-tag fields (timestamps, trace IDs, raw metric values, etc.).
+// Using a static list avoids a costly sample-document query on every metrics request.
+//
+// IMPORTANT — impact of a missing field:
+//   If the Ballerina observability library emits a new tag field that is NOT listed here,
+//   the system will NOT crash and metrics counts/latencies will remain correct.
+//   The only effect is reduced granularity: documents that differ only by the unknown
+//   field will be merged into the same aggregation group instead of being split.
+//   Add any new fields from ballerinax/metrics.logs emitted documents to this list
+//   when upgrading the Ballerina observability library or the ICP runtime agent.
+final readonly & string[] METRICS_TAG_FIELDS = [
+    "status",
+    "sublevel",
+    "deployment",
+    "app_name",
+    "integration",
+    "src_client_remote",
+    "url",
+    "icp_runtimeId",
+    "service_type",
+    "app",
+    "module",
+    "app_module",
+    "src_module",
+    "protocol",
+    "method",
+    "http_method",
+    "status_code_group",
+    "http_status_code_group",
+    "product",
+    "src_object_name",
+    "src_function_name",
+    "entrypoint_function_name",
+    "entrypoint_function_module"
+];
+
+isolated function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {
     // Build the time series query for requests per minute
     string interval = metricRequest.resolutionInterval;
     string startTime = metricRequest.startTime;
@@ -620,39 +658,14 @@ function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|err
         });
     }
 
-    // Step 1: Get sample documents to discover all field names
-    json sampleQuery = {
-        "size": 1000,
-        "query": {
-            "bool": {
-                "must": mustClauses
-            }
-        }
-    };
-
-    log:printDebug("Fetching sample documents to discover fields");
-    json sampleResponse = check opensearchClient->post("/ballerina-metrics-logs-*/_search", sampleQuery);
-
-    // Extract field names from sample documents
-    string[] tagFields = extractTagFields(sampleResponse);
-    log:printInfo("Discovered " + tagFields.length().toString() + " tag fields: " + tagFields.toString());
-
-    if (tagFields.length() == 0) {
-        log:printWarn("No tag fields found, returning empty metrics");
-        return {
-            metrics: []
-        };
-    }
-
-    // Step 2: Build composite aggregation with discovered fields
+    // Build composite aggregation sources from the predefined tag field list.
+    // missing_bucket:true ensures tag combinations with absent fields are still grouped.
     json[] compositeSources = [];
-    foreach string tagKey in tagFields {
-        // Use keyword field for aggregation
-        string fieldName = tagKey + ".keyword";
+    foreach string tagKey in METRICS_TAG_FIELDS {
         compositeSources.push({
             [tagKey]: {
                 "terms": {
-                    "field": fieldName,
+                    "field": tagKey + ".keyword",
                     "missing_bucket": true
                 }
             }
@@ -713,55 +726,4 @@ function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|err
     };
 
     return metricsQuery;
-}
-
-// Helper function to extract tag fields from sample documents
-function extractTagFields(json sampleResponse) returns string[] {
-    string[] tagFields = [];
-
-    do {
-        json hits = check sampleResponse.hits;
-        json[] hitArray = check hits.hits.ensureType();
-
-        if (hitArray.length() == 0) {
-            return tagFields;
-        }
-
-        // Use a map to collect unique field names
-        map<boolean> fieldSet = {};
-
-        // Iterate through sample documents to collect all field names
-        foreach json hit in hitArray {
-            json sourceDoc = check hit._source;
-            map<json> sourceMap = check sourceDoc.ensureType();
-
-            // Extract all field names from the document
-            foreach string fieldName in sourceMap.keys() {
-                // Check if field should be excluded
-                if (!isExcludedField(fieldName)) {
-                    fieldSet[fieldName] = true;
-                }
-            }
-        }
-
-        // Convert map keys to array
-        tagFields = fieldSet.keys();
-
-    } on fail error e {
-        log:printError("Error extracting tag fields: " + e.message());
-    }
-
-    return tagFields;
-}
-
-// Helper function to check if a field should be excluded from tags
-function isExcludedField(string fieldName) returns boolean {
-    final string[] EXCLUDED_TAG_FIELDS = ["level", "time", "spanId", "traceId", "message", "logger", "@timestamp", "response_time_seconds"];
-
-    foreach string excludedField in EXCLUDED_TAG_FIELDS {
-        if (fieldName == excludedField) {
-            return true;
-        }
-    }
-    return false;
 }

@@ -1370,36 +1370,40 @@ isolated function insertAdditionalMIArtifacts(types:Heartbeat heartbeat) returns
         if isMSSQL() {
             _ = check dbClient->execute(`
                 MERGE INTO mi_template_artifacts AS target
-                USING (VALUES (${heartbeat.runtime}, ${template.name}, ${template.'type}, ${carbonApp}))
-                       AS source (runtime_id, template_name, template_type, carbon_app)
+                USING (VALUES (${heartbeat.runtime}, ${template.name}, ${template.'type}, ${template.tracing}, ${template.statistics}, ${carbonApp}))
+                       AS source (runtime_id, template_name, template_type, tracing, statistics, carbon_app)
                 ON (target.runtime_id = source.runtime_id AND target.template_name = source.template_name)
                 WHEN MATCHED THEN
-                    UPDATE SET template_type = source.template_type, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
+                    UPDATE SET template_type = source.template_type, tracing = source.tracing, statistics = source.statistics, carbon_app = source.carbon_app, updated_at = CURRENT_TIMESTAMP
                 WHEN NOT MATCHED THEN
-                    INSERT (runtime_id, template_name, template_type, carbon_app)
-                    VALUES (source.runtime_id, source.template_name, source.template_type, source.carbon_app);
+                    INSERT (runtime_id, template_name, template_type, tracing, statistics, carbon_app)
+                    VALUES (source.runtime_id, source.template_name, source.template_type, source.tracing, source.statistics, source.carbon_app);
             `);
         } else if dbType == POSTGRESQL {
             _ = check dbClient->execute(`
                 INSERT INTO mi_template_artifacts (
-                    runtime_id, template_name, template_type, carbon_app
+                    runtime_id, template_name, template_type, tracing, statistics, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${carbonApp}
+                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${template.tracing}, ${template.statistics}, ${carbonApp}
                 )
                 ON CONFLICT (runtime_id, template_name) DO UPDATE SET
                     template_type = EXCLUDED.template_type,
+                    tracing = EXCLUDED.tracing,
+                    statistics = EXCLUDED.statistics,
                     carbon_app = EXCLUDED.carbon_app,
                     updated_at = CURRENT_TIMESTAMP
             `);
         } else {
             _ = check dbClient->execute(`
                 INSERT INTO mi_template_artifacts (
-                    runtime_id, template_name, template_type, carbon_app
+                    runtime_id, template_name, template_type, tracing, statistics, carbon_app
                 ) VALUES (
-                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${carbonApp}
+                    ${heartbeat.runtime}, ${template.name}, ${template.'type}, ${template.tracing}, ${template.statistics}, ${carbonApp}
                 )
                 ON DUPLICATE KEY UPDATE
                     template_type = VALUES(template_type),
+                    tracing = VALUES(tracing),
+                    statistics = VALUES(statistics),
                     carbon_app = VALUES(carbon_app),
                     updated_at = CURRENT_TIMESTAMP
             `);

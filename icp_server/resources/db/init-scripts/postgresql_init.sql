@@ -79,11 +79,6 @@ CREATE INDEX idx_rt_token_hash ON refresh_tokens(token_hash);
 CREATE INDEX idx_rt_expires_at ON refresh_tokens(expires_at);
 CREATE INDEX idx_rt_revoked ON refresh_tokens(revoked);
 
-CREATE TRIGGER update_refresh_tokens_last_used_at BEFORE UPDATE ON refresh_tokens
-    FOR EACH ROW 
-    WHEN (OLD.* IS DISTINCT FROM NEW.*)
-    EXECUTE FUNCTION update_updated_at_column();
-
 -- ============================================================================
 -- PROJECTS / COMPONENTS / ENVIRONMENTS
 -- ============================================================================
@@ -1472,6 +1467,15 @@ VALUES (
         'Sample Integration',
         'BI',
         'Sample integration for testing',
+        '550e8400-e29b-41d4-a716-446655440000',
+        '650e8400-e29b-41d4-a716-446655440001'
+    ),
+    (
+        '640e8400-e29b-41d4-a716-446655440002',
+        'mi-sample-integration',
+        'MI Sample Integration',
+        'MI',
+        'Sample MI integration for testing',
         '550e8400-e29b-41d4-a716-446655440000',
         '650e8400-e29b-41d4-a716-446655440001'
     );

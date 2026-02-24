@@ -42,9 +42,9 @@ import {
 } from '@wso2/oxygen-ui';
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { useNavigate, Outlet, Link as NavLink } from 'react-router';
+import { useNavigate, Outlet, Link as NavLink, Link } from 'react-router';
 import Logo from '../components/Logo';
-import { BarChart3, Bell, Building, ChevronDown, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Server, Settings, Shield, Sliders, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
+import { BarChart3, Bell, Building, ChevronDown, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Server, Shield, Sliders, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProjectByHandler, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
@@ -62,6 +62,13 @@ const SIDEBAR_ICONS: Record<Resource, JSX.Element> = {
   environments: <Layers size={20} />,
   'access-control': <Shield size={20} />,
 };
+
+const SIDEBAR_CATEGORIES: { label: string; resources: Resource[] }[] = [
+  { label: '', resources: ['overview'] },
+  { label: 'Observability', resources: ['logs', 'loggers', 'metrics'] },
+  { label: 'Infrastructure', resources: ['runtimes', 'environments'] },
+  { label: 'Management', resources: ['access-control'] },
+];
 
 export default function AppLayout(): JSX.Element {
   const navigate = useNavigate();
@@ -258,7 +265,6 @@ export default function AppLayout(): JSX.Element {
               <UserMenu.Trigger name={displayName || username || 'User'} />
               <UserMenu.Header name={displayName || username || 'User'} email={username} role="Admin" />
               <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" onClick={() => navigate(profileUrl())} />
-              <UserMenu.Item icon={<Settings size={18} />} label="Settings" />
               <UserMenu.Divider />
               <UserMenu.Logout icon={<LogOut size={18} />} onClick={() => setConfirmDialogOpen(true)} />
             </UserMenu>
@@ -277,14 +283,21 @@ export default function AppLayout(): JSX.Element {
           onToggleExpand={actions.toggleMenu}
           sx={{ backgroundColor: 'background.acrylic', backdropFilter: 'blur(3px)' }}>
           <Sidebar.Nav>
-            <Sidebar.Category>
-              {items.map((item, index) => (
-                <Sidebar.Item key={`${item.resource}-${index}`} id={item.resource} link={<NavLink to={item.url} />}>
-                  <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
-                  <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
-                </Sidebar.Item>
-              ))}
-            </Sidebar.Category>
+            {SIDEBAR_CATEGORIES.map(({ label, resources }) => {
+              const catItems = items.filter((item) => resources.includes(item.resource));
+              if (catItems.length === 0) return null;
+              return (
+                <Sidebar.Category key={label || 'main'}>
+                  {label && <Sidebar.CategoryLabel>{label}</Sidebar.CategoryLabel>}
+                  {catItems.map((item) => (
+                    <Sidebar.Item key={item.resource} id={item.resource} link={<Link to={item.url} />}>
+                      <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
+                      <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
+                    </Sidebar.Item>
+                  ))}
+                </Sidebar.Category>
+              );
+            })}
           </Sidebar.Nav>
 
           <Sidebar.Footer sx={{ py: 0 }}>

@@ -23,9 +23,14 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
   const [handlerEdited, setHandlerEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [componentType, setComponentType] = useState<'MI' | 'BI'>('MI');
+  const [failedName, setFailedName] = useState('');
   const mutation = useCreateComponent();
 
   const effectiveHandler = handlerEdited ? handler : toHandler(displayName);
+
+  const resetError = () => {
+    if (mutation.error) mutation.reset();
+  };
 
   const submit = () => {
     const input: CreateComponentInput = {
@@ -38,6 +43,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
     };
     mutation.mutate(input, {
       onSuccess: (component) => navigate(resourceUrl(narrow(scope, component.handler), 'overview')),
+      onError: () => setFailedName(effectiveHandler),
     });
   };
 
@@ -55,14 +61,24 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
       </Typography>
 
       {mutation.error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {mutation.error.message || 'Failed to create integration. Please try again.'}
+        <Alert severity="error" role="alert" sx={{ mb: 3 }}>
+          {/unique index|primary key violation|duplicate/i.test(mutation.error.message) ? `The name "${failedName}" is already taken in this project. Try a different name.` : 'Failed to create integration. Please try again.'}
         </Alert>
       )}
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <TextField label="Display Name" placeholder="Enter display name here" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }} />
+          <TextField
+            label="Display Name"
+            placeholder="Enter display name here"
+            value={displayName}
+            onChange={(e) => {
+              setDisplayName(e.target.value);
+              resetError();
+            }}
+            fullWidth
+            slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
+          />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -71,6 +87,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
             onChange={(e) => {
               setHandler(e.target.value);
               setHandlerEdited(true);
+              resetError();
             }}
             fullWidth
             disabled={!handlerEdited}

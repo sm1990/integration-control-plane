@@ -145,6 +145,9 @@ services:
           sleep 10
         done &&
 
+        echo 'Increasing search.max_buckets to handle metrics aggregations...' &&
+        curl -fX PUT 'https://opensearch:9200/_cluster/settings' -ku admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD -H 'Content-Type: application/json' -d '{"persistent":{"search.max_buckets":500000}}' &&
+
         echo 'Creating index templates...' &&
         curl -X PUT 'https://opensearch:9200/_index_template/wso2_integration_application_log_template' -ku admin:$$OPENSEARCH_INITIAL_ADMIN_PASSWORD -H 'Content-Type: application/json' -d @/setup/index-template-request.json &&
 

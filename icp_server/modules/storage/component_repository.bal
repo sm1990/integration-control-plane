@@ -33,7 +33,13 @@ public isolated function createComponent(types:ComponentInput component) returns
                                           VALUES (${componentId}, ${component.projectId}, ${component.name}, ${displayName}, ${component.description}, ${componentTypeValue}, ${component.createdBy})`;
     var result = dbClient->execute(insertQuery);
     if result is sql:Error {
-        return result;
+        log:printError(string `Failed to create component: ${component.name}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A component with this name already exists in this project", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            FOREIGN_KEY_VIOLATION => { return error("The specified project does not exist", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     return getComponentById(componentId);
 }
@@ -270,8 +276,11 @@ public isolated function deleteComponent(string componentId) returns error? {
     sql:ParameterizedQuery deleteQuery = `DELETE FROM components WHERE component_id = ${componentId}`;
     var result = dbClient->execute(deleteQuery);
     if result is sql:Error {
-        log:printError(string `Failed to delete component ${componentId}`, result);
-        return result;
+        log:printError(string `Failed to delete component ${componentId}`, 'error = result);
+        match classifySqlError(result) {
+            FOREIGN_KEY_VIOLATION => { return error("Cannot delete component because it has dependent resources", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     log:printInfo(string `Successfully deleted component ${componentId}`);
     return ();
@@ -295,8 +304,12 @@ public isolated function updateComponent(string componentId, string? name, strin
     sql:ParameterizedQuery updateQuery = sql:queryConcat(`UPDATE components `, updateFields, whereClause);
     var result = dbClient->execute(updateQuery);
     if result is sql:Error {
-        log:printError(string `Failed to update component ${componentId}`, result);
-        return result;
+        log:printError(string `Failed to update component ${componentId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A component with this name already exists in this project", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     log:printInfo(string `Successfully updated component ${componentId}`);
     return ();

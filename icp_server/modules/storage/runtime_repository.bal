@@ -168,8 +168,11 @@ public isolated function deleteRuntime(string runtimeId) returns error? {
     sql:ParameterizedQuery deleteQuery = `DELETE FROM runtimes WHERE runtime_id = ${runtimeId}`;
     var result = dbClient->execute(deleteQuery);
     if result is sql:Error {
-        log:printError(string `Failed to delete runtime ${runtimeId}`, result);
-        return result;
+        log:printError(string `Failed to delete runtime ${runtimeId}`, 'error = result);
+        match classifySqlError(result) {
+            FOREIGN_KEY_VIOLATION => { return error("Cannot delete runtime because it has dependent resources", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     log:printInfo(string `Successfully deleted runtime ${runtimeId}`);
 }

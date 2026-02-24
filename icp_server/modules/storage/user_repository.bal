@@ -157,8 +157,16 @@ public isolated function createUserV2(string userId, string username, string dis
         check commit;
         log:printInfo(string `Successfully created user ${username} with ${groupIds.length()} group assignments`, userId = userId);
     } on fail error e {
-        log:printError(string `Transaction failed while creating user ${username}`, e);
-        return error(string `Failed to create user ${username}`, e);
+        log:printError(string `Transaction failed while creating user ${username}`, 'error = e);
+        if e is sql:Error {
+            match classifySqlError(e) {
+                DUPLICATE_KEY => { return error("A user with this username already exists", e); }
+                VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", e); }
+                FOREIGN_KEY_VIOLATION => { return error("The specified group does not exist", e); }
+                _ => { return error("An unexpected error occurred. Please contact your administrator.", e); }
+            }
+        }
+        return error("An unexpected error occurred while creating the user. Please contact your administrator.", e);
     }
     
     // Fetch and return the created user with groups
@@ -222,8 +230,14 @@ public isolated function deleteUserV2(string userId, string currentUserId) retur
         
         log:printInfo(string `Successfully deleted user ${userId} from main database`);
     } on fail error e {
-        log:printError(string `Transaction failed while deleting user ${userId}`, e);
-        return error(string `Failed to delete user ${userId}`, e);
+        log:printError(string `Transaction failed while deleting user ${userId}`, 'error = e);
+        if e is sql:Error {
+            match classifySqlError(e) {
+                FOREIGN_KEY_VIOLATION => { return error("Cannot delete user because they have dependent resources", e); }
+                _ => { return error("An unexpected error occurred. Please contact your administrator.", e); }
+            }
+        }
+        return error("An unexpected error occurred while deleting the user. Please contact your administrator.", e);
     }
 }
 
@@ -231,11 +245,16 @@ public isolated function deleteUserV2(string userId, string currentUserId) retur
 public isolated function setRequirePasswordChange(string userId, boolean requireChange) returns error? {
     log:printDebug(string `Setting require_password_change=${requireChange.toString()} for user: ${userId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
         `UPDATE users
          SET require_password_change = ${requireChange}, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = ${userId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to update password change flag for user ${userId}`, 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `User not found: ${userId}`);

@@ -216,12 +216,12 @@ public isolated function createEnvironment(types:EnvironmentInput environment) r
     VALUES (${envId}, ${environment.name}, ${environment.description}, ${environment.critical}, ${environment.createdBy})`;
     var result = dbClient->execute(insertQuery);
     if result is sql:Error {
-        // If error is not duplicate entry, log and return
-        if !result.toString().toLowerAscii().includes("duplicate") {
-            log:printError(string `Failed to insert environment: ${environment.name}`, result);
-            return result;
+        log:printError(string `Failed to insert environment: ${environment.name}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return (); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
         }
-        return ();
     }
 
     // Return the created environment
@@ -246,8 +246,12 @@ public isolated function updateEnvironment(string environmentId, string? name, s
     sql:ParameterizedQuery updateQuery = sql:queryConcat(`UPDATE environments `, updateFields, whereClause);
     var result = dbClient->execute(updateQuery);
     if result is sql:Error {
-        log:printError(string `Failed to update environment ${environmentId}`, result);
-        return result;
+        log:printError(string `Failed to update environment ${environmentId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("An environment with this name already exists", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     log:printInfo(string `Successfully updated environment ${environmentId}`);
     return ();
@@ -258,8 +262,8 @@ public isolated function updateEnvironmentProductionStatus(string environmentId,
     sql:ParameterizedQuery updateQuery = `UPDATE environments SET critical = ${critical}, updated_at = CURRENT_TIMESTAMP WHERE environment_id = ${environmentId}`;
     var result = dbClient->execute(updateQuery);
     if result is sql:Error {
-        log:printError(string `Failed to update environment production status ${environmentId}`, result);
-        return result;
+        log:printError(string `Failed to update environment production status ${environmentId}`, 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
     }
     log:printInfo(string `Successfully updated environment production status ${environmentId}`);
     return ();
@@ -285,8 +289,11 @@ public isolated function deleteEnvironment(string environmentId) returns error? 
     sql:ParameterizedQuery deleteQuery = `DELETE FROM environments WHERE environment_id = ${environmentId}`;
     var result = dbClient->execute(deleteQuery);
     if result is sql:Error {
-        log:printError(string `Failed to delete environment ${environmentId}`, result);
-        return result;
+        log:printError(string `Failed to delete environment ${environmentId}`, 'error = result);
+        match classifySqlError(result) {
+            FOREIGN_KEY_VIOLATION => { return error("Cannot delete environment because it has dependent resources", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     log:printInfo(string `Successfully deleted environment ${environmentId}`);
     return ();

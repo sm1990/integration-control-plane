@@ -38,8 +38,11 @@ public isolated function storeRefreshToken(string tokenId, string userId, string
     sql:ExecutionResult|sql:Error result = dbClient->execute(insertQuery);
 
     if result is sql:Error {
-        log:printError(string `Failed to store refresh token for user ${userId}`, result);
-        return result;
+        log:printError(string `Failed to store refresh token for user ${userId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A refresh token with this ID already exists", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
 
     log:printInfo(string `Successfully stored refresh token for user ${userId}`);
@@ -117,8 +120,8 @@ public isolated function revokeRefreshToken(string tokenHash) returns error? {
     sql:ExecutionResult|sql:Error result = dbClient->execute(updateQuery);
 
     if result is sql:Error {
-        log:printError("Failed to revoke refresh token", result);
-        return result;
+        log:printError("Failed to revoke refresh token", 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
     }
 
     int? affectedRows = result.affectedRowCount;
@@ -144,8 +147,8 @@ public isolated function revokeAllUserRefreshTokens(string userId) returns error
     sql:ExecutionResult|sql:Error result = dbClient->execute(updateQuery);
 
     if result is sql:Error {
-        log:printError(string `Failed to revoke refresh tokens for user ${userId}`, result);
-        return result;
+        log:printError(string `Failed to revoke refresh tokens for user ${userId}`, 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
     }
 
     int? affectedRows = result.affectedRowCount;
@@ -164,8 +167,8 @@ public isolated function cleanupExpiredRefreshTokens() returns error? {
     sql:ExecutionResult|sql:Error result = dbClient->execute(deleteQuery);
 
     if result is sql:Error {
-        log:printError("Failed to cleanup expired refresh tokens", result);
-        return result;
+        log:printError("Failed to cleanup expired refresh tokens", 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
     }
 
     int? deletedCount = result.affectedRowCount;

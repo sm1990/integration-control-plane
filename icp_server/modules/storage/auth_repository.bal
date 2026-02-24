@@ -62,8 +62,16 @@ public isolated function createGroup(types:GroupInput input) returns string|erro
          VALUES (${groupId}, ${input.groupName}, ${orgId}, ${input.description})`
     );
 
+    if result is sql:Error {
+        log:printError(string `Failed to create group ${input.groupName}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A group with this name already exists", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
     if result is error {
-        log:printError(string `Failed to create group ${input.groupName}`, result);
+        log:printError(string `Failed to create group ${input.groupName}`, 'error = result);
         return result;
     }
 
@@ -107,12 +115,21 @@ public isolated function getGroupsByOrgId(int orgId) returns types:Group[]|error
 public isolated function updateGroup(string groupId, types:GroupInput input) returns error? {
     log:printDebug(string `Updating group: ${groupId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
-        `UPDATE user_groups 
-         SET group_name = ${input.groupName}, 
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `UPDATE user_groups
+         SET group_name = ${input.groupName},
              description = ${input.description}
          WHERE group_id = ${groupId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to update group ${groupId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A group with this name already exists", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `Group not found: ${groupId}`);
@@ -126,9 +143,17 @@ public isolated function updateGroup(string groupId, types:GroupInput input) ret
 public isolated function deleteGroup(string groupId) returns error? {
     log:printDebug(string `Deleting group: ${groupId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
         `DELETE FROM user_groups WHERE group_id = ${groupId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to delete group ${groupId}`, 'error = result);
+        match classifySqlError(result) {
+            FOREIGN_KEY_VIOLATION => { return error("Cannot delete group because it has dependent role assignments or members", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `Group not found: ${groupId}`);
@@ -154,8 +179,16 @@ public isolated function createRoleV2(types:RoleV2Input input) returns string|er
          VALUES (${roleId}, ${input.roleName}, ${orgId}, ${input.description})`
     );
 
+    if result is sql:Error {
+        log:printError(string `Failed to create role ${input.roleName}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A role with this name already exists", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
     if result is error {
-        log:printError(string `Failed to create role ${input.roleName}`, result);
+        log:printError(string `Failed to create role ${input.roleName}`, 'error = result);
         return result;
     }
 
@@ -200,12 +233,21 @@ public isolated function getAllRolesV2(int orgId) returns types:RoleV2[]|error {
 public isolated function updateRoleV2(string roleId, types:RoleV2Input input) returns error? {
     log:printDebug(string `Updating role: ${roleId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
-        `UPDATE roles_v2 
-         SET role_name = ${input.roleName}, 
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `UPDATE roles_v2
+         SET role_name = ${input.roleName},
              description = ${input.description}
          WHERE role_id = ${roleId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to update role ${roleId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("A role with this name already exists", result); }
+            VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `Role not found: ${roleId}`);
@@ -219,9 +261,17 @@ public isolated function updateRoleV2(string roleId, types:RoleV2Input input) re
 public isolated function deleteRoleV2(string roleId) returns error? {
     log:printDebug(string `Deleting role: ${roleId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
         `DELETE FROM roles_v2 WHERE role_id = ${roleId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to delete role ${roleId}`, 'error = result);
+        match classifySqlError(result) {
+            FOREIGN_KEY_VIOLATION => { return error("Cannot delete role because it is assigned to one or more groups", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `Role not found: ${roleId}`);
@@ -313,8 +363,16 @@ public isolated function addUserToGroup(string userId, string groupId) returns e
          VALUES (${groupId}, ${userId})`
     );
 
+    if result is sql:Error {
+        log:printError(string `Failed to add user ${userId} to group ${groupId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("This user is already a member of the group", result); }
+            FOREIGN_KEY_VIOLATION => { return error("The specified user or group does not exist", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
     if result is error {
-        log:printError(string `Failed to add user ${userId} to group ${groupId}`, result);
+        log:printError(string `Failed to add user ${userId} to group ${groupId}`, 'error = result);
         return result;
     }
 
@@ -326,10 +384,15 @@ public isolated function addUserToGroup(string userId, string groupId) returns e
 public isolated function removeUserFromGroup(string userId, string groupId) returns error? {
     log:printDebug(string `Removing user ${userId} from group ${groupId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
-        `DELETE FROM group_user_mapping 
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
+        `DELETE FROM group_user_mapping
          WHERE group_id = ${groupId} AND user_uuid = ${userId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to remove user ${userId} from group ${groupId}`, 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `User ${userId} not found in group ${groupId}`);
@@ -350,8 +413,16 @@ public isolated function assignRoleToGroup(types:AssignRoleToGroupInput input) r
          VALUES (${input.groupId}, ${input.roleId}, ${orgId}, ${input.projectUuid}, ${input.envUuid}, ${input.integrationUuid})`
     );
 
+    if result is sql:Error {
+        log:printError(string `Failed to assign role ${input.roleId} to group ${input.groupId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("This role assignment already exists", result); }
+            FOREIGN_KEY_VIOLATION => { return error("The specified group or role does not exist", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
     if result is error {
-        log:printError(string `Failed to assign role ${input.roleId} to group ${input.groupId}`, result);
+        log:printError(string `Failed to assign role ${input.roleId} to group ${input.groupId}`, 'error = result);
         return result;
     }
 
@@ -368,9 +439,14 @@ public isolated function assignRoleToGroup(types:AssignRoleToGroupInput input) r
 public isolated function removeRoleFromGroup(int mappingId) returns error? {
     log:printDebug(string `Removing group-role mapping with ID: ${mappingId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(
+    sql:ExecutionResult|sql:Error result = dbClient->execute(
         `DELETE FROM group_role_mapping WHERE id = ${mappingId}`
     );
+
+    if result is sql:Error {
+        log:printError(string `Failed to remove group-role mapping ${mappingId}`, 'error = result);
+        return error("An unexpected error occurred. Please contact your administrator.", result);
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `Group-role mapping not found: ${mappingId}`);
@@ -439,7 +515,16 @@ public isolated function updateGroupRoleMapping(int mappingId, types:UpdateGroup
 
     updateQuery = sql:queryConcat(updateQuery, ` WHERE id = ${mappingId}`);
 
-    sql:ExecutionResult result = check dbClient->execute(updateQuery);
+    sql:ExecutionResult|sql:Error result = dbClient->execute(updateQuery);
+
+    if result is sql:Error {
+        log:printError(string `Failed to update group-role mapping ${mappingId}`, 'error = result);
+        match classifySqlError(result) {
+            DUPLICATE_KEY => { return error("This role assignment already exists", result); }
+            FOREIGN_KEY_VIOLATION => { return error("The specified group or role does not exist", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
+    }
 
     if result.affectedRowCount == 0 {
         return error(string `Group-role mapping not found: ${mappingId}`);
@@ -464,8 +549,15 @@ public isolated function assignPermissionsToRole(string roleId, string[] permiss
         check commit;
         log:printInfo(string `Successfully assigned ${permissionIds.length()} permissions to role ${roleId}`);
     } on fail error e {
-        log:printError(string `Transaction failed while assigning permissions to role ${roleId}`, e);
-        return error(string `Failed to assign permissions to role ${roleId}`, e);
+        log:printError(string `Transaction failed while assigning permissions to role ${roleId}`, 'error = e);
+        if e is sql:Error {
+            match classifySqlError(e) {
+                DUPLICATE_KEY => { return error("This permission is already assigned to the role", e); }
+                FOREIGN_KEY_VIOLATION => { return error("The specified permission does not exist", e); }
+                _ => { return error("An unexpected error occurred. Please contact your administrator.", e); }
+            }
+        }
+        return error("An unexpected error occurred while assigning permissions. Please contact your administrator.", e);
     }
 
     return ();
@@ -490,8 +582,8 @@ public isolated function removePermissionsFromRole(string roleId, string[] permi
         check commit;
         log:printInfo(string `Successfully removed permissions from role ${roleId}`);
     } on fail error e {
-        log:printError(string `Transaction failed while removing permissions from role ${roleId}`, e);
-        return error(string `Failed to remove permissions from role ${roleId}`, e);
+        log:printError(string `Transaction failed while removing permissions from role ${roleId}`, 'error = e);
+        return error("An unexpected error occurred while removing permissions. Please contact your administrator.", e);
     }
 
     return ();

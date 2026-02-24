@@ -64,8 +64,8 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
     transaction {
         // Insert project with all new fields
         sql:ParameterizedQuery insertQuery = `INSERT INTO projects (
-            project_id, org_id, name, version, handler, region, description, 
-            default_deployment_pipeline_id, deployment_pipeline_ids, type, 
+            project_id, org_id, name, version, handler, region, description,
+            default_deployment_pipeline_id, deployment_pipeline_ids, type,
             git_provider, git_organization, repository, branch, secret_ref,
             owner_id, created_by
         ) VALUES (
@@ -85,15 +85,22 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
                 createdBy = displayName);
 
         // RBAC v2: Create project-specific admin group and assign Project Admin role
+        // Errors from the RBAC setup are handled individually so that a duplicate
+        // group name is not misreported as a duplicate project name.
+
         // 1. Create project admin group
         string adminGroupId = uuid:createType1AsString();
         string groupName = string `${project.name} Admins`;
         string groupDescription = string `Admin group for project: ${project.name}`;
 
-        sql:ExecutionResult _ = check dbClient->execute(`
+        sql:ExecutionResult|sql:Error groupResult = dbClient->execute(`
             INSERT INTO user_groups (group_id, group_name, org_uuid, description)
             VALUES (${adminGroupId}, ${groupName}, 1, ${groupDescription})
         `);
+        if groupResult is sql:Error {
+            log:printError(string `Failed to create admin group for project: ${project.name}`, 'error = groupResult);
+            fail error("Failed to set up project admin group. Please contact your administrator.", groupResult);
+        }
         log:printInfo(string `Created project admin group: ${groupName}`,
                 groupId = adminGroupId,
                 projectId = projectId);
@@ -102,20 +109,28 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
         string projectAdminRoleId = check getProjectAdminRoleId();
 
         // 3. Map group to Project Admin role (project-scoped, all environments)
-        sql:ExecutionResult _ = check dbClient->execute(`
+        sql:ExecutionResult|sql:Error roleMappingResult = dbClient->execute(`
             INSERT INTO group_role_mapping (group_id, role_id, org_uuid, project_uuid)
             VALUES (${adminGroupId}, ${projectAdminRoleId}, 1, ${projectId})
         `);
+        if roleMappingResult is sql:Error {
+            log:printError(string `Failed to assign admin role for project: ${project.name}`, 'error = roleMappingResult);
+            fail error("Failed to set up project admin role. Please contact your administrator.", roleMappingResult);
+        }
         log:printInfo(string `Mapped group to Project Admin role for project`,
                 groupId = adminGroupId,
                 roleId = projectAdminRoleId,
                 projectId = projectId);
 
         // 4. Add creator to admin group
-        sql:ExecutionResult _ = check dbClient->execute(`
+        sql:ExecutionResult|sql:Error userMappingResult = dbClient->execute(`
             INSERT INTO group_user_mapping (group_id, user_uuid)
             VALUES (${adminGroupId}, ${userId})
         `);
+        if userMappingResult is sql:Error {
+            log:printError(string `Failed to add creator to admin group for project: ${project.name}`, 'error = userMappingResult);
+            fail error("Failed to add user to project admin group. Please contact your administrator.", userMappingResult);
+        }
         log:printInfo(string `Added project creator to admin group`,
                 userId = userId,
                 groupId = adminGroupId,
@@ -125,6 +140,19 @@ public isolated function createProject(types:ProjectInput project, types:UserCon
         log:printInfo(string `Successfully created project and assigned admin roles`,
                 projectId = projectId,
                 owner = displayName);
+    } on fail error e {
+        log:printError(string `Failed to create project: ${project.name}`, 'error = e);
+        // Only the project INSERT uses `check`, so sql:Error here is project-specific.
+        // RBAC setup errors arrive as plain errors with their own messages via `fail`.
+        if e is sql:Error {
+            match classifySqlError(e) {
+                DUPLICATE_KEY => { return error("A project with this name already exists in this organization", e); }
+                VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", e); }
+                FOREIGN_KEY_VIOLATION => { return error("Cannot complete the operation due to a dependency constraint", e); }
+                _ => { return error("An unexpected error occurred. Please contact your administrator.", e); }
+            }
+        }
+        return e;
     }
 
     return getProjectById(projectId);
@@ -282,8 +310,15 @@ public isolated function updateProjectWithInput(types:ProjectUpdateInput project
         check commit;
         log:printInfo(string `Successfully updated project ${project.id}`);
     } on fail error e {
-        log:printError(string `Failed to update project ${project.id}`, e);
-        return error(string `Failed to update project ${project.id}`, e);
+        log:printError(string `Failed to update project ${project.id}`, 'error = e);
+        if e is sql:Error {
+            match classifySqlError(e) {
+                DUPLICATE_KEY => { return error("A project with this name already exists in this organization", e); }
+                VALUE_TOO_LONG => { return error("The provided value exceeds the maximum allowed length", e); }
+                _ => { return error("An unexpected error occurred. Please contact your administrator.", e); }
+            }
+        }
+        return error("An unexpected error occurred while updating the project. Please contact your administrator.", e);
     }
 
     return ();
@@ -294,8 +329,11 @@ public isolated function deleteProject(string projectId) returns error? {
     sql:ParameterizedQuery deleteQuery = `DELETE FROM projects WHERE project_id = ${projectId}`;
     var result = dbClient->execute(deleteQuery);
     if result is sql:Error {
-        log:printError(string `Failed to delete project ${projectId}`, result);
-        return result;
+        log:printError(string `Failed to delete project ${projectId}`, 'error = result);
+        match classifySqlError(result) {
+            FOREIGN_KEY_VIOLATION => { return error("Cannot delete project because it has dependent resources", result); }
+            _ => { return error("An unexpected error occurred. Please contact your administrator.", result); }
+        }
     }
     log:printInfo(string `Successfully deleted project ${projectId}`);
     return ();

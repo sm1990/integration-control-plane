@@ -1354,7 +1354,15 @@ service /graphql on graphqlListener {
         // Set the createdBy field to the current user's ID
         component.createdBy = userContext.userId;
 
-        return storage:createComponent(component);
+        types:Component|error? result = storage:createComponent(component);
+        if result is error {
+            string errMsg = result.message();
+            if errMsg.includes("Unique index") || errMsg.includes("unique index") || errMsg.includes("23505") {
+                return error(string `The name "${component.name}" is already taken in this project. Try a different name.`);
+            }
+            return result;
+        }
+        return result;
     }
 
     // Get all components with optional project filter

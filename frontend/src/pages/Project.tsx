@@ -22,7 +22,8 @@ import {
   TextField,
   Typography,
 } from '@wso2/oxygen-ui';
-import { Clock, Plus, RefreshCw, Trash2 } from '@wso2/oxygen-ui-icons-react';
+import { Clock, Plus, PlugZap, RefreshCw, Trash2 } from '@wso2/oxygen-ui-icons-react';
+import EmptyListing from '../components/EmptyListing';
 import SearchField from '../components/SearchField';
 import { useNavigate } from 'react-router';
 import { useState, type JSX } from 'react';
@@ -95,6 +96,8 @@ function IntegrationsTable({ components, isLoading, scope, projectId, onSelect }
 
       {isLoading ? (
         <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />
+      ) : filtered.length === 0 ? (
+        <EmptyListing icon={<PlugZap size={48} />} title="No integrations found" description={query ? 'Try adjusting your search' : 'Create your first integration to get started'} />
       ) : (
         <ListingTable.Container disablePaper>
           <ListingTable variant="card" density="compact">

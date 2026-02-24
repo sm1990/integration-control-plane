@@ -1,4 +1,4 @@
-import { Alert, Button, Grid, IconButton, MenuItem, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Button, Grid, IconButton, MenuItem, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, Edit } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
 import { useNavigate, Link } from 'react-router';
@@ -23,9 +23,12 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
   const [handlerEdited, setHandlerEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [componentType, setComponentType] = useState<'MI' | 'BI'>('MI');
+  const [failedName, setFailedName] = useState('');
   const mutation = useCreateComponent();
 
   const effectiveHandler = handlerEdited ? handler : toHandler(displayName);
+
+  const resetError = () => { if (mutation.error) mutation.reset(); };
 
   const submit = () => {
     const input: CreateComponentInput = {
@@ -38,6 +41,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
     };
     mutation.mutate(input, {
       onSuccess: (component) => navigate(resourceUrl(narrow(scope, component.handler), 'overview')),
+      onError: () => setFailedName(effectiveHandler),
     });
   };
 
@@ -50,19 +54,26 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
         </Stack>
       </Link>
 
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>
+      <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
         Create New Integration
       </Typography>
 
-      {mutation.error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {mutation.error.message || 'Failed to create integration. Please try again.'}
-        </Alert>
-      )}
+      <Box aria-live="assertive" aria-atomic="true" sx={{ mb: mutation.error ? 4 : 0 }}>
+        {mutation.error && (
+          <Alert
+            severity="error"
+            role="alert"
+            sx={{ opacity: mutation.error ? 1 : 0, transition: 'opacity 200ms ease-in' }}>
+            {/unique index|primary key violation|duplicate/i.test(mutation.error.message)
+              ? `The name "${failedName}" is already taken in this project. Try a different name.`
+              : 'Failed to create integration. Please try again.'}
+          </Alert>
+        )}
+      </Box>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, md: 4 }}>
-          <TextField label="Display Name" placeholder="Enter display name here" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }} />
+          <TextField label="Display Name" placeholder="Enter display name here" value={displayName} onChange={(e) => { setDisplayName(e.target.value); resetError(); }} fullWidth slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }} />
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -71,6 +82,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
             onChange={(e) => {
               setHandler(e.target.value);
               setHandlerEdited(true);
+              resetError();
             }}
             fullWidth
             disabled={!handlerEdited}

@@ -54,8 +54,8 @@ export const ARTIFACT_ICONS: Record<string, JSX.Element> = {
 export const ARTIFACT_TABS: Record<string, string[]> = {
   RestApi: ['Source', 'Runtimes'],
   InboundEndpoint: ['Source', 'Parameters', 'Runtimes'],
-  ProxyService: ['Endpoints', 'WSDL', 'Runtimes'],
-  Task: ['Runtimes'],
+  ProxyService: ['Source', 'Endpoints', 'WSDL', 'Runtimes'],
+  Task: ['Source', 'Runtimes'],
   LocalEntry: ['Value', 'Runtimes'],
   CarbonApp: ['Artifacts', 'Runtimes'],
   Connector: ['Runtimes'],
@@ -73,9 +73,9 @@ export const DEFAULT_ARTIFACT_TABS = ['Source', 'Runtimes'];
 
 export const ENTRY_POINT_CONFIG: Record<string, { label: string; detailLabel: string; color: string; bgColor: string; metaField?: string; overviewFields?: string }> = {
   RestApi: { label: 'API', detailLabel: 'REST API', color: '#1565c0', bgColor: '#e3f2fd', metaField: 'context', overviewFields: 'context, url' },
-  ProxyService: { label: 'Proxy', detailLabel: 'PROXY SERVICE', color: '#e65100', bgColor: '#fff3e0', overviewFields: 'state' },
+  ProxyService: { label: 'Proxy', detailLabel: 'PROXY SERVICE', color: '#e65100', bgColor: '#fff3e0' },
   InboundEndpoint: { label: 'Inbound', detailLabel: 'INBOUND ENDPOINT', color: '#2e7d32', bgColor: '#e8f5e9', metaField: 'protocol', overviewFields: 'protocol, sequence, onError' },
-  Task: { label: 'Task', detailLabel: 'TASK', color: '#00695c', bgColor: '#e0f2f1', overviewFields: 'group' },
+  Task: { label: 'Task', detailLabel: 'TASK', color: '#00695c', bgColor: '#e0f2f1', overviewFields: 'group, class' },
   Service: { label: 'Service', detailLabel: 'SERVICE', color: '#4a148c', bgColor: '#f3e5f5', metaField: 'basePath', overviewFields: 'package, basePath, type' },
   Listener: { label: 'Listener', detailLabel: 'LISTENER', color: '#bf360c', bgColor: '#fbe9e7', overviewFields: 'package, protocol, host, port' },
   Automation: { label: 'Automation', detailLabel: 'AUTOMATION', color: '#f57c00', bgColor: '#fff3e0', metaField: 'packageVersion', overviewFields: 'packageOrg, packageName, packageVersion' },

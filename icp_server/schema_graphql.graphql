@@ -178,6 +178,7 @@ type Mutation {
   updateArtifactStatisticsStatus(
     input: ArtifactStatisticsChangeInput!
   ): ArtifactStatisticsChangeResponse!
+  triggerArtifact(input: ArtifactTriggerInput!): ArtifactTriggerResponse!
 
   # Listener Control Mutations
   updateListenerState(input: ListenerControlInput!): ListenerControlResponse!
@@ -230,6 +231,7 @@ type Service {
   basePath: String!
   state: ArtifactState!
   resources: [Resource!]!
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -240,6 +242,7 @@ type Listener {
   package: String!
   protocol: String!
   state: ArtifactState!
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -367,9 +370,11 @@ type Sequence {
 # ============================================
 type Task {
   name: String!
+  class: String
   group: String
   state: ArtifactState!
   carbonApp: String
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -414,6 +419,7 @@ type LocalEntry {
   value: String
   state: ArtifactState!
   carbonApp: String
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -447,6 +453,7 @@ type CarbonApp {
   version: String
   state: String!
   artifacts: [CarbonAppArtifact!]
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -465,6 +472,7 @@ type Connector {
   package: String!
   version: String
   state: ArtifactState!
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -473,6 +481,7 @@ type Connector {
 type RegistryResource {
   name: String!
   type: String!
+  runtimes: [ArtifactRuntimeInfo]
 }
 
 # ============================================
@@ -501,6 +510,14 @@ enum ArtifactState {
   STARTING
   DISABLED
   ENABLED
+}
+
+# ============================================
+# ArtifactRuntimeInfo Type - Runtime Information for Artifacts
+# ============================================
+type ArtifactRuntimeInfo {
+  runtimeId: String!
+  status: String!
 }
 
 # ============================================
@@ -1063,6 +1080,21 @@ type ArtifactStatisticsChangeResponse {
   details: [String!]!
 }
 
+# Input for artifact trigger (e.g., triggering scheduled tasks)
+input ArtifactTriggerInput {
+  componentId: String!
+  taskName: String!
+}
+
+# Response for artifact trigger
+type ArtifactTriggerResponse {
+  status: String!
+  message: String!
+  successCount: Int!
+  failedCount: Int!
+  details: [String!]!
+}
+
 # ============================================
 # Input Types for Queries
 # ============================================
@@ -1202,6 +1234,14 @@ type SourceConfigMigrationStatus {
   canMigrate: Boolean!
   existingFileName: String!
   existingFileSchemaVersion: String!
+}
+
+# ============================================
+# ControlAction Enum - Control Actions for Artifacts
+# ============================================
+enum ControlAction {
+  START
+  STOP
 }
 
 # ============================================

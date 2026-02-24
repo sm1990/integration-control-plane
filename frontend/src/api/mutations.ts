@@ -260,3 +260,34 @@ export function useUpdateLogLevel() {
     },
   });
 }
+
+// ── Task trigger ──
+
+const TRIGGER_ARTIFACT = `
+  mutation TriggerTask($input: ArtifactTriggerInput!) {
+    triggerArtifact(input: $input) {
+      status, message, successCount, failedCount, details
+    }
+  }`;
+
+export interface TriggerTaskInput {
+  componentId: string;
+  taskName: string;
+}
+
+export function useTriggerTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TriggerTaskInput) =>
+      gql<{ triggerArtifact: { status: string; message: string; successCount: number; failedCount: number; details: string[] } }>(TRIGGER_ARTIFACT, {
+        input: {
+          componentId: input.componentId,
+          taskName: input.taskName,
+        },
+      }).then((d) => d.triggerArtifact),
+    onSuccess: () => {
+      // Invalidate task queries to refetch the updated state
+      qc.invalidateQueries({ queryKey: ['artifacts', 'Task'] });
+    },
+  });
+}

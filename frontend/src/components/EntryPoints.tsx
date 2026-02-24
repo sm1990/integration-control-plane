@@ -269,7 +269,7 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
               <Typography variant="body2" color="text.secondary">
                 Status
               </Typography>
-              <Switch size="small" checked={statusEnabled} onChange={(e) => handleToggleStatus(e.target.checked)} disabled={updateArtifactStatus.isPending} aria-label="Enable status" />
+              <Switch name="status" size="small" checked={statusEnabled} onChange={(e) => handleToggleStatus(e.target.checked)} disabled={updateArtifactStatus.isPending} aria-label="Enable status" />
             </Stack>
           )}
           {showStatusToggle && showTracingToggle && <Divider orientation="vertical" flexItem />}

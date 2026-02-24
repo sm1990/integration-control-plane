@@ -93,18 +93,8 @@ type OpenSearchResponse record {
     OpenSearchHits hits;
 };
 
-// HTTP client for OpenSearch with SSL verification disabled
-final http:Client opensearchClient = check new (opensearchUrl,
-    config = {
-        auth: {
-            username: opensearchUsername,
-            password: opensearchPassword
-        },
-        secureSocket: {
-            enable: false
-        }
-    }
-);
+// Initialized in init() with resolved (decrypted) credentials
+final http:Client opensearchClient;
 
 // HTTP service configuration
 listener http:Listener openSerachObservabilityListener = new (defaultOpensearchAdaptorPort,

@@ -20,8 +20,7 @@ import ballerina/log;
 import ballerina/task;
 
 // Start the offline runtime scheduler
-function init() returns error? {
-
+function initRuntimeScheduler() returns error? {
     // Start a worker to periodically mark runtimes as OFFLINE if they haven't sent a heartbeat within the timeout
     worker offlineRuntimeSchedulerWorker {
         task:JobId|error id = task:scheduleJobRecurByFrequency(new Job(), <decimal>schedulerIntervalSeconds);

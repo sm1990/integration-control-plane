@@ -37,6 +37,9 @@ configurable types:DeploymentType deploymentType = "VM";
 // Artifacts API configuration
 configurable boolean artifactsApiAllowInsecureTLS = true;
 
+// Secrets map for the storage module — populated from [icp_server.storage.secrets] in Config.toml.
+configurable map<string> secrets = {};
+
 // Runtime auth configuration (runtime and server communication)
 configurable string jwtIssuer = "icp-runtime-jwt-issuer";
 configurable string|string[] jwtAudience = "icp-server";

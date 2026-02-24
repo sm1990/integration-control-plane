@@ -49,7 +49,7 @@ listener http:Listener observabilityListener = new (observabilityServerPort,
                 issuer: frontendJwtIssuer,
                 audience: frontendJwtAudience,
                 signatureConfig: {
-                    secret: defaultobservabilityJwtHMACSecret
+                    secret: resolvedDefaultobservabilityJwtHMACSecret
                 }
             }
         }

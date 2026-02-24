@@ -43,7 +43,7 @@ listener http:Listener httpListener = new (serverPort,
                 audience: jwtAudience,
                 clockSkew: jwtClockSkewSeconds,
                 signatureConfig: {
-                    secret: defaultRuntimeJwtHMACSecret
+                    secret: resolvedDefaultRuntimeJwtHMACSecret
                 }
             }
         }

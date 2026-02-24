@@ -63,6 +63,18 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 # maxRefreshTokensPerUser = 10  # Maximum active refresh tokens per user (0 = unlimited)
 #                                # Useful to limit the number of devices/sessions per user
 
+# =============================================================================
+# SECRETS ALIAS CONFIGURATION
+# =============================================================================
+# defaultJwtHMACSecret = "$secret{secretJWTsecret}"
+# credentialsDbPassword = "$secret{secCredsDbPassword}"
+
+# =============================================================================
+# ENCRYPTED SECRETS CONFIGURATION
+# =============================================================================
+[icp_server.secrets]
+# secretJWTsecret = "encrypted-value-for-jwt-secret"
+# secCredsDbPassword = "encrypted-value-for-credentials-db-password"
 
 # =============================================================================
 # SSO (OIDC) CONFIGURATION
@@ -156,6 +168,17 @@ defaultJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256
 # minIdleConnections = 5
 # maxConnectionLifeTime = 1800.0
 # dbType = "mssql"
+
+# =============================================================================
+# DATABASE SECRETS ALIAS CONFIGURATION
+# =============================================================================
+# dbPassword = "$secret{secDbPassword}"
+
+# =============================================================================
+# DATABASE ENCRYPTED SECRETS CONFIGURATION
+# =============================================================================
+[icp_server.storage.secrets]
+# secDbPassword = "encrypted-value-for-db-password"
 
 
 [[ballerina.log.modules]]

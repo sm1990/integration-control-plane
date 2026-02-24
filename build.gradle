@@ -29,6 +29,20 @@ version = '2.0.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+    maven {
+        url 'https://maven.wso2.org/nexus/content/groups/wso2-public/'
+    }
+}
+
+// Configuration for cipher tool JARs and their dependencies
+configurations {
+    cipherTool
+}
+
+dependencies {
+    cipherTool("org.wso2.ciphertool:org.wso2.ciphertool:${cipherToolVersion}") {
+        transitive = true
+    }
 }
 
 // Project description
@@ -88,8 +102,17 @@ task testICP {
 
 task buildFrontend {
     description = 'Build the frontend application'
+
+    inputs.dir('frontend/src')
+    inputs.file('frontend/package.json')
+    outputs.dir('frontend/dist')
+
     doLast {
         logger.info('Building frontend...')
+        exec {
+            workingDir 'frontend'
+            commandLine 'pnpm', 'install'
+        }
         exec {
             workingDir 'frontend'
             commandLine 'pnpm', 'build'
@@ -236,17 +259,60 @@ task packageICP {
                 if (!tempBinDir.exists()) {
                     tempBinDir.mkdirs()
                 }
-                
+
                 copy {
                     from scriptsDir
                     into tempBinDir
                 }
-                
-                // Make shell scripts executable
-                new ProcessBuilder('chmod', '+x', file("${tempBinDir}/run.sh").absolutePath).start().waitFor()
+
+                // Normalize line endings to LF and make shell scripts executable
+                fileTree(tempBinDir) { include '*.sh' }.each { f ->
+                    new ProcessBuilder('chmod', '+x', f.absolutePath).start().waitFor()
+                }
             } else {
                 logger.warning("Scripts directory not found at ${scriptsDir.absolutePath}")
                 logger.warning("Please ensure distribution/scripts folder exists with run.sh and run.bat")
+            }
+
+            // Copy cipher tool JARs to lib/ directory
+            def libDir = file("${rootDir}/lib")
+            if (!libDir.exists()) {
+                libDir.mkdirs()
+            }
+            copy {
+                from configurations.cipherTool
+                into libDir
+            }
+            logger.info("Added cipher tool JARs to lib/")
+
+            // Copy cipher tool config files from distribution/src/main/resources/conf/
+            def cipherStandaloneConfig = file('distribution/src/main/resources/conf/cipher-standalone-config.properties')
+            if (cipherStandaloneConfig.exists()) {
+                def distConfDir = file("${rootDir}/conf")
+                if (!distConfDir.exists()) {
+                    distConfDir.mkdirs()
+                }
+                copy {
+                    from cipherStandaloneConfig
+                    into distConfDir
+                }
+                logger.info("Added cipher-standalone-config.properties to conf/")
+            }
+
+            // Copy cipher tool security config files from distribution/src/main/resources/conf/security/
+            def cipherSecuritySrcDir = file('distribution/src/main/resources/conf/security')
+            if (cipherSecuritySrcDir.exists()) {
+                def distSecurityDir = file("${rootDir}/conf/security")
+                if (!distSecurityDir.exists()) {
+                    distSecurityDir.mkdirs()
+                }
+                copy {
+                    from cipherSecuritySrcDir
+                    include 'cipher-tool.properties'
+                    include 'cipher-text.properties'
+                    into distSecurityDir
+                }
+                logger.info("Added cipher tool security config files to conf/security/")
             }
             
             // Copy www folder if it exists

@@ -15,16 +15,13 @@
 // under the License.
 
 import icp_server.types as types;
+import icp_server.utils;
 
 import ballerina/http;
 import ballerina/jwt;
 import ballerina/log;
 import ballerina/sql;
 import ballerina/uuid;
-
-// Shared database connection manager and client
-final DatabaseConnectionManager dbManager = check new (dbType, dbHost, dbPort, dbName, dbUser, dbPassword);
-public final sql:Client dbClient = dbManager.getClient();
 
 // Constants for artifact management
 const string ICP_ARTIFACTS_PATH = "/icp/artifacts";
@@ -1047,12 +1044,13 @@ public isolated function sendArtifactTracingChange(types:Runtime runtime, string
 
 // Helper: generate HMAC JWT used to call ICP internal APIs
 public isolated function issueRuntimeHmacToken() returns string|error {
+    string hmacSecret = check utils:resolveConfig(defaultRuntimeJwtHMACSecret, secrets);
     jwt:IssuerConfig issConfig = {
         username: "icp-artifact-fetcher",
         issuer: jwtIssuer,
         expTime: <decimal>defaultTokenExpiryTime,
         audience: jwtAudience,
-        signatureConfig: {algorithm: jwt:HS256, config: defaultRuntimeJwtHMACSecret}
+        signatureConfig: {algorithm: jwt:HS256, config: hmacSecret}
     };
     issConfig.customClaims["scope"] = "runtime_agent";
 

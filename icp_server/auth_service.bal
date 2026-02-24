@@ -24,29 +24,9 @@ import ballerina/jwt;
 import ballerina/log;
 import ballerina/sql;
 
-// HTTP client to call the authentication backend
-final http:Client authBackendClient = check new (authBackendUrl,
-    secureSocket = {
-        cert: {
-            path: truststorePath,
-            password: truststorePassword
-        }
-    },
-    auth = {
-        issuer: userServiceJwtIssuer,
-        audience: userServiceJwtAudience,
-        expTime: 3600,
-        signatureConfig: {
-            algorithm: jwt:HS256,
-            config: userServiceJwtHMACSecret
-        }
-    }
-);
-
-final readonly & jwt:IssuerSignatureConfig jwtSignatureConfig = {
-    algorithm: jwt:HS256,
-    config: defaultJwtHMACSecret
-};
+// Initialized in init() with resolved (decrypted) secrets
+final http:Client authBackendClient;
+final readonly & jwt:IssuerSignatureConfig jwtSignatureConfig;
 
 @http:ServiceConfig {
     cors: {
@@ -352,7 +332,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -419,7 +399,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -491,7 +471,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -686,7 +666,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -792,7 +772,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -859,7 +839,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -930,7 +910,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -983,7 +963,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1046,7 +1026,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1112,7 +1092,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1202,7 +1182,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1276,7 +1256,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1336,7 +1316,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1469,7 +1449,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1624,7 +1604,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1744,7 +1724,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1853,7 +1833,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1908,7 +1888,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -1961,7 +1941,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2070,7 +2050,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2139,7 +2119,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2232,7 +2212,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2296,7 +2276,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2363,7 +2343,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2447,7 +2427,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2527,7 +2507,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2639,7 +2619,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2701,7 +2681,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }
@@ -2815,7 +2795,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
                 // No specific scopes required - all authenticated users can see available permissions
@@ -2862,7 +2842,7 @@ service /auth on httpListener {
                     issuer: frontendJwtIssuer,
                     audience: frontendJwtAudience,
                     signatureConfig: {
-                        secret: defaultJwtHMACSecret
+                        secret: resolvedDefaultJwtHMACSecret
                     }
                 }
             }

@@ -251,7 +251,9 @@ export default function AppLayout(): JSX.Element {
           collapsed={shell.sidebarCollapsed}
           activeItem={resource ?? 'overview'}
           expandedMenus={shell.expandedMenus}
-          onSelect={(id) => { if (id === 'expand') actions.toggleSidebar(); }}
+          onSelect={(id) => {
+            if (id === 'expand') actions.toggleSidebar();
+          }}
           onToggleExpand={actions.toggleMenu}
           sx={{ backgroundColor: 'background.acrylic', backdropFilter: 'blur(3px)' }}>
           <Sidebar.Nav>
@@ -284,8 +286,22 @@ export default function AppLayout(): JSX.Element {
 
       <AppShell.Footer>
         <Footer>
-          <Footer.Link href={privacyPolicyUrl()} onClick={(e) => { e.preventDefault(); navigate(privacyPolicyUrl()); }}>Privacy Policy</Footer.Link>
-          <Footer.Link href={cookiePolicyUrl()} onClick={(e) => { e.preventDefault(); navigate(cookiePolicyUrl()); }}>Cookie Policy</Footer.Link>
+          <Footer.Link
+            href={privacyPolicyUrl()}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(privacyPolicyUrl());
+            }}>
+            Privacy Policy
+          </Footer.Link>
+          <Footer.Link
+            href={cookiePolicyUrl()}
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(cookiePolicyUrl());
+            }}>
+            Cookie Policy
+          </Footer.Link>
           <Footer.Link href="#support">Support</Footer.Link>
           <Footer.Copyright>&copy; {new Date().getFullYear()}, WSO2 LLC.</Footer.Copyright>
         </Footer>

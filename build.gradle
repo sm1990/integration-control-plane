@@ -116,8 +116,8 @@ task buildFrontend {
         exec {
             workingDir 'frontend'
             commandLine 'pnpm', 'build'
-            logger.info('Frontend build complete')
         }
+        logger.info('Frontend build complete')
     }
 }
 
@@ -267,7 +267,6 @@ task packageICP {
 
                 // Normalize line endings to LF and make shell scripts executable
                 fileTree(tempBinDir) { include '*.sh' }.each { f ->
-                    new ProcessBuilder('sed', '-i', '', 's/\\r//', f.absolutePath).start().waitFor()
                     new ProcessBuilder('chmod', '+x', f.absolutePath).start().waitFor()
                 }
             } else {

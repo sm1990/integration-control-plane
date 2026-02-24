@@ -111,6 +111,7 @@ if $cygwin; then
   JAVA_HOME=`cygpath --absolute --windows "$JAVA_HOME"`
   ICP_HOME=`cygpath --absolute --windows "$ICP_HOME"`
   CLASSPATH=`cygpath --path --windows "$CLASSPATH"`
+  ICP_CLASSPATH=`cygpath --path --windows "$ICP_CLASSPATH"`
 fi
 
 # ----- Execute The Requested Command -----------------------------------------
@@ -119,4 +120,4 @@ $JAVA_HOME/bin/java $JAVA_OPTS \
   -Dcarbon.config.dir.path="$ICP_HOME/conf" \
   -Dorg.wso2.CipherTransformation="RSA/ECB/OAEPwithSHA1andMGF1Padding" \
   -classpath "$ICP_CLASSPATH" \
-  org.wso2.ciphertool.CipherTool $*
+  org.wso2.ciphertool.CipherTool "$@"

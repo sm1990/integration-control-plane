@@ -18,9 +18,11 @@ import icp_server.storage;
 import icp_server.utils;
 
 import ballerina/jwt;
+import ballerina/log;
 
 function init() returns error? {
     // Initialize HTTP client to authentication backend using resolved TLS and JWT secrets
+    log:printInfo("Initializing ICP server");
     authBackendClient = check new (authBackendUrl,
         secureSocket = {
             cert: {
@@ -67,6 +69,8 @@ function init() returns error? {
 
     // Initialize the runtime scheduler
     check initRuntimeScheduler();
+
+    log:printInfo("ICP server initialization completed successfully");
 }
 
 // Resolves a configurable value for the default module.

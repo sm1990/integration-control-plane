@@ -73,6 +73,7 @@ public isolated function resolveConfig(string configValue, map<string> secrets) 
             return error(string `Secret alias '${alias}' not found in secrets table.`);
         }
         string decryptedValue = check decrypt(encrypted);
+        log:printDebug(string `Successfully decrypted the value for alias '${alias}'.`);
         return decryptedValue;
     }
     return configValue;

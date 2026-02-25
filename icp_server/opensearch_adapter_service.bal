@@ -276,172 +276,375 @@ service /observability on openSerachObservabilityListener {
         };
     }
 
-    isolated resource function post metrics(@http:Header {name: "X-API-Key"} string? apiKeyHeader, http:Request request, types:MetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
-        log:printInfo("Received metric request: " + metricRequest.toString());
+    isolated resource function post metrics/[string componentType](@http:Header {name: "X-API-Key"} string? apiKeyHeader, http:Request request, types:MetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
+        log:printInfo("Received metric request for component type " + componentType + ": " + metricRequest.toString());
 
-        // Build OpenSearch query for metrics
-        json metricsQuery = check getMetricQuery(metricRequest);
-        log:printDebug("OpenSearch metrics query: " + metricsQuery.toJsonString());
+        if componentType == "BI" {
+            return check fetchBIMetrics(metricRequest);
+        } else if componentType == "MI" {
+            return check fetchMIMetrics(metricRequest);
+        } else if componentType == "ALL" {
+            // Fetch both BI and MI metrics and merge results
+            types:MetricEntriesResponse biResult = check fetchBIMetrics(metricRequest);
+            types:MetricEntriesResponse miResult = check fetchMIMetrics(metricRequest);
+            return {
+                inboundMetrics: [...biResult.inboundMetrics, ...miResult.inboundMetrics],
+                outboundMetrics: [...biResult.outboundMetrics, ...miResult.outboundMetrics]
+            };
+        } else {
+            string errorMessage = "Unknown component type specified for metrics: " + componentType;
+            log:printWarn(errorMessage);
+            return error(errorMessage);
+        }
+    }
+}
 
-        // Execute the query
-        json metricsResponseJson = check opensearchClient->post("/ballerina-metrics-logs-*/_search", metricsQuery);
+// ──────────────────────────────────────────────────────────────────────────────
+// Ballerina Integrator (BI) metrics — index: ballerina-metrics-logs-*
+// ──────────────────────────────────────────────────────────────────────────────
 
-        // Parse the response and build metrics
-        types:MetricEntry[] metrics = [];
+isolated function fetchBIMetrics(types:MetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
+    // Build OpenSearch query for BI metrics
+    json metricsQuery = check getBIMetricQuery(metricRequest);
+    log:printDebug("BI OpenSearch metrics query: " + metricsQuery.toJsonString());
 
-        // Extract aggregation buckets
-        json aggregations = check metricsResponseJson.aggregations;
-        json tagGroups = check aggregations.tag_groups;
-        json[] buckets = check tagGroups.buckets.ensureType();
+    // Execute the query
+    json|error metricsResponseJson = opensearchClient->post("/ballerina-metrics-logs-*/_search", metricsQuery);
+    if metricsResponseJson is error {
+        log:printError("Error fetching BI metrics from OpenSearch: " + metricsResponseJson.toString());
+        return {inboundMetrics: [], outboundMetrics: []};
+    }
 
-        log:printInfo("Found " + buckets.length().toString() + " unique tag groups");
+    // Parse the response and build metrics
+    types:MetricEntry[] metrics = [];
 
-        // Process each tag group
-        foreach json bucket in buckets {
-            // Extract tags from the bucket key
-            json bucketKey = check bucket.key;
-            map<string> tags = {};
+    // Extract aggregation buckets — return empty if no aggregations present
+    json|error aggregationsResult = metricsResponseJson.aggregations;
+    if aggregationsResult is error {
+        log:printWarn("No aggregations in BI metrics response. Returning empty result.");
+        return {inboundMetrics: [], outboundMetrics: []};
+    }
+    json aggregations = aggregationsResult;
+    json tagGroups = check aggregations.tag_groups;
+    json[] buckets = check tagGroups.buckets.ensureType();
 
-            // Get all tag fields from the composite key
-            map<json> keyMap = check bucketKey.ensureType();
-            foreach string tagField in keyMap.keys() {
-                json tagValue = keyMap.get(tagField);
-                if (tagValue is string && tagValue != "") {
-                    tags[tagField] = tagValue;
-                } else if (tagValue is ()) {
-                    // Skip null values
-                    continue;
-                }
-            }
+    log:printInfo("BI metrics: Found " + buckets.length().toString() + " unique tag groups");
 
-            // Get time buckets
-            json timeBuckets = check bucket.time_buckets;
-            json[] timeBucketArray = check timeBuckets.buckets.ensureType();
+    // Process each tag group
+    foreach json bucket in buckets {
+        // Extract tags from the bucket key
+        json bucketKey = check bucket.key;
+        map<string> tags = {};
 
-            // Build time series data for all metrics
-            map<int> requestsTotalTimeSeries = {};
-            map<decimal> avgResponseTimeTimeSeries = {};
-            map<decimal> minResponseTimeTimeSeries = {};
-            map<decimal> maxResponseTimeTimeSeries = {};
-            map<decimal> percentile33TimeSeries = {};
-            map<decimal> percentile50TimeSeries = {};
-            map<decimal> percentile66TimeSeries = {};
-            map<decimal> percentile95TimeSeries = {};
-            map<decimal> percentile99TimeSeries = {};
-
-            foreach json timeBucket in timeBucketArray {
-                string timestamp = check timeBucket.key_as_string;
-                int docCount = check timeBucket.doc_count;
-
-                // Always add request count (even if 0)
-                requestsTotalTimeSeries[timestamp] = docCount;
-
-                // Add response time metrics - use actual values if available, otherwise use 0
-                if (docCount > 0) {
-                    // Extract response time stats
-                    json avgRT = check timeBucket.avg_response_time;
-                    decimal avgValue = check avgRT.value;
-                    avgResponseTimeTimeSeries[timestamp] = avgValue;
-
-                    json minRT = check timeBucket.min_response_time;
-                    decimal minValue = check minRT.value;
-                    minResponseTimeTimeSeries[timestamp] = minValue;
-
-                    json maxRT = check timeBucket.max_response_time;
-                    decimal maxValue = check maxRT.value;
-                    maxResponseTimeTimeSeries[timestamp] = maxValue;
-
-                    // Extract percentiles
-                    json percentilesRT = check timeBucket.percentiles_response_time;
-                    json percentilesValues = check percentilesRT.values;
-                    map<json> percentilesMap = check percentilesValues.ensureType();
-
-                    // Extract each percentile value
-                    decimal p33 = check percentilesMap["33.0"];
-                    percentile33TimeSeries[timestamp] = p33;
-
-                    decimal p50 = check percentilesMap["50.0"];
-                    percentile50TimeSeries[timestamp] = p50;
-
-                    decimal p66 = check percentilesMap["66.0"];
-                    percentile66TimeSeries[timestamp] = p66;
-
-                    decimal p95 = check percentilesMap["95.0"];
-                    percentile95TimeSeries[timestamp] = p95;
-
-                    decimal p99 = check percentilesMap["99.0"];
-                    percentile99TimeSeries[timestamp] = p99;
-                } else {
-                    // No requests, fill all response time metrics with 0
-                    avgResponseTimeTimeSeries[timestamp] = 0;
-                    minResponseTimeTimeSeries[timestamp] = 0;
-                    maxResponseTimeTimeSeries[timestamp] = 0;
-                    percentile33TimeSeries[timestamp] = 0;
-                    percentile50TimeSeries[timestamp] = 0;
-                    percentile66TimeSeries[timestamp] = 0;
-                    percentile95TimeSeries[timestamp] = 0;
-                    percentile99TimeSeries[timestamp] = 0;
-                }
-            }
-
-            // Only add metric entry if there's actual data
-            if (requestsTotalTimeSeries.length() > 0) {
-                types:MetricEntry metricEntry = {
-                    tags: tags,
-                    requests_total: {
-                        name: "requests_total",
-                        timeSeriesData: requestsTotalTimeSeries
-                    },
-                    response_time_seconds_avg: {
-                        name: "response_time_seconds_avg",
-                        timeSeriesData: avgResponseTimeTimeSeries
-                    },
-                    response_time_seconds_min: {
-                        name: "response_time_seconds_min",
-                        timeSeriesData: minResponseTimeTimeSeries
-                    },
-                    response_time_seconds_max: {
-                        name: "response_time_seconds_max",
-                        timeSeriesData: maxResponseTimeTimeSeries
-                    },
-                    response_time_seconds_percentile_33: {
-                        name: "response_time_seconds_percentile_33",
-                        timeSeriesData: percentile33TimeSeries
-                    },
-                    response_time_seconds_percentile_50: {
-                        name: "response_time_seconds_percentile_50",
-                        timeSeriesData: percentile50TimeSeries
-                    },
-                    response_time_seconds_percentile_66: {
-                        name: "response_time_seconds_percentile_66",
-                        timeSeriesData: percentile66TimeSeries
-                    },
-                    response_time_seconds_percentile_95: {
-                        name: "response_time_seconds_percentile_95",
-                        timeSeriesData: percentile95TimeSeries
-                    },
-                    response_time_seconds_percentile_99: {
-                        name: "response_time_seconds_percentile_99",
-                        timeSeriesData: percentile99TimeSeries
-                    }
-                };
-
-                metrics.push(metricEntry);
+        // Get all tag fields from the composite key
+        map<json> keyMap = check bucketKey.ensureType();
+        foreach string tagField in keyMap.keys() {
+            json tagValue = keyMap.get(tagField);
+            if (tagValue is string && tagValue != "") {
+                tags[tagField] = tagValue;
+            } else if (tagValue is ()) {
+                continue;
             }
         }
 
-        // Split into inbound (service/worker entries) and outbound (client remote calls)
-        types:MetricEntry[] inboundMetrics = metrics.filter(m => m.tags["src_client_remote"] != "true" && m.tags["url"] != null);
-        types:MetricEntry[] outboundMetrics = metrics.filter(m => m.tags["src_client_remote"] == "true");
-        log:printDebug("Filtered metrics - Total: " + metrics.length().toString() + ", Inbound: " + inboundMetrics.length().toString() + ", Outbound: " + outboundMetrics.length().toString());
+        // Get time buckets
+        json timeBuckets = check bucket.time_buckets;
+        json[] timeBucketArray = check timeBuckets.buckets.ensureType();
 
-        log:printInfo("Returning " + inboundMetrics.length().toString() + " inbound and " + outboundMetrics.length().toString() + " outbound metric entries");
+        // Build time series data for all metrics
+        map<int> requestsTotalTimeSeries = {};
+        map<decimal> avgResponseTimeTimeSeries = {};
+        map<decimal> minResponseTimeTimeSeries = {};
+        map<decimal> maxResponseTimeTimeSeries = {};
+        map<decimal> percentile33TimeSeries = {};
+        map<decimal> percentile50TimeSeries = {};
+        map<decimal> percentile66TimeSeries = {};
+        map<decimal> percentile95TimeSeries = {};
+        map<decimal> percentile99TimeSeries = {};
 
-        return {
-            inboundMetrics: inboundMetrics,
-            outboundMetrics: outboundMetrics
-        };
+        foreach json timeBucket in timeBucketArray {
+            string timestamp = check timeBucket.key_as_string;
+            int docCount = check timeBucket.doc_count;
+
+            requestsTotalTimeSeries[timestamp] = docCount;
+
+            if (docCount > 0) {
+                json avgRT = check timeBucket.avg_response_time;
+                decimal avgValue = check avgRT.value;
+                avgResponseTimeTimeSeries[timestamp] = avgValue;
+
+                json minRT = check timeBucket.min_response_time;
+                decimal minValue = check minRT.value;
+                minResponseTimeTimeSeries[timestamp] = minValue;
+
+                json maxRT = check timeBucket.max_response_time;
+                decimal maxValue = check maxRT.value;
+                maxResponseTimeTimeSeries[timestamp] = maxValue;
+
+                json percentilesRT = check timeBucket.percentiles_response_time;
+                json percentilesValues = check percentilesRT.values;
+                map<json> percentilesMap = check percentilesValues.ensureType();
+
+                decimal p33 = check percentilesMap["33.0"];
+                percentile33TimeSeries[timestamp] = p33;
+
+                decimal p50 = check percentilesMap["50.0"];
+                percentile50TimeSeries[timestamp] = p50;
+
+                decimal p66 = check percentilesMap["66.0"];
+                percentile66TimeSeries[timestamp] = p66;
+
+                decimal p95 = check percentilesMap["95.0"];
+                percentile95TimeSeries[timestamp] = p95;
+
+                decimal p99 = check percentilesMap["99.0"];
+                percentile99TimeSeries[timestamp] = p99;
+            } else {
+                avgResponseTimeTimeSeries[timestamp] = 0;
+                minResponseTimeTimeSeries[timestamp] = 0;
+                maxResponseTimeTimeSeries[timestamp] = 0;
+                percentile33TimeSeries[timestamp] = 0;
+                percentile50TimeSeries[timestamp] = 0;
+                percentile66TimeSeries[timestamp] = 0;
+                percentile95TimeSeries[timestamp] = 0;
+                percentile99TimeSeries[timestamp] = 0;
+            }
+        }
+
+        if (requestsTotalTimeSeries.length() > 0) {
+            types:MetricEntry metricEntry = {
+                tags: tags,
+                requests_total: {name: "requests_total", timeSeriesData: requestsTotalTimeSeries},
+                response_time_seconds_avg: {name: "response_time_seconds_avg", timeSeriesData: avgResponseTimeTimeSeries},
+                response_time_seconds_min: {name: "response_time_seconds_min", timeSeriesData: minResponseTimeTimeSeries},
+                response_time_seconds_max: {name: "response_time_seconds_max", timeSeriesData: maxResponseTimeTimeSeries},
+                response_time_seconds_percentile_33: {name: "response_time_seconds_percentile_33", timeSeriesData: percentile33TimeSeries},
+                response_time_seconds_percentile_50: {name: "response_time_seconds_percentile_50", timeSeriesData: percentile50TimeSeries},
+                response_time_seconds_percentile_66: {name: "response_time_seconds_percentile_66", timeSeriesData: percentile66TimeSeries},
+                response_time_seconds_percentile_95: {name: "response_time_seconds_percentile_95", timeSeriesData: percentile95TimeSeries},
+                response_time_seconds_percentile_99: {name: "response_time_seconds_percentile_99", timeSeriesData: percentile99TimeSeries}
+            };
+            metrics.push(metricEntry);
+        }
     }
+
+    // Split into inbound (service/worker entries) and outbound (client remote calls)
+    // Use hasKey() to avoid {ballerina/lang.map}KeyNotFound on missing tag fields
+    types:MetricEntry[] inboundMetrics = metrics.filter(m =>
+        !(m.tags.hasKey("src_client_remote") && m.tags.get("src_client_remote") == "true")
+        && m.tags.hasKey("url"));
+    types:MetricEntry[] outboundMetrics = metrics.filter(m =>
+        m.tags.hasKey("src_client_remote") && m.tags.get("src_client_remote") == "true");
+    log:printDebug("BI Filtered metrics - Total: " + metrics.length().toString() + ", Inbound: " + inboundMetrics.length().toString() + ", Outbound: " + outboundMetrics.length().toString());
+
+    log:printInfo("Returning " + inboundMetrics.length().toString() + " BI inbound and " + outboundMetrics.length().toString() + " BI outbound metric entries");
+
+    return {
+        inboundMetrics: inboundMetrics,
+        outboundMetrics: outboundMetrics
+    };
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Micro Integrator (MI) metrics — index: mi-metrics-logs-*
+//
+// MI document schema (flat + nested):
+//   @timestamp, service_type, product, payload.entityType, payload.latency (ms),
+//   payload.failure, payload.faultResponse,
+//   payload.apiDetails.api, payload.apiDetails.apiContext, payload.apiDetails.method,
+//   payload.apiDetails.transport, payload.apiDetails.subRequestPath,
+//   serverInfo.hostname, serverInfo.serverName, serverInfo.id
+//
+// Inbound requests are identified by the presence of `payload.apiDetails`.
+// Latency is in milliseconds; we convert to seconds to match the BI schema.
+// ──────────────────────────────────────────────────────────────────────────────
+
+isolated function fetchMIMetrics(types:MetricEntryRequest metricRequest) returns types:MetricEntriesResponse|error {
+    // Build OpenSearch query for MI metrics
+    json miQuery = check getMIMetricQuery(metricRequest);
+    log:printDebug("MI OpenSearch metrics query: " + miQuery.toJsonString());
+
+    // Execute the query
+    json|error miResponseResult = opensearchClient->post("/mi-metrics-logs-*/_search", miQuery);
+    if miResponseResult is error {
+        log:printError("Error fetching MI metrics from OpenSearch: " + miResponseResult.toString());
+        return error("Failed to fetch MI metrics");
+    }
+    json miResponseJson = miResponseResult;
+
+    // Parse the response and build metrics
+    types:MetricEntry[] inboundMetrics = [];
+
+    // Extract aggregation buckets — return empty if no aggregations present
+    json|error aggregationsResult = miResponseJson.aggregations;
+    if aggregationsResult is error {
+        log:printWarn("No aggregations in MI metrics response. Returning empty result.");
+        return {inboundMetrics: [], outboundMetrics: []};
+    }
+    json aggregations = aggregationsResult;
+    json apiGroups = check aggregations.api_groups;
+    json[] buckets = check apiGroups.buckets.ensureType();
+
+    log:printInfo("MI metrics: Found " + buckets.length().toString() + " unique API groups");
+
+    foreach json bucket in buckets {
+        // Extract composite key fields as tags
+        json bucketKey = check bucket.key;
+        map<json> keyMap = check bucketKey.ensureType();
+
+        map<string> tags = {};
+        foreach string tagField in keyMap.keys() {
+            json tagValue = keyMap.get(tagField);
+            if tagValue is string && tagValue != "" {
+                tags[tagField] = tagValue;
+            }
+        }
+
+        // Derive status and sublevel tags to align with BI schema used by the frontend
+        string apiName = tags["api"] ?: "";
+        string apiContext = tags["apiContext"] ?: "";
+        string method = tags["method"] ?: "";
+        tags["sublevel"] = apiName;
+        tags["integration"] = apiContext;
+        tags["service_type"] = "MI";
+        tags["product"] = "Micro Integrator";
+
+        // Get time buckets
+        json timeBuckets = check bucket.time_buckets;
+        json[] timeBucketArray = check timeBuckets.buckets.ensureType();
+
+        // Build time series data
+        map<int> requestsTotalTimeSeries = {};
+        map<decimal> avgLatencyTimeSeries = {};
+        map<decimal> minLatencyTimeSeries = {};
+        map<decimal> maxLatencyTimeSeries = {};
+        map<decimal> percentile33TimeSeries = {};
+        map<decimal> percentile50TimeSeries = {};
+        map<decimal> percentile66TimeSeries = {};
+        map<decimal> percentile95TimeSeries = {};
+        map<decimal> percentile99TimeSeries = {};
+
+        // Track successful and failed counts per time bucket for status split
+        map<int> failedCountTimeSeries = {};
+
+        foreach json timeBucket in timeBucketArray {
+            string timestamp = check timeBucket.key_as_string;
+            int docCount = check timeBucket.doc_count;
+
+            requestsTotalTimeSeries[timestamp] = docCount;
+
+            // Extract failed request count from the filter aggregation
+            json failedBucket = check timeBucket.failed_requests;
+            int failedCount = check failedBucket.doc_count;
+            failedCountTimeSeries[timestamp] = failedCount;
+
+            if (docCount > 0) {
+                // MI latency is in milliseconds — convert to seconds to match BI schema
+                json avgLat = check timeBucket.avg_latency;
+                decimal avgMs = check avgLat.value;
+                avgLatencyTimeSeries[timestamp] = avgMs / 1000;
+
+                json minLat = check timeBucket.min_latency;
+                decimal minMs = check minLat.value;
+                minLatencyTimeSeries[timestamp] = minMs / 1000;
+
+                json maxLat = check timeBucket.max_latency;
+                decimal maxMs = check maxLat.value;
+                maxLatencyTimeSeries[timestamp] = maxMs / 1000;
+
+                json percentilesLat = check timeBucket.percentiles_latency;
+                json percentilesValues = check percentilesLat.values;
+                map<json> percentilesMap = check percentilesValues.ensureType();
+
+                decimal p33 = check percentilesMap["33.0"];
+                percentile33TimeSeries[timestamp] = p33 / 1000;
+                decimal p50 = check percentilesMap["50.0"];
+                percentile50TimeSeries[timestamp] = p50 / 1000;
+                decimal p66 = check percentilesMap["66.0"];
+                percentile66TimeSeries[timestamp] = p66 / 1000;
+                decimal p95 = check percentilesMap["95.0"];
+                percentile95TimeSeries[timestamp] = p95 / 1000;
+                decimal p99 = check percentilesMap["99.0"];
+                percentile99TimeSeries[timestamp] = p99 / 1000;
+            } else {
+                avgLatencyTimeSeries[timestamp] = 0;
+                minLatencyTimeSeries[timestamp] = 0;
+                maxLatencyTimeSeries[timestamp] = 0;
+                percentile33TimeSeries[timestamp] = 0;
+                percentile50TimeSeries[timestamp] = 0;
+                percentile66TimeSeries[timestamp] = 0;
+                percentile95TimeSeries[timestamp] = 0;
+                percentile99TimeSeries[timestamp] = 0;
+            }
+        }
+
+        // Emit a "successful" metric entry
+        map<int> successfulTimeSeries = {};
+        foreach string ts in requestsTotalTimeSeries.keys() {
+            int total = requestsTotalTimeSeries[ts] ?: 0;
+            int failed = failedCountTimeSeries[ts] ?: 0;
+            successfulTimeSeries[ts] = total - failed;
+        }
+
+        if (requestsTotalTimeSeries.length() > 0) {
+            // Successful entry
+            map<string> successTags = tags.clone();
+            successTags["status"] = "successful";
+            successTags["method"] = method;
+            types:MetricEntry successEntry = {
+                tags: successTags,
+                requests_total: {name: "requests_total", timeSeriesData: successfulTimeSeries},
+                response_time_seconds_avg: {name: "response_time_seconds_avg", timeSeriesData: avgLatencyTimeSeries},
+                response_time_seconds_min: {name: "response_time_seconds_min", timeSeriesData: minLatencyTimeSeries},
+                response_time_seconds_max: {name: "response_time_seconds_max", timeSeriesData: maxLatencyTimeSeries},
+                response_time_seconds_percentile_33: {name: "response_time_seconds_percentile_33", timeSeriesData: percentile33TimeSeries},
+                response_time_seconds_percentile_50: {name: "response_time_seconds_percentile_50", timeSeriesData: percentile50TimeSeries},
+                response_time_seconds_percentile_66: {name: "response_time_seconds_percentile_66", timeSeriesData: percentile66TimeSeries},
+                response_time_seconds_percentile_95: {name: "response_time_seconds_percentile_95", timeSeriesData: percentile95TimeSeries},
+                response_time_seconds_percentile_99: {name: "response_time_seconds_percentile_99", timeSeriesData: percentile99TimeSeries}
+            };
+            inboundMetrics.push(successEntry);
+
+            // Failed entry (only if there were failures)
+            boolean hasFailures = false;
+            foreach int fc in failedCountTimeSeries {
+                if fc > 0 {
+                    hasFailures = true;
+                    break;
+                }
+            }
+            if hasFailures {
+                map<string> failTags = tags.clone();
+                failTags["status"] = "failed";
+                failTags["method"] = method;
+                // For failed entries, zero-fill latency since MI doesn't provide per-failure latency
+                map<decimal> zeroDecimalSeries = {};
+                foreach string ts in requestsTotalTimeSeries.keys() {
+                    zeroDecimalSeries[ts] = 0;
+                }
+                types:MetricEntry failEntry = {
+                    tags: failTags,
+                    requests_total: {name: "requests_total", timeSeriesData: failedCountTimeSeries},
+                    response_time_seconds_avg: {name: "response_time_seconds_avg", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_min: {name: "response_time_seconds_min", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_max: {name: "response_time_seconds_max", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_percentile_33: {name: "response_time_seconds_percentile_33", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_percentile_50: {name: "response_time_seconds_percentile_50", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_percentile_66: {name: "response_time_seconds_percentile_66", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_percentile_95: {name: "response_time_seconds_percentile_95", timeSeriesData: zeroDecimalSeries},
+                    response_time_seconds_percentile_99: {name: "response_time_seconds_percentile_99", timeSeriesData: zeroDecimalSeries}
+                };
+                inboundMetrics.push(failEntry);
+            }
+        }
+    }
+
+    log:printInfo("Returning " + inboundMetrics.length().toString() + " MI inbound metric entries");
+
+    return {
+        inboundMetrics: inboundMetrics,
+        outboundMetrics: []
+    };
 }
 
 // Helper function to build OpenSearch query based on request parameters
@@ -625,7 +828,7 @@ final readonly & string[] METRICS_TAG_FIELDS = [
     "entrypoint_function_module"
 ];
 
-isolated function getMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {
+isolated function getBIMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {
     // Build the time series query for requests per minute
     string interval = metricRequest.resolutionInterval;
     string startTime = metricRequest.startTime;
@@ -726,4 +929,115 @@ isolated function getMetricQuery(types:MetricEntryRequest metricRequest) returns
     };
 
     return metricsQuery;
+}
+
+// Build OpenSearch query for MI metrics.
+// MI documents store metrics in nested payload fields and don't have a top-level response_time_seconds.
+// Only inbound requests (payload.entityType == "API" with apiDetails) are queried.
+// Grouped by: api, apiContext, method, transport — then time-bucketed with latency stats.
+isolated function getMIMetricQuery(types:MetricEntryRequest metricRequest) returns json|error {
+    string interval = metricRequest.resolutionInterval;
+    string startTime = metricRequest.startTime;
+    string endTime = metricRequest.endTime;
+
+    // Build must clauses
+    json[] mustClauses = [
+        // Only inbound API requests (documents with payload.apiDetails)
+        {
+            "exists": {
+                "field": "payload.apiDetails"
+            }
+        },
+        {
+            "term": {
+                "payload.entityType.keyword": "API"
+            }
+        },
+        {
+            "range": {
+                "@timestamp": {
+                    "gte": startTime,
+                    "lte": endTime
+                }
+            }
+        }
+    ];
+
+    // Filter by runtime IDs
+    string[] runtimeIds = metricRequest.runtimeIdList;
+    if (runtimeIds.length() > 0) {
+        mustClauses.push({
+            "terms": {
+                "icp_runtimeId.keyword": runtimeIds
+            }
+        });
+    }
+
+    // Composite sources for grouping: api name, context, method, transport
+    json[] compositeSources = [
+        {"api": {"terms": {"field": "payload.apiDetails.api.keyword", "missing_bucket": true}}},
+        {"apiContext": {"terms": {"field": "payload.apiDetails.apiContext.keyword", "missing_bucket": true}}},
+        {"method": {"terms": {"field": "payload.apiDetails.method.keyword", "missing_bucket": true}}},
+        {"transport": {"terms": {"field": "payload.apiDetails.transport.keyword", "missing_bucket": true}}}
+    ];
+
+    json miQuery = {
+        "size": 0,
+        "query": {
+            "bool": {
+                "must": mustClauses
+            }
+        },
+        "aggs": {
+            "api_groups": {
+                "composite": {
+                    "size": 10000,
+                    "sources": compositeSources
+                },
+                "aggs": {
+                    "time_buckets": {
+                        "date_histogram": {
+                            "field": "@timestamp",
+                            "fixed_interval": interval,
+                            "min_doc_count": 0,
+                            "extended_bounds": {
+                                "min": startTime,
+                                "max": endTime
+                            }
+                        },
+                        "aggs": {
+                            "avg_latency": {
+                                "avg": {"field": "payload.latency"}
+                            },
+                            "min_latency": {
+                                "min": {"field": "payload.latency"}
+                            },
+                            "max_latency": {
+                                "max": {"field": "payload.latency"}
+                            },
+                            "percentiles_latency": {
+                                "percentiles": {
+                                    "field": "payload.latency",
+                                    "percents": [33.0, 50.0, 66.0, 95.0, 99.0]
+                                }
+                            },
+                            "failed_requests": {
+                                "filter": {
+                                    "bool": {
+                                        "should": [
+                                            {"term": {"payload.failure": true}},
+                                            {"term": {"payload.faultResponse": true}}
+                                        ],
+                                        "minimum_should_match": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    return miQuery;
 }

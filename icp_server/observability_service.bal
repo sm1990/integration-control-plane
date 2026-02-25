@@ -135,6 +135,10 @@ service /icp/observability on observabilityListener {
             };
         }
 
+        // Resolve runtime types to determine which index to query (same as logs)
+        types:LogIndexRuntimeType componentType = check resolveComponentTypes(runtimeIdList);
+        log:printDebug("Resolved component type: " + componentType.toString() + " for metrics filtering");
+
         // Construct MetricEntryRequest with resolved runtime IDs and copy other filter fields
         types:MetricEntryRequest adaptorRequest = {
             runtimeIdList: runtimeIdList,
@@ -144,10 +148,10 @@ service /icp/observability on observabilityListener {
             resolutionInterval: metricRequest.resolutionInterval
         };
 
-        log:printInfo("Invoking observability adapter with " + runtimeIdList.length().toString() + " runtime IDs");
+        log:printInfo("Invoking observability adapter with " + runtimeIdList.length().toString() + " runtime IDs for component type: " + componentType.toString());
 
-        // Invoke observability adapter service
-        return check observabilityClient->post("/observability/metrics/", adaptorRequest);
+        // Invoke observability adapter service with component type path param
+        return check observabilityClient->post(string `/observability/metrics/${componentType.toString()}`, adaptorRequest);
     }
 }
 

@@ -146,6 +146,12 @@ function enrich_mi_metrics(tag, timestamp, record)
     record["product"] = "Micro Integrator"
     record["service_type"] = "MI"
     record["log_type"] = "metrics"
+
+    -- Ensure icp_runtimeId is always present (extracted by mi_metrics_json_extract parser)
+    if not record["icp_runtimeId"] or record["icp_runtimeId"] == "" then
+        record["icp_runtimeId"] = ""
+    end
+
     return 1, timestamp, record
 end
 
@@ -183,9 +189,12 @@ function generate_mi_metrics_document_id(tag, timestamp, record)
         server_id = tostring(record["serverInfo"]["id"] or "")
     end
 
+    local runtime_id = tostring(record["icp_runtimeId"] or "")
+
     local delimiter = string.char(31)  -- U+001F unit separator
     local composite = timestamp_str .. delimiter .. metrics_ts .. delimiter ..
-                      entity_type .. delimiter .. entity_name .. delimiter .. server_id
+                      entity_type .. delimiter .. entity_name .. delimiter .. server_id ..
+                      delimiter .. runtime_id
     record["doc_id"] = simple_hash(composite)
 
     return 1, timestamp, record

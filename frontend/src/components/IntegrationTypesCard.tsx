@@ -31,7 +31,7 @@ export default function IntegrationTypesCard({ components }: { components: GqlCo
     <Card variant="outlined">
       <CardContent>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-          <PlugZap size={20} />
+          <PlugZap size={20} aria-hidden="true" />
           Integration Types
         </Typography>
         <Stack>

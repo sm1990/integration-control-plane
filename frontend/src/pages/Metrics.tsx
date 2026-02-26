@@ -74,7 +74,11 @@ function apiDisplayLabel(api: ApiSummary): string {
 
 function apiDisplayLabelWithType(api: ApiSummary, showType: boolean): string {
   const base = apiDisplayLabel(api);
-  if (showType && api.integrationName) return `[${api.integrationName}] ${base}`;
+  if (showType) {
+    const st = api.serviceType || 'BI';
+    if (api.integrationName) return `[${st} · ${api.integrationName}] ${base}`;
+    return `[${st}] ${base}`;
+  }
   return base;
 }
 

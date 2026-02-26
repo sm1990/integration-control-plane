@@ -93,14 +93,15 @@ function deriveApis(metrics: MetricEntry[], runtimeComponentMap: Record<string, 
     const groupCtx = isMI ? (m.tags.method ?? '') : (m.tags.deployment ?? m.tags.app_name ?? '');
     const runtimeId = m.tags.icp_runtimeId ?? '';
     const integrationName = runtimeComponentMap[runtimeId] ?? '';
-    const key = `${serviceType}\0${m.tags.sublevel}\0${groupCtx}`;
+    const ownerKey = runtimeId || integrationName || 'unknown';
+    const key = `${serviceType}\0${ownerKey}\0${m.tags.sublevel}\0${groupCtx}`;
     if (!apiMap[key]) apiMap[key] = { successful: [], failed: [], method: m.tags.method ?? '', serviceType, integrationName };
     if (integrationName && !apiMap[key].integrationName) apiMap[key].integrationName = integrationName;
     apiMap[key][m.tags.status === 'failed' ? 'failed' : 'successful'].push(m);
   }
   return Object.entries(apiMap)
     .map(([key, { successful, failed, method, serviceType, integrationName }]) => {
-      const [, name, deployment] = key.split('\0');
+      const [, , name, deployment] = key.split('\0');
       const allEntries = [...successful, ...failed];
       const successReqs = successful.reduce((s, m) => s + sumTimeSeries(m.requests_total.timeSeriesData), 0);
       const failReqs = failed.reduce((s, m) => s + sumTimeSeries(m.requests_total.timeSeriesData), 0);

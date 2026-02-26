@@ -50,11 +50,12 @@ export default function LoginForm(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
 
+  const isLockedOut = lockoutSeconds > 0;
   useEffect(() => {
-    if (lockoutSeconds <= 0) return;
+    if (!isLockedOut) return;
     const id = setInterval(() => setLockoutSeconds((s) => (s <= 1 ? 0 : s - 1)), 1000);
     return () => clearInterval(id);
-  }, [lockoutSeconds > 0]);
+  }, [isLockedOut]);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);
 
@@ -102,7 +103,7 @@ export default function LoginForm(): JSX.Element {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-          {lockoutSeconds > 0 && ` Try again in ${lockoutSeconds}s.`}
+          {isLockedOut && ` Try again in ${lockoutSeconds}s.`}
         </Alert>
       )}
 
@@ -139,9 +140,9 @@ export default function LoginForm(): JSX.Element {
           type="submit"
           fullWidth
           sx={{ mt: 1, bgcolor: '#1e1e1e', '&:hover': { bgcolor: '#333' }, textTransform: 'none', py: 1.2 }}
-          disabled={loading || lockoutSeconds > 0}
+          disabled={loading || isLockedOut}
           startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}>
-          {lockoutSeconds > 0 ? `Locked (${lockoutSeconds}s)` : loading ? 'Signing In...' : 'Login'}
+          {isLockedOut ? `Locked (${lockoutSeconds}s)` : loading ? 'Signing In...' : 'Login'}
         </Button>
 
         <Divider sx={{ my: 0.5 }}>OR</Divider>

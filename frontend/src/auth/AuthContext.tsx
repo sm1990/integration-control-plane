@@ -70,7 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       const err: Error & { status?: number; retryAfterSeconds?: number } = new Error(body || `Login failed (${res.status})`);
       err.status = res.status;
       if (res.status === 429) {
-        try { err.retryAfterSeconds = JSON.parse(body).retryAfterSeconds; } catch { /* ignore */ }
+        try {
+          err.retryAfterSeconds = JSON.parse(body).retryAfterSeconds;
+        } catch {
+          /* ignore */
+        }
       }
       throw err;
     }

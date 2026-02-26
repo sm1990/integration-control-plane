@@ -89,7 +89,7 @@ export default function Runtime(scope: ProjectScope | ComponentScope): JSX.Eleme
                   <TableCell>{r.registrationTime ? formatDate(r.registrationTime) : '—'}</TableCell>
                   <TableCell>{r.lastHeartbeat ? formatDate(r.lastHeartbeat) : '—'}</TableCell>
                   <TableCell>
-                    <IconButton size="small" color="error" disabled={r.status === 'RUNNING'} onClick={() => setDeleting(r)}>
+                    <IconButton size="small" color="error" aria-label={`Delete runtime ${r.runtimeId}`} disabled={r.status === 'RUNNING'} onClick={() => setDeleting(r)}>
                       <Trash2 size={16} />
                     </IconButton>
                   </TableCell>

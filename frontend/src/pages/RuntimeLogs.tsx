@@ -94,7 +94,7 @@ function LogEntry({ log, expanded, onToggle }: { log: LogRow; expanded: boolean;
           '&:hover': { bgcolor: 'action.hover' },
           '&:hover .log-actions': { visibility: 'visible' },
         }}>
-        <IconButton size="small" sx={{ p: 0, mr: 0.5 }}>
+        <IconButton size="small" aria-label={expanded ? 'Collapse log entry' : 'Expand log entry'} sx={{ p: 0, mr: 0.5 }}>
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </IconButton>
         <Typography component="span" sx={{ fontFamily: 'monospace', fontSize: 12, color: levelColor(log.level), whiteSpace: 'nowrap', mr: 1 }}>
@@ -366,11 +366,9 @@ export default function RuntimeLogs(scope: ProjectScope | ComponentScope): JSX.E
 
         <FormControlLabel control={<Checkbox checked={autoFetch} onChange={(_, c) => setAutoFetch(c)} size="small" />} label="Auto Fetch" sx={{ mr: 0, whiteSpace: 'nowrap' }} slotProps={{ typography: { variant: 'body2' } }} />
         <Tooltip title="Download logs">
-          <span>
-            <IconButton size="small" onClick={() => downloadLogs(filteredLogs)} disabled={filteredLogs.length === 0}>
-              <Download size={18} />
-            </IconButton>
-          </span>
+          <IconButton size="small" aria-label="Download logs" onClick={() => downloadLogs(filteredLogs)} disabled={filteredLogs.length === 0}>
+            <Download size={18} />
+          </IconButton>
         </Tooltip>
         <Button variant="outlined" size="small" onClick={() => refetch()} disabled={!logsRequest} startIcon={<RefreshCw size={14} />}>
           Refresh

@@ -264,8 +264,12 @@ export default function ComponentRoleDetail(): JSX.Element {
                 <Authorized permissions={roleModifyPerms}>
                   <TableCell>
                     <Tooltip title={!g.integrationUuid ? 'Org/Project-level mapping' : ''} placement="right">
-                      <span>
-                        <IconButton size="small" onClick={() => handleDeleteGroup(g)} disabled={removeMutation.isPending || !g.integrationUuid}>
+                      <span style={{ display: 'inline-flex' }}>
+                        <IconButton
+                          size="small"
+                          aria-label={!g.integrationUuid ? 'Org/Project-level mapping — cannot remove' : `Remove ${g.groupName ?? g.groupId} from role`}
+                          onClick={() => handleDeleteGroup(g)}
+                          disabled={removeMutation.isPending || !g.integrationUuid}>
                           <Trash2 size={16} />
                         </IconButton>
                       </span>

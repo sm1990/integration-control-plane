@@ -107,7 +107,7 @@ export default function IntegrationWizard(): JSX.Element {
                 input: {
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton size="small" edge="end">
+                      <IconButton size="small" edge="end" aria-label="Edit component directory">
                         <PencilIcon size={16} />
                       </IconButton>
                     </InputAdornment>
@@ -138,7 +138,7 @@ export default function IntegrationWizard(): JSX.Element {
                 input: {
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton size="small">
+                      <IconButton size="small" aria-label="Help for component name">
                         <CircleQuestionMark size={16} />
                       </IconButton>
                     </InputAdornment>

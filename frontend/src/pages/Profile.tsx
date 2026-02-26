@@ -149,7 +149,7 @@ function ChangePasswordSection(): JSX.Element {
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 endAdornment={
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowCurrent((s) => !s)} onMouseDown={(e) => e.preventDefault()} edge="end" size="small">
+                    <IconButton aria-label={showCurrent ? 'Hide current password' : 'Show current password'} onClick={() => setShowCurrent((s) => !s)} onMouseDown={(e) => e.preventDefault()} edge="end" size="small">
                       {showCurrent ? <EyeOff size={18} /> : <Eye size={18} />}
                     </IconButton>
                   </InputAdornment>
@@ -166,7 +166,7 @@ function ChangePasswordSection(): JSX.Element {
                 onChange={(e) => setNewPassword(e.target.value)}
                 endAdornment={
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowNew((s) => !s)} onMouseDown={(e) => e.preventDefault()} edge="end" size="small">
+                    <IconButton aria-label={showNew ? 'Hide new password' : 'Show new password'} onClick={() => setShowNew((s) => !s)} onMouseDown={(e) => e.preventDefault()} edge="end" size="small">
                       {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
                     </IconButton>
                   </InputAdornment>

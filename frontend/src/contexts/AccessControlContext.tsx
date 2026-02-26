@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useCallback, useMemo } from 'react
 import type { ReactNode, JSX } from 'react';
 
 interface AccessControlContextType {
+  isOrgPermissionsLoaded: boolean;
+
   setOrgPermissions: (permissions: string[]) => void;
   setProjectPermissions: (projectId: string, permissions: string[]) => void;
   setComponentPermissions: (componentId: string, permissions: string[]) => void;
@@ -22,12 +24,14 @@ interface AccessControlContextType {
 const AccessControlContext = createContext<AccessControlContextType | undefined>(undefined);
 
 export function AccessControlProvider({ children }: { children: ReactNode }): JSX.Element {
+  const [isOrgPermissionsLoaded, setIsOrgPermissionsLoaded] = useState(false);
   const [orgPerms, setOrgPerms] = useState<Set<string>>(new Set());
   const [projectPermsMap, setProjectPermsMap] = useState<Map<string, Set<string>>>(new Map());
   const [componentPermsMap, setComponentPermsMap] = useState<Map<string, Set<string>>>(new Map());
 
   const setOrgPermissions = useCallback((permissions: string[]) => {
     setOrgPerms(new Set(permissions));
+    setIsOrgPermissionsLoaded(true);
   }, []);
 
   const setProjectPermissions = useCallback((projectId: string, permissions: string[]) => {
@@ -67,6 +71,7 @@ export function AccessControlProvider({ children }: { children: ReactNode }): JS
   const hasAnyPermission = useCallback((permissions: string[], projectId?: string, componentId?: string) => permissions.some((p) => hasPermission(p, projectId, componentId)), [hasPermission]);
 
   const clearPermissions = useCallback(() => {
+    setIsOrgPermissionsLoaded(false);
     setOrgPerms(new Set());
     setProjectPermsMap(new Map());
     setComponentPermsMap(new Map());
@@ -83,6 +88,7 @@ export function AccessControlProvider({ children }: { children: ReactNode }): JS
 
   const value = useMemo<AccessControlContextType>(
     () => ({
+      isOrgPermissionsLoaded,
       setOrgPermissions,
       setProjectPermissions,
       setComponentPermissions,
@@ -96,7 +102,21 @@ export function AccessControlProvider({ children }: { children: ReactNode }): JS
       clearProjectPermissions,
       clearComponentPermissions,
     }),
-    [setOrgPermissions, setProjectPermissions, setComponentPermissions, hasOrgPermission, hasProjectPermission, hasComponentPermission, hasPermission, hasAllPermissions, hasAnyPermission, clearPermissions, clearProjectPermissions, clearComponentPermissions],
+    [
+      isOrgPermissionsLoaded,
+      setOrgPermissions,
+      setProjectPermissions,
+      setComponentPermissions,
+      hasOrgPermission,
+      hasProjectPermission,
+      hasComponentPermission,
+      hasPermission,
+      hasAllPermissions,
+      hasAnyPermission,
+      clearPermissions,
+      clearProjectPermissions,
+      clearComponentPermissions,
+    ],
   );
 
   return <AccessControlContext.Provider value={value}>{children}</AccessControlContext.Provider>;

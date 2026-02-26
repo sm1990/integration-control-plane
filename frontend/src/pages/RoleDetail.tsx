@@ -285,7 +285,7 @@ export default function RoleDetail(): JSX.Element {
                       <Chip label={envLabel(g, allEnvironments)} size="small" />
                     </TableCell>
                     <TableCell>
-                      <IconButton size="small" onClick={() => handleDeleteGroup(g)} disabled={removeMutation.isPending}>
+                      <IconButton size="small" aria-label={`Remove ${g.groupName ?? g.groupId} from role`} onClick={() => handleDeleteGroup(g)} disabled={removeMutation.isPending}>
                         <Trash2 size={16} />
                       </IconButton>
                     </TableCell>

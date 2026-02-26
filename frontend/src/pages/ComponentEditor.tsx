@@ -55,7 +55,7 @@ const Toolbar = ({ onBack, onTest, onPreview, isPreview, onSave }: { onBack: () 
       gap: 2,
       bgcolor: 'background.paper',
     }}>
-    <IconButton onClick={onBack}>
+    <IconButton aria-label="Go back" onClick={onBack}>
       <ArrowLeft size={20} />
     </IconButton>
     <Box sx={{ flexGrow: 1 }}>
@@ -65,10 +65,10 @@ const Toolbar = ({ onBack, onTest, onPreview, isPreview, onSave }: { onBack: () 
       </Typography>
     </Box>
     <Box sx={{ display: 'flex', gap: 1 }}>
-      <IconButton size="small">
+      <IconButton size="small" aria-label="Undo">
         <Undo size={18} />
       </IconButton>
-      <IconButton size="small">
+      <IconButton size="small" aria-label="Redo">
         <Redo size={18} />
       </IconButton>
     </Box>

@@ -15,11 +15,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Button, Card, CardContent, Checkbox, Chip, CircularProgress, Grid, IconButton, ListItemText, MenuItem, PageContent, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Button, Card, CardContent, Checkbox, CircularProgress, Grid, IconButton, ListItemText, MenuItem, PageContent, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { LineChart } from '@wso2/oxygen-ui-charts-react';
 import { BarChart3, RefreshCw } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, useState, type JSX } from 'react';
-import { useProjectByHandler, useComponentByHandler, useComponents, useEnvironments } from '../api/queries';
+import { useProjectByHandler, useComponentByHandler, useComponents, useEnvironments, useProjectRuntimes } from '../api/queries';
 import { useMetrics, type MetricEntry, type MetricsRequest } from '../api/metrics';
 import EmptyListing from '../components/EmptyListing';
 import NotFound from '../components/NotFound';
@@ -28,6 +28,11 @@ import { resourceUrl, broaden, hasComponent, type ProjectScope, type ComponentSc
 const TIME_RANGES: Record<string, number> = { 'Past 1 hour': 1, 'Past 6 hours': 6, 'Past 24 hours': 24, 'Past 7 days': 168 };
 const RESOLUTIONS: Record<string, string> = { '1 Minute': '1m', '5 Minutes': '5m', '15 Minutes': '15m', '1 Hour': '1h' };
 const LINE_OPTS = { dot: false, connectNulls: true, type: 'linear' as const };
+
+function normalizeServiceType(st?: string): string {
+  if (!st || st.toLowerCase() === 'ballerina' || st === 'BI') return 'BI';
+  return st.toUpperCase();
+}
 
 function sumTimeSeries(ts: Record<string, number>): number {
   let s = 0;
@@ -52,6 +57,7 @@ interface ApiSummary {
   deployment: string;
   method: string;
   serviceType: string;
+  integrationName: string;
   key: string;
   requestCount: number;
   avgResponseTime: number;
@@ -68,24 +74,28 @@ function apiDisplayLabel(api: ApiSummary): string {
 
 function apiDisplayLabelWithType(api: ApiSummary, showType: boolean): string {
   const base = apiDisplayLabel(api);
-  return showType ? `[${api.serviceType}] ${base}` : base;
+  if (showType && api.integrationName) return `[${api.integrationName}] ${base}`;
+  return base;
 }
 
 // Derive Top APIs grouped by serviceType+sublevel+groupCtx
-function deriveApis(metrics: MetricEntry[]): ApiSummary[] {
-  const apiMap: Record<string, { successful: MetricEntry[]; failed: MetricEntry[]; method: string; serviceType: string }> = {};
+function deriveApis(metrics: MetricEntry[], runtimeComponentMap: Record<string, string>): ApiSummary[] {
+  const apiMap: Record<string, { successful: MetricEntry[]; failed: MetricEntry[]; method: string; serviceType: string; integrationName: string }> = {};
   for (const m of metrics) {
-    const isMI = m.tags.service_type === 'MI';
+    const serviceType = normalizeServiceType(m.tags.service_type);
+    const isMI = serviceType === 'MI';
     // For MI metrics, group by sublevel + method (e.g. "HelloWorld\0GET")
     // For BI metrics, group by sublevel + deployment
     const groupCtx = isMI ? (m.tags.method ?? '') : (m.tags.deployment ?? m.tags.app_name ?? '');
-    const serviceType = m.tags.service_type ?? 'BI';
+    const runtimeId = m.tags.icp_runtimeId ?? '';
+    const integrationName = runtimeComponentMap[runtimeId] ?? '';
     const key = `${serviceType}\0${m.tags.sublevel}\0${groupCtx}`;
-    if (!apiMap[key]) apiMap[key] = { successful: [], failed: [], method: m.tags.method ?? '', serviceType };
+    if (!apiMap[key]) apiMap[key] = { successful: [], failed: [], method: m.tags.method ?? '', serviceType, integrationName };
+    if (integrationName && !apiMap[key].integrationName) apiMap[key].integrationName = integrationName;
     apiMap[key][m.tags.status === 'failed' ? 'failed' : 'successful'].push(m);
   }
   return Object.entries(apiMap)
-    .map(([key, { successful, failed, method, serviceType }]) => {
+    .map(([key, { successful, failed, method, serviceType, integrationName }]) => {
       const [, name, deployment] = key.split('\0');
       const allEntries = [...successful, ...failed];
       const successReqs = successful.reduce((s, m) => s + sumTimeSeries(m.requests_total.timeSeriesData), 0);
@@ -99,6 +109,7 @@ function deriveApis(metrics: MetricEntry[]): ApiSummary[] {
         deployment: isMI ? '' : deployment,
         method: isMI ? deployment : method,
         serviceType,
+        integrationName,
         key,
         requestCount: total,
         avgResponseTime: avgMs,
@@ -223,18 +234,27 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
   const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.project);
   const projectId = project?.id ?? '';
   const { data: singleComponent, isLoading: loadingComponent } = useComponentByHandler(projectId, isComponent ? scope.component : undefined);
-  const { isLoading: loadingComponents } = useComponents(scope.org, projectId);
+  const { data: components = [], isLoading: loadingComponents } = useComponents(scope.org, projectId);
   const { data: environments = [], isLoading: loadingEnvironments } = useEnvironments(projectId);
 
   const [envFilter, setEnvFilter] = useState('');
   const [timeRange, setTimeRange] = useState('Past 1 hour');
   const [resolution, setResolution] = useState('1 Minute');
   const [integrationFilter, setIntegrationFilter] = useState('all');
-  const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
   const [selectedApiKeys, setSelectedApiKeys] = useState<string[]>([]);
 
   const effectiveEnvId = envFilter || environments[0]?.id || '';
   const componentId = isComponent ? (singleComponent?.id ?? '') : '';
+
+  // Fetch all runtimes for the project to build runtimeId → integration name map
+  const { data: projectRuntimes = [] } = useProjectRuntimes(effectiveEnvId, projectId);
+  const runtimeComponentMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of projectRuntimes) {
+      if (r.component?.displayName) map[r.runtimeId] = r.component.displayName;
+    }
+    return map;
+  }, [projectRuntimes]);
 
   const metricsRequest = useMemo<MetricsRequest | null>(() => {
     if (!effectiveEnvId) return null;
@@ -247,68 +267,32 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
       endTime: now.toISOString(),
       resolutionInterval: RESOLUTIONS[resolution] ?? '1m',
     };
-    if (isComponent) req.componentId = componentId;
+    if (isComponent) {
+      req.componentId = componentId;
+    } else if (integrationFilter !== 'all') {
+      req.componentId = integrationFilter;
+    }
     return req;
-  }, [isComponent, componentId, effectiveEnvId, timeRange, resolution]);
+  }, [isComponent, componentId, integrationFilter, effectiveEnvId, timeRange, resolution]);
 
   const { data: metricsData, isLoading, error, refetch } = useMetrics(metricsRequest);
   const allInboundMetrics = useMemo(() => metricsData?.inboundMetrics ?? [], [metricsData]);
-  const outboundMetrics = useMemo(() => metricsData?.outboundMetrics ?? [], [metricsData]);
 
-  // Detect available service types (BI, MI, or both)
-  const availableServiceTypes = useMemo(() => {
-    const types = new Set<string>();
-    for (const m of allInboundMetrics) {
-      types.add(m.tags.service_type ?? 'BI');
-    }
-    for (const m of outboundMetrics) {
-      types.add(m.tags.service_type ?? 'BI');
-    }
-    return [...types].sort();
-  }, [allInboundMetrics, outboundMetrics]);
+  const inboundMetrics = allInboundMetrics;
 
-  const hasMixedTypes = availableServiceTypes.length > 1;
-
-  // Apply service type filter
-  const inboundMetrics = useMemo(() => {
-    // if (serviceTypeFilter === 'all') return allInboundMetrics;
-    if (!hasMixedTypes || serviceTypeFilter === 'all') return allInboundMetrics;
-    return allInboundMetrics.filter((m) => (m.tags.service_type ?? 'BI') === serviceTypeFilter);
-  }, [allInboundMetrics, serviceTypeFilter, hasMixedTypes]);
-
-  const filteredOutboundMetrics = useMemo(() => {
-    if (!hasMixedTypes || serviceTypeFilter === 'all') return outboundMetrics;
-    return outboundMetrics.filter((m) => (m.tags.service_type ?? 'BI') === serviceTypeFilter);
-  }, [outboundMetrics, serviceTypeFilter, hasMixedTypes]);
-
-  // Client-side integration filter (project-level only)
-  const integrations = useMemo(() => {
-    const set = new Set<string>();
-    for (const m of inboundMetrics) {
-      const i = m.tags.integration;
-      if (i) set.add(i);
-    }
-    return [...set].sort();
-  }, [inboundMetrics]);
-
-  const filteredMetrics = useMemo(() => {
-    if (integrationFilter === 'all') return inboundMetrics;
-    return inboundMetrics.filter((m) => m.tags.integration === integrationFilter);
-  }, [inboundMetrics, integrationFilter]);
-
-  const { requestsData, latencyData, totalRequests, errorCount, errorPercentage, latestP95 } = useMemo(() => aggregate(filteredMetrics), [filteredMetrics]);
-  const apis = useMemo(() => deriveApis(filteredMetrics), [filteredMetrics]);
-  const outboundApis = useMemo(() => deriveApis(filteredOutboundMetrics), [filteredOutboundMetrics]);
+  const { requestsData, latencyData, totalRequests, errorCount, errorPercentage, latestP95 } = useMemo(() => aggregate(inboundMetrics), [inboundMetrics]);
+  const apis = useMemo(() => deriveApis(inboundMetrics, runtimeComponentMap), [inboundMetrics, runtimeComponentMap]);
   const top5 = apis.slice(0, 5);
 
-  // Auto-select top APIs when data changes
+  // Auto-select all APIs by default
   const effectiveSelectedApis = useMemo(() => {
     const valid = apis.filter((a) => selectedApiKeys.includes(a.key));
-    return valid.length > 0 ? valid : top5.slice(0, 1);
-  }, [apis, selectedApiKeys, top5]);
+    return valid.length > 0 ? valid : apis;
+  }, [apis, selectedApiKeys]);
 
-  const { reqData: apiReqData, latData: apiLatData } = useMemo(() => buildApiChartData(effectiveSelectedApis, hasMixedTypes), [effectiveSelectedApis, hasMixedTypes]);
-  const apiLineKeys = effectiveSelectedApis.map((a) => apiDisplayLabelWithType(a, hasMixedTypes));
+  const showIntegrationName = true;
+  const { reqData: apiReqData, latData: apiLatData } = useMemo(() => buildApiChartData(effectiveSelectedApis, showIntegrationName), [effectiveSelectedApis, showIntegrationName]);
+  const apiLineKeys = effectiveSelectedApis.map((a) => apiDisplayLabelWithType(a, showIntegrationName));
 
   const requestsChartData = useMemo(() => requestsData.map((d) => ({ ...d, label: formatTime(d.time) })), [requestsData]);
   const latencyChartData = useMemo(() => latencyData.map((d) => ({ ...d, label: formatTime(d.time) })), [latencyData]);
@@ -373,22 +357,12 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
             </MenuItem>
           ))}
         </Select>
-        {!isComponent && integrations.length > 0 && (
+        {!isComponent && components.length > 0 && (
           <Select value={integrationFilter} onChange={(e) => setIntegrationFilter(e.target.value as string)} size="small" sx={{ minWidth: 160 }} aria-label="Integration">
             <MenuItem value="all">All Integrations</MenuItem>
-            {integrations.map((i) => (
-              <MenuItem key={i} value={i}>
-                {i}
-              </MenuItem>
-            ))}
-          </Select>
-        )}
-        {!isComponent && hasMixedTypes && (
-          <Select value={serviceTypeFilter} onChange={(e) => setServiceTypeFilter(e.target.value as string)} size="small" sx={{ minWidth: 160 }} aria-label="Service Type">
-            <MenuItem value="all">All Types</MenuItem>
-            {availableServiceTypes.map((t) => (
-              <MenuItem key={t} value={t}>
-                {t === 'BI' ? 'Ballerina Integrator' : t === 'MI' ? 'Micro Integrator' : t}
+            {components.map((c) => (
+              <MenuItem key={c.id} value={c.id}>
+                {c.displayName}
               </MenuItem>
             ))}
           </Select>
@@ -406,7 +380,7 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
             Retry
           </Button>
         </Stack>
-      ) : inboundMetrics.length === 0 && filteredOutboundMetrics.length === 0 ? (
+      ) : inboundMetrics.length === 0 ? (
         <EmptyListing icon={<BarChart3 size={48} />} title="No metrics data" description="No metrics available for the selected time range." />
       ) : (
         <>
@@ -472,20 +446,20 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
             </Grid>
           </Grid>
 
-          {/* Project-level: Top 5 APIs + Statistics of APIs */}
-          {!isComponent && top5.length > 0 && (
+          {/* Most Used APIs + Statistics of APIs */}
+          {top5.length > 0 && (
             <>
               <Card variant="outlined" sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2 }}>
-                    Top 5 APIs (by Request Count)
+                    Most Used APIs
                   </Typography>
                   <TableContainer>
                     <Table size="small">
                       <TableHead>
                         <TableRow>
                           <TableCell>Rank</TableCell>
-                          {hasMixedTypes && <TableCell>Type</TableCell>}
+                          <TableCell>Integration</TableCell>
                           <TableCell>API Name</TableCell>
                           <TableCell>Method</TableCell>
                           <TableCell align="right">Request Count</TableCell>
@@ -497,11 +471,7 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                         {top5.map((api, i) => (
                           <TableRow key={api.key}>
                             <TableCell>{i + 1}</TableCell>
-                            {hasMixedTypes && (
-                              <TableCell>
-                                <Chip label={api.serviceType} size="small" color={api.serviceType === 'MI' ? 'primary' : 'secondary'} variant="outlined" />
-                              </TableCell>
-                            )}
+                            <TableCell>{api.integrationName || '\u2014'}</TableCell>
                             <TableCell>
                               {api.name}
                               {api.deployment ? ` (${api.deployment})` : ''}
@@ -528,11 +498,11 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                 size="small"
                 sx={{ minWidth: 200, mb: 2 }}
                 aria-label="API selection"
-                renderValue={(selected) => `APIs: ${(selected as string[]).length} selected`}>
+                renderValue={(selected) => (selected as string[]).length === apis.length ? 'All APIs' : `APIs: ${(selected as string[]).length} selected`}>
                 {apis.map((a) => (
                   <MenuItem key={a.key} value={a.key}>
                     <Checkbox checked={effectiveSelectedApis.some((s) => s.key === a.key)} size="small" />
-                    <ListItemText primary={apiDisplayLabelWithType(a, hasMixedTypes)} />
+                    <ListItemText primary={apiDisplayLabelWithType(a, showIntegrationName)} />
                   </MenuItem>
                 ))}
               </Select>
@@ -548,10 +518,18 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                         data={apiReqData}
                         xAxisDataKey="label"
                         height={350}
-                        legend={{ show: true, align: 'center', verticalAlign: 'bottom' }}
+                        legend={{ show: false }}
                         grid={{ show: true, strokeDasharray: '3 3' }}
                         lines={apiLineKeys.map((k, i) => ({ dataKey: k, name: k, stroke: COLORS[i % COLORS.length], ...LINE_OPTS }))}
                       />
+                      <Stack sx={{ mt: 1 }} gap={0.5}>
+                        {apiLineKeys.map((k, i) => (
+                          <Stack key={k} direction="row" alignItems="center" gap={1}>
+                            <span style={{ width: 14, height: 3, backgroundColor: COLORS[i % COLORS.length], display: 'inline-block', borderRadius: 1 }} />
+                            <Typography variant="caption" noWrap>{k}</Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -565,57 +543,22 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                         data={apiLatData}
                         xAxisDataKey="label"
                         height={350}
-                        legend={{ show: true, align: 'center', verticalAlign: 'bottom' }}
+                        legend={{ show: false }}
                         grid={{ show: true, strokeDasharray: '3 3' }}
                         lines={apiLineKeys.map((k, i) => ({ dataKey: k, name: k, stroke: COLORS[i % COLORS.length], ...LINE_OPTS }))}
                       />
+                      <Stack sx={{ mt: 1 }} gap={0.5}>
+                        {apiLineKeys.map((k, i) => (
+                          <Stack key={k} direction="row" alignItems="center" gap={1}>
+                            <span style={{ width: 14, height: 3, backgroundColor: COLORS[i % COLORS.length], display: 'inline-block', borderRadius: 1 }} />
+                            <Typography variant="caption" noWrap>{k}</Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
                     </CardContent>
                   </Card>
                 </Grid>
               </Grid>
-
-              {/* Outbound metrics (BI client remote calls) */}
-              {outboundApis.length > 0 && (
-                <Card variant="outlined" sx={{ mt: 3 }}>
-                  <CardContent>
-                    <Typography variant="h6" sx={{ mb: 2 }}>
-                      Outbound Calls (Client Remote Calls)
-                    </Typography>
-                    <TableContainer>
-                      <Table size="small">
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>Rank</TableCell>
-                            {hasMixedTypes && <TableCell>Type</TableCell>}
-                            <TableCell>Name</TableCell>
-                            <TableCell>Deployment</TableCell>
-                            <TableCell align="right">Request Count</TableCell>
-                            <TableCell align="right">Avg Response Time (ms)</TableCell>
-                            <TableCell align="right">Error Rate (%)</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {outboundApis.slice(0, 10).map((api, i) => (
-                            <TableRow key={api.key}>
-                              <TableCell>{i + 1}</TableCell>
-                              {hasMixedTypes && (
-                                <TableCell>
-                                  <Chip label={api.serviceType} size="small" color={api.serviceType === 'MI' ? 'primary' : 'secondary'} variant="outlined" />
-                                </TableCell>
-                              )}
-                              <TableCell>{api.name}</TableCell>
-                              <TableCell>{api.deployment || '\u2014'}</TableCell>
-                              <TableCell align="right">{api.requestCount}</TableCell>
-                              <TableCell align="right">{api.avgResponseTime.toFixed(2)}</TableCell>
-                              <TableCell align="right">{api.errorRate.toFixed(2)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </CardContent>
-                </Card>
-              )}
             </>
           )}
         </>

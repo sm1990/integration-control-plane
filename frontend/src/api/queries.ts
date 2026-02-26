@@ -181,6 +181,7 @@ export interface GqlRuntime {
   osVersion: string;
   registrationTime: string;
   lastHeartbeat: string;
+  component?: { displayName: string };
 }
 
 const RUNTIMES_QUERY = `
@@ -205,7 +206,8 @@ const PROJECT_RUNTIMES_QUERY = `
     runtimes(environmentId: $environmentId, projectId: $projectId) {
       runtimeId, runtimeType, status, version,
       platformName, platformVersion, platformHome,
-      osName, osVersion, registrationTime, lastHeartbeat
+      osName, osVersion, registrationTime, lastHeartbeat,
+      component { displayName }
     }
   }`;
 

@@ -498,7 +498,7 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                 size="small"
                 sx={{ minWidth: 200, mb: 2 }}
                 aria-label="API selection"
-                renderValue={(selected) => (selected as string[]).length === apis.length ? 'All APIs' : `APIs: ${(selected as string[]).length} selected`}>
+                renderValue={(selected) => ((selected as string[]).length === apis.length ? 'All APIs' : `APIs: ${(selected as string[]).length} selected`)}>
                 {apis.map((a) => (
                   <MenuItem key={a.key} value={a.key}>
                     <Checkbox checked={effectiveSelectedApis.some((s) => s.key === a.key)} size="small" />
@@ -526,7 +526,9 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                         {apiLineKeys.map((k, i) => (
                           <Stack key={k} direction="row" alignItems="center" gap={1}>
                             <span style={{ width: 14, height: 3, backgroundColor: COLORS[i % COLORS.length], display: 'inline-block', borderRadius: 1 }} />
-                            <Typography variant="caption" noWrap>{k}</Typography>
+                            <Typography variant="caption" noWrap>
+                              {k}
+                            </Typography>
                           </Stack>
                         ))}
                       </Stack>
@@ -551,7 +553,9 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
                         {apiLineKeys.map((k, i) => (
                           <Stack key={k} direction="row" alignItems="center" gap={1}>
                             <span style={{ width: 14, height: 3, backgroundColor: COLORS[i % COLORS.length], display: 'inline-block', borderRadius: 1 }} />
-                            <Typography variant="caption" noWrap>{k}</Typography>
+                            <Typography variant="caption" noWrap>
+                              {k}
+                            </Typography>
                           </Stack>
                         ))}
                       </Stack>

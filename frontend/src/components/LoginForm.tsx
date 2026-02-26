@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { JSX } from 'react';
 import { Alert, Box, Button, CircularProgress, Divider, IconButton, InputAdornment, InputLabel, OutlinedInput, Typography } from '@wso2/oxygen-ui';
 import { Eye, EyeOff } from '@wso2/oxygen-ui-icons-react';
@@ -49,12 +49,11 @@ export default function LoginForm(): JSX.Element {
   const [ssoLoading, setSsoLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
-  const lockoutRef = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    if (lockoutSeconds <= 0) { clearInterval(lockoutRef.current); return; }
-    lockoutRef.current = setInterval(() => setLockoutSeconds((s) => (s <= 1 ? 0 : s - 1)), 1000);
-    return () => clearInterval(lockoutRef.current);
+    if (lockoutSeconds <= 0) return;
+    const id = setInterval(() => setLockoutSeconds((s) => (s <= 1 ? 0 : s - 1)), 1000);
+    return () => clearInterval(id);
   }, [lockoutSeconds > 0]);
 
   const handleClickShowPassword = () => setShowPassword((show) => !show);

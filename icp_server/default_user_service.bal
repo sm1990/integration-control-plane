@@ -77,7 +77,7 @@ service / on defaultAuthServiceListener {
     function init() {
         log:printInfo("Authentication service started at " + authServiceHost + ":" + authServicePort.toString());
     }
-    resource function post authenticate(types:Credentials request) returns http:Ok|http:BadRequest|http:Unauthorized|http:TooManyRequests|error {
+    resource function post authenticate(types:Credentials request) returns http:Ok|http:BadRequest|http:Unauthorized|http:TooManyRequests|http:InternalServerError|error {
         log:printDebug("Authenticate request", username = request.username);
 
         types:UserCredentials|sql:Error credentials = credentialsDbClient->queryRow(
@@ -85,9 +85,13 @@ service / on defaultAuthServiceListener {
                     password_hash as passwordHash, password_salt as passwordSalt
              FROM user_credentials WHERE username = ${request.username}`
         );
-        if credentials is sql:Error {
-            log:printDebug("User lookup failed", 'error = credentials, username = request.username);
+        if credentials is sql:NoRowsError {
+            log:printDebug("User not found", username = request.username);
             return utils:createUnauthorizedError("Invalid credentials");
+        }
+        if credentials is sql:Error {
+            log:printError("Database error during user lookup", 'error = credentials, username = request.username);
+            return utils:createInternalServerError("Authentication service unavailable");
         }
 
         int failedAttempts = parseIntOrZero(check getUserAttr(credentials.userId, "failedLoginAttempts"));

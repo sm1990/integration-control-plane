@@ -175,10 +175,6 @@ jobs:
           Frontend: http://localhost:5173
           GraphQL API: https://localhost:9446/graphql
           ```
-
-          ---
-
-          **Full Changelog**: https://github.com/wso2/integration-control-plane/compare/v${{ steps.version.outputs.version }}
           EOF
 
           echo "Release notes generated successfully"
@@ -225,6 +221,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version }}
           name: WSO2 Integration Control Plane v${{ steps.version.outputs.version }}
           body_path: release_notes.md
           files: |

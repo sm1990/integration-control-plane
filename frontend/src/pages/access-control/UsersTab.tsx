@@ -101,6 +101,7 @@ function AssignGroupsDialog({ orgHandler, user, onClose }: { orgHandler: string;
   const { data: allGroups = [] } = useGroups(orgHandler);
   const mutation = useUpdateUserGroups(orgHandler);
   const [selected, setSelected] = useState<Group[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const available = allGroups.filter((g) => !user.groups.some((ug) => ug.groupId === g.groupId));
   return (
     <FormDialog
@@ -108,8 +109,21 @@ function AssignGroupsDialog({ orgHandler, user, onClose }: { orgHandler: string;
       onClose={onClose}
       primaryLabel="Assign"
       primaryDisabled={selected.length === 0 || mutation.isPending}
-      onPrimary={() => mutation.mutate({ userId: user.userId, groupIds: [...user.groups.map((g) => g.groupId), ...selected.map((g) => g.groupId)] }, { onSuccess: onClose })}
+      onPrimary={() =>
+        mutation.mutate(
+          { userId: user.userId, groupIds: [...user.groups.map((g) => g.groupId), ...selected.map((g) => g.groupId)] },
+          {
+            onSuccess: onClose,
+            onError: (errorObj) => setError(errorObj?.message ?? 'Failed to assign groups. Please try again.'),
+          }
+        )
+      }
       title="Assign Groups">
+      {error && (
+        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <Autocomplete
         multiple
         options={available}
@@ -123,7 +137,7 @@ function AssignGroupsDialog({ orgHandler, user, onClose }: { orgHandler: string;
   );
 }
 
-function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user: User; onBack: () => void }) {
+function UserDetailView({ orgHandler, user, onBack, setTableAlert }: { orgHandler: string; user: User; onBack: () => void; setTableAlert: (alert: { type: 'success' | 'error'; message: string }) => void }) {
   const { username: currentUsername } = useAuth();
   const { hasOrgPermission } = useAccessControl();
   const canManageUsers = hasOrgPermission(Permissions.USER_MANAGE_USERS);
@@ -218,7 +232,13 @@ function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user
               onClick={() =>
                 removeUserMutation.mutate(
                   { groupId: removingGroup.groupId, userId: user.userId },
-                  { onSuccess: () => setRemovingGroupId(null) }
+                  {
+                    onSuccess: () => setRemovingGroupId(null),
+                    onError: (error) => {
+                      setRemovingGroupId(null);
+                      setTableAlert({ type: 'error', message: error?.message ?? 'Failed to remove user from group. Please try again.' });
+                    },
+                  }
                 )
               }
             >
@@ -310,7 +330,16 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
   }, [newUsername]);
 
   if (isLoading) return <Loading />;
-  if (viewingUser) return <UserDetailView orgHandler={orgHandler} user={viewingUser} onBack={() => setViewingUserId(null)} />;
+  if (viewingUser) {
+    return (
+      <UserDetailView
+        orgHandler={orgHandler}
+        user={viewingUser}
+        onBack={() => setViewingUserId(null)}
+        setTableAlert={setTableAlert}
+      />
+    );
+  }
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>

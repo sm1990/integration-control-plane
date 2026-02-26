@@ -68,6 +68,7 @@ function AddToGroupDialog<T>({
   mutate,
   getPayload,
   isPending,
+  errorMessage,
 }: {
   title: string;
   label: string;
@@ -80,11 +81,17 @@ function AddToGroupDialog<T>({
   mutate: (payload: unknown) => void;
   getPayload: (selected: T[]) => unknown;
   isPending: boolean;
+  errorMessage?: string | null;
 }) {
   const [selected, setSelected] = useState<T[]>([]);
   const available = options.filter((o) => !existingIds.includes(String((o as Record<string, unknown>)[idKey as string])));
   return (
     <FormDialog open onClose={onClose} primaryLabel="Add" primaryDisabled={selected.length === 0 || isPending} onPrimary={() => mutate(getPayload(selected))} title={title}>
+      {errorMessage && (
+        <Alert severity="error" onClose={onClose} sx={{ mb: 2 }}>
+          {errorMessage}
+        </Alert>
+      )}
       <Autocomplete
         multiple
         options={available}
@@ -177,6 +184,7 @@ function AddRolesToGroupDialog({ orgHandler, projectId, componentId, groupId, ex
 function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose }: { orgHandler: string; groupId: string; existingUserIds: string[]; onClose: () => void }) {
   const { data: allUsers = [] } = useUsers(orgHandler);
   const mutation = useAddUsersToGroup(orgHandler);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   return (
     <AddToGroupDialog
       title="Add Users to Group"
@@ -187,14 +195,20 @@ function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose }
       idKey="userId"
       existingIds={existingUserIds}
       onClose={onClose}
-      mutate={(payload) => mutation.mutate(payload as { groupId: string; userIds: string[] }, { onSuccess: onClose })}
+      mutate={(payload) =>
+        mutation.mutate(payload as { groupId: string; userIds: string[] }, {
+          onSuccess: onClose,
+          onError: (error) => setErrorMessage(error?.message ?? 'Failed to add users to group. Please try again.'),
+        })
+      }
       getPayload={(selected) => ({ groupId, userIds: selected.map((u) => u.userId) })}
       isPending={mutation.isPending}
+      errorMessage={errorMessage}
     />
   );
 }
 
-function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, showUsers = true }: { orgHandler: string; projectId?: string; componentId?: string; group: Group; onBack: () => void; showUsers?: boolean }) {
+function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, showUsers = true, setTableAlert }: { orgHandler: string; projectId?: string; componentId?: string; group: Group; onBack: () => void; showUsers?: boolean; setTableAlert: (alert: { type: 'success' | 'error'; message: string }) => void }) {
   const roleModifyPerms: string[] = [...ALL_ROLE_MODIFY_PERMISSIONS];
   if (projectId) roleModifyPerms.push(Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE);
   if (componentId) roleModifyPerms.push(Permissions.INTEGRATION_EDIT, Permissions.INTEGRATION_MANAGE);
@@ -289,7 +303,23 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setRemovingUser(null)}>Cancel</Button>
-                <Button variant="contained" color="error" disabled={removeUserMutation.isPending} onClick={() => removeUserMutation.mutate({ groupId: group.groupId, userId: removingUser.userId }, { onSuccess: () => setRemovingUser(null) })}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={removeUserMutation.isPending}
+                  onClick={() =>
+                    removeUserMutation.mutate(
+                      { groupId: group.groupId, userId: removingUser.userId },
+                      {
+                        onSuccess: () => setRemovingUser(null),
+                        onError: (error) => {
+                          setRemovingUser(null);
+                          setTableAlert({ type: 'error', message: error?.message ?? 'Failed to remove user from group. Please try again.' });
+                        },
+                      }
+                    )
+                  }
+                >
                   Remove
                 </Button>
               </DialogActions>
@@ -360,7 +390,23 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setRemovingRole(null)}>Cancel</Button>
-                <Button variant="contained" color="error" disabled={removeRoleMutation.isPending} onClick={() => removeRoleMutation.mutate({ groupId: group.groupId, mappingId: removingRole.id }, { onSuccess: () => setRemovingRole(null) })}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={removeRoleMutation.isPending}
+                  onClick={() =>
+                    removeRoleMutation.mutate(
+                      { groupId: group.groupId, mappingId: removingRole.id },
+                      {
+                        onSuccess: () => setRemovingRole(null),
+                        onError: (error) => {
+                          setRemovingRole(null);
+                          setTableAlert({ type: 'error', message: error?.message ?? 'Failed to remove role from group. Please try again.' });
+                        },
+                      }
+                    )
+                  }
+                >
                   Remove
                 </Button>
               </DialogActions>
@@ -404,7 +450,19 @@ export function GroupsTab({ orgHandler, projectId, componentHandler, readOnly }:
   const filtered = useFiltered(groups ?? [], search, (g) => g.groupName);
 
   if (isLoading) return <Loading />;
-  if (viewingGroup) return <GroupDetailView orgHandler={orgHandler} projectId={projectId} componentId={componentId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!projectId && !effectiveReadOnly} />;
+  if (viewingGroup) {
+    return (
+      <GroupDetailView
+        orgHandler={orgHandler}
+        projectId={projectId}
+        componentId={componentId}
+        group={viewingGroup}
+        onBack={() => setViewingGroup(null)}
+        showUsers={!projectId && !effectiveReadOnly}
+        setTableAlert={setTableAlert}
+      />
+    );
+  }
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>

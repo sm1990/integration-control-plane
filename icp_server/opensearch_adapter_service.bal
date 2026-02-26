@@ -299,17 +299,17 @@ isolated function fetchBIMetrics(types:MetricEntryRequest metricRequest) returns
     log:printDebug("BI OpenSearch metrics query: " + metricsQuery.toJsonString());
 
     // Execute the query
-    json|error metricsResponseJson = opensearchClient->post("/ballerina-metrics-logs-*/_search", metricsQuery);
-    if metricsResponseJson is error {
-        log:printError("Error fetching BI metrics from OpenSearch: " + metricsResponseJson.toString());
-        return {inboundMetrics: [], outboundMetrics: []};
+    json|error biResponseResult = opensearchClient->post("/ballerina-metrics-logs-*/_search", metricsQuery);
+    if biResponseResult is error {
+        log:printError("Error fetching BI metrics from OpenSearch: " + biResponseResult.toString());
+        return error("Failed to fetch BI metrics");
     }
 
     // Parse the response and build metrics
     types:MetricEntry[] metrics = [];
 
     // Extract aggregation buckets — return empty if no aggregations present
-    json|error aggregationsResult = metricsResponseJson.aggregations;
+    json|error aggregationsResult = biResponseResult.aggregations;
     if aggregationsResult is error {
         log:printWarn("No aggregations in BI metrics response. Returning empty result.");
         return {inboundMetrics: [], outboundMetrics: []};
@@ -963,12 +963,13 @@ isolated function getMIMetricQuery(types:MetricEntryRequest metricRequest) retur
         });
     }
 
-    // Composite sources for grouping: api name, context, method, transport
+    // Composite sources for grouping: api name, context, method, transport, runtimeId
     json[] compositeSources = [
         {"api": {"terms": {"field": "payload.apiDetails.api.keyword", "missing_bucket": true}}},
         {"apiContext": {"terms": {"field": "payload.apiDetails.apiContext.keyword", "missing_bucket": true}}},
         {"method": {"terms": {"field": "payload.apiDetails.method.keyword", "missing_bucket": true}}},
-        {"transport": {"terms": {"field": "payload.apiDetails.transport.keyword", "missing_bucket": true}}}
+        {"transport": {"terms": {"field": "payload.apiDetails.transport.keyword", "missing_bucket": true}}},
+        {"icp_runtimeId": {"terms": {"field": "icp_runtimeId.keyword", "missing_bucket": true}}}
     ];
 
     json miQuery = {

@@ -45,7 +45,7 @@ import {
   Typography,
 } from '@wso2/oxygen-ui';
 import { ArrowLeft, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import SearchField from '../../components/SearchField';
 import { useAccessControl } from '../../contexts/AccessControlContext';
 import { Permissions, ALL_ROLE_MODIFY_PERMISSIONS } from '../../constants/permissions';
@@ -84,11 +84,16 @@ function AddToGroupDialog<T>({
   errorMessage?: string | null;
 }) {
   const [selected, setSelected] = useState<T[]>([]);
+  const [errorVisible, setErrorVisible] = useState(!!errorMessage);
+  // Sync errorVisible with errorMessage
+  useEffect(() => {
+    setErrorVisible(!!errorMessage);
+  }, [errorMessage]);
   const available = options.filter((o) => !existingIds.includes(String((o as Record<string, unknown>)[idKey as string])));
   return (
     <FormDialog open onClose={onClose} primaryLabel="Add" primaryDisabled={selected.length === 0 || isPending} onPrimary={() => mutate(getPayload(selected))} title={title}>
-      {errorMessage && (
-        <Alert severity="error" onClose={onClose} sx={{ mb: 2 }}>
+      {errorMessage && errorVisible && (
+        <Alert severity="error" onClose={() => setErrorVisible(false)} sx={{ mb: 2 }}>
           {errorMessage}
         </Alert>
       )}
@@ -208,7 +213,23 @@ function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose }
   );
 }
 
-function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, showUsers = true, setTableAlert }: { orgHandler: string; projectId?: string; componentId?: string; group: Group; onBack: () => void; showUsers?: boolean; setTableAlert: (alert: { type: 'success' | 'error'; message: string }) => void }) {
+function GroupDetailView({
+  orgHandler,
+  projectId,
+  componentId,
+  group,
+  onBack,
+  showUsers = true,
+  setTableAlert,
+}: {
+  orgHandler: string;
+  projectId?: string;
+  componentId?: string;
+  group: Group;
+  onBack: () => void;
+  showUsers?: boolean;
+  setTableAlert: (alert: { type: 'success' | 'error'; message: string }) => void;
+}) {
   const roleModifyPerms: string[] = [...ALL_ROLE_MODIFY_PERMISSIONS];
   if (projectId) roleModifyPerms.push(Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE);
   if (componentId) roleModifyPerms.push(Permissions.INTEGRATION_EDIT, Permissions.INTEGRATION_MANAGE);
@@ -316,10 +337,9 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                           setRemovingUser(null);
                           setTableAlert({ type: 'error', message: error?.message ?? 'Failed to remove user from group. Please try again.' });
                         },
-                      }
+                      },
                     )
-                  }
-                >
+                  }>
                   Remove
                 </Button>
               </DialogActions>
@@ -403,10 +423,9 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                           setRemovingRole(null);
                           setTableAlert({ type: 'error', message: error?.message ?? 'Failed to remove role from group. Please try again.' });
                         },
-                      }
+                      },
                     )
-                  }
-                >
+                  }>
                   Remove
                 </Button>
               </DialogActions>
@@ -451,17 +470,7 @@ export function GroupsTab({ orgHandler, projectId, componentHandler, readOnly }:
 
   if (isLoading) return <Loading />;
   if (viewingGroup) {
-    return (
-      <GroupDetailView
-        orgHandler={orgHandler}
-        projectId={projectId}
-        componentId={componentId}
-        group={viewingGroup}
-        onBack={() => setViewingGroup(null)}
-        showUsers={!projectId && !effectiveReadOnly}
-        setTableAlert={setTableAlert}
-      />
-    );
+    return <GroupDetailView orgHandler={orgHandler} projectId={projectId} componentId={componentId} group={viewingGroup} onBack={() => setViewingGroup(null)} showUsers={!projectId && !effectiveReadOnly} setTableAlert={setTableAlert} />;
   }
   return (
     <>

@@ -115,7 +115,7 @@ function AssignGroupsDialog({ orgHandler, user, onClose }: { orgHandler: string;
           {
             onSuccess: onClose,
             onError: (errorObj) => setError(errorObj?.message ?? 'Failed to assign groups. Please try again.'),
-          }
+          },
         )
       }
       title="Assign Groups">
@@ -212,9 +212,7 @@ function UserDetailView({ orgHandler, user, onBack, setTableAlert }: { orgHandle
           )}
         </TableBody>
       </Table>
-      {assigning && (
-        <AssignGroupsDialog orgHandler={orgHandler} user={user} onClose={() => setAssigning(false)} />
-      )}
+      {assigning && <AssignGroupsDialog orgHandler={orgHandler} user={user} onClose={() => setAssigning(false)} />}
       {removingGroup && (
         <Dialog open onClose={() => setRemovingGroupId(null)} maxWidth="xs" fullWidth>
           <DialogTitle>Remove Group</DialogTitle>
@@ -238,10 +236,9 @@ function UserDetailView({ orgHandler, user, onBack, setTableAlert }: { orgHandle
                       setRemovingGroupId(null);
                       setTableAlert({ type: 'error', message: error?.message ?? 'Failed to remove user from group. Please try again.' });
                     },
-                  }
+                  },
                 )
-              }
-            >
+              }>
               Remove
             </Button>
           </DialogActions>
@@ -331,14 +328,7 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
 
   if (isLoading) return <Loading />;
   if (viewingUser) {
-    return (
-      <UserDetailView
-        orgHandler={orgHandler}
-        user={viewingUser}
-        onBack={() => setViewingUserId(null)}
-        setTableAlert={setTableAlert}
-      />
-    );
+    return <UserDetailView orgHandler={orgHandler} user={viewingUser} onBack={() => setViewingUserId(null)} setTableAlert={setTableAlert} />;
   }
   return (
     <>
@@ -430,26 +420,26 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Edit">
-                        <IconButton
-                          size="small"
-                          aria-label="Edit user"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setViewingUserId(u.userId);
-                          }}>
-                          <Pencil size={16} />
-                        </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label="Edit user"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setViewingUserId(u.userId);
+                        }}>
+                        <Pencil size={16} />
+                      </IconButton>
                     </Tooltip>
                     <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          aria-label="Delete user"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingUserId(u.userId);
-                          }}>
-                          <Trash2 size={16} />
-                        </IconButton>
+                      <IconButton
+                        size="small"
+                        aria-label="Delete user"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingUserId(u.userId);
+                        }}>
+                        <Trash2 size={16} />
+                      </IconButton>
                     </Tooltip>
                   </Authorized>
                 )}
@@ -529,8 +519,7 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
                         setTableAlert({ type: 'error', message: error?.message ?? 'Failed to reset password. Please try again.' });
                       },
                     })
-                  }
-                >
+                  }>
                   Reset Password
                 </Button>
               </DialogActions>
@@ -550,26 +539,26 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setRevokingUserId(null)}>Cancel</Button>
-                <Button variant="contained" color="error" disabled={revokeTokensMutation.isPending} onClick={() => revokeTokensMutation.mutate(u.userId, {
-                  onSuccess: () => setRevokingUserId(null),
-                  onError: (error) => {
-                    setRevokingUserId(null);
-                    setTableAlert({ type: 'error', message: error?.message ?? 'Failed to revoke sessions. Please try again.' });
-                  }
-                })}>
+                <Button
+                  variant="contained"
+                  color="error"
+                  disabled={revokeTokensMutation.isPending}
+                  onClick={() =>
+                    revokeTokensMutation.mutate(u.userId, {
+                      onSuccess: () => setRevokingUserId(null),
+                      onError: (error) => {
+                        setRevokingUserId(null);
+                        setTableAlert({ type: 'error', message: error?.message ?? 'Failed to revoke sessions. Please try again.' });
+                      },
+                    })
+                  }>
                   Revoke Sessions
                 </Button>
               </DialogActions>
             </Dialog>
           ) : null;
         })()}
-      {resetPasswordResult && (
-        <ResetPasswordDialog
-          username={resetPasswordResult.username}
-          password={resetPasswordResult.password}
-          onClose={() => setResetPasswordResult(null)}
-        />
-      )}
+      {resetPasswordResult && <ResetPasswordDialog username={resetPasswordResult.username} password={resetPasswordResult.password} onClose={() => setResetPasswordResult(null)} />}
     </>
   );
 }

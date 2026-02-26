@@ -46,7 +46,7 @@ service /auth on httpListener {
         }
 
         if authResponse.statusCode == 429 {
-            log:printDebug("Account locked out by auth backend", username = credentials.username);
+            log:printWarn("Account locked out by auth backend", username = credentials.username);
             json|error lockoutPayload = authResponse.getJsonPayload();
             if lockoutPayload is error {
                 log:printError("Failed to read lockout response payload", lockoutPayload);

@@ -294,7 +294,7 @@ export default function ComponentRoleDetail(): JSX.Element {
                 </TableCell>
                 <Authorized permissions={roleModifyPerms}>
                   <TableCell>
-                    <Tooltip title={!g.integrationUuid ? 'Org/Project-level mapping' : ''} placement="right">
+                    <Tooltip title={!g.integrationUuid ? 'Org/Project-level mapping' : ''}>
                       <span style={{ display: 'inline-flex' }}>
                         <IconButton
                           size="small"

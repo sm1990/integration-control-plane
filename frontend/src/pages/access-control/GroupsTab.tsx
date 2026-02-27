@@ -446,14 +446,16 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                     </TableCell>
                     <Authorized permissions={roleModifyPerms}>
                       <TableCell align="right">
-                        <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : 'Remove') : projectId && !r.projectUuid ? 'Org-level mapping' : 'Remove'}>
-                          <IconButton
-                            size="small"
-                            aria-label={(componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)) ? 'Org/Project-level mapping — cannot remove' : `Remove ${r.roleName} from group`}
-                            onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })}
-                            disabled={componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)}>
-                            <Trash2 size={16} />
-                          </IconButton>
+                        <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : 'Remove') : projectId && !r.projectUuid ? 'Org-level mapping' : 'Remove'} >
+                          <span style={{ display: 'inline-flex' }}>
+                            <IconButton
+                              size="small"
+                              aria-label={(componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)) ? 'Org/Project-level mapping — cannot remove' : `Remove ${r.roleName} from group`}
+                              onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })}
+                              disabled={componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)}>
+                              <Trash2 size={16} />
+                            </IconButton>
+                          </span>
                         </Tooltip>
                       </TableCell>
                     </Authorized>

@@ -226,38 +226,6 @@ WHERE user_id = '550e8400-e29b-41d4-a716-446655440000';
 
 ---
 
-## Migrating from a v1 JDBCUserStoreManager User Store
-
-If you are migrating an existing v1 user store, the password hashes are already stored with the
-correct algorithm and salt. You do **not** need to recompute anything. Instead:
-
-1. Set `passwordHashingAlgorithm` in `Config.toml` to match the v1 `PasswordHashMethod` property
-   (e.g., `sha-256` for `SHA-256`).
-2. Copy the user rows from the v1 database into `user_credentials`, mapping columns as follows:
-
-   | v1 column | v2 column |
-   |---|---|
-   | `UM_USER_ID` | `user_id` |
-   | `UM_USER_NAME` | `username` |
-   | `UM_USER_PASSWORD` | `password_hash` |
-   | `UM_SALT_VALUE` | `password_salt` |
-
-3. For the admin user specifically, if you want to keep the v1 hash rather than the pre-seeded
-   bcrypt hash, run a single UPDATE using the v1 values:
-
-   ```sql
-   UPDATE user_credentials
-   SET password_hash = '<UM_USER_PASSWORD from v1>',
-       password_salt = '<UM_SALT_VALUE from v1>',    -- NULL if v1 did not use salting
-       updated_at    = CURRENT_TIMESTAMP
-   WHERE user_id = '550e8400-e29b-41d4-a716-446655440000';
-   ```
-
-   If v1 used `PLAIN_TEXT` as the `PasswordHashMethod` (or had no method set), set
-   `passwordHashingAlgorithm = "plain_text"` and omit the `password_salt`.
-
----
-
 ## Applying the SQL Update
 
 Connect to the credentials database (separate from the main ICP database) and run the UPDATE
@@ -313,34 +281,11 @@ WHERE  user_id != '550e8400-e29b-41d4-a716-446655440000';
 With `password_hash` set to a value that will never verify, any login attempt fails and the
 user is directed through the password-reset flow, which writes the correct hash on completion.
 
-### v1 migration path — bulk copy existing hashes
+---
 
-If you are importing users from a v1 `JDBCUserStoreManager` database, the plaintext passwords
-are never required: the existing v1 hashes and salts can be copied directly.
+## Migrating from a v1 JDBCUserStoreManager User Store
 
-```sql
--- Run this after inserting all user rows into user_credentials (without password data).
--- Replace v1_credentials with the actual v1 table/schema name accessible from your DB client.
-UPDATE user_credentials uc
-JOIN   v1_credentials v ON uc.user_id = v.UM_USER_ID
-SET    uc.password_hash = v.UM_USER_PASSWORD,
-       uc.password_salt = v.UM_SALT_VALUE,       -- NULL if v1 did not use salting
-       uc.updated_at    = CURRENT_TIMESTAMP;
-```
-
-For PostgreSQL (which does not support `JOIN` in `UPDATE` the same way):
-
-```sql
-UPDATE user_credentials uc
-SET    password_hash = v.UM_USER_PASSWORD,
-       password_salt = v.UM_SALT_VALUE,
-       updated_at    = CURRENT_TIMESTAMP
-FROM   v1_credentials v
-WHERE  uc.user_id = v.UM_USER_ID;
-```
-
-Set `passwordHashingAlgorithm` in `Config.toml` to match the v1 `PasswordHashMethod` before
-starting the service.
+Please check the [README.md](../icp_server/resources/db/migration-scripts/README.md) in migration scripts for the guide on how to migrate an existing JDBC user store from ICP v1.
 
 ---
 

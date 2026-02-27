@@ -395,12 +395,18 @@ isolated function lockUserCredentialsRow(string userId) returns error? {
 
 isolated function upsertUserAttr(string userId, string attrName, string attrValue) returns error? {
     log:printDebug("Upserting user attribute", userId = userId, attrName = attrName, attrValue = attrValue);
-    _ = check credentialsDbClient->execute(
-        `INSERT INTO user_attributes (user_id, attr_name, attr_value, updated_at)
-         VALUES (${userId}, ${attrName}, ${attrValue}, CURRENT_TIMESTAMP)
-         ON CONFLICT ON CONSTRAINT uk_user_attr_profile
-         DO UPDATE SET attr_value = ${attrValue}, updated_at = CURRENT_TIMESTAMP`
+    // We do in two steps to be portable across database types.
+    sql:ExecutionResult result = check credentialsDbClient->execute(
+        `UPDATE user_attributes
+         SET attr_value = ${attrValue}, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = ${userId} AND attr_name = ${attrName} AND profile_id = 'default'`
     );
+    if result.affectedRowCount == 0 {
+        _ = check credentialsDbClient->execute(
+            `INSERT INTO user_attributes (user_id, attr_name, attr_value, profile_id, created_at, updated_at)
+             VALUES (${userId}, ${attrName}, ${attrValue}, 'default', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+        );
+    }
 }
 
 isolated function clearLockoutAttrs(string userId) returns error? {

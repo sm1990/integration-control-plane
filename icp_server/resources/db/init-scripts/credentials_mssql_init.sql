@@ -25,6 +25,32 @@ END;
 GO
 
 -- ============================================================================
+-- USER ATTRIBUTES (EAV key-value store per user)
+-- Inspired by UM_USER_ATTRIBUTE from WSO2 MI user store schema.
+-- ============================================================================
+
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'user_attributes' AND type = 'U')
+BEGIN
+    CREATE TABLE user_attributes (
+        id BIGINT IDENTITY(1,1) PRIMARY KEY,
+        user_id CHAR(36) NOT NULL,
+        attr_name NVARCHAR(255) NOT NULL,
+        attr_value NVARCHAR(1024) NULL,
+        profile_id NVARCHAR(255) NOT NULL CONSTRAINT df_user_attributes_profile_id DEFAULT 'default',
+        created_at DATETIME2 NOT NULL CONSTRAINT df_user_attributes_created_at DEFAULT GETDATE(),
+        updated_at DATETIME2 NOT NULL CONSTRAINT df_user_attributes_updated_at DEFAULT GETDATE(),
+        CONSTRAINT fk_user_attributes_user FOREIGN KEY (user_id)
+            REFERENCES user_credentials (user_id) ON DELETE CASCADE,
+        CONSTRAINT uk_user_attr_profile UNIQUE (user_id, attr_name, profile_id)
+    );
+
+    CREATE INDEX idx_ua_user_id ON user_attributes(user_id);
+    CREATE INDEX idx_ua_attr_name ON user_attributes(attr_name);
+    CREATE INDEX idx_ua_user_attr ON user_attributes(user_id, attr_name);
+END;
+GO
+
+-- ============================================================================
 -- SAMPLE DATA FOR TESTING, MUST BE CHANGED FOR PRODUCTION
 -- ============================================================================
 

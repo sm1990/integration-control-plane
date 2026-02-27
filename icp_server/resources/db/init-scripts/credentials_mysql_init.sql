@@ -20,6 +20,28 @@ CREATE TABLE IF NOT EXISTS user_credentials (
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- ============================================================================
+-- USER ATTRIBUTES (EAV key-value store per user)
+-- Inspired by UM_USER_ATTRIBUTE from WSO2 MI user store schema.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS user_attributes (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id CHAR(36) NOT NULL,
+    attr_name VARCHAR(255) NOT NULL,
+    attr_value VARCHAR(1024),
+    profile_id VARCHAR(255) NOT NULL DEFAULT 'default',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_user_attributes_user FOREIGN KEY (user_id)
+        REFERENCES user_credentials (user_id) ON DELETE CASCADE,
+    CONSTRAINT uk_user_attr_profile UNIQUE (user_id, attr_name, profile_id),
+    INDEX idx_ua_user_id (user_id),
+    INDEX idx_ua_attr_name (attr_name),
+    INDEX idx_ua_user_attr (user_id, attr_name)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+
+-- ============================================================================
 -- SAMPLE DATA FOR TESTING, MUST BE CHANGED FOR PRODUCTION
 -- ============================================================================
 

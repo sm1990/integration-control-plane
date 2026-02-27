@@ -60,7 +60,7 @@ listener http:Listener defaultAuthServiceListener = new (authServicePort,
         secureSocket: {
             key: {
                 path: keystorePath,
-                password: keystorePassword
+                password: resolvedKeystorePassword
             }
         }
     }

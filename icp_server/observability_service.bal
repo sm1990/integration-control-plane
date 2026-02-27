@@ -36,7 +36,7 @@ listener http:Listener observabilityListener = new (observabilityServerPort,
         secureSocket: {
             key: {
                 path: keystorePath,
-                password: keystorePassword
+                password: resolvedKeystorePassword
             }
         }
     }

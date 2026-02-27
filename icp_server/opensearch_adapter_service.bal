@@ -103,7 +103,7 @@ listener http:Listener openSerachObservabilityListener = new (defaultOpensearchA
         secureSocket: {
             key: {
                 path: keystorePath,
-                password: keystorePassword
+                password: resolvedKeystorePassword
             }
         }
     }

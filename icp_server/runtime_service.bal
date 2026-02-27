@@ -27,7 +27,7 @@ listener http:Listener httpListener = new (serverPort,
         secureSocket: {
             key: {
                 path: keystorePath,
-                password: keystorePassword
+                password: resolvedKeystorePassword
             }
         }
     }

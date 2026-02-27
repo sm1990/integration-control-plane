@@ -46,6 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      security-events: write
 
     steps:
       - name: Checkout code
@@ -148,6 +149,62 @@ jobs:
             ls -la build/distribution/ || echo "Directory does not exist"
             exit 1
           fi
+
+      - name: Extract distribution for scanning
+        run: |
+          DIST_FILE="build/distribution/wso2-integrator-icp-${{ steps.version.outputs.version }}.zip"
+          EXTRACT_DIR="build/distribution/extracted"
+          mkdir -p "$EXTRACT_DIR"
+          unzip -q "$DIST_FILE" -d "$EXTRACT_DIR"
+          echo "Extracted to: $EXTRACT_DIR"
+          ls -la "$EXTRACT_DIR"
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "build/distribution/extracted"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"
+
+      - name: Upload Trivy scan results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-results.sarif"
+
+      - name: Trivy security gate (block on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: "fs"
+          scan-ref: "build/distribution/extracted"
+          format: "table"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+
+      - name: Generate Trivy report (table format)
+        uses: aquasecurity/trivy-action@0.28.0
+        if: always()
+        with:
+          scan-type: "fs"
+          scan-ref: "build/distribution/extracted"
+          format: "table"
+          severity: "CRITICAL,HIGH,MEDIUM"
+          exit-code: "0"
+
+      - name: Upload Trivy scan results as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-scan-results-${{ steps.version.outputs.version }}
+          path: trivy-results.sarif
+          retention-days: 30
+
+      - name: Clean up extracted files
+        if: always()
+        run: rm -rf build/distribution/extracted
 
       - name: Generate release notes
         id: release_notes

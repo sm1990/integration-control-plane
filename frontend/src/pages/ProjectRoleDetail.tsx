@@ -281,7 +281,7 @@ export default function ProjectRoleDetail(): JSX.Element {
                 </TableCell>
                 <Authorized permissions={roleModifyPerms}>
                   <TableCell>
-                    <Tooltip title={!g.projectUuid ? 'Org-level mapping' : ''} >
+                    <Tooltip title={!g.projectUuid ? 'Org-level mapping' : ''}>
                       <span style={{ display: 'inline-flex' }}>
                         <IconButton
                           size="small"

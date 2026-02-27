@@ -446,7 +446,7 @@ function GroupDetailView({ orgHandler, projectId, componentId, group, onBack, sh
                     </TableCell>
                     <Authorized permissions={roleModifyPerms}>
                       <TableCell align="right">
-                        <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : 'Remove') : projectId && !r.projectUuid ? 'Org-level mapping' : 'Remove'} >
+                        <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : 'Remove') : projectId && !r.projectUuid ? 'Org-level mapping' : 'Remove'}>
                           <span style={{ display: 'inline-flex' }}>
                             <IconButton
                               size="small"

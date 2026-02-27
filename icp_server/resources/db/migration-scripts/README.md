@@ -88,7 +88,7 @@ The ICP v2 init scripts seed a default `admin` user. When the migration script e
 
 | Existing username in new DB | Action |
 |---|---|
-| `admin` | **Merge** — keep the v2 UUID and group membership intact; overwrite `password_hash`/`password_salt` with old system values; set `require_password_change = TRUE` |
+| `admin` | **Merge** — keep the v2 UUID and group membership intact; overwrite `password_hash`/`password_salt` with old system values |
 | any other username | **Replace** — delete the pre-existing v2 user (and their group mappings) then insert the old system's version of that user with its original UUID |
 
 The replace strategy gives the old system full priority: any user account that was pre-created in ICP v2 before migration (other than the seed admin) will be overwritten by the migrated account.

@@ -1,40 +1,6 @@
 -- ============================================================================
 -- ICP v1 → v2 User Migration Script  (Microsoft SQL Server)
 -- ============================================================================
---
--- USE CASE
---   Convenience script for when both the old ICP v1 database and the new
---   ICP v2 databases are on the **same** SQL Server instance.
---   Uses SQL Server's native cross-database reference syntax:
---       [old_database].[dbo].[UM_USER]
---
---   For migrations across different servers, use migrate_v1_to_v2.py instead.
---
--- PREREQUISITES
---   1. The new ICP v2 main DB and credentials DB must already be initialised
---      using the standard init scripts (mssql_init.sql,
---      credentials_mssql_init.sql).
---   2. The SQL Server login running this script must have:
---        SELECT  on [old_db].[dbo]  tables
---        INSERT  on [new_main_db].[dbo] and [new_creds_db].[dbo] tables
---   3. Edit the CONFIGURATION section below before running.
---
--- USAGE
---   sqlcmd -S <server> -U <user> -P <password> -i v1_to_v2_mssql.sql
---   -- or in SSMS: open the file and execute
---
--- PASSWORD COMPATIBILITY
---   Old ICP v1 stores passwords as Base64(Digest(password + salt)).
---   This script copies those hashes directly into the new credentials table.
---   After running this script you MUST set:
---
---       passwordHashingAlgorithm = "<old_algorithm>"
---
---   in your ICP v2 Config.toml (e.g. "sha-256", "sha-1", "md5").
---   Set @reset_passwords = 1 in the CONFIGURATION section below to force
---   migrated users to set a new password on their first login.
---
--- ============================================================================
 
 -- ============================================================================
 -- CONFIGURATION  — edit these values before running
@@ -55,6 +21,14 @@ DECLARE @old_count  INT;
 SET @check_sql = N'SELECT @cnt = COUNT(*) FROM [' + @old_db + N'].[dbo].[UM_USER] WHERE UM_TENANT_ID = -1234';
 EXEC sp_executesql @check_sql, N'@cnt INT OUTPUT', @cnt = @old_count OUTPUT;
 PRINT 'Found ' + CAST(@old_count AS NVARCHAR) + ' user(s) in old database [' + @old_db + ']';
+
+-- ============================================================================
+-- BEGIN TRANSACTION
+-- ============================================================================
+
+SET XACT_ABORT ON;
+BEGIN TRY
+    BEGIN TRAN;
 
 -- ============================================================================
 -- STEP 1 — Migrate user records into the new main database
@@ -306,6 +280,18 @@ SET @sql = N'
     )
 ';
 EXEC sp_executesql @sql;
+
+    -- ============================================================================
+    -- COMMIT
+    -- ============================================================================
+
+    COMMIT TRAN;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0
+        ROLLBACK TRAN;
+    THROW;
+END CATCH;
 
 -- ============================================================================
 -- DONE

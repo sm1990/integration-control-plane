@@ -1,40 +1,6 @@
 -- ============================================================================
 -- ICP v1 → v2 User Migration Script  (MySQL / MariaDB)
 -- ============================================================================
---
--- USE CASE
---   Convenience script for when both the old ICP v1 database and the new
---   ICP v2 databases are on the **same** MySQL / MariaDB server instance.
---   It uses MySQL cross-database references (old_db.UM_USER) so that a single
---   session can read from the old schema and write to the two new schemas.
---
---   For migrations across different servers use migrate_v1_to_v2.py instead.
---
--- PREREQUISITES
---   1. The new ICP v2 main DB and credentials DB must already be initialised
---      using the standard init scripts.
---   2. The MySQL user running this script must have SELECT on the old database
---      and INSERT on the two new databases.
---   3. Adjust the four configuration variables in the CONFIGURATION section
---      below before running.
---
--- USAGE
---   mysql -u <admin_user> -p < v1_to_v2_mysql.sql
---   -- or, to capture the log --
---   mysql -u <admin_user> -p < v1_to_v2_mysql.sql 2>&1 | tee migration.log
---
--- PASSWORD COMPATIBILITY
---   Old ICP v1 stores passwords as Base64(Digest(password + salt)).
---   This script copies those hashes directly into the new credentials table.
---   After running this script you MUST set:
---
---       passwordHashingAlgorithm = "<old_algorithm>"
---
---   in your ICP v2 Config.toml (e.g. "sha-256", "sha-1", "md5").
---   All migrated users will have require_password_change = TRUE so they are
---   forced to set a new password on their first login.
---
--- ============================================================================
 
 -- ============================================================================
 -- CONFIGURATION  — edit these values before running
@@ -59,6 +25,15 @@ PREPARE chk FROM @check_sql;
 EXECUTE chk;
 DEALLOCATE PREPARE chk;
 SELECT CONCAT('Found ', @old_user_count, ' user(s) in old database') AS status;
+
+-- ============================================================================
+-- BEGIN TRANSACTION
+-- All DML below is atomic. If the script fails at any point, connect to the
+-- database and run ROLLBACK to undo any partial changes before re-running.
+-- ============================================================================
+
+SET autocommit = 0;
+START TRANSACTION;
 
 -- ============================================================================
 -- STEP 1 — Migrate user records into the new main database
@@ -244,8 +219,9 @@ SET @sql = CONCAT('
     SELECT
         (SELECT group_id FROM `', @new_main_db, '`.user_groups
          WHERE group_name = ''Super Admins'' AND org_uuid = 1 LIMIT 1),
-        u.UM_USER_ID
+        nu.user_id
     FROM `', @old_db, '`.UM_USER u
+    JOIN `', @new_main_db, '`.users nu ON nu.username = u.UM_USER_NAME
     WHERE u.UM_TENANT_ID = -1234
       AND (
           EXISTS (
@@ -280,13 +256,14 @@ SET @sql = CONCAT('
     SELECT
         (SELECT group_id FROM `', @new_main_db, '`.user_groups
          WHERE group_name = ''Developers'' AND org_uuid = 1 LIMIT 1),
-        u.UM_USER_ID
+        nu.user_id
     FROM `', @old_db, '`.UM_USER u
+    JOIN `', @new_main_db, '`.users nu ON nu.username = u.UM_USER_NAME
     WHERE u.UM_TENANT_ID = -1234
       AND NOT EXISTS (
           SELECT 1
           FROM `', @new_main_db, '`.group_user_mapping gum
-          WHERE gum.user_uuid = u.UM_USER_ID
+          WHERE gum.user_uuid = nu.user_id
       )
 ');
 PREPARE stmt FROM @sql;
@@ -319,6 +296,13 @@ SET @sql = CONCAT('
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- ============================================================================
+-- COMMIT
+-- ============================================================================
+
+COMMIT;
+SET autocommit = 1;
 
 -- ============================================================================
 -- DONE

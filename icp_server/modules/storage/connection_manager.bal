@@ -24,7 +24,7 @@ import ballerinax/mysql.driver as _;
 import ballerinax/postgresql;
 import ballerinax/postgresql.driver as _;
 
-enum DatabaseType {
+public enum DatabaseType {
     MYSQL = "mysql",
     H2 = "h2",
     MSSQL = "mssql",

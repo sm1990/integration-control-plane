@@ -430,8 +430,16 @@ public isolated function assignRoleToGroup(types:AssignRoleToGroupInput input) r
     if lastInsertId is int {
         log:printInfo(string `Successfully assigned role ${input.roleId} to group ${input.groupId}`, mappingId = lastInsertId);
         return lastInsertId;
+    } else if lastInsertId is string && dbType == MSSQL {
+        // MSSQL connector returns lastInsertId as a string rather than an int
+        int|error parsedId = int:fromString(lastInsertId);
+        if parsedId is int {
+            log:printInfo(string `Successfully assigned role ${input.roleId} to group ${input.groupId}`, mappingId = parsedId);
+            return parsedId;
+        }
     }
 
+    log:printWarn(string `Database did not return a valid last insert ID for role assignment of role ${input.roleId} to group ${input.groupId}`, lastInsertId = lastInsertId);
     return error("Failed to retrieve mapping ID after role assignment");
 }
 

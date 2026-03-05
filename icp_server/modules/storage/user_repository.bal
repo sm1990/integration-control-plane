@@ -143,7 +143,7 @@ public isolated function createUserV2(string userId, string username, string dis
         // Insert user into main database
         sql:ExecutionResult _ = check dbClient->execute(
             `INSERT INTO users (user_id, username, display_name, is_super_admin, is_project_author, is_oidc_user)
-             VALUES (${userId}, ${username}, ${displayName}, false, false, ${isOidcUser})`
+             VALUES (${userId}, ${username}, ${displayName}, ${false}, ${false}, ${isOidcUser})`
         );
         
         // Add user to groups if specified

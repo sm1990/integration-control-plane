@@ -257,6 +257,20 @@ public isolated function getListenersForRuntime(string runtimeId) returns types:
 // Get REST APIs for a specific runtime
 public isolated function getApisForRuntime(string runtimeId) returns types:RestApi[]|error {
     types:RestApi[] apiList = [];
+    sql:ParameterizedQuery apiQuery;
+    if isMSSQL() {
+        apiQuery = `
+            SELECT api_name, url, urls, context, version, state, tracing, [statistics], carbon_app
+            FROM mi_api_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    } else {
+        apiQuery = `
+            SELECT api_name, url, urls, context, version, state, tracing, statistics, carbon_app
+            FROM mi_api_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    }
     stream<record {|
         string api_name;
         string url;
@@ -267,11 +281,7 @@ public isolated function getApisForRuntime(string runtimeId) returns types:RestA
         string tracing;
         string statistics;
         string? carbon_app;
-    |}, sql:Error?> apiStream = dbClient->query(`
-        SELECT api_name, url, urls, context, version, state, tracing, statistics, carbon_app
-        FROM mi_api_artifacts
-        WHERE runtime_id = ${runtimeId}
-    `);
+    |}, sql:Error?> apiStream = dbClient->query(apiQuery);
 
     check from var apiRecord in apiStream
         do {
@@ -343,11 +353,21 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
             endpointMap[ep.proxy_name] = existing;
         };
 
-    stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(`
-        SELECT proxy_name, state, tracing, statistics, carbon_app
-        FROM mi_proxy_service_artifacts
-        WHERE runtime_id = ${runtimeId}
-    `);
+    sql:ParameterizedQuery proxyQuery;
+    if isMSSQL() {
+        proxyQuery = `
+            SELECT proxy_name, state, tracing, [statistics], carbon_app
+            FROM mi_proxy_service_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    } else {
+        proxyQuery = `
+            SELECT proxy_name, state, tracing, statistics, carbon_app
+            FROM mi_proxy_service_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    }
+    stream<types:ProxyServiceRecordInDB, sql:Error?> proxyStream = dbClient->query(proxyQuery);
 
     check from types:ProxyServiceRecordInDB proxyRecord in proxyStream
         do {
@@ -369,11 +389,21 @@ public isolated function getProxyServicesForRuntime(string runtimeId) returns ty
 // Get endpoints for a specific runtime
 public isolated function getEndpointsForRuntime(string runtimeId) returns types:Endpoint[]|error {
     types:Endpoint[] endpointList = [];
-    stream<types:EndpointRecordInDB, sql:Error?> endpointStream = dbClient->query(`
-        SELECT endpoint_name, endpoint_type, state, tracing, statistics, carbon_app
-        FROM mi_endpoint_artifacts
-        WHERE runtime_id = ${runtimeId}
-    `);
+    sql:ParameterizedQuery endpointQuery;
+    if isMSSQL() {
+        endpointQuery = `
+            SELECT endpoint_name, endpoint_type, state, tracing, [statistics], carbon_app
+            FROM mi_endpoint_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    } else {
+        endpointQuery = `
+            SELECT endpoint_name, endpoint_type, state, tracing, statistics, carbon_app
+            FROM mi_endpoint_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    }
+    stream<types:EndpointRecordInDB, sql:Error?> endpointStream = dbClient->query(endpointQuery);
 
     check from types:EndpointRecordInDB endpointRecord in endpointStream
         do {
@@ -440,11 +470,21 @@ public isolated function getInboundEndpointsForRuntime(string runtimeId) returns
 // Get sequences for a specific runtime
 public isolated function getSequencesForRuntime(string runtimeId) returns types:Sequence[]|error {
     types:Sequence[] sequenceList = [];
-    stream<types:SequenceRecordInDB, sql:Error?> sequenceStream = dbClient->query(`
-        SELECT sequence_name, sequence_type, container, state, tracing, statistics, carbon_app
-        FROM mi_sequence_artifacts
-        WHERE runtime_id = ${runtimeId}
-    `);
+    sql:ParameterizedQuery sequenceQuery;
+    if isMSSQL() {
+        sequenceQuery = `
+            SELECT sequence_name, sequence_type, container, state, tracing, [statistics], carbon_app
+            FROM mi_sequence_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    } else {
+        sequenceQuery = `
+            SELECT sequence_name, sequence_type, container, state, tracing, statistics, carbon_app
+            FROM mi_sequence_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    }
+    stream<types:SequenceRecordInDB, sql:Error?> sequenceStream = dbClient->query(sequenceQuery);
 
     check from types:SequenceRecordInDB sequenceRecord in sequenceStream
         do {
@@ -490,11 +530,21 @@ public isolated function getTasksForRuntime(string runtimeId) returns types:Task
 // Get templates for a specific runtime
 public isolated function getTemplatesForRuntime(string runtimeId) returns types:Template[]|error {
     types:Template[] templateList = [];
-    stream<types:Template, sql:Error?> templateStream = dbClient->query(`
-        SELECT template_name, template_type, tracing, statistics, carbon_app
-        FROM mi_template_artifacts
-        WHERE runtime_id = ${runtimeId}
-    `);
+    sql:ParameterizedQuery templateQuery;
+    if isMSSQL() {
+        templateQuery = `
+            SELECT template_name, template_type, tracing, [statistics], carbon_app
+            FROM mi_template_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    } else {
+        templateQuery = `
+            SELECT template_name, template_type, tracing, statistics, carbon_app
+            FROM mi_template_artifacts
+            WHERE runtime_id = ${runtimeId}
+        `;
+    }
+    stream<types:Template, sql:Error?> templateStream = dbClient->query(templateQuery);
 
     check from types:Template templateRecord in templateStream
         do {

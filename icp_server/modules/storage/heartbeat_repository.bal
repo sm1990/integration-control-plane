@@ -612,10 +612,12 @@ isolated function getArtifactDetailsByTypeAndName(string runtimeId, string artif
         return ();
     }
 
-    // Build SELECT clause: include tracing/statistics columns only for tables that have them
+    // Build SELECT clause: include tracing/statistics columns only for tables that have them.
+    // MSSQL requires [statistics] as it is a reserved keyword.
+    string statisticsCol = isMSSQL() ? "[statistics]" : "statistics";
     string selectClause;
     if metadata.hasTracing && metadata.hasStatistics {
-        selectClause = string `SELECT artifact_id, ${metadata.stateColumn} AS state, tracing, statistics FROM ${metadata.tableName}`;
+        selectClause = string `SELECT artifact_id, ${metadata.stateColumn} AS state, tracing, ${statisticsCol} FROM ${metadata.tableName}`;
     } else if metadata.hasTracing {
         selectClause = string `SELECT artifact_id, ${metadata.stateColumn} AS state, tracing FROM ${metadata.tableName}`;
     } else {

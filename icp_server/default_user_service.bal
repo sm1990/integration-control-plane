@@ -38,7 +38,7 @@ configurable string authServiceHost = "0.0.0.0";
 configurable string passwordHashingAlgorithm = "bcrypt";
 
 // Credentials DB
-configurable string credentialsDbType = "h2";
+configurable storage:DatabaseType credentialsDbType = "h2";
 configurable string credentialsDbHost = "localhost";
 configurable int credentialsDbPort = 5432;
 configurable string credentialsDbName = "credentials_db";
@@ -179,9 +179,6 @@ service / on defaultAuthServiceListener {
         }
         if request.newPassword.trim().length() == 0 {
             return utils:createBadRequestError("New password is required");
-        }
-        if request.newPassword.length() < 6 {
-            return utils:createBadRequestError("New password must be at least 6 characters long");
         }
 
         // Get user credentials to verify current password
@@ -384,9 +381,14 @@ isolated function getUserAttr(string userId, string attrName) returns string?|er
 }
 
 isolated function lockUserCredentialsRow(string userId) returns error? {
-    record {|int val;|}|sql:Error row = credentialsDbClient->queryRow(
-        `SELECT 1 as val FROM user_credentials WHERE user_id = ${userId} FOR UPDATE`
-    );
+    // MSSQL uses WITH (UPDLOCK, ROWLOCK) table hints; other DBs use FOR UPDATE
+    sql:ParameterizedQuery lockQuery;
+    if credentialsDbType == storage:MSSQL {
+        lockQuery = `SELECT 1 as val FROM user_credentials WITH (UPDLOCK, ROWLOCK) WHERE user_id = ${userId}`;
+    } else {
+        lockQuery = `SELECT 1 as val FROM user_credentials WHERE user_id = ${userId} FOR UPDATE`;
+    }
+    record {|int val;|}|sql:Error row = credentialsDbClient->queryRow(lockQuery);
     if row is sql:Error {
         log:printError("Failed to lock user_credentials row", row, userId = userId);
         return row;

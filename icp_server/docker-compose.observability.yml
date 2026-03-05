@@ -75,8 +75,10 @@ services:
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf
       - ./resources/observability/opensearch-observability-dashboard/config/fluent-bit/scripts:/fluent-bit/scripts
-      - ${BI_LOG_FILE_PATH}:/var/log/bi:ro
-      - ${MI_LOG_FILE_PATH}:/var/log/mi:ro
+      # Uncomment and set BI_LOG_FILE_PATH in .env to monitor BI logs
+      # - ${BI_LOG_FILE_PATH}:/var/log/bi:ro
+      # Uncomment and set MI_LOG_FILE_PATH in .env to monitor MI logs
+      # - ${MI_LOG_FILE_PATH}:/var/log/mi:ro
       # Persist position database
       - fluent-bit-db:/fluent-bit/db
       # Persist buffer storage

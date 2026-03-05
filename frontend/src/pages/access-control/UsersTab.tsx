@@ -16,251 +16,18 @@
  * under the License.
  */
 
-import { Alert, Autocomplete, Avatar, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { ArrowLeft, Key, LockOpen, LogOut, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
-import { useState, useCallback, useEffect, useRef, type JSX } from 'react';
+import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TableRow, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Key, LockOpen, LogOut, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
+import { useState, useCallback, useEffect, type JSX } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import SearchField from '../../components/SearchField';
-import { useAuth } from '../../auth/AuthContext';
-import { useAccessControl } from '../../contexts/AccessControlContext';
 import { Permissions } from '../../constants/permissions';
 import Authorized from '../../components/Authorized';
-import { useUsers, useCreateUser, useDeleteUser, useGroups, useUpdateUserGroups, useRemoveUserFromGroup, useResetPassword, useRevokeUserTokens, useUnlockAccount } from '../../api/authQueries';
-import type { User, Group } from '../../api/auth';
-import { Loading, FormDialog } from './shared';
-import { useFiltered, getUserInitial } from './utils';
-
-function CreateUserDialog({ onClose, onSubmit }: { onClose: () => void; onSubmit: (data: { username: string; displayName: string; password: string }) => void }) {
-  const [username, setUsername] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [password, setPassword] = useState('');
-  const [usernameError, setUsernameError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-
-  const handleSubmit = () => {
-    let valid = true;
-    if (!username.trim()) {
-      setUsernameError('Username is required');
-      valid = false;
-    } else {
-      setUsernameError('');
-    }
-    if (!password.trim()) {
-      setPasswordError('Password is required');
-      valid = false;
-    } else {
-      setPasswordError('');
-    }
-    if (!valid) return;
-    onClose();
-    onSubmit({ username: username.trim(), displayName: displayName.trim(), password });
-  };
-
-  return (
-    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Create User</DialogTitle>
-      <DialogContent>
-        <Stack gap={2} sx={{ mt: 1 }}>
-          <TextField
-            label="Username"
-            value={username}
-            onChange={(e) => {
-              setUsername(e.target.value);
-              if (usernameError) setUsernameError('');
-            }}
-            fullWidth
-            autoFocus
-            error={!!usernameError}
-            helperText={usernameError || ' '}
-          />
-          <TextField label="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth helperText=" " />
-          <TextField
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (passwordError) setPasswordError('');
-            }}
-            fullWidth
-            error={!!passwordError}
-            helperText={passwordError || ' '}
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={handleSubmit}>
-          Create
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function AssignGroupsDialog({ orgHandler, user, onClose, onAssigned }: { orgHandler: string; user: User; onClose: () => void; onAssigned?: () => void }) {
-  const { data: allGroups = [] } = useGroups(orgHandler);
-  const mutation = useUpdateUserGroups(orgHandler);
-  const [selected, setSelected] = useState<Group[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const available = allGroups.filter((g) => !user.groups.some((ug) => ug.groupId === g.groupId));
-  return (
-    <FormDialog
-      open
-      onClose={onClose}
-      primaryLabel="Assign"
-      primaryDisabled={selected.length === 0 || mutation.isPending}
-      onPrimary={() =>
-        mutation.mutate(
-          { userId: user.userId, groupIds: [...user.groups.map((g) => g.groupId), ...selected.map((g) => g.groupId)] },
-          {
-            onSuccess: () => {
-              onAssigned?.();
-              onClose();
-            },
-            onError: (errorObj) => setError(errorObj?.message ?? 'Failed to assign groups. Please try again.'),
-          },
-        )
-      }
-      title="Assign Groups">
-      {error && (
-        <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      <Autocomplete
-        multiple
-        options={available}
-        getOptionLabel={(g) => g.groupName}
-        value={selected}
-        onChange={(_, v) => setSelected(v)}
-        isOptionEqualToValue={(a, b) => a.groupId === b.groupId}
-        renderInput={(params) => <TextField {...params} label="Groups" placeholder="Select groups" />}
-      />
-    </FormDialog>
-  );
-}
-
-function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user: User; onBack: () => void }) {
-  const { username: currentUsername } = useAuth();
-  const { hasOrgPermission } = useAccessControl();
-  const canManageUsers = hasOrgPermission(Permissions.USER_MANAGE_USERS);
-  const isSelf = user.username === currentUsername;
-  const removeUserMutation = useRemoveUserFromGroup(orgHandler);
-  const [search, setSearch] = useState('');
-  const [assigning, setAssigning] = useState(false);
-  const [removingGroupId, setRemovingGroupId] = useState<string | null>(null);
-  const [viewAlert, setViewAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const getSearchStr = useCallback((g: User['groups'][number]) => `${g.groupName} ${g.groupDescription}`, []);
-  const filtered = useFiltered(user.groups, search, getSearchStr);
-  const removingGroup = removingGroupId ? user.groups.find((g) => g.groupId === removingGroupId) : null;
-
-  return (
-    <>
-      <Button startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-        Back to Users List
-      </Button>
-      <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 3 }}>
-        <Avatar sx={{ width: 56, height: 56, fontSize: 24, bgcolor: 'text.primary', color: 'background.paper' }}>{getUserInitial(user)}</Avatar>
-        <Stack>
-          <Typography variant="h6">{user.displayName}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {user.username}
-          </Typography>
-        </Stack>
-      </Stack>
-      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-        <SearchField value={search} onChange={setSearch} />
-        {!isSelf && (
-          <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-            <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAssigning(true)}>
-              Assign Groups
-            </Button>
-          </Authorized>
-        )}
-      </Stack>
-      {viewAlert && (
-        <Alert severity={viewAlert.type} onClose={() => setViewAlert(null)} sx={{ mb: 2 }}>
-          {viewAlert.message}
-        </Alert>
-      )}
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Group Name</TableCell>
-            <TableCell>Description</TableCell>
-            {!isSelf && (
-              <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-                <TableCell align="right">Action</TableCell>
-              </Authorized>
-            )}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={!isSelf && canManageUsers ? 3 : 2} align="center">
-                No groups assigned
-              </TableCell>
-            </TableRow>
-          ) : (
-            filtered.map((g) => (
-              <TableRow key={g.groupId}>
-                <TableCell>{g.groupName}</TableCell>
-                <TableCell>{g.groupDescription}</TableCell>
-                {!isSelf && (
-                  <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-                    <TableCell align="right">
-                      <Tooltip title="Remove">
-                        <IconButton size="small" aria-label={`Remove ${g.groupName} group`} onClick={() => setRemovingGroupId(g.groupId)}>
-                          <Trash2 size={16} />
-                        </IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </Authorized>
-                )}
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      {assigning && <AssignGroupsDialog orgHandler={orgHandler} user={user} onClose={() => setAssigning(false)} onAssigned={() => setViewAlert({ type: 'success', message: 'Groups assigned successfully.' })} />}
-      {removingGroup && (
-        <Dialog open onClose={() => setRemovingGroupId(null)} maxWidth="xs" fullWidth>
-          <DialogTitle>Remove Group</DialogTitle>
-          <DialogContent>
-            <Typography>
-              Remove <strong>{user.displayName}</strong> from <strong>{removingGroup.groupName}</strong>?
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setRemovingGroupId(null)}>Cancel</Button>
-            <Button
-              variant="contained"
-              color="error"
-              disabled={removeUserMutation.isPending}
-              onClick={() =>
-                removeUserMutation.mutate(
-                  { groupId: removingGroup.groupId, userId: user.userId },
-                  {
-                    onSuccess: () => {
-                      setRemovingGroupId(null);
-                      setViewAlert({ type: 'success', message: 'Group removed successfully.' });
-                    },
-                    onError: (error) => {
-                      setRemovingGroupId(null);
-                      setViewAlert({ type: 'error', message: error?.message ?? 'Failed to remove user from group. Please try again.' });
-                    },
-                  },
-                )
-              }>
-              Remove
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
-    </>
-  );
-}
+import { useUsers, useDeleteUser, useResetPassword, useRevokeUserTokens, useUnlockAccount } from '../../api/authQueries';
+import type { User } from '../../api/auth';
+import { newOrgUserUrl, editOrgUserUrl } from '../../paths';
+import { Loading } from './shared';
+import { useFiltered } from './utils';
 
 function ResetPasswordDialog({ username, password, onClose }: { username: string; password: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -310,48 +77,38 @@ function ResetPasswordDialog({ username, password, onClose }: { username: string
 }
 
 export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { data: users, isLoading } = useUsers(orgHandler);
-  const createMutation = useCreateUser(orgHandler);
   const deleteMutation = useDeleteUser(orgHandler);
   const resetPasswordMutation = useResetPassword(orgHandler);
   const revokeTokensMutation = useRevokeUserTokens(orgHandler);
   const unlockMutation = useUnlockAccount(orgHandler);
   const [search, setSearch] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [revokingUserId, setRevokingUserId] = useState<string | null>(null);
   const [unlockingUserId, setUnlockingUserId] = useState<string | null>(null);
   const [resetPasswordResult, setResetPasswordResult] = useState<{ username: string; password: string } | null>(null);
-  const [newUsername, setNewUsername] = useState<string | null>(null);
   const [tableAlert, setTableAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const newRowRef = useRef<HTMLTableRowElement>(null);
   const getSearchStr = useCallback((u: User) => `${u.username} ${u.displayName}`, []);
   const filtered = useFiltered(users ?? [], search, getSearchStr);
-  const viewingUser = viewingUserId ? users?.find((u) => u.userId === viewingUserId) : null;
 
   useEffect(() => {
-    if (!newUsername || !newRowRef.current) return;
-    newRowRef.current.focus();
-  }, [newUsername, users]);
-
-  useEffect(() => {
-    if (!newUsername) return;
-    const t = setTimeout(() => setNewUsername(null), 2500);
-    return () => clearTimeout(t);
-  }, [newUsername]);
+    const state = location.state as { created?: boolean; name?: string } | null;
+    if (state?.created) {
+      setTableAlert({ type: 'success', message: `User '${state.name}' created successfully.` });
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate]);
 
   if (isLoading) return <Loading />;
-  if (viewingUser) {
-    return <UserDetailView orgHandler={orgHandler} user={viewingUser} onBack={() => setViewingUserId(null)} />;
-  }
   return (
     <>
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
         <SearchField value={search} onChange={setSearch} />
         <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setCreating(true)}>
+          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgUserUrl(orgHandler))}>
             Create User
           </Button>
         </Authorized>
@@ -381,27 +138,15 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
             filtered.map((u) => (
               <TableRow
                 key={u.userId}
-                ref={u.username === newUsername ? newRowRef : undefined}
-                tabIndex={u.username === newUsername ? -1 : 0}
+                tabIndex={0}
                 aria-label={`View details for ${u.displayName}`}
                 hover
-                sx={{
-                  cursor: 'pointer',
-                  ...(u.username === newUsername && {
-                    '@keyframes rowHighlight': { '0%': { backgroundColor: 'rgba(255, 193, 7, 0.3)' }, '100%': { backgroundColor: 'transparent' } },
-                    '@media (prefers-reduced-motion: no-preference)': { animation: 'rowHighlight 2s ease-out forwards' },
-                    '@media (prefers-reduced-motion: reduce)': { outline: '2px solid', outlineColor: 'warning.main' },
-                  }),
-                }}
-                onClick={() => {
-                  setTableAlert(null);
-                  setViewingUserId(u.userId);
-                }}
+                sx={{ cursor: 'pointer' }}
+                onClick={() => navigate(editOrgUserUrl(orgHandler, u.userId))}
                 onKeyDown={(e) => {
                   if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
                     e.preventDefault();
-                    setTableAlert(null);
-                    setViewingUserId(u.userId);
+                    navigate(editOrgUserUrl(orgHandler, u.userId));
                   }
                 }}>
                 <TableCell>
@@ -458,8 +203,7 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
                           aria-label="Edit user"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setTableAlert(null);
-                            setViewingUserId(u.userId);
+                            navigate(editOrgUserUrl(orgHandler, u.userId));
                           }}>
                           <Pencil size={16} />
                         </IconButton>
@@ -483,20 +227,6 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
           )}
         </TableBody>
       </Table>
-      {creating && (
-        <CreateUserDialog
-          onClose={() => setCreating(false)}
-          onSubmit={(data) =>
-            createMutation.mutate(data, {
-              onSuccess: () => {
-                setNewUsername(data.username);
-                setTableAlert({ type: 'success', message: `User '${data.username}' created successfully.` });
-              },
-              onError: (error) => setTableAlert({ type: 'error', message: error.message ?? 'Failed to create user. Please try again.' }),
-            })
-          }
-        />
-      )}
       {deletingUserId &&
         (() => {
           const u = users?.find((x) => x.userId === deletingUserId);

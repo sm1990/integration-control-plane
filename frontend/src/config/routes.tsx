@@ -1,5 +1,11 @@
 import { type RouteProps, Navigate } from 'react-router';
 import { cookiePolicyUrl, loginUrl, orgRoleDetailUrl, privacyPolicyUrl, projectRoleDetailUrl, componentRoleDetailUrl, loggersSegment } from '../paths';
+import CreateUser from '../pages/CreateUser';
+import EditUser from '../pages/EditUser';
+import CreateRole from '../pages/CreateRole';
+import CreateGroup from '../pages/CreateGroup';
+import EditGroup from '../pages/EditGroup';
+import EditEnvironment from '../pages/EditEnvironment';
 import PublicLayout from '../layouts/PublicLayout';
 import PolicyLayout from '../layouts/PolicyLayout';
 import Login from '../pages/Login';
@@ -70,6 +76,12 @@ const routes: AppRoute[] = [
               { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
               { path: 'organizations/:orgHandler/projects/:projectHandler/components/new', element: createElement(withScope(CreateComponent, ['projects'])) },
               { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
+              { path: 'organizations/:orgHandler/environments/:envId/edit', element: <EditEnvironment /> },
+              { path: 'organizations/:orgHandler/settings/access-control/users/new', element: <CreateUser /> },
+              { path: 'organizations/:orgHandler/settings/access-control/users/:userId/edit', element: <EditUser /> },
+              { path: 'organizations/:orgHandler/settings/access-control/roles/new', element: <CreateRole /> },
+              { path: 'organizations/:orgHandler/settings/access-control/groups/new', element: <CreateGroup /> },
+              { path: 'organizations/:orgHandler/settings/access-control/groups/:groupId/edit', element: <EditGroup /> },
               { path: orgRoleDetailUrl(':orgHandler', ':roleId'), element: <RoleDetail /> },
               { path: projectRoleDetailUrl(':orgHandler', ':projectHandler', ':roleId'), element: <ProjectRoleDetail /> },
               { path: componentRoleDetailUrl(':orgHandler', ':projectHandler', ':componentHandler', ':roleId'), element: <ComponentRoleDetail /> },

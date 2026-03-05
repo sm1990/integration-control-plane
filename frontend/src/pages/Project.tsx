@@ -1,4 +1,22 @@
-import { Alert, Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, ListingTable, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
+/**
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import { Alert, Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, ListingTable, PageContent, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { Plus, PlugZap, RefreshCw, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import EmptyListing from '../components/EmptyListing';
 import IntegrationTypesCard from '../components/IntegrationTypesCard';
@@ -107,7 +125,7 @@ function IntegrationsTable({
                 <ListingTable.Cell>Type</ListingTable.Cell>
                 <ListingTable.Cell>Last Updated</ListingTable.Cell>
                 <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
-                  <ListingTable.Cell width={60} />
+                  <ListingTable.Cell width={60}>Action</ListingTable.Cell>
                 </Authorized>
               </ListingTable.Row>
             </ListingTable.Head>
@@ -133,16 +151,18 @@ function IntegrationsTable({
                   </ListingTable.Cell>
                   <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
                     <ListingTable.Cell>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        aria-label={`Delete ${c.displayName}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleting(c);
-                        }}>
-                        <Trash2 size={16} />
-                      </IconButton>
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          aria-label={`Delete ${c.displayName}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleting(c);
+                          }}>
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </Tooltip>
                     </ListingTable.Cell>
                   </Authorized>
                 </ListingTable.Row>

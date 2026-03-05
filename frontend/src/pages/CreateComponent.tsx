@@ -1,7 +1,25 @@
+/**
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { Alert, Button, Grid, IconButton, MenuItem, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, Edit } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useCreateComponent, type CreateComponentInput } from '../api/mutations';
 import { useProjectByHandler } from '../api/queries';
 import { resourceUrl, narrow, type ProjectScope } from '../nav';
@@ -51,14 +69,11 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
 
   return (
     <PageContent>
-      <Link to={resourceUrl(scope, 'overview')} style={{ textDecoration: 'none', color: 'inherit' }}>
-        <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
-          <ArrowLeft size={18} />
-          <Typography variant="body2">Back to Project Home</Typography>
-        </Stack>
-      </Link>
+      <Button startIcon={<ArrowLeft size={16} />} onClick={() => navigate(resourceUrl(scope, 'overview'))} sx={{ mb: 2 }}>
+        Back to Project Home
+      </Button>
 
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>
+      <Typography variant="h1" sx={{ mb: 4 }}>
         Create New Integration
       </Typography>
 
@@ -99,7 +114,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
               htmlInput: { 'aria-label': 'Name' },
               input: {
                 endAdornment: (
-                  <IconButton size="small" onClick={() => setHandlerEdited(!handlerEdited)}>
+                  <IconButton size="small" aria-label="Edit name" onClick={() => setHandlerEdited(!handlerEdited)}>
                     <Edit size={16} />
                   </IconButton>
                 ),

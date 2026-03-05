@@ -173,7 +173,7 @@ export default function ErrorPage(): JSX.Element {
         {/* Help Card */}
         <Card variant="outlined">
           <CardContent>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" component="p" gutterBottom>
               Need Help?
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

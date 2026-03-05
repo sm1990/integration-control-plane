@@ -69,12 +69,36 @@ export function editComponentUrl(orgHandler: string, projectHandler: string, com
   return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentId}/edit`;
 }
 
+export function newOrgUserUrl(orgHandler: string): string {
+  return `/organizations/${orgHandler}/settings/access-control/users/new`;
+}
+
+export function newOrgRoleUrl(orgHandler: string): string {
+  return `/organizations/${orgHandler}/settings/access-control/roles/new`;
+}
+
+export function newOrgGroupUrl(orgHandler: string): string {
+  return `/organizations/${orgHandler}/settings/access-control/groups/new`;
+}
+
+export function editEnvironmentUrl(orgHandler: string, envId: string): string {
+  return `/organizations/${orgHandler}/environments/${envId}/edit`;
+}
+
 export function orgAccessControlUrl(orgHandler: string, tab: 'users' | 'roles' | 'groups' = 'users'): string {
   return `/organizations/${orgHandler}/settings/access-control/${tab}`;
 }
 
+export function editOrgUserUrl(orgHandler: string, userId: string): string {
+  return `/organizations/${orgHandler}/settings/access-control/users/${userId}/edit`;
+}
+
+export function editOrgGroupUrl(orgHandler: string, groupId: string): string {
+  return `/organizations/${orgHandler}/settings/access-control/groups/${groupId}/edit`;
+}
+
 export function orgRoleDetailUrl(orgHandler: string, roleId: string): string {
-  return `/organizations/${orgHandler}/settings/access-control/roles/${roleId}`;
+  return `/organizations/${orgHandler}/settings/access-control/roles/${roleId}/edit`;
 }
 
 export function projectAccessControlUrl(orgHandler: string, projectHandler: string, tab: 'roles' | 'groups' = 'roles'): string {
@@ -82,7 +106,7 @@ export function projectAccessControlUrl(orgHandler: string, projectHandler: stri
 }
 
 export function projectRoleDetailUrl(orgHandler: string, projectHandler: string, roleId: string): string {
-  return `/organizations/${orgHandler}/projects/${projectHandler}/settings/access-control/roles/${roleId}`;
+  return `/organizations/${orgHandler}/projects/${projectHandler}/settings/access-control/roles/${roleId}/edit`;
 }
 
 export function componentAccessControlUrl(orgHandler: string, projectHandler: string, componentHandler: string, tab: 'roles' | 'groups' = 'roles'): string {
@@ -90,7 +114,7 @@ export function componentAccessControlUrl(orgHandler: string, projectHandler: st
 }
 
 export function componentRoleDetailUrl(orgHandler: string, projectHandler: string, componentHandler: string, roleId: string): string {
-  return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/settings/access-control/roles/${roleId}`;
+  return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/settings/access-control/roles/${roleId}/edit`;
 }
 
 export function orgAnalyticsUrl(orgHandler: string): string {

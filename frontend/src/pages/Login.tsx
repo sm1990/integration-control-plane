@@ -54,9 +54,15 @@ export default function Login(): JSX.Element {
             overflow: 'hidden',
           }}>
           <Stack direction="column" alignItems="flex-start" gap={3} display={{ xs: 'none', md: 'flex' }} sx={{ width: '100%' }}>
-            <ColorSchemeImage src={{ light: `${base}assets/images/icp-logo.svg`, dark: `${base}assets/images/icp-logo-white.svg` }} alt={{ light: 'ICP Logo', dark: 'ICP Logo' }} height={60} width="auto" style={{ alignSelf: 'flex-start' }} />
+            <ColorSchemeImage
+              src={{ light: `${base}assets/images/logo/WSO2-Integration-Platform-Black.svg`, dark: `${base}assets/images/logo/WSO2-Integration-Platform-White.svg` }}
+              alt={{ light: 'WSO2 Integration Platform Logo', dark: 'WSO2 Integration Platform Logo' }}
+              height={60}
+              width="auto"
+              style={{ alignSelf: 'flex-start' }}
+            />
             <Typography variant="h3" component="h1" sx={{ textAlign: 'left', width: '100%' }}>
-              Get Started with WSO2 Integrator: ICP
+              Get Started with WSO2 Integration Platform
             </Typography>
             <Box sx={{ maxWidth: 520, width: '100%' }}>
               <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'left', width: '100%' }}>
@@ -91,7 +97,12 @@ export default function Login(): JSX.Element {
               margin: '0 auto',
             }}>
             <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 3 }}>
-              <ColorSchemeImage src={{ light: `${base}assets/images/icp-logo.svg`, dark: `${base}assets/images/icp-logo-white.svg` }} alt={{ light: 'ICP Logo', dark: 'ICP Logo' }} height={48} width="auto" />
+              <ColorSchemeImage
+                src={{ light: `${base}assets/images/logo/WSO2-Integration-Platform-Black.svg`, dark: `${base}assets/images/logo/WSO2-Integration-Platform-White.svg` }}
+                alt={{ light: 'WSO2 Integration Platform Logo', dark: 'WSO2 Integration Platform Logo' }}
+                height={48}
+                width="auto"
+              />
             </Box>
             <LoginForm />
             <Footer />

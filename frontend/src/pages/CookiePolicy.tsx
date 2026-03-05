@@ -35,13 +35,13 @@ export default function CookiePolicy(): JSX.Element {
       </Link>
       <Box sx={{ maxWidth: 800, mx: 'auto', px: 4, py: 6 }}>
         <Typography variant="h1" gutterBottom>
-          WSO2 Integration Control Plane - Cookie Policy
+          WSO2 Integration Platform - Cookie Policy
         </Typography>
         <Link href={external.wso2} target="_blank" rel="noopener noreferrer" color="primary" sx={{ textDecoration: 'underline' }}>
-          WSO2 Integration Control Plane
+          WSO2 Integration Platform
         </Link>
         <Typography variant="body1" sx={{ mt: 1, mb: 4 }}>
-          WSO2 Integration Control Plane monitors running Micro Integrator instances (Single or Cluster Mode) and facilitates performing various management and administration tasks related to deployed artifacts.
+          WSO2 Integration Platform monitors running Micro Integrator instances (Single or Cluster Mode) and facilitates performing various management and administration tasks related to deployed artifacts.
         </Typography>
 
         <Stack spacing={3}>
@@ -50,20 +50,20 @@ export default function CookiePolicy(): JSX.Element {
               Cookie Policy
             </Typography>
             <Typography variant="body1">
-              WSO2 Integration Control Plane uses cookies so that it can provide the best user experience for you and identify you for security purposes. If you disable cookies, some of the services will be inaccessible to you.
+              WSO2 Integration Platform uses cookies so that it can provide the best user experience for you and identify you for security purposes. If you disable cookies, some of the services will be inaccessible to you.
             </Typography>
           </section>
 
           <section>
             <Typography variant="h3" component="h2" gutterBottom>
-              How does WSO2 Integration Control Plane process cookies?
+              How does WSO2 Integration Platform process cookies?
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane stores and retrieves information on your browser using cookies. This information is used to provide a better experience. Some cookies serve the primary purposes of allowing a user to log in to the system,
-              maintaining sessions, and keeping track of activities you do within the login session.
+              WSO2 Integration Platform stores and retrieves information on your browser using cookies. This information is used to provide a better experience. Some cookies serve the primary purposes of allowing a user to log in to the system, maintaining
+              sessions, and keeping track of activities you do within the login session.
             </Typography>
             <Typography variant="body1" paragraph>
-              The primary purpose of some cookies used in WSO2 Integration Control Plane is to personally identify you. However the cookie lifetime ends once your session ends i.e., after you log-out, or after the session expiry time has elapsed.
+              The primary purpose of some cookies used in WSO2 Integration Platform is to personally identify you. However the cookie lifetime ends once your session ends i.e., after you log-out, or after the session expiry time has elapsed.
             </Typography>
             <Typography variant="body1" paragraph>
               Some cookies are simply used to give you a more personalized web experience and these cookies can not be used to personally identify you or your activities.
@@ -71,7 +71,7 @@ export default function CookiePolicy(): JSX.Element {
             <Typography variant="body1">
               This cookie policy is part of the{' '}
               <Link component={NavLink} to={privacyPolicyUrl()} sx={{ textDecoration: 'underline' }}>
-                WSO2 Integration Control Plane Privacy Policy.
+                WSO2 Integration Platform Privacy Policy.
               </Link>
             </Typography>
           </section>
@@ -88,27 +88,27 @@ export default function CookiePolicy(): JSX.Element {
 
           <section>
             <Typography variant="h3" component="h2" gutterBottom>
-              What does WSO2 Integration Control Plane use cookies for?
+              What does WSO2 Integration Platform use cookies for?
             </Typography>
             <Typography variant="body1" paragraph>
-              Cookies are used for two purposes in WSO2 Integration Control Plane.
+              Cookies are used for two purposes in WSO2 Integration Platform.
             </Typography>
             <ol style={{ margin: 0, paddingLeft: '2rem' }}>
               <li>
-                <Typography variant="body1">To identify you and provide security (as this is the main function of WSO2 Integration Control Plane).</Typography>
+                <Typography variant="body1">To identify you and provide security (as this is the main function of WSO2 Integration Platform).</Typography>
               </li>
               <li>
                 <Typography variant="body1">To provide a satisfying user experience.</Typography>
               </li>
             </ol>
             <Typography variant="body1" paragraph sx={{ mt: 2 }}>
-              WSO2 Integration Control Plane uses cookies for the following purposes listed below.
+              WSO2 Integration Platform uses cookies for the following purposes listed below.
             </Typography>
             <Typography variant="h4" component="h3" gutterBottom>
               Preferences
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane uses these cookies to remember your settings and preferences, and to auto-fill the form fields to make your interactions with the site easier.
+              WSO2 Integration Platform uses these cookies to remember your settings and preferences, and to auto-fill the form fields to make your interactions with the site easier.
             </Typography>
             <Typography variant="body1" paragraph>
               These cookies can not be used to personally identify you.
@@ -117,38 +117,38 @@ export default function CookiePolicy(): JSX.Element {
               Security
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane uses selected cookies to identify and prevent security risks. For example, WSO2 Integration Control Plane may use these cookies to store your session information in order to prevent others from changing your
-              password without your username and password.
+              WSO2 Integration Platform uses selected cookies to identify and prevent security risks. For example, WSO2 Integration Platform may use these cookies to store your session information in order to prevent others from changing your password without
+              your username and password.
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane uses session cookies to maintain your active session.
+              WSO2 Integration Platform uses session cookies to maintain your active session.
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane may use temporary cookies when performing multi-factor authentication and federated authentication.
+              WSO2 Integration Platform may use temporary cookies when performing multi-factor authentication and federated authentication.
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane may use permanent cookies to detect that you have previously used the same device to log in. This is to calculate the &quot;risk level&quot; associated with your current login attempt. This is primarily to protect
-              you and your account from possible attack.
+              WSO2 Integration Platform may use permanent cookies to detect that you have previously used the same device to log in. This is to calculate the &quot;risk level&quot; associated with your current login attempt. This is primarily to protect you
+              and your account from possible attack.
             </Typography>
             <Typography variant="h4" component="h3" gutterBottom>
               Performance
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane may use cookies to allow &quot;Remember Me&quot; functionalities.
+              WSO2 Integration Platform may use cookies to allow &quot;Remember Me&quot; functionalities.
             </Typography>
             <Typography variant="h4" component="h3" gutterBottom>
               Analytics
             </Typography>
-            <Typography variant="body1">WSO2 Integration Control Plane as a product does not use cookies for analytical purposes.</Typography>
+            <Typography variant="body1">WSO2 Integration Platform as a product does not use cookies for analytical purposes.</Typography>
           </section>
 
           <section>
             <Typography variant="h3" component="h2" gutterBottom>
-              What type of cookies does WSO2 Integration Control Plane use?
+              What type of cookies does WSO2 Integration Platform use?
             </Typography>
             <Typography variant="body1" paragraph>
-              WSO2 Integration Control Plane uses persistent cookies and session cookies. A persistent cookie helps WSO2 Integration Control Plane to recognize you as an existing user so that it is easier to return to WSO2 or interact with WSO2 IS without
-              signing in again. After you sign in, a persistent cookie stays in your browser and will be read by WSO2 Integration Control Plane when you return to WSO2 Integration Control Plane.
+              WSO2 Integration Platform uses persistent cookies and session cookies. A persistent cookie helps WSO2 Integration Platform to recognize you as an existing user so that it is easier to return to WSO2 or interact with WSO2 IS without signing in
+              again. After you sign in, a persistent cookie stays in your browser and will be read by WSO2 Integration Platform when you return to WSO2 Integration Platform.
             </Typography>
             <Typography variant="body1">
               A session cookie is a cookie that is erased when the user closes the web browser. The session cookie is stored in temporary memory and is not retained after the browser is closed. Session cookies do not collect information from the user&apos;s
@@ -164,7 +164,7 @@ export default function CookiePolicy(): JSX.Element {
               Most browsers allow you to control cookies through their settings preferences. However, if you limit the given ability for websites to set cookies, you may worsen your overall user experience since it will no longer be personalized to you. It may
               also stop you from saving customized settings like login information.
             </Typography>
-            <Typography variant="body1">Most likely, disabling cookies will make you unable to use authentication and authorization functionalities in WSO2 Integration Control Plane.</Typography>
+            <Typography variant="body1">Most likely, disabling cookies will make you unable to use authentication and authorization functionalities in WSO2 Integration Platform.</Typography>
           </section>
 
           <section>
@@ -201,13 +201,13 @@ export default function CookiePolicy(): JSX.Element {
               Disclaimer
             </Typography>
             <Typography variant="body1" paragraph>
-              This cookie policy is only for the illustrative purposes of the product WSO2 Integration Control Plane. The content in the policy is technically correct at the time of the product shipment. The organization which runs this WSO2 Integration
-              Control Plane instance has full authority and responsibility with regard to the effective Cookie Policy.
+              This cookie policy is only for the illustrative purposes of the product WSO2 Integration Platform. The content in the policy is technically correct at the time of the product shipment. The organization which runs this WSO2 Integration Control
+              Plane instance has full authority and responsibility with regard to the effective Cookie Policy.
             </Typography>
             <Typography variant="body1">
-              WSO2, its employees, partners, and affiliates do not have access to and do not require, store, process or control any of the data, including personal data contained in WSO2 Integration Control Plane. All data, including personal data is
-              controlled and processed by the entity or individual running the dashboard. WSO2, its employees, partners and affiliates are not a data processor or a data controller within the meaning of any data privacy regulations. WSO2 does not provide any
-              warranties or undertake any responsibility or liability in connection with the lawfulness or the manner and purposes for which WSO2 Integration Control Plane is used by such entities or persons.
+              WSO2, its employees, partners, and affiliates do not have access to and do not require, store, process or control any of the data, including personal data contained in WSO2 Integration Platform. All data, including personal data is controlled and
+              processed by the entity or individual running the dashboard. WSO2, its employees, partners and affiliates are not a data processor or a data controller within the meaning of any data privacy regulations. WSO2 does not provide any warranties or
+              undertake any responsibility or liability in connection with the lawfulness or the manner and purposes for which WSO2 Integration Platform is used by such entities or persons.
             </Typography>
           </section>
         </Stack>

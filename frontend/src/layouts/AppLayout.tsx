@@ -42,13 +42,13 @@ import {
 } from '@wso2/oxygen-ui';
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { useNavigate, Outlet, Link as NavLink, Link } from 'react-router';
+import { useNavigate, Outlet, Link } from 'react-router';
 import Logo from '../components/Logo';
 import { BarChart3, Bell, Building, ChevronDown, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Server, Shield, Sliders, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProjectByHandler, useProjects, useComponents } from '../api/queries';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
-import { cookiePolicyUrl, loginUrl, privacyPolicyUrl, profileUrl, orgUrl } from '../paths';
+import { cookiePolicyUrl, loginUrl, privacyPolicyUrl, profileUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { ALL_USER_MGT_PERMISSIONS, Permissions } from '../constants/permissions';
@@ -140,9 +140,7 @@ export default function AppLayout(): JSX.Element {
           <Header.Toggle collapsed={shell.sidebarCollapsed} onToggle={actions.toggleSidebar} />
           <Header.Brand>
             <Header.BrandLogo>
-              <NavLink to={orgUrl(scope.org)} style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-                <Logo />
-              </NavLink>
+              <Logo />
             </Header.BrandLogo>
           </Header.Brand>
           <Header.Switchers showDivider={false}>

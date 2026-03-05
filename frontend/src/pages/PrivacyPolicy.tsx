@@ -239,7 +239,7 @@ export default function PrivacyPolicy(): JSX.Element {
             </Typography>
             <Typography variant="body1" paragraph>
               WSO2 Integration Platform stores your personal information in secured databases. WSO2 Integration Platform exercises proper industry accepted security measures to protect the database where your personal information is held. WSO2 Integration
-              Control Plane as a product does not transfer or share your data with any third parties or locations.
+              Platform as a product does not transfer or share your data with any third parties or locations.
             </Typography>
             <Typography variant="body1" paragraph>
               WSO2 Integration Platform may use encryption to keep your personal data with an added level of security.

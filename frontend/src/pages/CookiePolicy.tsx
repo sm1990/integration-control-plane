@@ -201,8 +201,8 @@ export default function CookiePolicy(): JSX.Element {
               Disclaimer
             </Typography>
             <Typography variant="body1" paragraph>
-              This cookie policy is only for the illustrative purposes of the product WSO2 Integration Platform. The content in the policy is technically correct at the time of the product shipment. The organization which runs this WSO2 Integration Control
-              Plane instance has full authority and responsibility with regard to the effective Cookie Policy.
+              This cookie policy is only for the illustrative purposes of the product WSO2 Integration Platform. The content in the policy is technically correct at the time of the product shipment. The organization which runs this WSO2 Integration Platform
+              instance has full authority and responsibility with regard to the effective Cookie Policy.
             </Typography>
             <Typography variant="body1">
               WSO2, its employees, partners, and affiliates do not have access to and do not require, store, process or control any of the data, including personal data contained in WSO2 Integration Platform. All data, including personal data is controlled and

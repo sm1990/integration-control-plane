@@ -571,7 +571,7 @@ integration="${componentHandler}"
 project="${projectHandler}"
 environment="${env.name}"
 heartbeatInterval=10
-runtimeJwtHMACSecret="${secret || '<generating…>'}"\n# serverUrl="https://localhost:9445"`;
+secret="${secret || '<generating…>'}"\n# serverUrl="https://localhost:9445"`;
     } else {
       // MI
       return `[icp_config]
@@ -580,7 +580,7 @@ runtime = "${runtimeId}"
 environment = "${env.name}"
 project = "${projectHandler}"
 integration = "${componentHandler}"
-runtimeJwtHMACSecret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"`;
+secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"`;
     }
   };
 
@@ -630,7 +630,8 @@ runtimeJwtHMACSecret = "${secret || '<generating…>'}"\n# icp_url = "https://ic
             <Box
               component="pre"
               sx={{
-                bgcolor: 'grey.100',
+                bgcolor: (theme) => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100'),
+                color: (theme) => theme.palette.text.primary,
                 p: 2,
                 borderRadius: 1,
                 overflow: 'auto',
@@ -668,7 +669,7 @@ runtimeJwtHMACSecret = "${secret || '<generating…>'}"\n# icp_url = "https://ic
           <DialogTitle>Rotate JWT Secret?</DialogTitle>
           <DialogContent>
             <DialogContentText>
-              This will generate a new HMAC secret for <strong>{env.name}</strong>. Any running runtimes will stop authenticating until they are restarted with the new <code>runtimeJwtHMACSecret</code> value.
+              This will generate a new HMAC secret for <strong>{env.name}</strong>. Any running runtimes will stop authenticating until they are restarted with the new <code>secret</code> value.
             </DialogContentText>
           </DialogContent>
           <DialogActions>

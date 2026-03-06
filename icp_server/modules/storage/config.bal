@@ -46,4 +46,4 @@ configurable string|string[] jwtAudience = "icp-server";
 configurable string publicCertFile = "./resources/keys/public.cert";
 configurable decimal jwtClockSkewSeconds = 10;
 configurable int defaultTokenExpiryTime = 3600; // 1 hour (in seconds)
-configurable string runtimeJwtHMACSecret = "default-secret-key-at-least-32-characters-long-for-hs256";
+

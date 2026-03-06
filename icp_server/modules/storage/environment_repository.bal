@@ -317,8 +317,6 @@ public isolated function deleteEnvironment(string environmentId) returns error? 
 
 // Resolve the JWT HMAC secret for a specific component+environment pair.
 // Looks up the secret in the component_environment_secrets table.
-// Falls back to the global runtimeJwtHMACSecret when no per-component-environment
-// secret has been provisioned yet (e.g. existing deployments before secret rotation).
 public isolated function resolveComponentEnvJwtSecret(string componentId, string environmentId) returns string|error {
     stream<record {|string jwt_hmac_secret;|}, sql:Error?> secretStream =
         dbClient->query(`
@@ -340,8 +338,7 @@ public isolated function resolveComponentEnvJwtSecret(string componentId, string
 }
 
 // Resolve the JWT HMAC secret for a given runtime ID.
-// Joins runtimes -> component_environment_secrets to retrieve the secret, or
-// falls back to the global runtimeJwtHMACSecret (delta heartbeats only carry
+// Joins runtimes -> component_environment_secrets to retrieve the secret,(delta heartbeats only carry
 // the runtime ID so the component+environment pair is resolved via the join).
 public isolated function resolveRuntimeJwtSecretByRuntimeId(string runtimeId) returns string|error {
     stream<record {|string? jwt_hmac_secret;|}, sql:Error?> secretStream =

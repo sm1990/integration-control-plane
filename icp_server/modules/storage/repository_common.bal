@@ -15,7 +15,6 @@
 // under the License.
 
 import icp_server.types as types;
-import icp_server.utils;
 
 import ballerina/http;
 import ballerina/jwt;
@@ -54,7 +53,7 @@ public isolated function sendMIControlCommandAsync(string runtimeId, string arti
         }
 
         http:Client mgmtClient = mgmtClientResult;
-        string hmacToken = check issueRuntimeHmacToken();
+        string hmacToken = check issueRuntimeHmacToken(runtimeId);
 
         string artifactPath;
         json payload;
@@ -1002,7 +1001,7 @@ public isolated function sendArtifactTracingChange(types:Runtime runtime, string
         return error("Failed to create management API client");
     }
 
-    string hmacToken = check issueRuntimeHmacToken();
+    string hmacToken = check issueRuntimeHmacToken(runtime.runtimeId);
 
     json payload = {
         "type": artifactType,
@@ -1042,9 +1041,11 @@ public isolated function sendArtifactTracingChange(types:Runtime runtime, string
     return;
 }
 
-// Helper: generate HMAC JWT used to call ICP internal APIs
-public isolated function issueRuntimeHmacToken() returns string|error {
-    string hmacSecret = check utils:resolveConfig(runtimeJwtHMACSecret, secrets);
+// Helper: generate HMAC JWT used to call a specific runtime's management API.
+// Resolves the per-component-per-environment secret stored in component_environment_secrets
+// via resolveRuntimeJwtSecretByRuntimeId so each runtime is authenticated with its own key.
+public isolated function issueRuntimeHmacToken(string runtimeId) returns string|error {
+    string hmacSecret = check resolveRuntimeJwtSecretByRuntimeId(runtimeId);
     jwt:IssuerConfig issConfig = {
         username: "icp-artifact-fetcher",
         issuer: jwtIssuer,

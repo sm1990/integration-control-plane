@@ -2183,7 +2183,7 @@ service /graphql on graphqlListener {
             return error("Failed to create management API client");
         }
         // Generate an HMAC JWT (same mechanism as heartbeat) to call the ICP internal API
-        string hmacToken = check storage:issueRuntimeHmacToken();
+        string hmacToken = check storage:issueRuntimeHmacToken(runtime.runtimeId);
 
         // Fetch artifact source via ICP Internal API (/icp/artifacts)
         string artifactPath = string `${ICP_ARTIFACTS_PATH}?type=${artifactType}&name=${artifactName}`;
@@ -2307,7 +2307,7 @@ service /graphql on graphqlListener {
         }
 
         // Generate an HMAC JWT to call the ICP internal API
-        string hmacToken = check storage:issueRuntimeHmacToken();
+        string hmacToken = check storage:issueRuntimeHmacToken(runtime.runtimeId);
 
         http:Response|error wsdlResponse = mgmtClient->get(artifactPath, {
             "Authorization": string `Bearer ${hmacToken}`,
@@ -2407,7 +2407,7 @@ service /graphql on graphqlListener {
         }
 
         // Generate an HMAC JWT (same mechanism as heartbeat) to call the ICP internal API
-        string hmacToken = check storage:issueRuntimeHmacToken();
+        string hmacToken = check storage:issueRuntimeHmacToken(runtime.runtimeId);
 
         // Fetch local entry via ICP Internal API (/icp/artifacts/local-entry)
         string artifactPath = string `${ICP_ARTIFACTS_PATH}/local-entry?name=${entryName}`;
@@ -2496,7 +2496,7 @@ service /graphql on graphqlListener {
             return error("Failed to create management API client");
         }
 
-        string hmacToken = check storage:issueRuntimeHmacToken();
+        string hmacToken = check storage:issueRuntimeHmacToken(runtime.runtimeId);
         string artifactPath = string `${ICP_ARTIFACTS_PATH}/inbound/parameters?name=${inboundName}`;
         log:printDebug("Sending ICP internal API inbound parameters request",
                 runtimeId = runtime.runtimeId,
@@ -2630,7 +2630,7 @@ service /graphql on graphqlListener {
         }
 
         // Generate an HMAC JWT (same mechanism as heartbeat) to call the ICP internal API
-        string hmacToken = check storage:issueRuntimeHmacToken();
+        string hmacToken = check storage:issueRuntimeHmacToken(runtime.runtimeId);
 
         // Fetch parameters via ICP Internal API (/icp/artifacts/parameters)
         string artifactPath = string `${ICP_ARTIFACTS_PATH}/parameters?type=${artifactType}&name=${artifactName}`;

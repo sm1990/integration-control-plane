@@ -264,7 +264,7 @@ export default function AppLayout(): JSX.Element {
               <UserMenu.Header name={displayName || username || 'User'} email={username} role="Admin" />
               <UserMenu.Item icon={<UserIcon size={18} />} label="Profile" onClick={() => navigate(profileUrl())} />
               <UserMenu.Divider />
-              <UserMenu.Logout icon={<LogOut size={18} />} onClick={() => setConfirmDialogOpen(true)} />
+              <UserMenu.Logout icon={<LogOut size={18} />} label="Sign Out" onClick={() => setConfirmDialogOpen(true)} />
             </UserMenu>
           </Header.Actions>
         </Header>

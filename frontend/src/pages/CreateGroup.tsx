@@ -60,7 +60,7 @@ export default function CreateGroup(): JSX.Element {
       )}
 
       <Stack gap={3} sx={{ maxWidth: 600, mb: 4 }}>
-        <TextField label="Name" value={groupName} onChange={(e) => setGroupName(e.target.value)} fullWidth />
+        <TextField label="Name" required value={groupName} onChange={(e) => setGroupName(e.target.value)} fullWidth />
         <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth />
       </Stack>
 

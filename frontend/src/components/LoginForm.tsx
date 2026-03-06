@@ -142,7 +142,7 @@ export default function LoginForm(): JSX.Element {
           sx={{ mt: 1, bgcolor: '#1e1e1e', '&:hover': { bgcolor: '#333' }, textTransform: 'none', py: 1.2 }}
           disabled={loading || isLockedOut}
           startIcon={loading ? <CircularProgress size={20} color="inherit" /> : undefined}>
-          {isLockedOut ? `Locked (${lockoutSeconds}s)` : loading ? 'Signing In...' : 'Login'}
+          {isLockedOut ? `Locked (${lockoutSeconds}s)` : loading ? 'Signing In...' : 'Sign In'}
         </Button>
 
         <Divider sx={{ my: 0.5 }}>OR</Divider>

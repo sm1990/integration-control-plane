@@ -66,7 +66,17 @@ export default function Projects(scope: OrgScope): JSX.Element {
   const canCreateProject = hasOrgPermission(Permissions.PROJECT_MANAGE);
   const { data: projects, isLoading, refetch } = useProjects();
 
-  const filtered = (projects ?? []).filter((p) => !query || p.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered = (projects ?? []).filter((p) => {
+    if (!query) return true;
+    const searchQuery = query.trim().toLowerCase();
+    return (
+      p.name.toLowerCase().includes(searchQuery) ||
+      p.description?.toLowerCase().includes(searchQuery) ||
+      p.handler.toLowerCase().includes(searchQuery) ||
+      p.region?.toLowerCase().includes(searchQuery) ||
+      p.type?.toLowerCase().includes(searchQuery)
+    );
+  });
   const maxPage = Math.max(0, Math.ceil(filtered.length / rowsPerPage) - 1);
   const safePage = Math.min(page, maxPage);
   const paginated = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);

@@ -89,7 +89,10 @@ function IntegrationsTable({
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [deleting, setDeleting] = useState<GqlComponent | null>(null);
-  const filtered = components.filter((c) => !query || c.displayName.toLowerCase().includes(query.trim().toLowerCase()));
+  const q = query.trim().toLowerCase();
+  const filtered = components.filter(
+    (c) => !q || c.displayName.toLowerCase().includes(q) || c.description?.toLowerCase().includes(q) || c.componentType?.toLowerCase().includes(q),
+  );
   const maxPage = Math.max(0, Math.ceil(filtered.length / rowsPerPage) - 1);
   const safePage = Math.min(page, maxPage);
   const paginated = filtered.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);

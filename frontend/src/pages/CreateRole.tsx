@@ -122,7 +122,7 @@ export default function CreateRole(): JSX.Element {
       )}
 
       <Stack gap={3} sx={{ maxWidth: 600, mb: 4 }}>
-        <TextField label="Role Name" value={roleName} onChange={(e) => setRoleName(e.target.value)} fullWidth />
+        <TextField label="Role Name" required value={roleName} onChange={(e) => setRoleName(e.target.value)} fullWidth />
         <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth />
       </Stack>
 

@@ -84,7 +84,7 @@ export default function CreateEnvironment(scope: OrgScope): JSX.Element {
       )}
 
       <Stack gap={3} sx={{ maxWidth: 600, mb: 4 }}>
-        <TextField label="Name" placeholder="e.g., staging" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
+        <TextField label="Name" required placeholder="e.g., staging" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
         <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth />
         <FormControlLabel control={<Checkbox checked={critical} onChange={(_, v) => setCritical(v)} />} label="Mark as Critical Environment" />
       </Stack>

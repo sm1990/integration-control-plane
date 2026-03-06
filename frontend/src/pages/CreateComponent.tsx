@@ -45,9 +45,21 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
 
   const effectiveHandler = handlerEdited ? handler : toHandler(displayName);
   const nameError = displayName.trim() && (effectiveHandler.length < 3 || effectiveHandler.length > 64);
-  const isDuplicateError = !!mutation.error && /already taken/i.test(mutation.error.message);
-  const alertError = isDuplicateError ? null : mutation.error;
-  const alertMessage = alertError?.message === 'Failed to fetch' ? 'Unable to connect to the server. Please check that the server is running and try again.' : alertError?.message;
+  
+  // Check if error is a duplicate name error
+  const errorMessage = mutation.error?.message?.toLowerCase() || '';
+  const isDuplicateError = !!mutation.error && (
+    /already taken/i.test(mutation.error.message) ||
+    errorMessage.includes('already exists') ||
+    errorMessage.includes('duplicate') ||
+    (errorMessage.includes('unexpected error') && errorMessage.includes('administrator'))
+  );
+  
+  const alertMessage = mutation.error?.message === 'Failed to fetch' 
+    ? 'Unable to connect to the server. Please check that the server is running and try again.' 
+    : isDuplicateError 
+    ? 'An integration with this name already exists. Please choose a different name.'
+    : mutation.error?.message;
 
   const resetError = () => {
     if (mutation.error) mutation.reset();
@@ -77,7 +89,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
         Create New Integration
       </Typography>
 
-      {alertError && (
+      {mutation.error && (
         <Alert severity="error" role="alert" sx={{ mb: 5 }}>
           {alertMessage}
         </Alert>
@@ -87,6 +99,7 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             label="Display Name"
+            required
             placeholder="Enter display name here"
             value={displayName}
             onChange={(e) => {
@@ -94,8 +107,8 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
               resetError();
             }}
             fullWidth
-            error={!!nameError || isDuplicateError}
-            helperText={nameError ? 'Integration name must be between 3 and 64 characters.' : isDuplicateError ? mutation.error!.message : undefined}
+            error={!!nameError}
+            helperText={nameError ? 'Integration name must be between 3 and 64 characters.' : undefined}
             slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
           />
         </Grid>
@@ -114,7 +127,16 @@ export default function CreateComponent(scope: ProjectScope): JSX.Element {
               htmlInput: { 'aria-label': 'Name' },
               input: {
                 endAdornment: (
-                  <IconButton size="small" aria-label="Edit name" onClick={() => setHandlerEdited(!handlerEdited)}>
+                  <IconButton 
+                    size="small" 
+                    aria-label="Edit name" 
+                    onClick={() => {
+                      if (!handlerEdited) {
+                        setHandler(effectiveHandler);
+                      }
+                      setHandlerEdited(!handlerEdited);
+                    }}
+                  >
                     <Edit size={16} />
                   </IconButton>
                 ),

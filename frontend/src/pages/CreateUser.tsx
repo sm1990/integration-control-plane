@@ -43,6 +43,9 @@ export default function CreateUser(): JSX.Element {
     } else {
       setUsernameError('');
     }
+    if (!displayName.trim()) {
+      valid = false;
+    }
     if (!password.trim()) {
       setPasswordError('Password is required');
       valid = false;
@@ -79,6 +82,7 @@ export default function CreateUser(): JSX.Element {
       <Stack gap={3} sx={{ maxWidth: 600, mb: 4 }}>
         <TextField
           label="Username"
+          required
           value={username}
           onChange={(e) => {
             setUsername(e.target.value);
@@ -88,9 +92,10 @@ export default function CreateUser(): JSX.Element {
           error={!!usernameError}
           helperText={usernameError || ' '}
         />
-        <TextField label="Display Name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth helperText=" " />
+        <TextField label="Display Name" required value={displayName} onChange={(e) => setDisplayName(e.target.value)} fullWidth helperText=" " />
         <TextField
           label="Password"
+          required
           type="password"
           value={password}
           onChange={(e) => {
@@ -107,7 +112,7 @@ export default function CreateUser(): JSX.Element {
         <Button variant="outlined" onClick={() => navigate(backUrl)}>
           Cancel
         </Button>
-        <Button variant="contained" onClick={submit} disabled={!username.trim() || !password.trim() || mutation.isPending}>
+        <Button variant="contained" onClick={submit} disabled={!username.trim() || !displayName.trim() || !password.trim() || mutation.isPending}>
           Create
         </Button>
       </Stack>

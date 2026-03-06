@@ -272,6 +272,31 @@ DEALLOCATE PREPARE stmt;
 SELECT CONCAT(ROW_COUNT(), ' user(s) assigned to Developers') AS status;
 
 -- ============================================================================
+-- STEP 3c — Ensure component_environment_secrets table exists
+-- This table was introduced in ICP v2; upgraded databases may not have it yet.
+-- ============================================================================
+
+SELECT 'STEP 3c: Ensuring component_environment_secrets table ...' AS status;
+
+SET @sql = CONCAT('
+    CREATE TABLE IF NOT EXISTS `', @new_main_db, '`.component_environment_secrets (
+        component_id   CHAR(36)     NOT NULL,
+        environment_id CHAR(36)     NOT NULL,
+        jwt_hmac_secret VARCHAR(256) NOT NULL,
+        created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (component_id, environment_id),
+        CONSTRAINT fk_ces_component   FOREIGN KEY (component_id)   REFERENCES `', @new_main_db, '`.components   (component_id)   ON DELETE CASCADE,
+        CONSTRAINT fk_ces_environment FOREIGN KEY (environment_id) REFERENCES `', @new_main_db, '`.environments (environment_id) ON DELETE CASCADE
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci
+');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SELECT 'component_environment_secrets table ensured.' AS status;
+
+-- ============================================================================
 -- STEP 4 — Summary report
 -- ============================================================================
 

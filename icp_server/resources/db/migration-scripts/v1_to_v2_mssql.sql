@@ -263,6 +263,66 @@ EXEC sp_executesql @sql;
 PRINT 'Assigned to Developers: ' + CAST(@@ROWCOUNT AS NVARCHAR);
 
 -- ============================================================================
+-- STEP 3c — Ensure component_environment_secrets table exists
+-- This table was introduced in ICP v2; upgraded databases may not have it yet.
+-- ============================================================================
+
+PRINT 'STEP 3c: Ensuring component_environment_secrets table ...';
+
+SET @sql = N'
+    IF NOT EXISTS (
+        SELECT 1 FROM [' + @new_main_db + N'].[sys].[objects]
+        WHERE name = N''component_environment_secrets'' AND type = ''U''
+    )
+    BEGIN
+        CREATE TABLE [' + @new_main_db + N'].[dbo].[component_environment_secrets] (
+            component_id    CHAR(36)      NOT NULL,
+            environment_id  CHAR(36)      NOT NULL,
+            jwt_hmac_secret NVARCHAR(256) NOT NULL,
+            created_at      DATETIME2     NOT NULL DEFAULT GETDATE(),
+            updated_at      DATETIME2     NOT NULL DEFAULT GETDATE(),
+            PRIMARY KEY (component_id, environment_id),
+            CONSTRAINT fk_ces_component   FOREIGN KEY (component_id)
+                REFERENCES [' + @new_main_db + N'].[dbo].[components]   (component_id)   ON DELETE CASCADE,
+            CONSTRAINT fk_ces_environment FOREIGN KEY (environment_id)
+                REFERENCES [' + @new_main_db + N'].[dbo].[environments] (environment_id) ON DELETE NO ACTION
+        )
+    END
+';
+EXEC sp_executesql @sql;
+PRINT 'component_environment_secrets table ensured.';
+
+-- Create the updated_at trigger in the target database context.
+-- MSSQL has no ON UPDATE equivalent; a trigger is required.
+-- EXEC [db].sys.sp_executesql runs the batch inside the target database so
+-- CREATE TRIGGER resolves to the correct schema without a USE statement.
+SET @sql = N'
+    IF NOT EXISTS (
+        SELECT 1 FROM [' + @new_main_db + N'].[sys].[triggers]
+        WHERE name = N''trg_component_environment_secrets_updated_at''
+    )
+    BEGIN
+        EXEC [' + @new_main_db + N'].sys.sp_executesql N''
+            CREATE TRIGGER trg_component_environment_secrets_updated_at
+            ON dbo.component_environment_secrets
+            AFTER UPDATE
+            AS
+            BEGIN
+                SET NOCOUNT ON;
+                UPDATE ces
+                SET updated_at = GETDATE()
+                FROM dbo.component_environment_secrets ces
+                INNER JOIN inserted i
+                    ON ces.component_id = i.component_id
+                   AND ces.environment_id = i.environment_id;
+            END
+        ''
+    END
+';
+EXEC sp_executesql @sql;
+PRINT 'trg_component_environment_secrets_updated_at trigger ensured.';
+
+-- ============================================================================
 -- STEP 4 — Summary report
 -- ============================================================================
 

@@ -219,7 +219,7 @@ public isolated function createEnvironment(types:EnvironmentInput environment) r
         log:printError(string `Failed to insert environment: ${environment.name}`, 'error = result);
         match classifySqlError(result) {
             DUPLICATE_KEY => {
-                return ();
+                return error(string `An environment with the name "${environment.name}" already exists`, result);
             }
             VALUE_TOO_LONG => {
                 return error("The provided value exceeds the maximum allowed length", result);
@@ -368,25 +368,48 @@ public isolated function resolveRuntimeJwtSecretByRuntimeId(string runtimeId) re
 // a new one only when none has been provisioned yet.  Safe to call on every
 // "Configure Runtime" dialog open — it never overwrites an existing secret.
 public isolated function getOrGenerateComponentEnvironmentSecret(string componentId, string environmentId) returns string|error {
-    stream<record {|string jwt_hmac_secret;|}, sql:Error?> secretStream =
-        dbClient->query(`
-            SELECT jwt_hmac_secret
-            FROM component_environment_secrets
-            WHERE component_id = ${componentId}
-              AND environment_id = ${environmentId}
-        `);
+    // By attempting the INSERT first we eliminate the race:
+    //   • INSERT succeeds  → we are the canonical creator; return the new secret.
+    //   • DUPLICATE_KEY    → a concurrent caller already persisted a secret; SELECT
+    //                        and return that existing canonical secret (never rotate).
+    string jwtHmacSecret = uuid:createRandomUuid() + uuid:createRandomUuid();
 
-    record {|string jwt_hmac_secret;|}[] records = check from record {|string jwt_hmac_secret;|} r in secretStream
-        select r;
+    sql:ExecutionResult|sql:Error insertResult = dbClient->execute(`
+        INSERT INTO component_environment_secrets (component_id, environment_id, jwt_hmac_secret)
+        VALUES (${componentId}, ${environmentId}, ${jwtHmacSecret})
+    `);
 
-    if records.length() > 0 {
-        log:printDebug(string `Returning existing JWT HMAC secret for component: ${componentId}, environment: ${environmentId}`);
-        return records[0].jwt_hmac_secret;
+    if insertResult is sql:ExecutionResult {
+        log:printInfo(string `Generated new JWT HMAC secret for component: ${componentId}, environment: ${environmentId}`);
+        return jwtHmacSecret;
     }
 
-    // No secret provisioned yet — generate and persist one.
-    log:printInfo(string `No existing secret found; generating for component: ${componentId}, environment: ${environmentId}`);
-    return check generateComponentEnvironmentSecret(componentId, environmentId);
+    // A concurrent caller already inserted a row — return the canonical existing
+    // secret instead of rotating/overwriting it.
+    if classifySqlError(insertResult) == DUPLICATE_KEY {
+        log:printDebug(string `Secret already exists; returning existing JWT HMAC secret for component: ${componentId}, environment: ${environmentId}`);
+        stream<record {|string jwt_hmac_secret;|}, sql:Error?> secretStream =
+            dbClient->query(`
+                SELECT jwt_hmac_secret
+                FROM component_environment_secrets
+                WHERE component_id = ${componentId}
+                  AND environment_id = ${environmentId}
+            `);
+
+        record {|string jwt_hmac_secret;|}[] records = check from record {|string jwt_hmac_secret;|} r in secretStream
+            select r;
+
+        if records.length() > 0 {
+            return records[0].jwt_hmac_secret;
+        }
+
+        // Extremely unlikely: the row was deleted between our failed INSERT and
+        // this SELECT (e.g. a concurrent delete). Treat it as an unexpected error.
+        return error("An unexpected error occurred while retrieving the component-environment JWT secret.");
+    }
+
+    log:printError(string `Failed to generate JWT secret for component ${componentId} + environment ${environmentId}`, 'error = insertResult);
+    return error("An unexpected error occurred while generating the component-environment JWT secret.", insertResult);
 }
 
 // Generate (or rotate) the JWT HMAC secret for a component+environment pair.

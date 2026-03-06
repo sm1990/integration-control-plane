@@ -35,8 +35,12 @@ enum SqlErrorCategory {
 isolated function classifySqlError(sql:Error err) returns SqlErrorCategory {
     string msg = err.message().toLowerAscii();
 
+    // "duplicate key" / "duplicate entry"  — MySQL, MSSQL, PostgreSQL
+    // "unique constraint" / "unique_violation"  — PostgreSQL
+    // "unique index or primary key violation"   — H2 (used in tests and local dev)
     if msg.includes("duplicate key") || msg.includes("duplicate entry") ||
-            msg.includes("unique constraint") || msg.includes("unique_violation") {
+            msg.includes("unique constraint") || msg.includes("unique_violation") ||
+            msg.includes("unique index or primary key violation") {
         return DUPLICATE_KEY;
     }
 

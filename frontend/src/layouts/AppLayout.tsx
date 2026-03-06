@@ -42,7 +42,7 @@ import {
 } from '@wso2/oxygen-ui';
 import { useState } from 'react';
 import type { JSX } from 'react';
-import { useNavigate, Outlet, Link } from 'react-router';
+import { useNavigate, Outlet } from 'react-router';
 import Logo from '../components/Logo';
 import { BarChart3, Bell, Building, ChevronDown, ChevronRight, Layers, LayoutDashboard, LogOut, ScrollText, Server, Shield, Sliders, User as UserIcon, X } from '@wso2/oxygen-ui-icons-react';
 import { useProjectByHandler, useProjects, useComponents } from '../api/queries';
@@ -276,7 +276,12 @@ export default function AppLayout(): JSX.Element {
           activeItem={resource ?? 'overview'}
           expandedMenus={shell.expandedMenus}
           onSelect={(id) => {
-            if (id === 'expand') actions.toggleSidebar();
+            if (id === 'expand') {
+              actions.toggleSidebar();
+            } else {
+              const item = items.find((i) => i.resource === id);
+              if (item) navigate(item.url);
+            }
           }}
           onToggleExpand={actions.toggleMenu}
           sx={{ backgroundColor: 'background.acrylic', backdropFilter: 'blur(3px)' }}>
@@ -288,7 +293,7 @@ export default function AppLayout(): JSX.Element {
                 <Sidebar.Category key={label || 'main'}>
                   {label && <Sidebar.CategoryLabel>{label}</Sidebar.CategoryLabel>}
                   {catItems.map((item) => (
-                    <Sidebar.Item key={item.resource} id={item.resource} link={<Link to={item.url} />}>
+                    <Sidebar.Item key={item.resource} id={item.resource}>
                       <Sidebar.ItemIcon>{SIDEBAR_ICONS[item.resource]}</Sidebar.ItemIcon>
                       <Sidebar.ItemLabel>{item.label}</Sidebar.ItemLabel>
                     </Sidebar.Item>

@@ -59,12 +59,8 @@ export default function CreateProject(scope: OrgScope): JSX.Element {
         Back to Home
       </Button>
 
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 4 }}>
+      <Typography variant="h1" sx={{ mb: 4 }}>
         Create a Project
-      </Typography>
-
-      <Typography variant="subtitle2" component="p" sx={{ fontWeight: 600, mb: 2 }}>
-        Project Details
       </Typography>
 
       <Grid container spacing={3} sx={{ mb: 4 }}>

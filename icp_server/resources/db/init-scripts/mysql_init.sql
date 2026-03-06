@@ -543,7 +543,7 @@ CREATE TABLE runtimes (
     INDEX idx_env (environment_id),
     INDEX idx_component (component_id),
     INDEX idx_project (project_id),
-    INDEX idx_last_heartbeat (last_heartbeat),
+    INDEX idx_last_heartbeat (last_heartbeat)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
 
 -- Per-component-per-environment JWT HMAC secret

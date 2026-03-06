@@ -630,7 +630,8 @@ runtimeJwtHMACSecret = "${secret || '<generating…>'}"\n# icp_url = "https://ic
             <Box
               component="pre"
               sx={{
-                bgcolor: 'grey.100',
+                bgcolor: (theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+                color: (theme) => theme.palette.text.primary,
                 p: 2,
                 borderRadius: 1,
                 overflow: 'auto',

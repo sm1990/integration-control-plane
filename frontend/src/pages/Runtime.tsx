@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, PageContent, PageTitle, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Typography } from '@wso2/oxygen-ui';
+import { Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, PageContent, PageTitle, TablePagination, Typography } from '@wso2/oxygen-ui';
 import { Trash2 } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useState, type JSX } from 'react';
@@ -68,67 +68,69 @@ export default function Runtime(scope: ProjectScope | ComponentScope): JSX.Eleme
         <PageTitle.Header>Runtime</PageTitle.Header>
       </PageTitle>
 
-      <SearchField value={query} onChange={setQuery} placeholder="Search..." sx={{ mb: 3, maxWidth: 400 }} />
-
       {isLoading ? (
         <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
       ) : (
         <>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Runtime ID</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Version</TableCell>
-                <TableCell>Platform</TableCell>
-                <TableCell>OS</TableCell>
-                <TableCell>Registration Time</TableCell>
-                <TableCell>Last Heartbeat</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paged.map((r) => (
-                <TableRow key={r.runtimeId}>
-                  <TableCell>{r.runtimeId}</TableCell>
-                  <TableCell>{r.runtimeType}</TableCell>
-                  <TableCell>
-                    <Chip label={r.status} size="small" color={r.status === 'RUNNING' ? 'success' : 'default'} />
-                  </TableCell>
-                  <TableCell>{r.version || '—'}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatPlatform(r)}</Typography>
-                    {r.platformHome && (
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        {r.platformHome}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>{[r.osName, r.osVersion].filter(Boolean).join(' ')}</TableCell>
-                  <TableCell>{r.registrationTime ? formatDate(r.registrationTime) : '—'}</TableCell>
-                  <TableCell>{r.lastHeartbeat ? formatDate(r.lastHeartbeat) : '—'}</TableCell>
-                  <TableCell>
-                    <IconButton size="small" color="error" aria-label={`Delete runtime ${r.runtimeId}`} disabled={r.status === 'RUNNING'} onClick={() => setDeleting(r)}>
-                      <Trash2 size={16} />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <TablePagination
-            component="div"
-            count={filtered.length}
-            page={safePage}
-            onPageChange={(_, p) => setPage(p)}
-            rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(e) => {
-              setRowsPerPage(parseInt(e.target.value, 10));
-              setPage(0);
-            }}
-            rowsPerPageOptions={[5, 10, 25]}
-          />
+          <ListingTable.Container>
+            <ListingTable.Toolbar searchSlot={<SearchField value={query} onChange={setQuery} placeholder="Search..." />} />
+            <ListingTable>
+              <ListingTable.Head>
+                <ListingTable.Row>
+                  <ListingTable.Cell>Runtime ID</ListingTable.Cell>
+                  <ListingTable.Cell>Type</ListingTable.Cell>
+                  <ListingTable.Cell>Status</ListingTable.Cell>
+                  <ListingTable.Cell>Version</ListingTable.Cell>
+                  <ListingTable.Cell>Platform</ListingTable.Cell>
+                  <ListingTable.Cell>OS</ListingTable.Cell>
+                  <ListingTable.Cell>Registration Time</ListingTable.Cell>
+                  <ListingTable.Cell>Last Heartbeat</ListingTable.Cell>
+                  <ListingTable.Cell>Actions</ListingTable.Cell>
+                </ListingTable.Row>
+              </ListingTable.Head>
+              <ListingTable.Body>
+                {paged.map((r) => (
+                  <ListingTable.Row key={r.runtimeId}>
+                    <ListingTable.Cell>{r.runtimeId}</ListingTable.Cell>
+                    <ListingTable.Cell>{r.runtimeType}</ListingTable.Cell>
+                    <ListingTable.Cell>
+                      <Chip label={r.status} size="small" color={r.status === 'RUNNING' ? 'success' : 'default'} />
+                    </ListingTable.Cell>
+                    <ListingTable.Cell>{r.version || '—'}</ListingTable.Cell>
+                    <ListingTable.Cell>
+                      <Typography variant="body2">{formatPlatform(r)}</Typography>
+                      {r.platformHome && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {r.platformHome}
+                        </Typography>
+                      )}
+                    </ListingTable.Cell>
+                    <ListingTable.Cell>{[r.osName, r.osVersion].filter(Boolean).join(' ')}</ListingTable.Cell>
+                    <ListingTable.Cell>{r.registrationTime ? formatDate(r.registrationTime) : '—'}</ListingTable.Cell>
+                    <ListingTable.Cell>{r.lastHeartbeat ? formatDate(r.lastHeartbeat) : '—'}</ListingTable.Cell>
+                    <ListingTable.Cell>
+                      <IconButton size="small" color="error" aria-label={`Delete runtime ${r.runtimeId}`} disabled={r.status === 'RUNNING'} onClick={() => setDeleting(r)}>
+                        <Trash2 size={16} />
+                      </IconButton>
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ))}
+              </ListingTable.Body>
+            </ListingTable>
+            <TablePagination
+              sx={{ borderTop: "1px solid", borderColor: "divider" }}
+              component="div"
+              count={filtered.length}
+              page={safePage}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25]}
+            />
+          </ListingTable.Container>
         </>
       )}
 

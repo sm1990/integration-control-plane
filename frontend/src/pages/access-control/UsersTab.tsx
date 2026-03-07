@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, Stack, TablePagination, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { Key, LockOpen, LogOut, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useCallback, useEffect, type JSX } from 'react';
 import { useNavigate, useLocation } from 'react-router';
@@ -110,140 +110,145 @@ export function UsersTab({ orgHandler }: { orgHandler: string }): JSX.Element {
   if (isLoading) return <Loading />;
   return (
     <>
-      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-        <SearchField value={search} onChange={setSearch} />
-        <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgUserUrl(orgHandler))}>
-            Create User
-          </Button>
-        </Authorized>
-      </Stack>
       {tableAlert && (
         <Alert severity={tableAlert.type} role={tableAlert.type === 'success' ? 'status' : 'alert'} aria-live={tableAlert.type === 'success' ? 'polite' : 'assertive'} onClose={() => setTableAlert(null)} sx={{ mb: 2 }}>
           {tableAlert.message}
         </Alert>
       )}
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>User</TableCell>
-            <TableCell>Username</TableCell>
-            <TableCell>Groups</TableCell>
-            <TableCell align="right">Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} align="center">
-                No records to display
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginated.map((u) => (
-              <TableRow
-                key={u.userId}
-                tabIndex={0}
-                aria-label={`View details for ${u.displayName}`}
-                hover
-                sx={{ cursor: 'pointer' }}
-                onClick={() => navigate(editOrgUserUrl(orgHandler, u.userId))}
-                onKeyDown={(e) => {
-                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    navigate(editOrgUserUrl(orgHandler, u.userId));
-                  }
-                }}>
-                <TableCell>
-                  <Stack direction="row" alignItems="center" gap={1}>
-                    {u.displayName}
-                    {u.isOidcUser && <Chip label="OIDC" size="small" color="info" />}
-                  </Stack>
-                </TableCell>
-                <TableCell>{u.username}</TableCell>
-                <TableCell>{u.groupCount > 0 ? u.groups.map((g) => <Chip key={g.groupId} label={g.groupName} size="small" sx={{ mr: 0.5 }} />) : <>—</>}</TableCell>
-                <TableCell align="right">
-                  {!u.isSuperAdmin && (
-                    <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-                      <Tooltip title={u.isOidcUser ? 'Cannot reset password of OIDC user' : 'Reset Password'}>
-                        <IconButton
-                          size="small"
-                          aria-label={u.isOidcUser ? 'Cannot reset password of OIDC user' : 'Reset Password'}
-                          disabled={u.isOidcUser}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setResettingUserId(u.userId);
-                          }}>
-                          <Key size={16} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Revoke Sessions">
-                        <IconButton
-                          size="small"
-                          aria-label="Revoke Sessions"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRevokingUserId(u.userId);
-                          }}>
-                          <LogOut size={16} />
-                        </IconButton>
-                      </Tooltip>
-                      {/* Unlock is credential-store only; hide for OIDC users */}
-                      {!u.isOidcUser && (
-                        <Tooltip title="Unlock Account">
+      <ListingTable.Container>
+        <ListingTable.Toolbar
+          searchSlot={<SearchField value={search} onChange={setSearch} />}
+          actions={
+            <Authorized permissions={Permissions.USER_MANAGE_USERS}>
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgUserUrl(orgHandler))}>
+                Create User
+              </Button>
+            </Authorized>
+          }
+        />
+        <ListingTable>
+          <ListingTable.Head>
+            <ListingTable.Row>
+              <ListingTable.Cell>User</ListingTable.Cell>
+              <ListingTable.Cell>Username</ListingTable.Cell>
+              <ListingTable.Cell>Groups</ListingTable.Cell>
+              <ListingTable.Cell align="right">Action</ListingTable.Cell>
+            </ListingTable.Row>
+          </ListingTable.Head>
+          <ListingTable.Body>
+            {filtered.length === 0 ? (
+              <ListingTable.Row>
+                <ListingTable.Cell colSpan={4} align="center">
+                  No records to display
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : (
+              paginated.map((u) => (
+                <ListingTable.Row
+                  key={u.userId}
+                  clickable
+                  tabIndex={0}
+                  aria-label={`View details for ${u.displayName}`}
+                  hover
+                  onClick={() => navigate(editOrgUserUrl(orgHandler, u.userId))}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      navigate(editOrgUserUrl(orgHandler, u.userId));
+                    }
+                  }}>
+                  <ListingTable.Cell>
+                    <Stack direction="row" alignItems="center" gap={1}>
+                      {u.displayName}
+                      {u.isOidcUser && <Chip label="OIDC" size="small" color="info" />}
+                    </Stack>
+                  </ListingTable.Cell>
+                  <ListingTable.Cell>{u.username}</ListingTable.Cell>
+                  <ListingTable.Cell>{u.groupCount > 0 ? u.groups.map((g) => <Chip key={g.groupId} label={g.groupName} size="small" sx={{ mr: 0.5 }} />) : <>—</>}</ListingTable.Cell>
+                  <ListingTable.Cell align="right">
+                    {!u.isSuperAdmin && (
+                      <Authorized permissions={Permissions.USER_MANAGE_USERS}>
+                        <Tooltip title={u.isOidcUser ? 'Cannot reset password of OIDC user' : 'Reset Password'}>
                           <IconButton
                             size="small"
-                            aria-label="Unlock Account"
+                            aria-label={u.isOidcUser ? 'Cannot reset password of OIDC user' : 'Reset Password'}
+                            disabled={u.isOidcUser}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setUnlockingUserId(u.userId);
+                              setResettingUserId(u.userId);
                             }}>
-                            <LockOpen size={16} />
+                            <Key size={16} />
                           </IconButton>
                         </Tooltip>
-                      )}
-                      <Tooltip title="Edit">
-                        <IconButton
-                          size="small"
-                          aria-label="Edit user"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(editOrgUserUrl(orgHandler, u.userId));
-                          }}>
-                          <Pencil size={16} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton
-                          size="small"
-                          aria-label="Delete user"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingUserId(u.userId);
-                          }}>
-                          <Trash2 size={16} />
-                        </IconButton>
-                      </Tooltip>
-                    </Authorized>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <TablePagination
-        component="div"
-        count={filtered.length}
-        page={safePage}
-        onPageChange={(_, p) => setPage(p)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => {
-          setRowsPerPage(parseInt(e.target.value, 10));
-          setPage(0);
-        }}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-      />
+                        <Tooltip title="Revoke Sessions">
+                          <IconButton
+                            size="small"
+                            aria-label="Revoke Sessions"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRevokingUserId(u.userId);
+                            }}>
+                            <LogOut size={16} />
+                          </IconButton>
+                        </Tooltip>
+                        {/* Unlock is credential-store only; hide for OIDC users */}
+                        {!u.isOidcUser && (
+                          <Tooltip title="Unlock Account">
+                            <IconButton
+                              size="small"
+                              aria-label="Unlock Account"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setUnlockingUserId(u.userId);
+                              }}>
+                              <LockOpen size={16} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Edit">
+                          <IconButton
+                            size="small"
+                            aria-label="Edit user"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(editOrgUserUrl(orgHandler, u.userId));
+                            }}>
+                            <Pencil size={16} />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            aria-label="Delete user"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingUserId(u.userId);
+                            }}>
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </Tooltip>
+                      </Authorized>
+                    )}
+                  </ListingTable.Cell>
+                </ListingTable.Row>
+              ))
+            )}
+          </ListingTable.Body>
+        </ListingTable>
+        <TablePagination
+          sx={{ borderTop: "1px solid", borderColor: "divider" }}
+          component="div"
+          count={filtered.length}
+          page={safePage}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+        />
+      </ListingTable.Container>
       {deletingUserId &&
         (() => {
           const u = users?.find((x) => x.userId === deletingUserId);

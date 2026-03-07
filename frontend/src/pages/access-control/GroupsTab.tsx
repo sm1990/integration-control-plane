@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Tooltip } from '@wso2/oxygen-ui';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, TablePagination, Tooltip } from '@wso2/oxygen-ui';
 import { Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useState, type JSX } from 'react';
 import { useNavigate, useLocation } from 'react-router';
@@ -73,102 +73,107 @@ export function GroupsTab({ orgHandler, projectId, componentHandler, readOnly }:
   if (isLoading) return <Loading />;
   return (
     <>
-      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-        <SearchField value={search} onChange={setSearch} />
-        {!effectiveReadOnly && (
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgGroupUrl(orgHandler))}>
-            Create Group
-          </Button>
-        )}
-      </Stack>
       {tableAlert && (
         <Alert severity={tableAlert.type} role={tableAlert.type === 'success' ? 'status' : 'alert'} aria-live={tableAlert.type === 'success' ? 'polite' : 'assertive'} onClose={() => setTableAlert(null)} sx={{ mb: 2 }}>
           {tableAlert.message}
         </Alert>
       )}
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell>Users</TableCell>
-            <TableCell>Roles</TableCell>
-            <TableCell align="right">Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} align="center">
-                No records to display
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginated.map((g) => (
-              <TableRow
-                key={g.groupId}
-                hover
-                sx={{ cursor: 'pointer' }}
-                tabIndex={0}
-                aria-label={`View details for ${g.groupName}`}
-                onClick={() => navigate(editOrgGroupUrl(orgHandler, g.groupId))}
-                onKeyDown={(e) => {
-                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                    if (e.key === ' ') e.preventDefault();
-                    navigate(editOrgGroupUrl(orgHandler, g.groupId));
-                  }
-                }}>
-                <TableCell>{g.groupName}</TableCell>
-                <TableCell>{g.description}</TableCell>
-                <TableCell>
-                  <GroupUserCount orgHandler={orgHandler} groupId={g.groupId} />
-                </TableCell>
-                <TableCell>
-                  <GroupRoleCount orgHandler={orgHandler} groupId={g.groupId} projectId={projectId} componentId={componentId} />
-                </TableCell>
-                <TableCell align="right">
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      aria-label={`Edit ${g.groupName}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(editOrgGroupUrl(orgHandler, g.groupId));
-                      }}>
-                      <Pencil size={16} />
-                    </IconButton>
-                  </Tooltip>
-                  {!effectiveReadOnly && (
-                    <Tooltip title="Delete">
+      <ListingTable.Container>
+        <ListingTable.Toolbar
+          searchSlot={<SearchField value={search} onChange={setSearch} />}
+          actions={
+            !effectiveReadOnly && (
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgGroupUrl(orgHandler))}>
+                Create Group
+              </Button>
+            )
+          }
+        />
+        <ListingTable>
+          <ListingTable.Head>
+            <ListingTable.Row>
+              <ListingTable.Cell>Name</ListingTable.Cell>
+              <ListingTable.Cell>Description</ListingTable.Cell>
+              <ListingTable.Cell>Users</ListingTable.Cell>
+              <ListingTable.Cell>Roles</ListingTable.Cell>
+              <ListingTable.Cell align="right">Action</ListingTable.Cell>
+            </ListingTable.Row>
+          </ListingTable.Head>
+          <ListingTable.Body>
+            {filtered.length === 0 ? (
+              <ListingTable.Row>
+                <ListingTable.Cell colSpan={5} align="center">
+                  No records to display
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : (
+              paginated.map((g) => (
+                <ListingTable.Row
+                  key={g.groupId}
+                  clickable
+                  hover
+                  tabIndex={0}
+                  aria-label={`View details for ${g.groupName}`}
+                  onClick={() => navigate(editOrgGroupUrl(orgHandler, g.groupId))}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      if (e.key === ' ') e.preventDefault();
+                      navigate(editOrgGroupUrl(orgHandler, g.groupId));
+                    }
+                  }}>
+                  <ListingTable.Cell>{g.groupName}</ListingTable.Cell>
+                  <ListingTable.Cell>{g.description}</ListingTable.Cell>
+                  <ListingTable.Cell>
+                    <GroupUserCount orgHandler={orgHandler} groupId={g.groupId} />
+                  </ListingTable.Cell>
+                  <ListingTable.Cell>
+                    <GroupRoleCount orgHandler={orgHandler} groupId={g.groupId} projectId={projectId} componentId={componentId} />
+                  </ListingTable.Cell>
+                  <ListingTable.Cell align="right">
+                    <Tooltip title="Edit">
                       <IconButton
                         size="small"
-                        aria-label={`Delete ${g.groupName}`}
+                        aria-label={`Edit ${g.groupName}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeletingGroup(g);
+                          navigate(editOrgGroupUrl(orgHandler, g.groupId));
                         }}>
-                        <Trash2 size={16} />
+                        <Pencil size={16} />
                       </IconButton>
                     </Tooltip>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <TablePagination
-        component="div"
-        count={filtered.length}
-        page={safePage}
-        onPageChange={(_, p) => setPage(p)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => {
-          setRowsPerPage(parseInt(e.target.value, 10));
-          setPage(0);
-        }}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-      />
+                    {!effectiveReadOnly && (
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          aria-label={`Delete ${g.groupName}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingGroup(g);
+                          }}>
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </ListingTable.Cell>
+                </ListingTable.Row>
+              ))
+            )}
+          </ListingTable.Body>
+        </ListingTable>
+        <TablePagination
+          sx={{ borderTop: "1px solid", borderColor: "divider" }}
+          component="div"
+          count={filtered.length}
+          page={safePage}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+        />
+      </ListingTable.Container>
       {deletingGroup && (
         <Dialog open onClose={() => setDeletingGroup(null)} maxWidth="sm" fullWidth>
           <DialogTitle>Delete Group</DialogTitle>

@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, Stack, Table, TableBody, TableCell, TableHead, TablePagination, TableRow, Tooltip } from '@wso2/oxygen-ui';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, TablePagination, Tooltip } from '@wso2/oxygen-ui';
 import { Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useEffect, type JSX } from 'react';
 import { useNavigate, useLocation } from 'react-router';
@@ -75,98 +75,103 @@ export function RolesTab({ orgHandler, projectId, projectHandler, componentHandl
   if (isLoading) return <Loading />;
   return (
     <>
-      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-        <SearchField value={search} onChange={setSearch} />
-        {!effectiveReadOnly && (
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgRoleUrl(orgHandler))}>
-            Create Role
-          </Button>
-        )}
-      </Stack>
       {tableAlert && (
         <Alert severity={tableAlert.type} role={tableAlert.type === 'success' ? 'status' : 'alert'} aria-live={tableAlert.type === 'success' ? 'polite' : 'assertive'} onClose={() => setTableAlert(null)} sx={{ mb: 2 }}>
           {tableAlert.message}
         </Alert>
       )}
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Role Name</TableCell>
-            <TableCell>Description</TableCell>
-            <TableCell>Assigned Users</TableCell>
-            <TableCell align="right">Action</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} align="center">
-                No records to display
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginated.map((r) => (
-              <TableRow
-                key={r.roleId}
-                hover
-                sx={{ cursor: 'pointer' }}
-                tabIndex={0}
-                aria-label={`View details for ${r.roleName}`}
-                onClick={() => navigate(getRoleDetailUrl(r.roleId))}
-                onKeyDown={(e) => {
-                  if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                    if (e.key === ' ') e.preventDefault();
-                    navigate(getRoleDetailUrl(r.roleId));
-                  }
-                }}>
-                <TableCell>{r.roleName}</TableCell>
-                <TableCell>{r.description}</TableCell>
-                <TableCell>
-                  <RoleUserCount orgHandler={orgHandler} roleId={r.roleId} projectId={projectId} componentId={componentId} />
-                </TableCell>
-                <TableCell align="right">
-                  <Tooltip title="Edit">
-                    <IconButton
-                      size="small"
-                      aria-label={`Edit ${r.roleName}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(getRoleDetailUrl(r.roleId));
-                      }}>
-                      <Pencil size={16} />
-                    </IconButton>
-                  </Tooltip>
-                  {!effectiveReadOnly && (
-                    <Tooltip title="Delete">
+      <ListingTable.Container>
+        <ListingTable.Toolbar
+          searchSlot={<SearchField value={search} onChange={setSearch} />}
+          actions={
+            !effectiveReadOnly && (
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => navigate(newOrgRoleUrl(orgHandler))}>
+                Create Role
+              </Button>
+            )
+          }
+        />
+        <ListingTable>
+          <ListingTable.Head>
+            <ListingTable.Row>
+              <ListingTable.Cell>Role Name</ListingTable.Cell>
+              <ListingTable.Cell>Description</ListingTable.Cell>
+              <ListingTable.Cell>Assigned Users</ListingTable.Cell>
+              <ListingTable.Cell align="right">Action</ListingTable.Cell>
+            </ListingTable.Row>
+          </ListingTable.Head>
+          <ListingTable.Body>
+            {filtered.length === 0 ? (
+              <ListingTable.Row>
+                <ListingTable.Cell colSpan={4} align="center">
+                  No records to display
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : (
+              paginated.map((r) => (
+                <ListingTable.Row
+                  key={r.roleId}
+                  clickable
+                  hover
+                  tabIndex={0}
+                  aria-label={`View details for ${r.roleName}`}
+                  onClick={() => navigate(getRoleDetailUrl(r.roleId))}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      if (e.key === ' ') e.preventDefault();
+                      navigate(getRoleDetailUrl(r.roleId));
+                    }
+                  }}>
+                  <ListingTable.Cell>{r.roleName}</ListingTable.Cell>
+                  <ListingTable.Cell>{r.description}</ListingTable.Cell>
+                  <ListingTable.Cell>
+                    <RoleUserCount orgHandler={orgHandler} roleId={r.roleId} projectId={projectId} componentId={componentId} />
+                  </ListingTable.Cell>
+                  <ListingTable.Cell align="right">
+                    <Tooltip title="Edit">
                       <IconButton
                         size="small"
-                        aria-label={`Delete ${r.roleName}`}
+                        aria-label={`Edit ${r.roleName}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeletingRole(r);
+                          navigate(getRoleDetailUrl(r.roleId));
                         }}>
-                        <Trash2 size={16} />
+                        <Pencil size={16} />
                       </IconButton>
                     </Tooltip>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <TablePagination
-        component="div"
-        count={filtered.length}
-        page={safePage}
-        onPageChange={(_, p) => setPage(p)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => {
-          setRowsPerPage(parseInt(e.target.value, 10));
-          setPage(0);
-        }}
-        rowsPerPageOptions={[5, 10, 25, 50]}
-      />
+                    {!effectiveReadOnly && (
+                      <Tooltip title="Delete">
+                        <IconButton
+                          size="small"
+                          aria-label={`Delete ${r.roleName}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingRole(r);
+                          }}>
+                          <Trash2 size={16} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </ListingTable.Cell>
+                </ListingTable.Row>
+              ))
+            )}
+          </ListingTable.Body>
+        </ListingTable>
+        <TablePagination
+          sx={{ borderTop: "1px solid", borderColor: "divider" }}
+          component="div"
+          count={filtered.length}
+          page={safePage}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 25, 50]}
+        />
+      </ListingTable.Container>
       {deletingRole && (
         <Dialog open onClose={() => setDeletingRole(null)} maxWidth="sm" fullWidth>
           <DialogTitle>Delete Role</DialogTitle>

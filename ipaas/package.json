@@ -14,6 +14,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@asgardeo/auth-react": "^3.0.5",
     "@tanstack/react-query": "^5.90.20",
     "@wso2/oxygen-ui": "^0.8.0",
     "@wso2/oxygen-ui-charts-react": "^0.8.0",
@@ -29,6 +30,7 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@vitejs/plugin-basic-ssl": "^2.1.4",
     "@vitejs/plugin-react-swc": "4.2.0",
     "eslint": "9.12.0",
     "eslint-plugin-react-hooks": "5.2.0",

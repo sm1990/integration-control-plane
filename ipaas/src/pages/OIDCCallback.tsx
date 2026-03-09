@@ -16,75 +16,56 @@
  * under the License.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect } from 'react';
 import type { JSX } from 'react';
-import { useSearchParams } from 'react-router';
-import { Alert, Box, CircularProgress, Typography } from '@wso2/oxygen-ui';
-import { useAuth } from '../auth/AuthContext';
-import { validateAndClearOIDCState, getAndClearRedirectUrl } from '../auth/tokenManager';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Alert, Box, CircularProgress, Link, Typography } from '@wso2/oxygen-ui';
+import { useAuthContext } from '@asgardeo/auth-react';
 import { loginUrl, orgUrl } from '../paths';
 
+/**
+ * Handles the Asgardeo OIDC callback at /signin.
+ *
+ * @asgardeo/auth-react automatically exchanges the authorization code for tokens
+ * when it detects ?code=...&state=... in the URL. This component simply waits
+ * for the SDK to finish (state.isLoading → false) and then redirects.
+ */
 export default function OIDCCallback(): JSX.Element {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { handleOIDCCallback } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const handledRef = useRef(false);
+  const { state, signIn } = useAuthContext();
 
+  const oidcError = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
+
+  // Trigger the SDK's code exchange when we land here with ?code=...
+  // Re-runs when isLoading changes so that if the SDK initialises with isLoading:true
+  // we still call signIn() once it settles to false without an active session.
   useEffect(() => {
-    if (handledRef.current) return;
-    handledRef.current = true;
+    if (!oidcError && !state.isAuthenticated && !state.isLoading) {
+      signIn();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.isLoading]);
 
-    const processCallback = async () => {
-      const code = searchParams.get('code');
-      const state = searchParams.get('state');
-      const oidcError = searchParams.get('error');
+  // Redirect to the main app once authenticated.
+  useEffect(() => {
+    if (state.isAuthenticated) {
+      navigate(orgUrl('default'), { replace: true });
+    }
+  }, [state.isAuthenticated, navigate]);
 
-      if (oidcError) {
-        const description = searchParams.get('error_description') || oidcError;
-        setError(`Authentication failed: ${description}`);
-        return;
-      }
-
-      if (!state) {
-        setError('Missing state parameter. Please try logging in again.');
-        return;
-      }
-
-      if (!validateAndClearOIDCState(state)) {
-        setError('Invalid state parameter. This may indicate a CSRF attack. Please try logging in again.');
-        return;
-      }
-
-      if (!code) {
-        setError('Missing authorization code. Please try logging in again.');
-        return;
-      }
-
-      try {
-        await handleOIDCCallback(code, state);
-
-        const redirectUrl = getAndClearRedirectUrl();
-        const isLoginPage = redirectUrl && new URL(redirectUrl).pathname === loginUrl();
-        window.location.href = redirectUrl && !isLoginPage ? redirectUrl : orgUrl('default');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to complete authentication');
-      }
-    };
-
-    processCallback();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (error) {
+  if (oidcError) {
     return (
       <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default', p: 3 }}>
         <Box sx={{ maxWidth: 480, textAlign: 'center' }}>
           <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
+            Authentication failed: {errorDescription ?? oidcError}
           </Alert>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Please try logging in again.
           </Typography>
-          <a href={loginUrl()}>Return to Login</a>
+          <Link href={loginUrl()}>Return to Login</Link>
         </Box>
       </Box>
     );

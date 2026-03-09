@@ -21,6 +21,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { AuthProvider as AsgardeoAuthProvider } from '@asgardeo/auth-react';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
 import { loadConfig } from './config/api';
@@ -29,19 +30,31 @@ import './index.css';
 
 const queryClient = new QueryClient();
 
-// Load runtime configuration before rendering the app
+// Load runtime configuration before rendering the app.
+// Asgardeo AuthProvider is placed outside BrowserRouter so the SDK can
+// read window.location directly when processing the /signin callback.
 loadConfig().then(() => {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <OxygenUIThemeProvider themes={[{ key: 'acrylicOrange', label: 'Acrylic Orange Theme', theme: AcrylicOrangeTheme }]} initialTheme="acrylicOrange">
         <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            <AuthProvider>
-              <AccessControlProvider>
-                <App />
-              </AccessControlProvider>
-            </AuthProvider>
-          </BrowserRouter>
+          <AsgardeoAuthProvider
+            config={{
+              signInRedirectURL: window.API_CONFIG.asgardeoSignInRedirectUrl,
+              signOutRedirectURL: window.API_CONFIG.asgardeoSignOutRedirectUrl,
+              clientID: window.API_CONFIG.asgardeoClientId,
+              baseUrl: window.API_CONFIG.asgardeoBaseUrl,
+              scope: ['openid', 'profile', 'email'],
+              resourceServerURLs: window.API_CONFIG.asgardeoResourceServerUrls,
+            }}>
+            <BrowserRouter>
+              <AuthProvider>
+                <AccessControlProvider>
+                  <App />
+                </AccessControlProvider>
+              </AuthProvider>
+            </BrowserRouter>
+          </AsgardeoAuthProvider>
         </QueryClientProvider>
       </OxygenUIThemeProvider>
     </StrictMode>,

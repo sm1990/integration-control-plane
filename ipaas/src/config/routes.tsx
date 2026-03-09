@@ -61,7 +61,7 @@ const routes: AppRoute[] = [
       { path: privacyPolicyUrl(), element: <PrivacyPolicy /> },
     ],
   },
-  { path: '/auth/callback', element: <OIDCCallback /> },
+  { path: '/signin', element: <OIDCCallback /> },
   {
     element: <ProtectedRoute />,
     children: [

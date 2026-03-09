@@ -16,9 +16,9 @@
  * under the License.
  */
 
-import { Box, ColorSchemeImage, Divider, Grid, Link, Stack, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, ColorSchemeImage, Divider, Grid, Link, Stack, Typography } from '@wso2/oxygen-ui';
 import { type JSX } from 'react';
-import { Link as NavLink } from 'react-router';
+import { Link as NavLink, useSearchParams } from 'react-router';
 import LoginForm from '../components/LoginForm';
 import { cookiePolicyUrl, privacyPolicyUrl } from '../paths';
 
@@ -38,16 +38,19 @@ const Footer = () => (
 
 export default function Login(): JSX.Element {
   const base = import.meta.env.BASE_URL;
+  const [searchParams] = useSearchParams();
+  const signedOut = searchParams.get('state') === 'sign_out_success';
 
   return (
     <Box sx={{ height: '100vh', display: 'flex' }}>
       <Grid container sx={{ flex: 1 }}>
+        {/* Left panel — branding */}
         <Grid
           size={{ xs: 12, md: 8 }}
           sx={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'flex-start', // Move content to the left
+            alignItems: 'flex-start',
             justifyContent: 'center',
             padding: { xs: 4, md: 8 },
             position: 'relative',
@@ -62,11 +65,11 @@ export default function Login(): JSX.Element {
               style={{ alignSelf: 'flex-start' }}
             />
             <Typography variant="h3" component="h1" sx={{ textAlign: 'left', width: '100%' }}>
-              Get Started with WSO2 Integration Platform
+              Get Started with WSO2 Integration Platform as a Service
             </Typography>
             <Box sx={{ maxWidth: 520, width: '100%' }}>
               <Typography variant="body1" sx={{ color: 'text.secondary', textAlign: 'left', width: '100%' }}>
-                A centralized platform for controlling, managing, and observing your integration solutions with confidence and scale.
+                Build, deploy, and manage integrations in the cloud — fully managed, infinitely scalable, and always available.
               </Typography>
             </Box>
           </Stack>
@@ -78,10 +81,11 @@ export default function Login(): JSX.Element {
               mt: 2,
               width: '100%',
             }}>
-            <img src={`${base}assets/images/icp-login.svg`} alt="ICP Login Illustration" style={{ maxWidth: '90%', maxHeight: '280px', objectFit: 'contain' }} />
+            <img src={`${base}assets/images/icp-login.svg`} alt="IPaaS Login Illustration" style={{ maxWidth: '90%', maxHeight: '280px', objectFit: 'contain' }} />
           </Box>
         </Grid>
 
+        {/* Right panel — sign-in form */}
         <Grid
           size={{ xs: 12, md: 4 }}
           sx={{
@@ -90,12 +94,8 @@ export default function Login(): JSX.Element {
             flexDirection: 'column',
             justifyContent: 'center',
           }}>
-          <Box
-            sx={{
-              width: '100%',
-              maxWidth: 400,
-              margin: '0 auto',
-            }}>
+          <Box sx={{ width: '100%', maxWidth: 400, margin: '0 auto' }}>
+            {/* Mobile logo */}
             <Box sx={{ display: { xs: 'flex', md: 'none' }, justifyContent: 'center', mb: 3 }}>
               <ColorSchemeImage
                 src={{ light: `${base}assets/images/logo/WSO2-Integration-Platform-Black.svg`, dark: `${base}assets/images/logo/WSO2-Integration-Platform-White.svg` }}
@@ -104,6 +104,13 @@ export default function Login(): JSX.Element {
                 width="auto"
               />
             </Box>
+
+            {signedOut && (
+              <Alert severity="success" sx={{ mb: 3 }}>
+                You have been signed out successfully.
+              </Alert>
+            )}
+
             <LoginForm />
             <Footer />
           </Box>

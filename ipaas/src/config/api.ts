@@ -26,12 +26,36 @@ interface RuntimeConfig {
   VITE_GRAPHQL_URL?: string;
   VITE_AUTH_BASE_URL?: string;
   VITE_OBSERVABILITY_URL?: string;
+  /** Asgardeo organization slug used in subdomain, e.g. "stage" */
+  ASGARDEO_ORG?: string;
+  /** Asgardeo org dot-prefix for the hostname, e.g. "stage." */
+  ASGARDEO_ORG_DOT?: string;
+  /** Asgardeo regional dot-prefix for the hostname, e.g. "" or "us-east." */
+  ASGARDEO_ORG_REGION_DOT?: string;
+  ASGARDEO_CLIENT_ID?: string;
+  ASGARDEO_SIGN_IN_REDIRECT_URL?: string;
+  ASGARDEO_SIGN_OUT_REDIRECT_URL?: string;
+  /** When "true", the app will log out automatically if token refresh fails */
+  ASGARDEO_AUTO_LOGOUT_ON_TOKEN_REFRESH_ERROR?: string;
+  /** Pipe-separated list of resource server URLs the SDK should attach the token to */
+  ASGARDEO_SDK_RESOURCE_SERVER_URLS?: string;
+  /** Additional domain appended to the resource server URL list */
+  ASGARDEO_DOMAIN?: string;
+  AUTHENTICATOR_MICROSOFT?: string;
 }
 
 export interface ApiConfig {
   graphqlUrl: string;
   authBaseUrl: string;
   observabilityUrl: string;
+  /** Derived: https://{orgDot}api{regionDot}.asgardeo.io/t/a */
+  asgardeoBaseUrl: string;
+  asgardeoClientId: string;
+  asgardeoSignInRedirectUrl: string;
+  asgardeoSignOutRedirectUrl: string;
+  asgardeoAutoLogoutOnTokenRefreshError: boolean;
+  /** Parsed resource server URL list for the Asgardeo SDK */
+  asgardeoResourceServerUrls: string[];
 }
 
 // Extend window interface
@@ -41,11 +65,33 @@ declare global {
   }
 }
 
+function buildAsgardeoBaseUrl(orgDot: string, regionDot: string): string {
+  return `https://${orgDot}api${regionDot}.asgardeo.io/t/a`;
+}
+
+function parseResourceServerUrls(raw: string, domain: string): string[] {
+  const urls = raw
+    .split('|')
+    .map((u) => u.trim())
+    .filter(Boolean);
+  if (domain) urls.push(`https://${domain}`);
+  return urls;
+}
+
+const DEFAULT_ORG_DOT = 'stage.';
+const DEFAULT_REGION_DOT = '';
+
 // Default configuration (used as fallback if config.json fails to load)
 const DEFAULT_CONFIG: ApiConfig = {
   graphqlUrl: 'https://localhost:9446/graphql',
   authBaseUrl: 'https://localhost:9445/auth',
   observabilityUrl: 'https://localhost:9448/icp/observability',
+  asgardeoBaseUrl: buildAsgardeoBaseUrl(DEFAULT_ORG_DOT, DEFAULT_REGION_DOT),
+  asgardeoClientId: '',
+  asgardeoSignInRedirectUrl: `${window.location.origin}/signin`,
+  asgardeoSignOutRedirectUrl: `${window.location.origin}/login?state=sign_out_success`,
+  asgardeoAutoLogoutOnTokenRefreshError: false,
+  asgardeoResourceServerUrls: [],
 };
 
 /**
@@ -61,30 +107,25 @@ export async function loadConfig(): Promise<void> {
 
     const config: RuntimeConfig = await response.json();
 
+    const orgDot = config.ASGARDEO_ORG_DOT ?? DEFAULT_ORG_DOT;
+    const regionDot = config.ASGARDEO_ORG_REGION_DOT ?? DEFAULT_REGION_DOT;
+
     window.API_CONFIG = {
       graphqlUrl: config.VITE_GRAPHQL_URL || DEFAULT_CONFIG.graphqlUrl,
       authBaseUrl: config.VITE_AUTH_BASE_URL || DEFAULT_CONFIG.authBaseUrl,
       observabilityUrl: config.VITE_OBSERVABILITY_URL || DEFAULT_CONFIG.observabilityUrl,
+      asgardeoBaseUrl: buildAsgardeoBaseUrl(orgDot, regionDot),
+      asgardeoClientId: config.ASGARDEO_CLIENT_ID || DEFAULT_CONFIG.asgardeoClientId,
+      asgardeoSignInRedirectUrl: config.ASGARDEO_SIGN_IN_REDIRECT_URL || DEFAULT_CONFIG.asgardeoSignInRedirectUrl,
+      asgardeoSignOutRedirectUrl: config.ASGARDEO_SIGN_OUT_REDIRECT_URL || DEFAULT_CONFIG.asgardeoSignOutRedirectUrl,
+      asgardeoAutoLogoutOnTokenRefreshError: config.ASGARDEO_AUTO_LOGOUT_ON_TOKEN_REFRESH_ERROR === 'true',
+      asgardeoResourceServerUrls: parseResourceServerUrls(config.ASGARDEO_SDK_RESOURCE_SERVER_URLS ?? '', config.ASGARDEO_DOMAIN ?? ''),
     };
 
     console.info('✓ Runtime configuration loaded from config.json');
-    validateConfig(window.API_CONFIG);
   } catch (error) {
     console.warn('Failed to load runtime config, using defaults:', error);
     window.API_CONFIG = DEFAULT_CONFIG;
-  }
-}
-
-// Validation: ensure critical URLs are configured
-function validateConfig(config: ApiConfig): void {
-  const missing: string[] = [];
-
-  if (!config.graphqlUrl) missing.push('VITE_GRAPHQL_URL');
-  if (!config.authBaseUrl) missing.push('VITE_AUTH_BASE_URL');
-  if (!config.observabilityUrl) missing.push('VITE_OBSERVABILITY_URL');
-
-  if (missing.length > 0) {
-    console.warn(`Warning: The following configuration values are not set: ${missing.join(', ')}. ` + 'Using default values.');
   }
 }
 

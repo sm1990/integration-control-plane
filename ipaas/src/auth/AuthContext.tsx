@@ -1,157 +1,87 @@
-import { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+/**
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+import { createContext, useContext, useMemo, useEffect } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { useNavigate } from 'react-router';
+import { useAuthContext } from '@asgardeo/auth-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { loginApiUrl, loginUrl, oidcAuthorizeApiUrl, oidcCallbackApiUrl } from '../paths';
-import { saveTokens, clearTokens, getAccessToken, revokeToken, setOnAuthFailure, saveRedirectUrl, generateAndSaveOIDCState } from './tokenManager';
-
-const USER_KEY = 'icp_user';
-
-interface UserInfo {
-  userId: string;
-  username: string;
-  displayName: string;
-  isOidcUser: boolean;
-  requirePasswordChange: boolean;
-}
+import { setTokenProvider, setOnAuthFailure } from './tokenManager';
+import { loginUrl } from '../paths';
 
 interface AuthContextValue {
   isAuthenticated: boolean;
+  isLoading: boolean;
   userId: string;
   username: string;
   displayName: string;
-  isOidcUser: boolean;
-  requirePasswordChange: boolean;
+  isOidcUser: true;
+  /** Always false for Asgardeo users — password is managed externally. */
+  requirePasswordChange: false;
   clearRequirePasswordChange: () => void;
-  login: (username: string, password: string) => Promise<void>;
-  loginWithOIDC: () => Promise<void>;
-  handleOIDCCallback: (code: string, state: string | null) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function loadUserInfo(): UserInfo | null {
-  const stored = localStorage.getItem(USER_KEY);
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored);
-  } catch {
-    localStorage.removeItem(USER_KEY);
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { state, signIn, signOut, getAccessToken } = useAuthContext();
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => !!getAccessToken());
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(() => loadUserInfo());
+  // Wire up the token provider so authenticatedFetch can get a valid token.
+  useEffect(() => {
+    setTokenProvider(getAccessToken);
+  }, [getAccessToken]);
 
+  // Wire up the auth failure handler so 401 responses redirect to login.
   useEffect(() => {
     setOnAuthFailure(() => {
-      localStorage.removeItem(USER_KEY);
-      setUserInfo(null);
-      setIsAuthenticated(false);
       queryClient.clear();
       navigate(loginUrl());
     });
   }, [navigate, queryClient]);
 
-  const login = useCallback(async (username: string, password: string) => {
-    const res = await fetch(loginApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      const err: Error & { status?: number; retryAfterSeconds?: number } = new Error(body || `Login failed (${res.status})`);
-      err.status = res.status;
-      if (res.status === 429) {
-        try {
-          err.retryAfterSeconds = JSON.parse(body).retryAfterSeconds;
-        } catch {
-          /* ignore */
-        }
-      }
-      throw err;
-    }
-    const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean; requirePasswordChange?: boolean } = await res.json();
-    saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
+  const loginWithGoogle = async () => {
+    await signIn({ fidp: 'google' });
+  };
 
-    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName, isOidcUser: data.isOidcUser, requirePasswordChange: data.requirePasswordChange ?? false };
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-    setUserInfo(user);
-    setIsAuthenticated(true);
-  }, []);
-
-  const loginWithOIDC = useCallback(async () => {
-    saveRedirectUrl(window.location.href);
-    const state = generateAndSaveOIDCState();
-    const res = await fetch(`${oidcAuthorizeApiUrl()}?state=${encodeURIComponent(state)}`);
-    if (!res.ok) {
-      const body = await res.text();
-      const err: Error & { status?: number } = new Error(body || `SSO login failed (${res.status})`);
-      err.status = res.status;
-      throw err;
-    }
-    const data: { authorizationUrl: string } = await res.json();
-    window.location.href = data.authorizationUrl;
-  }, []);
-
-  const handleOIDCCallback = useCallback(async (code: string, state: string | null) => {
-    const res = await fetch(oidcCallbackApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, state }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(body || `Token exchange failed (${res.status})`);
-    }
-    const data: { userId: string; token: string; expiresIn: number; refreshToken: string; refreshTokenExpiresIn: number; username: string; displayName: string; permissions: string[]; isOidcUser: boolean } = await res.json();
-    saveTokens({ token: data.token, expiresIn: data.expiresIn, refreshToken: data.refreshToken, refreshTokenExpiresIn: data.refreshTokenExpiresIn });
-    const user: UserInfo = { userId: data.userId, username: data.username, displayName: data.displayName, isOidcUser: data.isOidcUser, requirePasswordChange: false };
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-    setUserInfo(user);
-    setIsAuthenticated(true);
-  }, []);
-
-  const clearRequirePasswordChange = useCallback(() => {
-    setUserInfo((prev) => {
-      if (!prev) return prev;
-      const updated = { ...prev, requirePasswordChange: false };
-      localStorage.setItem(USER_KEY, JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
-
-  const logout = useCallback(async () => {
-    await revokeToken();
-    clearTokens();
-    localStorage.removeItem(USER_KEY);
-    setUserInfo(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
     queryClient.clear();
-  }, [queryClient]);
+    await signOut();
+  };
 
   const value = useMemo<AuthContextValue>(
     () => ({
-      isAuthenticated,
-      userId: userInfo?.userId ?? '',
-      username: userInfo?.username ?? '',
-      displayName: userInfo?.displayName ?? '',
-      isOidcUser: userInfo?.isOidcUser ?? false,
-      requirePasswordChange: userInfo?.requirePasswordChange ?? false,
-      clearRequirePasswordChange,
-      login,
-      loginWithOIDC,
-      handleOIDCCallback,
+      isAuthenticated: state.isAuthenticated,
+      isLoading: state.isLoading,
+      userId: state.sub ?? '',
+      username: state.email ?? state.username ?? '',
+      displayName: state.displayName ?? '',
+      isOidcUser: true,
+      requirePasswordChange: false,
+      clearRequirePasswordChange: () => {},
+      loginWithGoogle,
       logout,
     }),
-    [isAuthenticated, userInfo, clearRequirePasswordChange, login, loginWithOIDC, handleOIDCCallback, logout],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

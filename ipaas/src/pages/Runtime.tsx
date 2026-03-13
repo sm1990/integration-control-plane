@@ -36,7 +36,7 @@ function formatDate(iso: string): string {
 }
 
 export default function Runtime(scope: ProjectScope | ComponentScope): JSX.Element {
-  const { data: project } = useProjectByHandler(scope.project);
+  const { data: project } = useProjectByHandler(scope.org, scope.project);
   const projectId = project?.id ?? '';
   const { data: component } = useComponentByHandler(projectId, hasComponent(scope) ? scope.component : undefined);
   const componentId = component?.id;

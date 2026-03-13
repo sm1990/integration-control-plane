@@ -1,5 +1,5 @@
 import { type RouteProps, Navigate } from 'react-router';
-import { cookiePolicyUrl, loginUrl, orgRoleDetailUrl, privacyPolicyUrl, projectRoleDetailUrl, componentRoleDetailUrl, loggersSegment } from '../paths';
+import { cookiePolicyUrl, loginUrl, orgRoleDetailUrl, privacyPolicyUrl, projectRoleDetailUrl, componentRoleDetailUrl, projectGroupDetailUrl, componentGroupDetailUrl, loggersSegment } from '../paths';
 import CreateUser from '../pages/CreateUser';
 import EditUser from '../pages/EditUser';
 import CreateRole from '../pages/CreateRole';
@@ -28,6 +28,8 @@ import { OrgAccessControl, ProjectAccessControl, ComponentAccessControl } from '
 import RoleDetail from '../pages/RoleDetail';
 import ProjectRoleDetail from '../pages/ProjectRoleDetail';
 import ComponentRoleDetail from '../pages/ComponentRoleDetail';
+import ProjectGroupDetail from '../pages/ProjectGroupDetail';
+import ComponentGroupDetail from '../pages/ComponentGroupDetail';
 import Profile from '../pages/Profile';
 import ForceChangePassword from '../pages/ForceChangePassword';
 import ManageLoggers from '../pages/ManageLoggers';
@@ -73,6 +75,7 @@ const routes: AppRoute[] = [
             element: <AppLayout />,
             children: [
               ...generateMatrixRoutes(MATRIX),
+              { path: 'organizations/:orgHandler/projects/:projectHandler/home', element: createElement(withScope(Project, ['projects'])) },
               { path: 'organizations/:orgHandler/projects/new', element: createElement(withScope(CreateProject, ['organizations'])) },
               { path: 'organizations/:orgHandler/projects/:projectHandler/components/new', element: createElement(withScope(CreateComponent, ['projects'])) },
               { path: 'organizations/:orgHandler/environments/new', element: createElement(withScope(CreateEnvironment, ['organizations'])) },
@@ -85,6 +88,8 @@ const routes: AppRoute[] = [
               { path: orgRoleDetailUrl(':orgHandler', ':roleId'), element: <RoleDetail /> },
               { path: projectRoleDetailUrl(':orgHandler', ':projectHandler', ':roleId'), element: <ProjectRoleDetail /> },
               { path: componentRoleDetailUrl(':orgHandler', ':projectHandler', ':componentHandler', ':roleId'), element: <ComponentRoleDetail /> },
+              { path: projectGroupDetailUrl(':orgHandler', ':projectHandler', ':groupId'), element: <ProjectGroupDetail /> },
+              { path: componentGroupDetailUrl(':orgHandler', ':projectHandler', ':componentHandler', ':groupId'), element: <ComponentGroupDetail /> },
               { path: '/profile', element: <Profile /> },
             ],
           },

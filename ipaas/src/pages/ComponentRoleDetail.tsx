@@ -30,19 +30,12 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  ListingTable,
   MenuItem,
   PageContent,
-  PageTitle,
   Radio,
   RadioGroup,
   Stack,
-  Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -52,8 +45,8 @@ import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import SearchField from '../components/SearchField';
 import { useRoleDetail, useRoleGroups, useGroups, useAddRolesToGroup, useRemoveRoleFromGroup } from '../api/authQueries';
-import { Permissions, ALL_USER_MGT_PERMISSIONS } from '../constants/permissions';
-import Authorized from '../components/Authorized';
+import { Permissions, ALL_ROLE_MODIFY_PERMISSIONS } from '../constants/permissions';
+import { useAccessControl } from '../contexts/AccessControlContext';
 import type { RoleGroupMapping, Group } from '../api/auth';
 import { useAllEnvironments, useProjectByHandler, useComponentByHandler } from '../api/queries';
 import { componentAccessControlUrl } from '../paths';
@@ -179,11 +172,12 @@ const envLabel = (m: { envUuid?: string | null }, environments: { id: string; na
 export default function ComponentRoleDetail(): JSX.Element {
   const { orgHandler = 'default', projectHandler = '', componentHandler = '', roleId = '' } = useParams();
   const navigate = useNavigate();
-  const { data: projectData, isLoading: loadingProject } = useProjectByHandler(projectHandler);
+  const { hasAnyPermission } = useAccessControl();
+  const { data: projectData, isLoading: loadingProject } = useProjectByHandler(orgHandler, projectHandler);
   const projectId = projectData?.id ?? '';
   const { data: component, isLoading: loadingComponent } = useComponentByHandler(projectId, componentHandler);
   const componentId = component?.id;
-  const roleModifyPerms = [...ALL_USER_MGT_PERMISSIONS, Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE, Permissions.INTEGRATION_EDIT, Permissions.INTEGRATION_MANAGE];
+  const roleModifyPerms = [...ALL_ROLE_MODIFY_PERMISSIONS, Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE, Permissions.INTEGRATION_EDIT, Permissions.INTEGRATION_MANAGE];
 
   const { data: role, isLoading: loadingRole } = useRoleDetail(orgHandler, roleId, projectId, componentId);
   const { data: roleGroups = [], isLoading: loadingGroups } = useRoleGroups(orgHandler, roleId, projectId, componentId);
@@ -194,6 +188,8 @@ export default function ComponentRoleDetail(): JSX.Element {
   const [deletingGroup, setDeletingGroup] = useState<RoleGroupMapping | null>(null);
   const [pageAlert, setPageAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  const actionsVisible = hasAnyPermission(roleModifyPerms, projectId || undefined, componentId);
+  const colCount = actionsVisible ? 4 : 3;
   const getSearchStr = useCallback((g: RoleGroupMapping) => (g.groupName ?? '') + (g.groupId ?? ''), []);
   const filteredGroups = useMemo(() => {
     if (!search.trim()) return roleGroups;
@@ -202,9 +198,6 @@ export default function ComponentRoleDetail(): JSX.Element {
   }, [roleGroups, search, getSearchStr]);
 
   const onBack = () => navigate(componentAccessControlUrl(orgHandler, projectHandler, componentHandler, 'roles'));
-  const handleDeleteGroup = (group: RoleGroupMapping) => {
-    setDeletingGroup(group);
-  };
   const confirmDelete = () => {
     if (deletingGroup) {
       const name = deletingGroup.groupName ?? deletingGroup.groupId;
@@ -245,91 +238,90 @@ export default function ComponentRoleDetail(): JSX.Element {
 
   return (
     <PageContent>
-      <PageTitle>
-        <PageTitle.Header>Access Control</PageTitle.Header>
-      </PageTitle>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={0}>
-          <Tab label="Roles" />
-          <Tab label="Groups" onClick={() => navigate(componentAccessControlUrl(orgHandler, projectHandler, componentHandler, 'groups'))} />
-        </Tabs>
-      </Box>
       <Button startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
         Back to Role List
       </Button>
-      <Typography variant="h6">Role : {role.roleName}</Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Description : {role.description}
+      <Typography variant="h1" sx={{ mb: 4 }}>
+        Manage Role
       </Typography>
-
+      <Stack sx={{ mb: 2 }}>
+        <Typography variant="h6" component="h2">
+          Role : {role.roleName}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Description : {role.description}
+        </Typography>
+      </Stack>
       {pageAlert && (
         <Alert severity={pageAlert.type} onClose={() => setPageAlert(null)} sx={{ mb: 2 }}>
           {pageAlert.message}
         </Alert>
       )}
-      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-        <SearchField value={search} onChange={setSearch} />
-        <Authorized permissions={roleModifyPerms}>
-          <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingGroups(true)}>
-            Add Group
-          </Button>
-        </Authorized>
-      </Stack>
-
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Group Name</TableCell>
-            <TableCell>Mapping Level</TableCell>
-            <TableCell align="center">Applicable Environment</TableCell>
-            <Authorized permissions={roleModifyPerms}>
-              <TableCell width={80}>Actions</TableCell>
-            </Authorized>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {loadingGroups ? (
-            <TableRow>
-              <TableCell colSpan={4}>
-                <Loading />
-              </TableCell>
-            </TableRow>
-          ) : filteredGroups.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={4} align="center">
-                No records to display
-              </TableCell>
-            </TableRow>
-          ) : (
-            filteredGroups.map((g) => (
-              <TableRow key={g.id}>
-                <TableCell>{g.groupName ?? g.groupId}</TableCell>
-                <TableCell>
-                  <Chip label={mappingLevel(g)} size="small" />
-                </TableCell>
-                <TableCell align="center">
-                  <Chip label={envLabel(g, allEnvironments)} size="small" />
-                </TableCell>
-                <Authorized permissions={roleModifyPerms}>
-                  <TableCell>
-                    <Tooltip title={!g.integrationUuid ? 'Org/Project-level mapping' : ''}>
-                      <span style={{ display: 'inline-flex' }}>
-                        <IconButton
-                          size="small"
-                          aria-label={!g.integrationUuid ? 'Org/Project-level mapping — cannot remove' : `Remove ${g.groupName ?? g.groupId} from role`}
-                          onClick={() => handleDeleteGroup(g)}
-                          disabled={removeMutation.isPending || !g.integrationUuid}>
-                          <Trash2 size={16} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </TableCell>
-                </Authorized>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+      <ListingTable.Container>
+        <ListingTable.Toolbar
+          searchSlot={<SearchField value={search} onChange={setSearch} />}
+          actions={
+            actionsVisible && (
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingGroups(true)}>
+                Add Group
+              </Button>
+            )
+          }
+        />
+        <ListingTable>
+          <ListingTable.Head>
+            <ListingTable.Row>
+              <ListingTable.Cell>Group Name</ListingTable.Cell>
+              <ListingTable.Cell>Mapping Level</ListingTable.Cell>
+              <ListingTable.Cell align="center">Applicable Environment</ListingTable.Cell>
+              {actionsVisible && <ListingTable.Cell align="right">Actions</ListingTable.Cell>}
+            </ListingTable.Row>
+          </ListingTable.Head>
+          <ListingTable.Body>
+            {loadingGroups ? (
+              <ListingTable.Row>
+                <ListingTable.Cell colSpan={colCount}>
+                  <Loading />
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : filteredGroups.length === 0 ? (
+              <ListingTable.Row>
+                <ListingTable.Cell colSpan={colCount} align="center">
+                  No records to display
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : (
+              filteredGroups.map((g) => (
+                <ListingTable.Row key={g.id}>
+                  <ListingTable.Cell>{g.groupName ?? g.groupId}</ListingTable.Cell>
+                  <ListingTable.Cell>
+                    <Chip label={mappingLevel(g)} size="small" />
+                  </ListingTable.Cell>
+                  <ListingTable.Cell align="center">
+                    <Chip label={envLabel(g, allEnvironments)} size="small" />
+                  </ListingTable.Cell>
+                  {actionsVisible && (
+                    <ListingTable.Cell align="right">
+                      <Tooltip title={!g.integrationUuid ? 'Org/Project-level mapping' : 'Remove'}>
+                        <span style={{ display: 'inline-flex' }}>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            aria-label={!g.integrationUuid ? 'Org/Project-level mapping — cannot remove' : `Remove ${g.groupName ?? g.groupId} from role`}
+                            onClick={() => setDeletingGroup(g)}
+                            disabled={removeMutation.isPending || !g.integrationUuid}>
+                            <Trash2 size={16} />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    </ListingTable.Cell>
+                  )}
+                </ListingTable.Row>
+              ))
+            )}
+          </ListingTable.Body>
+        </ListingTable>
+      </ListingTable.Container>
 
       {addingGroups && componentId && (
         <AssignRoleToGroupsDialog

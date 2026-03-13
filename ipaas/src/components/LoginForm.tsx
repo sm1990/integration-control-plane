@@ -42,8 +42,10 @@ export default function LoginForm(): JSX.Element {
     setError(null);
     setLoading(true);
     try {
+      console.log('Initiating Google sign-in with Asgardeo federated IDP...');
       await loginWithGoogle();
     } catch (err) {
+      console.error('Google sign-in error:', err);
       setError(err instanceof Error ? err.message : 'Sign-in failed. Please try again.');
       setLoading(false);
     }

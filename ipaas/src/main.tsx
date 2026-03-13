@@ -33,20 +33,39 @@ const queryClient = new QueryClient();
 // Load runtime configuration before rendering the app.
 // Asgardeo AuthProvider is placed outside BrowserRouter so the SDK can
 // read window.location directly when processing the /signin callback.
+// AsgardeoAuthProvider is intentionally outside StrictMode.
+// React StrictMode double-mounts components in development, which causes the
+// SDK's cleanup effect to delete the PKCE code_verifier from sessionStorage
+// before the /signin callback can exchange the authorization code for tokens.
+// The result is a silent failure: the POST /oauth2/token call is never made and
+// the app gets stuck on "Completing sign in..." forever.
 loadConfig().then(() => {
+  const base = window.API_CONFIG.asgardeoBaseUrl;
+  const asgardeoConfig = {
+    signInRedirectURL: window.API_CONFIG.asgardeoSignInRedirectUrl,
+    signOutRedirectURL: window.API_CONFIG.asgardeoSignOutRedirectUrl,
+    clientID: window.API_CONFIG.asgardeoClientId,
+    baseUrl: base,
+    scope: ['openid', 'profile', 'email', 'groups'],
+    resourceServerURLs: window.API_CONFIG.asgardeoResourceServerUrls,
+    disableTrySignInSilently: true,
+    // Explicit endpoints prevent the SDK from fetching the well-known discovery,
+    // which redirects and causes the SDK to fall back to incorrect defaults.
+    // authorize/token/logout use /t/a/ tenant path; jwks/revoke do not.
+    endpoints: {
+      authorizationEndpoint: `${base}/t/a/oauth2/authorize`,
+      tokenEndpoint: `${base}/t/a/oauth2/token`,
+      endSessionEndpoint: `${base}/t/a/oidc/logout`,
+      jwksUri: `${base}/oauth2/jwks`,
+      revocationEndpoint: `${base}/oauth2/revoke`,
+    },
+  };
+
   createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <OxygenUIThemeProvider themes={[{ key: 'acrylicOrange', label: 'Acrylic Orange Theme', theme: AcrylicOrangeTheme }]} initialTheme="acrylicOrange">
-        <QueryClientProvider client={queryClient}>
-          <AsgardeoAuthProvider
-            config={{
-              signInRedirectURL: window.API_CONFIG.asgardeoSignInRedirectUrl,
-              signOutRedirectURL: window.API_CONFIG.asgardeoSignOutRedirectUrl,
-              clientID: window.API_CONFIG.asgardeoClientId,
-              baseUrl: window.API_CONFIG.asgardeoBaseUrl,
-              scope: ['openid', 'profile', 'email'],
-              resourceServerURLs: window.API_CONFIG.asgardeoResourceServerUrls,
-            }}>
+    <AsgardeoAuthProvider config={asgardeoConfig}>
+      <StrictMode>
+        <OxygenUIThemeProvider themes={[{ key: 'acrylicOrange', label: 'Acrylic Orange Theme', theme: AcrylicOrangeTheme }]} initialTheme="acrylicOrange">
+          <QueryClientProvider client={queryClient}>
             <BrowserRouter>
               <AuthProvider>
                 <AccessControlProvider>
@@ -54,9 +73,9 @@ loadConfig().then(() => {
                 </AccessControlProvider>
               </AuthProvider>
             </BrowserRouter>
-          </AsgardeoAuthProvider>
-        </QueryClientProvider>
-      </OxygenUIThemeProvider>
-    </StrictMode>,
+          </QueryClientProvider>
+        </OxygenUIThemeProvider>
+      </StrictMode>
+    </AsgardeoAuthProvider>,
   );
 });

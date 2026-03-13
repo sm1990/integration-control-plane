@@ -236,7 +236,7 @@ function StatCard({ title, value, color }: { title: string; value: string; color
 
 export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Element {
   const isComponent = hasComponent(scope);
-  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.project);
+  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.org, scope.project);
   const projectId = project?.id ?? '';
   const { data: singleComponent, isLoading: loadingComponent } = useComponentByHandler(projectId, isComponent ? scope.component : undefined);
   const { data: components = [], isLoading: loadingComponents } = useComponents(scope.org, projectId);

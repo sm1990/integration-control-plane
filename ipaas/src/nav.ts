@@ -1,6 +1,14 @@
-import { createContext, createElement, useContext, type FC, type JSX } from 'react';
+import { createContext, createElement, useContext, useEffect, type FC, type JSX } from 'react';
 import { Outlet, useParams, useLocation } from 'react-router';
 import { capitalize } from './utils/string';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const LAST_ORG_KEY = 'choreo-last-org';
+const LAST_PROJECT_KEY = 'choreo-last-project';
+const SYSTEM_ORGS = ['dev', 'stage', 'prod', 'choreocontrolplane'];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -178,6 +186,25 @@ export function ScopeResolver(): JSX.Element {
   const { pathname } = useLocation();
   const scope = resolveScope(orgHandler, projectHandler, componentHandler);
   const resource = resolveResource(pathname, scope);
+  
+  // Save the current organization to localStorage for future logins
+  // BUT don't save system orgs like "dev", "stage", etc.
+  useEffect(() => {
+    if (scope.org && scope.org !== 'default' && !SYSTEM_ORGS.includes(scope.org)) {
+      localStorage.setItem(LAST_ORG_KEY, scope.org);
+      console.log('[ScopeResolver] Saved last org:', scope.org);
+    }
+  }, [scope.org]);
+  
+  // Save the current project to localStorage for future logins
+  useEffect(() => {
+    if (hasProject(scope) && scope.project) {
+      const lastProjectKey = `${LAST_PROJECT_KEY}-${scope.org}`;
+      localStorage.setItem(lastProjectKey, scope.project);
+      console.log('[ScopeResolver] Saved last project:', scope.project, 'for org:', scope.org);
+    }
+  }, [scope]);
+  
   return createElement(NavContext.Provider, { value: { scope, resource } }, createElement(Outlet));
 }
 

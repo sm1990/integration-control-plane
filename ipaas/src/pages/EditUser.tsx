@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Autocomplete, Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, PageContent, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, Autocomplete, Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, ListingTable, PageContent, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useCallback, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -24,7 +24,6 @@ import SearchField from '../components/SearchField';
 import { useAuth } from '../auth/AuthContext';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { Permissions } from '../constants/permissions';
-import Authorized from '../components/Authorized';
 import { useUsers, useGroups, useUpdateUserGroups, useRemoveUserFromGroup } from '../api/authQueries';
 import type { User, Group } from '../api/auth';
 import { orgAccessControlUrl } from '../paths';
@@ -99,67 +98,66 @@ function UserDetailView({ orgHandler, user, onBack }: { orgHandler: string; user
       <Stack direction="row" alignItems="center" gap={2} sx={{ mb: 3 }}>
         <Avatar sx={{ width: 56, height: 56, fontSize: 24, bgcolor: 'text.primary', color: 'background.paper' }}>{getUserInitial(user)}</Avatar>
         <Stack>
-          <Typography variant="h6">{user.displayName}</Typography>
+          <Typography variant="h6" component="h2">
+            {user.displayName}
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             {user.username}
           </Typography>
         </Stack>
-      </Stack>
-      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ mb: 2 }}>
-        <SearchField value={search} onChange={setSearch} />
-        {!isSelf && (
-          <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-            <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAssigning(true)}>
-              Assign Groups
-            </Button>
-          </Authorized>
-        )}
       </Stack>
       {viewAlert && (
         <Alert severity={viewAlert.type} onClose={() => setViewAlert(null)} sx={{ mb: 2 }}>
           {viewAlert.message}
         </Alert>
       )}
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>Group Name</TableCell>
-            <TableCell>Description</TableCell>
-            {!isSelf && (
-              <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-                <TableCell align="right">Action</TableCell>
-              </Authorized>
-            )}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filtered.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={!isSelf && canManageUsers ? 3 : 2} align="center">
-                No groups assigned
-              </TableCell>
-            </TableRow>
-          ) : (
-            filtered.map((g) => (
-              <TableRow key={g.groupId}>
-                <TableCell>{g.groupName}</TableCell>
-                <TableCell>{g.groupDescription}</TableCell>
-                {!isSelf && (
-                  <Authorized permissions={Permissions.USER_MANAGE_USERS}>
-                    <TableCell align="right">
+      <ListingTable.Container>
+        <ListingTable.Toolbar
+          searchSlot={<SearchField value={search} onChange={setSearch} />}
+          actions={
+            !isSelf &&
+            canManageUsers && (
+              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAssigning(true)}>
+                Assign Groups
+              </Button>
+            )
+          }
+        />
+        <ListingTable>
+          <ListingTable.Head>
+            <ListingTable.Row>
+              <ListingTable.Cell>Group Name</ListingTable.Cell>
+              <ListingTable.Cell>Description</ListingTable.Cell>
+              {!isSelf && canManageUsers && <ListingTable.Cell align="right">Action</ListingTable.Cell>}
+            </ListingTable.Row>
+          </ListingTable.Head>
+          <ListingTable.Body>
+            {filtered.length === 0 ? (
+              <ListingTable.Row>
+                <ListingTable.Cell colSpan={!isSelf && canManageUsers ? 3 : 2} align="center">
+                  No groups assigned
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : (
+              filtered.map((g) => (
+                <ListingTable.Row key={g.groupId}>
+                  <ListingTable.Cell>{g.groupName}</ListingTable.Cell>
+                  <ListingTable.Cell>{g.groupDescription}</ListingTable.Cell>
+                  {!isSelf && canManageUsers && (
+                    <ListingTable.Cell align="right">
                       <Tooltip title="Remove">
-                        <IconButton size="small" aria-label={`Remove ${g.groupName} group`} onClick={() => setRemovingGroupId(g.groupId)}>
+                        <IconButton size="small" color="error" aria-label={`Remove ${g.groupName} group`} onClick={() => setRemovingGroupId(g.groupId)}>
                           <Trash2 size={16} />
                         </IconButton>
                       </Tooltip>
-                    </TableCell>
-                  </Authorized>
-                )}
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+                    </ListingTable.Cell>
+                  )}
+                </ListingTable.Row>
+              ))
+            )}
+          </ListingTable.Body>
+        </ListingTable>
+      </ListingTable.Container>
       {assigning && <AssignGroupsDialog orgHandler={orgHandler} user={user} onClose={() => setAssigning(false)} onAssigned={() => setViewAlert({ type: 'success', message: 'Groups assigned successfully.' })} />}
       {removingGroup && (
         <Dialog open onClose={() => setRemovingGroupId(null)} maxWidth="xs" fullWidth>

@@ -27,7 +27,7 @@ import { resourceUrl, broaden, type ComponentScope } from '../nav';
 import { useLoadComponentPermissions } from '../hooks/usePermissionLoader';
 
 export default function Component(scope: ComponentScope): JSX.Element {
-  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.project);
+  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.org, scope.project);
   const projectId = project?.id ?? '';
   const { data: component, isLoading: loadingComponent } = useComponentByHandler(projectId, scope.component);
   const { data: environments = [] } = useEnvironments(projectId);

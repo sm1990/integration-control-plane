@@ -57,6 +57,10 @@ export function projectUrl(orgHandler: string, projectHandler: string): string {
   return `/organizations/${orgHandler}/projects/${projectHandler}`;
 }
 
+export function projectHomeUrl(orgHandler: string, projectHandler: string): string {
+  return `/organizations/${orgHandler}/projects/${projectHandler}/home`;
+}
+
 export function componentUrl(orgHandler: string, projectHandler: string, componentHandler: string): string {
   return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}`;
 }
@@ -115,6 +119,14 @@ export function componentAccessControlUrl(orgHandler: string, projectHandler: st
 
 export function componentRoleDetailUrl(orgHandler: string, projectHandler: string, componentHandler: string, roleId: string): string {
   return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/settings/access-control/roles/${roleId}/edit`;
+}
+
+export function projectGroupDetailUrl(orgHandler: string, projectHandler: string, groupId: string): string {
+  return `/organizations/${orgHandler}/projects/${projectHandler}/settings/access-control/groups/${groupId}/edit`;
+}
+
+export function componentGroupDetailUrl(orgHandler: string, projectHandler: string, componentHandler: string, groupId: string): string {
+  return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/settings/access-control/groups/${groupId}/edit`;
 }
 
 export function orgAnalyticsUrl(orgHandler: string): string {

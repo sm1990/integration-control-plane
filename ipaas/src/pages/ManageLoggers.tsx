@@ -133,7 +133,7 @@ function LoggersList({ environmentId, componentId }: { environmentId: string; co
 export default function ManageLoggers(scope: ComponentScope): JSX.Element {
   const queryClient = useQueryClient();
   const [refreshingEnv, setRefreshingEnv] = useState<string | null>(null);
-  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.project);
+  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.org, scope.project);
   const projectId = project?.id ?? '';
   const { data: component, isLoading: loadingComponent } = useComponentByHandler(projectId, scope.component);
   const { data: environments = [], isLoading: loadingEnvironments } = useEnvironments(projectId);

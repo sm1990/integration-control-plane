@@ -23,7 +23,7 @@ import IntegrationTypesCard from '../components/IntegrationTypesCard';
 import SearchField from '../components/SearchField';
 import { useNavigate } from 'react-router';
 import { useState, type JSX } from 'react';
-import { useProjectByHandler, useComponents, type GqlComponent } from '../api/queries';
+import { useProject, useProjectByHandler, useComponents, type GqlComponent } from '../api/queries';
 import { useDeleteComponent } from '../api/mutations';
 import NotFound from '../components/NotFound';
 import { formatDistanceToNow } from '../utils/time';
@@ -198,9 +198,15 @@ function IntegrationsTable({
   );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function Project(scope: ProjectScope): JSX.Element {
   const navigate = useNavigate();
-  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.project);
+  const isUUID = UUID_RE.test(scope.project);
+  const { data: projectById, isLoading: loadingById } = useProject(scope.org, isUUID ? scope.project : '');
+  const { data: projectByHandler, isLoading: loadingByHandler } = useProjectByHandler(scope.org, isUUID ? '' : scope.project);
+  const project = isUUID ? projectById : projectByHandler;
+  const loadingProject = isUUID ? loadingById : loadingByHandler;
   const projectId = project?.id ?? '';
   useLoadProjectPermissions(scope.org, projectId);
   const { data: components = [], isLoading: loadingComponents, isFetching: fetchingComponents, refetch: refetchComponents } = useComponents(scope.org, projectId);

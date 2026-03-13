@@ -64,7 +64,7 @@ export default function Projects(scope: OrgScope): JSX.Element {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const { hasOrgPermission } = useAccessControl();
   const canCreateProject = hasOrgPermission(Permissions.PROJECT_MANAGE);
-  const { data: projects, isLoading, refetch } = useProjects();
+  const { data: projects, isLoading, refetch } = useProjects(scope.org);
 
   const filtered = (projects ?? []).filter((p) => {
     if (!query) return true;

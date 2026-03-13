@@ -1,5 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
+import { useAuthContext } from '@asgardeo/auth-react';
+import { fetchUserOrganizations, fetchOrganizationByHandle, type ChoreoOrganization } from './choreo';
 
 export interface GqlProject {
   id: string;
@@ -12,6 +14,13 @@ export interface GqlProject {
   updatedAt: string;
   region: string;
   type: string;
+  defaultDeploymentPipelineId?: string;
+  deploymentPipelineIds?: string[];
+  gitProvider?: string;
+  gitOrganization?: string;
+  repository?: string;
+  branch?: string;
+  secretRef?: string;
 }
 
 export interface GqlComponent {
@@ -30,26 +39,33 @@ export interface GqlComponent {
   lastBuildDate: string;
 }
 
-const PROJECTS_QUERY = `{
-  projects(orgId: 1) {
-    id, orgId, name, handler, description, version,
-    createdDate, updatedAt, region, type
-  }
-}`;
+const PROJECTS_QUERY = `
+  query GetProjects($orgId: Int!) {
+    projects(orgId: $orgId) {
+      id, orgId, name, handler, description, version,
+      createdDate, updatedAt, region, type,
+      defaultDeploymentPipelineId, deploymentPipelineIds,
+      gitProvider, gitOrganization, repository, branch, secretRef
+    }
+  }`;
 
 const PROJECT_QUERY = `
-  query GetProject($projectId: String!) {
-    project(orgId: 1, projectId: $projectId) {
+  query GetProject($orgId: Int!, $projectId: String!) {
+    project(orgId: $orgId, projectId: $projectId) {
       id, orgId, name, handler, description, version,
-      createdDate, updatedAt, region, type
+      createdDate, updatedAt, region, type,
+      defaultDeploymentPipelineId, deploymentPipelineIds,
+      gitProvider, gitOrganization, repository, branch, secretRef
     }
   }`;
 
 const PROJECT_BY_HANDLER_QUERY = `
-  query GetProjectByHandler($projectHandler: String!) {
-    projectByHandler(orgId: 1, projectHandler: $projectHandler) {
+  query GetProjectByHandler($orgId: Int!, $projectHandler: String!) {
+    projectByHandler(orgId: $orgId, projectHandler: $projectHandler) {
       id, orgId, name, handler, description, version,
-      createdDate, updatedAt, region, type
+      createdDate, updatedAt, region, type,
+      defaultDeploymentPipelineId, deploymentPipelineIds,
+      gitProvider, gitOrganization, repository, branch, secretRef
     }
   }`;
 
@@ -62,26 +78,71 @@ const COMPONENTS_QUERY = `
     }
   }`;
 
-export function useProjects() {
-  return useQuery({
-    queryKey: ['projects'],
-    queryFn: () => gql<{ projects: GqlProject[] }>(PROJECTS_QUERY).then((d) => d.projects),
+export function useUserOrganizations() {
+  const { state } = useAuthContext();
+  return useQuery<ChoreoOrganization[]>({
+    queryKey: ['user-orgs'],
+    queryFn: fetchUserOrganizations,
+    enabled: state.isAuthenticated,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 
-export function useProject(projectId: string) {
-  return useQuery({
-    queryKey: ['project', projectId],
-    queryFn: () => gql<{ project: GqlProject }>(PROJECT_QUERY, { projectId }).then((d) => d.project),
-    enabled: !!projectId,
+export function useOrganizationByHandle(orgHandler: string) {
+  const { data: orgs } = useUserOrganizations();
+  
+  // Look up the org from the cached user organizations list
+  const org = orgs?.find(o => o.handle === orgHandler);
+  
+  return useQuery<ChoreoOrganization | null>({
+    queryKey: ['org', orgHandler],
+    queryFn: () => {
+      if (org) {
+        console.log('[useOrganizationByHandle] Found org in cache:', org);
+        return Promise.resolve(org);
+      }
+      // Fallback to API call if not in cache
+      console.log('[useOrganizationByHandle] Org not in cache, fetching from API:', orgHandler);
+      return fetchOrganizationByHandle(orgHandler);
+    },
+    enabled: !!orgHandler,
+    staleTime: 5 * 60 * 1000,
+    // Return cached org immediately if available
+    initialData: org,
   });
 }
 
-export function useProjectByHandler(handler: string) {
+export function useProjects(orgHandler?: string) {
+  const { state } = useAuthContext();
+  const { data: org } = useOrganizationByHandle(orgHandler ?? '');
+  const orgId = org?.numericId;
+
   return useQuery({
-    queryKey: ['project', 'handler', handler],
-    queryFn: () => gql<{ projectByHandler: GqlProject }>(PROJECT_BY_HANDLER_QUERY, { projectHandler: handler }).then((d) => d.projectByHandler),
-    enabled: !!handler,
+    queryKey: ['projects', orgId],
+    queryFn: () => gql<{ projects: GqlProject[] }>(PROJECTS_QUERY, { orgId }).then((d) => d.projects),
+    enabled: state.isAuthenticated && !!orgId,
+  });
+}
+
+export function useProject(orgHandler: string, projectId: string) {
+  const { data: org } = useOrganizationByHandle(orgHandler);
+  const orgId = org?.numericId;
+
+  return useQuery({
+    queryKey: ['project', orgId, projectId],
+    queryFn: () => gql<{ project: GqlProject }>(PROJECT_QUERY, { orgId, projectId }).then((d) => d.project),
+    enabled: !!orgId && !!projectId,
+  });
+}
+
+export function useProjectByHandler(orgHandler: string, projectHandler: string) {
+  const { data: org } = useOrganizationByHandle(orgHandler);
+  const orgId = org?.numericId;
+
+  return useQuery({
+    queryKey: ['project', 'handler', orgId, projectHandler],
+    queryFn: () => gql<{ projectByHandler: GqlProject }>(PROJECT_BY_HANDLER_QUERY, { orgId, projectHandler }).then((d) => d.projectByHandler),
+    enabled: !!orgId && !!projectHandler,
   });
 }
 

@@ -31,16 +31,13 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  ListingTable,
   MenuItem,
   PageContent,
   Radio,
   RadioGroup,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
+  TablePagination,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
@@ -50,9 +47,8 @@ import {
 import { ArrowLeft, Lock, Plus, Trash2, Users } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import SearchField from '../components/SearchField';
 import { Permissions, ALL_ROLE_MODIFY_PERMISSIONS } from '../constants/permissions';
-import Authorized from '../components/Authorized';
+import SearchField from '../components/SearchField';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { useGroups, useGroupRoles, useGroupUsers, useAddRolesToGroup, useRemoveRoleFromGroup, useAddUsersToGroup, useRemoveUserFromGroup, useUsers, useRoles } from '../api/authQueries';
 import { useAllEnvironments } from '../api/queries';
@@ -180,18 +176,20 @@ function AddUsersToGroupDialog({ orgHandler, groupId, existingUserIds, onClose, 
   );
 }
 
-function GroupDetailView({ orgHandler, group, onBack }: { orgHandler: string; group: Group; onBack: () => void }) {
+export function GroupDetailView({ orgHandler, group, onBack, projectId, componentId, showUsers = true }: { orgHandler: string; group: Group; onBack: () => void; projectId?: string; componentId?: string; showUsers?: boolean }) {
   const roleModifyPerms: string[] = [...ALL_ROLE_MODIFY_PERMISSIONS];
   const { hasAnyPermission } = useAccessControl();
   const canManageGroups = hasAnyPermission([Permissions.USER_MANAGE_GROUPS]);
   const canModifyRoles = hasAnyPermission(roleModifyPerms);
-  const { data: groupRoles = [], isLoading: loadingRoles, isError: rolesError } = useGroupRoles(orgHandler, group.groupId);
+  const { data: groupRoles = [], isLoading: loadingRoles, isError: rolesError } = useGroupRoles(orgHandler, group.groupId, projectId, componentId);
   const { data: groupUsers = [], isLoading: loadingUsers, isError: usersError } = useGroupUsers(orgHandler, group.groupId);
   const { data: allEnvironments = [] } = useAllEnvironments();
   const removeRoleMutation = useRemoveRoleFromGroup(orgHandler);
   const removeUserMutation = useRemoveUserFromGroup(orgHandler);
-  const [subTab, setSubTab] = useState<'users' | 'roles'>('users');
+  const [subTab, setSubTab] = useState<'users' | 'roles'>(showUsers ? 'users' : 'roles');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [addingRoles, setAddingRoles] = useState(false);
   const [addingUsers, setAddingUsers] = useState(false);
   const [removingUser, setRemovingUser] = useState<{ userId: string; displayName: string; username: string } | null>(null);
@@ -199,6 +197,12 @@ function GroupDetailView({ orgHandler, group, onBack }: { orgHandler: string; gr
   const [viewAlert, setViewAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const filteredUsers = useFiltered(groupUsers, search, (u) => `${u.displayName} ${u.username}`);
   const filteredRoles = useFiltered(groupRoles, search, (r) => `${r.roleName} ${r.roleDescription ?? ''}`);
+  const maxPageUsers = Math.max(0, Math.ceil(filteredUsers.length / rowsPerPage) - 1);
+  const maxPageRoles = Math.max(0, Math.ceil(filteredRoles.length / rowsPerPage) - 1);
+  const safePageUsers = Math.min(page, maxPageUsers);
+  const safePageRoles = Math.min(page, maxPageRoles);
+  const paginatedUsers = filteredUsers.slice(safePageUsers * rowsPerPage, safePageUsers * rowsPerPage + rowsPerPage);
+  const paginatedRoles = filteredRoles.slice(safePageRoles * rowsPerPage, safePageRoles * rowsPerPage + rowsPerPage);
 
   return (
     <Box>
@@ -208,52 +212,38 @@ function GroupDetailView({ orgHandler, group, onBack }: { orgHandler: string; gr
       <Typography variant="h1" sx={{ mb: 4 }}>
         Manage Group
       </Typography>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 2 }}>
-        <Stack>
-          <Typography variant="h6">Group : {group.groupName}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Description : {group.description}
-          </Typography>
-        </Stack>
-        <Stack direction="row" gap={1}>
-          <SearchField value={search} onChange={setSearch} />
-          {subTab === 'users' && (
-            <Authorized permissions={Permissions.USER_MANAGE_GROUPS}>
-              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingUsers(true)}>
-                Add Users
-              </Button>
-            </Authorized>
-          )}
-          {subTab === 'roles' && (
-            <Authorized permissions={roleModifyPerms}>
-              <Button variant="contained" startIcon={<Plus size={18} />} onClick={() => setAddingRoles(true)}>
-                Add Roles
-              </Button>
-            </Authorized>
-          )}
-        </Stack>
+      <Stack sx={{ mb: 2 }}>
+        <Typography variant="h6" component="h2">
+          Group : {group.groupName}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Description : {group.description}
+        </Typography>
       </Stack>
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        value={subTab}
-        onChange={(_, v) => {
-          if (v !== null) {
-            setSubTab(v);
-            setSearch('');
-            setViewAlert(null);
-          }
-        }}
-        sx={{ mb: 2 }}>
-        <ToggleButton value="users">
-          <Users size={16} style={{ marginRight: 8 }} />
-          Users
-        </ToggleButton>
-        <ToggleButton value="roles">
-          <Lock size={16} style={{ marginRight: 8 }} />
-          Roles
-        </ToggleButton>
-      </ToggleButtonGroup>
+      {showUsers && (
+        <ToggleButtonGroup
+          exclusive
+          size="small"
+          value={subTab}
+          onChange={(_, v) => {
+            if (v !== null) {
+              setSubTab(v);
+              setSearch('');
+              setPage(0);
+              setViewAlert(null);
+            }
+          }}
+          sx={{ mb: 2 }}>
+          <ToggleButton value="users">
+            <Users size={16} style={{ marginRight: 8 }} />
+            Users
+          </ToggleButton>
+          <ToggleButton value="roles">
+            <Lock size={16} style={{ marginRight: 8 }} />
+            Roles
+          </ToggleButton>
+        </ToggleButtonGroup>
+      )}
       {viewAlert && (
         <Alert severity={viewAlert.type} onClose={() => setViewAlert(null)} sx={{ mb: 2 }}>
           {viewAlert.message}
@@ -261,59 +251,82 @@ function GroupDetailView({ orgHandler, group, onBack }: { orgHandler: string; gr
       )}
       {subTab === 'users' && (
         <>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>User</TableCell>
-                <TableCell>Username</TableCell>
-                <Authorized permissions={Permissions.USER_MANAGE_GROUPS}>
-                  <TableCell align="right">Action</TableCell>
-                </Authorized>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loadingUsers ? (
-                <TableRow>
-                  <TableCell colSpan={canManageGroups ? 3 : 2} align="center">
-                    <CircularProgress size={24} />
-                  </TableCell>
-                </TableRow>
-              ) : usersError ? (
-                <TableRow>
-                  <TableCell colSpan={canManageGroups ? 3 : 2} align="center">
-                    Failed to load users
-                  </TableCell>
-                </TableRow>
-              ) : filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={canManageGroups ? 3 : 2} align="center">
-                    No records to display
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredUsers.map((u) => (
-                  <TableRow key={u.userId}>
-                    <TableCell>
-                      <Stack direction="row" alignItems="center" gap={1}>
-                        <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>{getUserInitial(u)}</Avatar>
-                        {u.displayName}
-                      </Stack>
-                    </TableCell>
-                    <TableCell>{u.username}</TableCell>
-                    <Authorized permissions={Permissions.USER_MANAGE_GROUPS}>
-                      <TableCell align="right">
-                        <Tooltip title="Remove">
-                          <IconButton size="small" aria-label={`Remove ${u.displayName} from group`} onClick={() => setRemovingUser(u)}>
-                            <Trash2 size={16} />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </Authorized>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <ListingTable.Container>
+            <ListingTable.Toolbar
+              searchSlot={<SearchField value={search} onChange={setSearch} />}
+              actions={
+                canManageGroups && (
+                  <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setAddingUsers(true)}>
+                    Add Users
+                  </Button>
+                )
+              }
+            />
+            <ListingTable>
+              <ListingTable.Head>
+                <ListingTable.Row>
+                  <ListingTable.Cell>User</ListingTable.Cell>
+                  <ListingTable.Cell>Username</ListingTable.Cell>
+                  {canManageGroups && <ListingTable.Cell align="right">Action</ListingTable.Cell>}
+                </ListingTable.Row>
+              </ListingTable.Head>
+              <ListingTable.Body>
+                {loadingUsers ? (
+                  <ListingTable.Row>
+                    <ListingTable.Cell colSpan={canManageGroups ? 3 : 2} align="center">
+                      <CircularProgress size={24} />
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ) : usersError ? (
+                  <ListingTable.Row>
+                    <ListingTable.Cell colSpan={canManageGroups ? 3 : 2} align="center">
+                      Failed to load users
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ) : filteredUsers.length === 0 ? (
+                  <ListingTable.Row>
+                    <ListingTable.Cell colSpan={canManageGroups ? 3 : 2} align="center">
+                      No records to display
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ) : (
+                  paginatedUsers.map((u) => (
+                    <ListingTable.Row key={u.userId}>
+                      <ListingTable.Cell>
+                        <Stack direction="row" alignItems="center" gap={1}>
+                          <Avatar sx={{ width: 32, height: 32, fontSize: 14 }}>{getUserInitial(u)}</Avatar>
+                          {u.displayName}
+                        </Stack>
+                      </ListingTable.Cell>
+                      <ListingTable.Cell>{u.username}</ListingTable.Cell>
+                      {canManageGroups && (
+                        <ListingTable.Cell align="right">
+                          <Tooltip title="Remove">
+                            <IconButton size="small" color="error" aria-label={`Remove ${u.displayName} from group`} onClick={() => setRemovingUser(u)}>
+                              <Trash2 size={16} />
+                            </IconButton>
+                          </Tooltip>
+                        </ListingTable.Cell>
+                      )}
+                    </ListingTable.Row>
+                  ))
+                )}
+              </ListingTable.Body>
+            </ListingTable>
+            <TablePagination
+              sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+              component="div"
+              count={filteredUsers.length}
+              page={safePageUsers}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
+          </ListingTable.Container>
           {addingUsers && (
             <AddUsersToGroupDialog
               orgHandler={orgHandler}
@@ -361,62 +374,90 @@ function GroupDetailView({ orgHandler, group, onBack }: { orgHandler: string; gr
       )}
       {subTab === 'roles' && (
         <>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Role Name</TableCell>
-                <TableCell align="center">Mapping Level</TableCell>
-                <TableCell align="center">Applicable Environment</TableCell>
-                <Authorized permissions={roleModifyPerms}>
-                  <TableCell align="right">Action</TableCell>
-                </Authorized>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loadingRoles ? (
-                <TableRow>
-                  <TableCell colSpan={canModifyRoles ? 4 : 3} align="center">
-                    <CircularProgress size={24} />
-                  </TableCell>
-                </TableRow>
-              ) : rolesError ? (
-                <TableRow>
-                  <TableCell colSpan={canModifyRoles ? 4 : 3} align="center">
-                    Failed to load roles
-                  </TableCell>
-                </TableRow>
-              ) : filteredRoles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={canModifyRoles ? 4 : 3} align="center">
-                    No records to display
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRoles.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>{r.roleName}</TableCell>
-                    <TableCell align="center">
-                      <Chip label={mappingLevel(r)} size="small" />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Chip label={envLabel(r, allEnvironments)} size="small" />
-                    </TableCell>
-                    <Authorized permissions={roleModifyPerms}>
-                      <TableCell align="right">
-                        <Tooltip title="Remove">
-                          <span style={{ display: 'inline-flex' }}>
-                            <IconButton size="small" aria-label={`Remove ${r.roleName} from group`} onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })} disabled={false}>
-                              <Trash2 size={16} />
-                            </IconButton>
-                          </span>
-                        </Tooltip>
-                      </TableCell>
-                    </Authorized>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          <ListingTable.Container>
+            <ListingTable.Toolbar
+              searchSlot={<SearchField value={search} onChange={setSearch} />}
+              actions={
+                canModifyRoles && (
+                  <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setAddingRoles(true)}>
+                    Add Roles
+                  </Button>
+                )
+              }
+            />
+            <ListingTable>
+              <ListingTable.Head>
+                <ListingTable.Row>
+                  <ListingTable.Cell>Role Name</ListingTable.Cell>
+                  <ListingTable.Cell align="center">Mapping Level</ListingTable.Cell>
+                  <ListingTable.Cell align="center">Applicable Environment</ListingTable.Cell>
+                  {canModifyRoles && <ListingTable.Cell align="right">Action</ListingTable.Cell>}
+                </ListingTable.Row>
+              </ListingTable.Head>
+              <ListingTable.Body>
+                {loadingRoles ? (
+                  <ListingTable.Row>
+                    <ListingTable.Cell colSpan={canModifyRoles ? 4 : 3} align="center">
+                      <CircularProgress size={24} />
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ) : rolesError ? (
+                  <ListingTable.Row>
+                    <ListingTable.Cell colSpan={canModifyRoles ? 4 : 3} align="center">
+                      Failed to load roles
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ) : filteredRoles.length === 0 ? (
+                  <ListingTable.Row>
+                    <ListingTable.Cell colSpan={canModifyRoles ? 4 : 3} align="center">
+                      No records to display
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                ) : (
+                  paginatedRoles.map((r) => (
+                    <ListingTable.Row key={r.id}>
+                      <ListingTable.Cell>{r.roleName}</ListingTable.Cell>
+                      <ListingTable.Cell align="center">
+                        <Chip label={mappingLevel(r)} size="small" />
+                      </ListingTable.Cell>
+                      <ListingTable.Cell align="center">
+                        <Chip label={envLabel(r, allEnvironments)} size="small" />
+                      </ListingTable.Cell>
+                      {canModifyRoles && (
+                        <ListingTable.Cell align="right">
+                          <Tooltip title={componentId ? (!r.integrationUuid ? 'Org/Project-level mapping' : 'Remove') : projectId && !r.projectUuid ? 'Org-level mapping' : 'Remove'}>
+                            <span style={{ display: 'inline-flex' }}>
+                              <IconButton
+                                size="small"
+                                color="error"
+                                aria-label={`Remove ${r.roleName} from group`}
+                                onClick={() => setRemovingRole({ id: r.id, roleName: r.roleName })}
+                                disabled={componentId ? !r.integrationUuid : Boolean(projectId && !r.projectUuid)}>
+                                <Trash2 size={16} />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </ListingTable.Cell>
+                      )}
+                    </ListingTable.Row>
+                  ))
+                )}
+              </ListingTable.Body>
+            </ListingTable>
+            <TablePagination
+              sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+              component="div"
+              count={filteredRoles.length}
+              page={safePageRoles}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
+          </ListingTable.Container>
           {addingRoles && (
             <AddRolesToGroupDialog
               orgHandler={orgHandler}

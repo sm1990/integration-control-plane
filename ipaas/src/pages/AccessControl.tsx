@@ -108,7 +108,7 @@ export function ProjectAccessControl({ org, project }: { org: string; project: s
   const { tab = 'roles' } = useParams();
   const navigate = useNavigate();
   const { hasAnyPermission } = useAccessControl();
-  const { data: projectData, isLoading } = useProjectByHandler(project);
+  const { data: projectData, isLoading } = useProjectByHandler(org, project);
   const projectId = projectData?.id ?? '';
 
   const accessControlPerms: string[] = [...ALL_USER_MGT_PERMISSIONS, Permissions.PROJECT_EDIT, Permissions.PROJECT_MANAGE];
@@ -151,7 +151,7 @@ export function ComponentAccessControl({ org, project, component }: ComponentSco
   const { tab = 'roles' } = useParams();
   const navigate = useNavigate();
   const { hasAnyPermission } = useAccessControl();
-  const { data: projectData, isLoading: loadingProject } = useProjectByHandler(project);
+  const { data: projectData, isLoading: loadingProject } = useProjectByHandler(org, project);
   const projectId = projectData?.id ?? '';
   const { data: componentData, isLoading: loadingComponent } = useComponentByHandler(projectId, component);
   const componentId = componentData?.id;

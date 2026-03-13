@@ -26,7 +26,7 @@ interface RuntimeConfig {
   VITE_GRAPHQL_URL?: string;
   VITE_AUTH_BASE_URL?: string;
   VITE_OBSERVABILITY_URL?: string;
-  /** Asgardeo organization slug used in subdomain, e.g. "stage" */
+  /** Asgardeo / Choreo organization handle, e.g. "dev" or "stage" */
   ASGARDEO_ORG?: string;
   /** Asgardeo org dot-prefix for the hostname, e.g. "stage." */
   ASGARDEO_ORG_DOT?: string;
@@ -42,20 +42,40 @@ interface RuntimeConfig {
   /** Additional domain appended to the resource server URL list */
   ASGARDEO_DOMAIN?: string;
   AUTHENTICATOR_MICROSOFT?: string;
+  /**
+   * Numeric organization ID used by the GraphQL API (orgId: Int!).
+   * Set this when the org management API is not accessible with the current token.
+   * Find it in the production app's GraphQL responses: data.projects[0].orgId
+   */
+  ASGARDEO_ORG_NUMERIC_ID?: string;
+  /**
+   * Fallback organizations (JSON array) when org API is not accessible.
+   * Format: [{"handle": "saraniw12345", "name": "Sarani Org", "id": "8913"}]
+   */
+  FALLBACK_ORGANIZATIONS?: string;
 }
 
 export interface ApiConfig {
   graphqlUrl: string;
   authBaseUrl: string;
   observabilityUrl: string;
-  /** Derived: https://{orgDot}api{regionDot}.asgardeo.io/t/a */
+  /** Derived: https://{orgDot}api{regionDot}.asgardeo.io */
   asgardeoBaseUrl: string;
+  /** Choreo / Asgardeo organization handle used in routing, e.g. "dev" */
+  asgardeoOrg: string;
   asgardeoClientId: string;
   asgardeoSignInRedirectUrl: string;
   asgardeoSignOutRedirectUrl: string;
   asgardeoAutoLogoutOnTokenRefreshError: boolean;
   /** Parsed resource server URL list for the Asgardeo SDK */
   asgardeoResourceServerUrls: string[];
+  /**
+   * Numeric org ID for the GraphQL API — set in config.json as ASGARDEO_ORG_NUMERIC_ID
+   * to bypass the org management API when the token lacks the required subscription.
+   */
+  asgardeoOrgNumericId?: number;
+  /** Fallback organizations when org API fails */
+  fallbackOrganizations?: Array<{ handle: string; name: string; id: string }>;
 }
 
 // Extend window interface
@@ -66,7 +86,7 @@ declare global {
 }
 
 function buildAsgardeoBaseUrl(orgDot: string, regionDot: string): string {
-  return `https://${orgDot}api${regionDot}.asgardeo.io/t/a`;
+  return `https://${orgDot}api${regionDot}.asgardeo.io`;
 }
 
 function parseResourceServerUrls(raw: string, domain: string): string[] {
@@ -78,7 +98,8 @@ function parseResourceServerUrls(raw: string, domain: string): string[] {
   return urls;
 }
 
-const DEFAULT_ORG_DOT = 'stage.';
+const DEFAULT_ORG = 'stage';
+const DEFAULT_ORG_DOT = `${DEFAULT_ORG}.`;
 const DEFAULT_REGION_DOT = '';
 
 // Default configuration (used as fallback if config.json fails to load)
@@ -87,6 +108,7 @@ const DEFAULT_CONFIG: ApiConfig = {
   authBaseUrl: 'https://localhost:9445/auth',
   observabilityUrl: 'https://localhost:9448/icp/observability',
   asgardeoBaseUrl: buildAsgardeoBaseUrl(DEFAULT_ORG_DOT, DEFAULT_REGION_DOT),
+  asgardeoOrg: DEFAULT_ORG,
   asgardeoClientId: '',
   asgardeoSignInRedirectUrl: `${window.location.origin}/signin`,
   asgardeoSignOutRedirectUrl: `${window.location.origin}/login?state=sign_out_success`,
@@ -115,11 +137,14 @@ export async function loadConfig(): Promise<void> {
       authBaseUrl: config.VITE_AUTH_BASE_URL || DEFAULT_CONFIG.authBaseUrl,
       observabilityUrl: config.VITE_OBSERVABILITY_URL || DEFAULT_CONFIG.observabilityUrl,
       asgardeoBaseUrl: buildAsgardeoBaseUrl(orgDot, regionDot),
+      asgardeoOrg: config.ASGARDEO_ORG ?? DEFAULT_ORG,
       asgardeoClientId: config.ASGARDEO_CLIENT_ID || DEFAULT_CONFIG.asgardeoClientId,
       asgardeoSignInRedirectUrl: config.ASGARDEO_SIGN_IN_REDIRECT_URL || DEFAULT_CONFIG.asgardeoSignInRedirectUrl,
       asgardeoSignOutRedirectUrl: config.ASGARDEO_SIGN_OUT_REDIRECT_URL || DEFAULT_CONFIG.asgardeoSignOutRedirectUrl,
       asgardeoAutoLogoutOnTokenRefreshError: config.ASGARDEO_AUTO_LOGOUT_ON_TOKEN_REFRESH_ERROR === 'true',
       asgardeoResourceServerUrls: parseResourceServerUrls(config.ASGARDEO_SDK_RESOURCE_SERVER_URLS ?? '', config.ASGARDEO_DOMAIN ?? ''),
+      asgardeoOrgNumericId: config.ASGARDEO_ORG_NUMERIC_ID ? parseInt(config.ASGARDEO_ORG_NUMERIC_ID, 10) : undefined,
+      fallbackOrganizations: config.FALLBACK_ORGANIZATIONS ? JSON.parse(config.FALLBACK_ORGANIZATIONS) : undefined,
     };
 
     console.info('✓ Runtime configuration loaded from config.json');

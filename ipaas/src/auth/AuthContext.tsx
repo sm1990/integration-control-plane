@@ -16,12 +16,15 @@
  * under the License.
  */
 
-import { createContext, useContext, useMemo, useEffect } from 'react';
+import { createContext, useContext, useMemo, useEffect, useLayoutEffect } from 'react';
 import type { JSX, ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuthContext } from '@asgardeo/auth-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { setTokenProvider, setOnAuthFailure } from './tokenManager';
+import { setChoreoTokenProvider } from '../api/choreo';
+import { setGraphqlTokenProvider } from '../api/graphql';
+import { clearExchangedToken } from './tokenExchange';
 import { loginUrl } from '../paths';
 
 interface AuthContextValue {
@@ -45,24 +48,36 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   const queryClient = useQueryClient();
   const { state, signIn, signOut, getAccessToken } = useAuthContext();
 
-  // Wire up the token provider so authenticatedFetch can get a valid token.
-  useEffect(() => {
+  // Wire up token provider and auth failure handler synchronously before any
+  // child component's useEffect runs (useLayoutEffect fires before useEffect,
+  // so the token is ready before React Query fires its first query).
+  useLayoutEffect(() => {
     setTokenProvider(getAccessToken);
-  }, [getAccessToken]);
-
-  // Wire up the auth failure handler so 401 responses redirect to login.
-  useEffect(() => {
+    setChoreoTokenProvider(getAccessToken);
+    setGraphqlTokenProvider(getAccessToken);
     setOnAuthFailure(() => {
+      clearExchangedToken();
       queryClient.clear();
       navigate(loginUrl());
     });
-  }, [navigate, queryClient]);
+  }, [getAccessToken, navigate, queryClient]);
+
+  // Debug logging for auth state changes
+  useEffect(() => {
+    console.log('Auth state changed:', {
+      isAuthenticated: state.isAuthenticated,
+      isLoading: state.isLoading,
+      username: state.username,
+      email: state.email,
+    });
+  }, [state.isAuthenticated, state.isLoading, state.username, state.email]);
 
   const loginWithGoogle = async () => {
     await signIn({ fidp: 'google' });
   };
 
   const logout = async () => {
+    clearExchangedToken();
     queryClient.clear();
     await signOut();
   };

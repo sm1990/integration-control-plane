@@ -33,7 +33,7 @@ function toHandler(name: string) {
 
 export default function CreateComponent(scope: ProjectScope): JSX.Element {
   const navigate = useNavigate();
-  const { data: project } = useProjectByHandler(scope.project);
+  const { data: project } = useProjectByHandler(scope.org, scope.project);
   const projectId = project?.id ?? '';
 
   const [displayName, setDisplayName] = useState('');

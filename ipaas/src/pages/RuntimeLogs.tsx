@@ -163,7 +163,7 @@ function LogEntry({ log, expanded, onToggle }: { log: LogRow; expanded: boolean;
 }
 
 export default function RuntimeLogs(scope: ProjectScope | ComponentScope): JSX.Element {
-  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.project);
+  const { data: project, isLoading: loadingProject } = useProjectByHandler(scope.org, scope.project);
   const projectId = project?.id ?? '';
   const { data: singleComponent, isLoading: loadingComponent } = useComponentByHandler(projectId, hasComponent(scope) ? scope.component : undefined);
   const { data: allComponents = [], isLoading: loadingComponents } = useComponents(scope.org, projectId);

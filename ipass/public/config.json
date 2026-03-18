@@ -1,0 +1,14 @@
+{
+  "VITE_GRAPHQL_URL": "https://apis.preview-dv.choreo.dev/projects/1.0.0/graphql",
+  "VITE_AUTH_BASE_URL": "https://localhost:9445/auth",
+  "VITE_OBSERVABILITY_URL": "https://localhost:9448/icp/observability",
+  "ASGARDEO_CLIENT_ID": "zL9kF4GCPiN2veO8judQvwlqLb8a",
+  "ASGARDEO_AUTHORIZE_ENDPOINT": "https://dev.api.asgardeo.io/t/a/oauth2/authorize",
+  "ASGARDEO_TOKEN_ENDPOINT": "https://dev.api.asgardeo.io/t/a/oauth2/token",
+  "ASGARDEO_SCOPE": "openid profile email groups",
+  "STS_TOKEN_ENDPOINT": "https://sts.preview-dv.choreo.dev:443/oauth2/token",
+  "STS_CLIENT_ID": "62j_4D4MnedSLkZ7ZD02EZoKM2ga",
+  "STS_SCOPE": "apim:api_manage apim:subscription_manage apim:tier_manage apim:admin apim:publisher_settings environments:view_prod environments:view_dev choreo:user_manage apim:dcr:app_manage choreo:deployment_manage choreo:prod_env_manage choreo:non_prod_env_manage choreo:component_manage choreo:project_manage apim:api_publish apim:document_manage apim:api_settings apim:subscription_view apim:environment_manage choreo:log_view_non_prod choreo:log_view_prod urn:choreocontrolplane:usermanagement:role_mapping_manage urn:choreocontrolplane:usermanagement:role_mapping_view urn:choreocontrolplane:usermanagement:role_mapping_create urn:choreocontrolplane:usermanagement:role_mapping_update urn:choreocontrolplane:usermanagement:role_mapping_delete urn:choreocontrolplane:organizationapi:org_manage choreo:domain_manage choreo:domain_view choreo:url_mapping_manage choreo:url_mapping_view choreo:platform_engineer choreo:userstore_manage choreo:userstore_view environments:view choreo:env_manage choreo:log_view",
+  "CHOREO_ORG_API_URL": "https://apis.preview-dv.choreo.dev/orgs/1.0.0",
+  "ASGARDEO_ORG_NUMERIC_ID": ""
+}

@@ -41,7 +41,7 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui';
-import { RefreshCw, ListFilter, LayoutGrid, Settings, Copy, Check, Play, ShieldAlert } from '@wso2/oxygen-ui-icons-react';
+import { RefreshCw, ListFilter, LayoutGrid, Settings, Copy, Check, Play, ShieldAlert, CalendarClock } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useArtifacts, useRefreshEnvironmentArtifacts, type GqlArtifact, type GqlEnvironment } from '../api/queries';
@@ -511,6 +511,7 @@ export default function Environment({
   componentId,
   projectId,
   componentType,
+  displayType,
   componentHandler,
   projectHandler,
   onSelectArtifact,
@@ -520,6 +521,7 @@ export default function Environment({
   componentId: string;
   projectId: string;
   componentType: string;
+  displayType?: string;
   componentHandler: string;
   projectHandler: string;
   onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void;
@@ -531,6 +533,25 @@ export default function Environment({
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
+
+  const isAutomation = (displayType ?? '').toLowerCase() === 'scheduledtask';
+  const queryClient = useQueryClient();
+  const { data: automationArtifacts = [], isLoading: loadingAutomations } = useArtifacts('Automation', env.id, componentId, { enabled: isAutomation });
+  const firstAutomation = isAutomation ? (automationArtifacts[0] ?? null) : null;
+  const triggerTaskMutation = useTriggerTask();
+  const [automationTriggerMessage, setAutomationTriggerMessage] = useState<string | null>(null);
+
+  const handleTestAutomation = () => {
+    if (!firstAutomation) return;
+    const taskName = firstAutomation.packageName?.toString() ?? '';
+    triggerTaskMutation.mutate(
+      { componentId, taskName },
+      {
+        onSuccess: () => setAutomationTriggerMessage(`Successfully triggered ${taskName || 'automation'}`),
+        onSettled: () => queryClient.invalidateQueries({ queryKey: ['artifacts', 'Automation', env.id, componentId] }),
+      },
+    );
+  };
 
   const generateSecretMutation = useGenerateComponentEnvironmentJwtSecret();
   const rotateSecretMutation = useRotateComponentEnvironmentJwtSecret();
@@ -564,7 +585,8 @@ export default function Environment({
     // Runtime ID is not yet known until the runtime first registers.
     const runtimeId = '<Runtime ID>';
 
-    if (componentType === 'BI') {
+    const isBallerinaRuntime = componentType === 'BI' || isAutomation || (displayType ?? '') === 'integrationAsApi';
+    if (isBallerinaRuntime) {
       return `[ballerinax.wso2.icp]
 runtime="${runtimeId}"
 integration="${componentHandler}"
@@ -598,10 +620,29 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
-            {env.name}
-          </Typography>
+          {/* Left: env name + Configure */}
+          <Stack direction="row" alignItems="center" gap={1.5}>
+            <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
+              {env.name}
+            </Typography>
+            <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
+              <Button variant="outlined" size="small" startIcon={<Settings size={14} />} onClick={handleOpenConfigDialog}>
+                Configure
+              </Button>
+            </Authorized>
+          </Stack>
+          {/* Right: Schedule/Test/Run + refresh */}
           <Stack direction="row" alignItems="center" gap={1}>
+            {isAutomation && (
+              <>
+                <Button variant="contained" size="small" disabled>
+                  Schedule
+                </Button>
+                <Button variant="contained" size="small" startIcon={<Play size={14} />} onClick={handleTestAutomation} disabled={!firstAutomation || triggerTaskMutation.isPending || loadingAutomations}>
+                  {env.critical ? 'Run' : 'Test'}
+                </Button>
+              </>
+            )}
             <IconButton size="small" onClick={handleRefresh} disabled={isRefreshing} aria-label="Refresh">
               <RefreshCw
                 size={16}
@@ -611,17 +652,12 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
                 }}
               />
             </IconButton>
-            <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
-              <Button variant="contained" startIcon={<Settings size={16} />} onClick={handleOpenConfigDialog}>
-                Configure Runtime
-              </Button>
-            </Authorized>
           </Stack>
         </Stack>
         <Dialog open={configDialogOpen} onClose={() => setConfigDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Configure Runtime - {env.name}</DialogTitle>
           <DialogContent>
-            <DialogContentText sx={{ mb: 2 }}>Add the following configuration to your runtime's {componentType === 'BI' ? 'Config.toml' : 'deployment.toml'} file:</DialogContentText>
+            <DialogContentText sx={{ mb: 2 }}>Add the following configuration to your runtime's {componentType === 'BI' || isAutomation || (displayType ?? '') === 'integrationAsApi' ? 'Config.toml' : 'deployment.toml'} file:</DialogContentText>
             {secretError && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 {secretError}
@@ -682,21 +718,45 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
           </DialogActions>
         </Dialog>
         <Divider sx={{ my: 2 }} />
-        {componentType === 'MI' && (
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-            <Stack direction="row">
-              <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
-                Entry Points
-              </Button>
-              <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
-                Supporting Artifacts
-              </Button>
-            </Stack>
-          </Stack>
+        {isAutomation ? (
+          <Box>
+            {loadingAutomations ? (
+              <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />
+            ) : firstAutomation ? (
+              <AutomationExecutions artifact={firstAutomation} artifactType="Automation" envId={env.id} componentId={componentId} projectId={projectId} />
+            ) : (
+              <Stack alignItems="center" gap={1} sx={{ py: 4 }}>
+                <CalendarClock size={40} style={{ opacity: 0.3 }} />
+                <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
+                  No execution data available. Click &apos;{env.critical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
+                </Typography>
+              </Stack>
+            )}
+          </Box>
+        ) : (
+          <>
+            {componentType === 'MI' && (
+              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
+                <Stack direction="row">
+                  <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+                    Entry Points
+                  </Button>
+                  <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
+                    Supporting Artifacts
+                  </Button>
+                </Stack>
+              </Stack>
+            )}
+            {(componentType !== 'MI' || viewMode === 'entryPoints') && <EntryPointsList envId={env.id} componentId={componentId} projectId={projectId} componentType={componentType} onOpenDrawer={onOpenDrawerForTab} />}
+            {componentType === 'MI' && viewMode === 'allArtifacts' && <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />}
+          </>
         )}
-        {(componentType !== 'MI' || viewMode === 'entryPoints') && <EntryPointsList envId={env.id} componentId={componentId} projectId={projectId} componentType={componentType} onOpenDrawer={onOpenDrawerForTab} />}
-        {componentType === 'MI' && viewMode === 'allArtifacts' && <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />}
       </CardContent>
+      <Snackbar open={automationTriggerMessage !== null} autoHideDuration={4000} onClose={() => setAutomationTriggerMessage(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setAutomationTriggerMessage(null)} severity="success" sx={{ width: '100%' }}>
+          {automationTriggerMessage}
+        </Alert>
+      </Snackbar>
     </Card>
   );
 }

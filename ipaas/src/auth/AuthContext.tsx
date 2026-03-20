@@ -193,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
             const h = org.handle ?? org.orgHandle ?? org.org_handle;
             if (h) {
               orgHandle = h;
+              localStorage.setItem('icp_org_handle', h);
               const numericId = org.id ?? org.orgId;
               if (numericId) {
                 const parsedId = typeof numericId === 'string' ? parseInt(numericId, 10) : numericId;

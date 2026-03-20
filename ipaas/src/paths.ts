@@ -69,6 +69,10 @@ export function componentUrl(orgHandler: string, projectHandler: string, compone
   return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}`;
 }
 
+export function componentOverviewUrl(orgHandler: string, projectHandler: string, componentHandler: string): string {
+  return `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/overview`;
+}
+
 export function newComponentUrl(orgHandler: string, projectHandler: string): string {
   return `/organizations/${orgHandler}/projects/${projectHandler}/components/new`;
 }

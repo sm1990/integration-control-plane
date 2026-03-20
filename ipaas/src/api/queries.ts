@@ -18,7 +18,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import { authenticatedFetch } from '../auth/tokenManager';
+import { authenticatedFetch, getOrgUuidFromToken } from '../auth/tokenManager';
 
 export interface GqlProject {
   id: string;
@@ -186,7 +186,10 @@ const ENVIRONMENTS_QUERY = `
 export function useEnvironments(orgUuid: string, projectId: string) {
   return useQuery({
     queryKey: ['environments', orgUuid, projectId],
-    queryFn: () => gql<{ environments: GqlEnvironment[] }>(ENVIRONMENTS_QUERY, { orgUuid, projectId }).then((d) => d.environments),
+    queryFn: () => {
+      const uuid = getOrgUuidFromToken() ?? orgUuid;
+      return gql<{ environments: GqlEnvironment[] }>(ENVIRONMENTS_QUERY, { orgUuid: uuid, projectId }).then((d) => d.environments);
+    },
     enabled: !!orgUuid && !!projectId,
   });
 }
@@ -503,6 +506,65 @@ export function useArtifactWsdl(componentId: string, artifactType: string, artif
         runtimeId,
       }).then((d) => d.artifactWsdlByComponent),
     enabled: !!componentId && !!artifactType && !!artifactName && !!envId,
+  });
+}
+
+// ── Component repository & commit history ──
+
+export interface GqlRepository {
+  gitProvider: string;
+  organizationApp: string;
+  nameApp: string;
+  branch: string;
+  appSubPath: string;
+  bitbucketServerUrl?: string;
+  serverUrl?: string;
+  projectApp?: string;
+}
+
+export interface GqlCommit {
+  sha: string;
+  message: string;
+  isLatest: boolean;
+  author: {
+    name: string;
+    date: string;
+    email: string;
+    avatarUrl: string;
+  };
+}
+
+const COMPONENT_REPOSITORY_QUERY = `
+  query GetComponentRepository($projectId: String!, $componentHandler: String!) {
+    component(projectId: $projectId, componentHandler: $componentHandler) {
+      repository {
+        gitProvider, organizationApp, nameApp, branch, appSubPath,
+        bitbucketServerUrl, serverUrl, projectApp
+      }
+    }
+  }`;
+
+export function useComponentRepository(projectId: string, componentHandler: string) {
+  return useQuery({
+    queryKey: ['componentRepository', projectId, componentHandler],
+    queryFn: () => gql<{ component: { repository: GqlRepository } }>(COMPONENT_REPOSITORY_QUERY, { projectId, componentHandler }).then((d) => d.component?.repository ?? null),
+    enabled: !!projectId && !!componentHandler,
+  });
+}
+
+const COMMIT_HISTORY_QUERY = `
+  query GetCommitHistory($componentId: String!, $branch: String!) {
+    commitHistory(componentId: $componentId, branch: $branch) {
+      sha, message, isLatest,
+      author { name, date, email, avatarUrl }
+    }
+  }`;
+
+export function useCommitHistory(componentId: string, branch: string) {
+  return useQuery({
+    queryKey: ['commitHistory', componentId, branch],
+    queryFn: () => gql<{ commitHistory: GqlCommit[] }>(COMMIT_HISTORY_QUERY, { componentId, branch }).then((d) => d.commitHistory ?? []),
+    enabled: !!componentId && !!branch,
   });
 }
 

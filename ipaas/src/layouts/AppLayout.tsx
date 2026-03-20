@@ -56,7 +56,7 @@ import { fetchOrgPermissions } from '../api/auth';
 import { authenticatedFetch, switchOrgToken } from '../auth/tokenManager';
 import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, newProjectUrl, newComponentUrl, sidebarItems, hasProject, hasComponent, type Resource } from '../nav';
-import { cookiePolicyUrl, loginUrl, orgHomeUrl, privacyPolicyUrl, profileUrl, projectHomeUrl } from '../paths';
+import { componentOverviewUrl, cookiePolicyUrl, loginUrl, orgHomeUrl, privacyPolicyUrl, profileUrl, projectHomeUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { ALL_USER_MGT_PERMISSIONS, Permissions } from '../constants/permissions';
@@ -561,8 +561,8 @@ export default function AppLayout(): JSX.Element {
                             setComponentMenuAnchor(null);
                             setComponentSearch('');
                             const newScope = narrow({ level: 'projects', org: scope.org, project: scope.project }, c.handler);
-                            const target = resource ?? 'overview';
-                            navigate(resourceUrl(newScope, canAccessResource(newScope, target, projectId, c.id)));
+                            const resolvedTarget = canAccessResource(newScope, resource ?? 'overview', projectId, c.id);
+                            navigate(resolvedTarget === 'overview' ? componentOverviewUrl(scope.org, scope.project, c.handler) : resourceUrl(newScope, resolvedTarget));
                           }}>
                           {c.displayName}
                         </MenuItem>

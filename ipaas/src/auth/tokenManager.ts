@@ -84,29 +84,103 @@ export async function refreshAccessToken(): Promise<void> {
       return;
     }
 
-    const res = await fetch(refreshTokenApiUrl(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
+    // Try internal backend refresh (for non-OIDC users)
+    let localBackendFailed = false;
+    try {
+      const res = await fetch(refreshTokenApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
 
-    if (!res.ok) {
+      if (res.ok) {
+        const data: TokenData & { username: string; displayName: string; permissions: string[] } = await res.json();
+        saveTokens(data);
+        const userInfo = localStorage.getItem('icp_user');
+        if (userInfo) {
+          try {
+            const existing = JSON.parse(userInfo);
+            localStorage.setItem('icp_user', JSON.stringify({ ...existing, username: data.username, displayName: data.displayName, permissions: data.permissions }));
+          } catch {
+            localStorage.removeItem('icp_user');
+          }
+        }
+        return;
+      }
+      // Internal backend returned error (non-OIDC auth failure)
+      clearTokens();
+      onAuthFailure?.();
+      return;
+    } catch {
+      // Network error — internal backend not reachable, fall through to OIDC refresh
+      localBackendFailed = true;
+    }
+
+    if (!localBackendFailed) return;
+
+    // OIDC refresh path: use stored Asgardeo refresh token
+    const { asgardeoClientId, asgardeoTokenEndpoint, stsTokenEndpoint, stsClientId, stsScope } = window.API_CONFIG;
+    if (!asgardeoClientId || !asgardeoTokenEndpoint) {
       clearTokens();
       onAuthFailure?.();
       return;
     }
 
-    const data: TokenData & { username: string; displayName: string; permissions: string[] } = await res.json();
-    saveTokens(data);
+    try {
+      // Step 1: Refresh Asgardeo tokens
+      const asgardeoRes = await fetch(asgardeoTokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: asgardeoClientId,
+        }).toString(),
+      });
 
-    const userInfo = localStorage.getItem('icp_user');
-    if (userInfo) {
-      try {
-        const existing = JSON.parse(userInfo);
-        localStorage.setItem('icp_user', JSON.stringify({ ...existing, username: data.username, displayName: data.displayName, permissions: data.permissions }));
-      } catch {
-        localStorage.removeItem('icp_user');
+      if (!asgardeoRes.ok) {
+        clearTokens();
+        onAuthFailure?.();
+        return;
       }
+
+      const asgardeoData: { access_token: string; refresh_token?: string; expires_in?: number } = await asgardeoRes.json();
+      const newRefreshToken = asgardeoData.refresh_token ?? refreshToken;
+
+      if (!stsTokenEndpoint || !stsClientId) {
+        saveTokens({ token: asgardeoData.access_token, expiresIn: asgardeoData.expires_in ?? 3600, refreshToken: newRefreshToken, refreshTokenExpiresIn: 86400 });
+        return;
+      }
+
+      // Step 2: STS exchange with orgHandle for org-scoped token
+      const orgHandle = localStorage.getItem('icp_org_handle');
+      const stsParams: Record<string, string> = {
+        grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+        client_id: stsClientId,
+        subject_token: asgardeoData.access_token,
+        subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+        requested_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+        ...(stsScope ? { scope: stsScope } : {}),
+        ...(orgHandle ? { orgHandle } : {}),
+      };
+
+      const stsRes = await fetch(stsTokenEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(stsParams).toString(),
+      });
+
+      if (!stsRes.ok) {
+        clearTokens();
+        onAuthFailure?.();
+        return;
+      }
+
+      const stsData: { access_token: string; expires_in?: number } = await stsRes.json();
+      saveTokens({ token: stsData.access_token, expiresIn: stsData.expires_in ?? 3600, refreshToken: newRefreshToken, refreshTokenExpiresIn: 86400 });
+    } catch {
+      clearTokens();
+      onAuthFailure?.();
     }
   })().finally(() => {
     refreshPromise = null;
@@ -238,4 +312,15 @@ export function getAndClearCodeVerifier(): string | null {
   const v = sessionStorage.getItem(CODE_VERIFIER_KEY);
   sessionStorage.removeItem(CODE_VERIFIER_KEY);
   return v;
+}
+
+export function getOrgUuidFromToken(): string | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return (payload.organization?.uuid as string) ?? null;
+  } catch {
+    return null;
+  }
 }

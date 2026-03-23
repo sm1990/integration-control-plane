@@ -204,6 +204,7 @@ function IntegrationsTable({
           }}
           rowsPerPageOptions={[10, 20, 50]}
           sx={{ mt: 1 }}
+          SelectProps={{ inputProps: { 'aria-label': 'rows per page' } }}
         />
       )}
 

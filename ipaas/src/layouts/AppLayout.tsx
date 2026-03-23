@@ -259,7 +259,7 @@ export default function AppLayout(): JSX.Element {
                 size="small"
                 sx={{ minWidth: 180 }}
                 IconComponent={({ ownerState: _ownerState, ...props }) => (
-                  <span {...props} style={{ position: 'absolute', top: 'auto', bottom: '0', right: '6px', display: 'flex', pointerEvents: 'none' }}>
+                  <span {...props} aria-hidden="true" style={{ position: 'absolute', top: 'auto', bottom: '0', right: '6px', display: 'flex', pointerEvents: 'none' }}>
                     <ChevronDown size={18} />
                   </span>
                 )}
@@ -441,6 +441,7 @@ export default function AppLayout(): JSX.Element {
                         {...props}
                         role="button"
                         tabIndex={0}
+                        aria-label="Change project"
                         style={{ position: 'absolute', top: 'auto', bottom: '0', right: '6px', display: 'flex', pointerEvents: 'all', cursor: 'pointer' }}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -596,6 +597,7 @@ export default function AppLayout(): JSX.Element {
                       {...props}
                       role="button"
                       tabIndex={0}
+                      aria-label="Change integration"
                       style={{ position: 'absolute', top: 'auto', bottom: '0', right: '6px', display: 'flex', pointerEvents: 'all', cursor: 'pointer' }}
                       onClick={(e) => {
                         e.stopPropagation();

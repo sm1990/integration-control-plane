@@ -36,6 +36,7 @@ interface RuntimeConfig {
   STS_SCOPE?: string;
   CHOREO_ORG_API_URL?: string;
   ASGARDEO_ORG_NUMERIC_ID?: string;
+  SYSTEM_APIS_BASE_URL?: string;
 }
 
 export interface ApiConfig {
@@ -52,6 +53,7 @@ export interface ApiConfig {
   stsScope: string;
   choreoOrgApiUrl: string;
   asgardeoOrgNumericId?: number;
+  systemApisBaseUrl?: string;
 }
 
 // Extend window interface
@@ -75,6 +77,7 @@ const DEFAULT_CONFIG: ApiConfig = {
   stsClientId: '',
   stsScope: '',
   choreoOrgApiUrl: 'https://apis.preview-dv.choreo.dev/orgs/1.0.0',
+  systemApisBaseUrl: '',
 };
 
 /**
@@ -103,6 +106,7 @@ export async function loadConfig(): Promise<void> {
       stsClientId: config.STS_CLIENT_ID || DEFAULT_CONFIG.stsClientId,
       stsScope: config.STS_SCOPE || '',
       choreoOrgApiUrl: config.CHOREO_ORG_API_URL || DEFAULT_CONFIG.choreoOrgApiUrl,
+      systemApisBaseUrl: config.SYSTEM_APIS_BASE_URL || DEFAULT_CONFIG.systemApisBaseUrl,
       asgardeoOrgNumericId: (() => {
         if (config.ASGARDEO_ORG_NUMERIC_ID) return parseInt(config.ASGARDEO_ORG_NUMERIC_ID, 10);
         const stored = localStorage.getItem('icp_org_numeric_id');

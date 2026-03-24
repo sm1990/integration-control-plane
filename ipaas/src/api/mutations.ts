@@ -328,6 +328,35 @@ export function useRotateComponentEnvironmentJwtSecret() {
   });
 }
 
+// ── Schedule / Job Configs ──
+
+const UPDATE_JOB_CONFIGS = `
+  mutation UpdateJobConfigs($input: JobConfigInput!) {
+    updateJobConfigs(input: $input)
+  }`;
+
+export interface UpdateJobConfigsInput {
+  orgHandler: string;
+  componentId: string;
+  environmentId: string;
+  versionId: string;
+  cronFrequency?: string;
+  cronTimezone?: string;
+  jobTimeoutSeconds?: number;
+  cronJobAllowConcurrency?: boolean;
+  jobRetryCount?: number;
+}
+
+export function useUpdateJobConfigs() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateJobConfigsInput) => gql<{ updateJobConfigs: boolean }>(UPDATE_JOB_CONFIGS, { input }).then((d) => d.updateJobConfigs),
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['executionConfigs', input.componentId] });
+    },
+  });
+}
+
 // ── Task trigger ──
 
 const TRIGGER_ARTIFACT = `
@@ -355,6 +384,36 @@ export function useTriggerTask() {
     onSuccess: () => {
       // Invalidate task queries to refetch the updated state
       qc.invalidateQueries({ queryKey: ['artifacts', 'Task'] });
+    },
+  });
+}
+
+// ── Deploy deployment track (triggers automation execution) ──
+
+const DEPLOY_DEPLOYMENT_TRACK = `
+  mutation deployDeploymentTrack($input: DeployDeploymentTrackInput!) {
+    deployDeploymentTrack(input: $input)
+  }`;
+
+export interface DeployDeploymentTrackInput {
+  componentId: string;
+  id: string;
+  imageId: string;
+  environmentId: string;
+  deploymentPipelineId: string;
+  cronTimezone?: string;
+  cron?: string;
+  jobTimeoutSeconds?: number;
+  cronJobAllowConcurrency?: boolean;
+}
+
+export function useDeployDeploymentTrack() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DeployDeploymentTrackInput) =>
+      gql<{ deployDeploymentTrack: string }>(DEPLOY_DEPLOYMENT_TRACK, { input }).then((d) => d.deployDeploymentTrack),
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['deploymentStatus', input.componentId, input.id] });
     },
   });
 }

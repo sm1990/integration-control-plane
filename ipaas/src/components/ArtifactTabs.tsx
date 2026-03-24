@@ -16,9 +16,10 @@
  * under the License.
  */
 
-import { Accordion, AccordionSummary, AccordionDetails, Box, Card, CardContent, Chip, CircularProgress, Divider, Stack, Typography } from '@wso2/oxygen-ui';
-import { ChevronDown } from '@wso2/oxygen-ui-icons-react';
-import { useMemo } from 'react';
+import { Accordion, AccordionSummary, AccordionDetails, Box, Card, CardContent, Chip, CircularProgress, Divider, IconButton, ListingTable, Stack, TablePagination, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { ChevronDown, ScrollText } from '@wso2/oxygen-ui-icons-react';
+import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useArtifactSource, useArtifactParams, useArtifactWsdl, useLocalEntryValue, ARTIFACT_TYPE_TO_SOURCE_TYPE } from '../api/queries';
 import { WSDL_NS, SOAP_NS, SOAP12_NS } from '../paths';
 import CodeViewer from './CodeViewer';
@@ -350,39 +351,92 @@ export function ProxyApiReference({ envId, componentId, artifactType, artifact }
   );
 }
 
-export function AutomationExecutions({ artifact }: TabProps) {
+export function AutomationExecutions({ artifact, orgHandler, projectHandler, componentHandler }: TabProps & { orgHandler: string; projectHandler: string; componentHandler: string }) {
+  const navigate = useNavigate();
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
   const runtimes = (artifact.runtimes as Array<{ runtimeId: string; status: string; executionTimestamps: string[] }> | undefined) ?? [];
   const allExecutions: Array<{ runtimeId: string; timestamp: string; status: string }> = [];
 
   runtimes.forEach((runtime) => {
-    const timestamps = runtime.executionTimestamps ?? [];
-    timestamps.forEach((timestamp) => {
-      allExecutions.push({
-        runtimeId: runtime.runtimeId,
-        timestamp,
-        status: runtime.status,
-      });
+    (runtime.executionTimestamps ?? []).forEach((timestamp) => {
+      allExecutions.push({ runtimeId: runtime.runtimeId, timestamp, status: runtime.status });
     });
   });
 
-  // Sort by timestamp descending (most recent first)
   allExecutions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  const maxPage = Math.max(0, Math.ceil(allExecutions.length / rowsPerPage) - 1);
+  const safePage = Math.min(page, maxPage);
+  const paged = allExecutions.slice(safePage * rowsPerPage, safePage * rowsPerPage + rowsPerPage);
+
+  const logsUrl = `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/logs`;
+
+  const statusColor = (status: string) => {
+    if (status === 'ONLINE') return 'success';
+    if (status === 'OFFLINE') return 'error';
+    return 'default';
+  };
+
   return (
-    <DataTable
-      headers={['Timestamp', 'Runtime ID', 'Status']}
-      rows={allExecutions.map((exec) => [
-        <Typography key="timestamp" variant="body2">
-          {exec.timestamp}
-        </Typography>,
-        <Typography key="runtimeId" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
-          {exec.runtimeId}
-        </Typography>,
-        <Typography key="status" variant="body2" color={exec.status === 'ONLINE' ? 'success.main' : 'text.secondary'} sx={{ fontWeight: 600 }}>
-          {exec.status}
-        </Typography>,
-      ])}
-      emptyMsg="No executions found."
-    />
+    <ListingTable.Container>
+      <ListingTable>
+        <ListingTable.Head>
+          <ListingTable.Row>
+            <ListingTable.Cell>Execution Time</ListingTable.Cell>
+            <ListingTable.Cell>Runtime ID</ListingTable.Cell>
+            <ListingTable.Cell>Status</ListingTable.Cell>
+            <ListingTable.Cell>Actions</ListingTable.Cell>
+          </ListingTable.Row>
+        </ListingTable.Head>
+        <ListingTable.Body>
+          {paged.length === 0 ? (
+            <ListingTable.Row>
+              <ListingTable.Cell colSpan={4} align="center">
+                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                  No executions found.
+                </Typography>
+              </ListingTable.Cell>
+            </ListingTable.Row>
+          ) : (
+            paged.map((exec, i) => (
+              <ListingTable.Row key={`${exec.runtimeId}-${exec.timestamp}-${i}`}>
+                <ListingTable.Cell>
+                  <Typography variant="body2">
+                    {new Date(exec.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })}
+                  </Typography>
+                </ListingTable.Cell>
+                <ListingTable.Cell>
+                  <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+                    {exec.runtimeId}
+                  </Typography>
+                </ListingTable.Cell>
+                <ListingTable.Cell>
+                  <Chip label={exec.status} size="small" color={statusColor(exec.status)} />
+                </ListingTable.Cell>
+                <ListingTable.Cell>
+                  <Tooltip title="View Logs">
+                    <IconButton size="small" onClick={() => navigate(logsUrl)}>
+                      <ScrollText size={16} />
+                    </IconButton>
+                  </Tooltip>
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ))
+          )}
+        </ListingTable.Body>
+      </ListingTable>
+      <TablePagination
+        sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+        component="div"
+        count={allExecutions.length}
+        page={safePage}
+        onPageChange={(_, p) => setPage(p)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+        rowsPerPageOptions={[5, 10, 25]}
+      />
+    </ListingTable.Container>
   );
 }

@@ -22,36 +22,41 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
   Divider,
+  Drawer,
   FormControlLabel,
   IconButton,
   InputAdornment,
+  MenuItem,
+  Select,
   Snackbar,
   Alert,
   Stack,
   Switch,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui';
-import { RefreshCw, ListFilter, LayoutGrid, Settings, Copy, Check, Play, ShieldAlert, CalendarClock } from '@wso2/oxygen-ui-icons-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Settings, Copy, Check, Play, RefreshCw, ShieldAlert, CalendarClock, ChevronDown, ChevronUp, X, Clock } from '@wso2/oxygen-ui-icons-react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useArtifacts, useRefreshEnvironmentArtifacts, type GqlArtifact, type GqlEnvironment } from '../api/queries';
-import { useUpdateArtifactTracingStatus, useUpdateArtifactStatisticsStatus } from '../api/artifactToggleMutations';
-import { useUpdateArtifactStatus, useUpdateListenerState, useTriggerTask, useGenerateComponentEnvironmentJwtSecret, useRotateComponentEnvironmentJwtSecret } from '../api/mutations';
-import { ArtifactApiDefinition, ServiceResources, AutomationExecutions, ProxyApiReference } from './ArtifactTabs';
-import { ArtifactTypeSelector } from './ArtifactDetail';
+import { useComponentDeployment, useExecutionConfigs, type GqlEnvironment } from '../api/queries';
+import { getOrgUuidFromToken } from '../auth/tokenManager';
+import { useDeployDeploymentTrack, useGenerateComponentEnvironmentJwtSecret, useRotateComponentEnvironmentJwtSecret } from '../api/mutations';
+import AutomationExecutions from './AutomationExecutions';
 import Authorized from './Authorized';
 import { Permissions } from '../constants/permissions';
-import { ENTRY_POINT_CONFIG, ENTRY_POINT_DETAIL_TABS, type SelectedArtifact, type TabProps } from './artifact-config';
 
 function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArtifact; onOpenDrawerTab: (tab: string) => void }) {
   const [tracingEnabled, setTracingEnabled] = useState(false);
@@ -506,6 +511,360 @@ function EntryPointsList({ envId, componentId, projectId, componentType, onOpenD
   );
 }
 
+// ── Interval → cron conversion ──
+
+const INTERVAL_UNITS = ['Minute', 'Hour', 'Day', 'Week', 'Month'] as const;
+type IntervalUnit = (typeof INTERVAL_UNITS)[number];
+
+function getTimezoneLabel(tz: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(new Date());
+    const offset = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
+    const normalized = offset.replace(/^GMT$/, 'GMT+00:00').replace(/GMT([+-])(\d):/, 'GMT$10$2:');
+    return `(${normalized}) ${tz}`;
+  } catch {
+    return tz;
+  }
+}
+
+const TIMEZONE_OPTIONS: { label: string; value: string }[] = (() => {
+  try {
+    return Intl.supportedValuesOf('timeZone').map((tz) => ({ label: getTimezoneLabel(tz), value: tz }));
+  } catch {
+    return [{ label: '(GMT+00:00) UTC', value: 'UTC' }];
+  }
+})();
+
+function intervalToCron(count: number, unit: IntervalUnit): string {
+  const n = Math.max(1, count);
+  switch (unit) {
+    case 'Minute':
+      return `*/${n} * * * *`;
+    case 'Hour':
+      return `0 */${n} * * *`;
+    case 'Day':
+      return `0 0 */${n} * *`;
+    case 'Week':
+      return `0 0 * * ${n % 7}`;
+    case 'Month':
+      return `0 0 1 */${n} *`;
+  }
+}
+
+function cronToInterval(cron: string): { count: number; unit: IntervalUnit } | null {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) return null;
+  const [min, hour, dom, month, dow] = parts;
+  if (min.startsWith('*/') && hour === '*' && dom === '*' && month === '*' && dow === '*') {
+    return { count: parseInt(min.slice(2), 10) || 1, unit: 'Minute' };
+  }
+  if (min === '0' && hour.startsWith('*/') && dom === '*' && month === '*' && dow === '*') {
+    return { count: parseInt(hour.slice(2), 10) || 1, unit: 'Hour' };
+  }
+  if (min === '0' && hour === '0' && dom.startsWith('*/') && month === '*' && dow === '*') {
+    return { count: parseInt(dom.slice(2), 10) || 1, unit: 'Day' };
+  }
+  if (min === '0' && hour === '0' && dom === '*' && month === '*' && dow !== '*') {
+    return { count: parseInt(dow, 10) || 1, unit: 'Week' };
+  }
+  if (min === '0' && hour === '0' && dom === '1' && month.startsWith('*/') && dow === '*') {
+    return { count: parseInt(month.slice(2), 10) || 1, unit: 'Month' };
+  }
+  return null;
+}
+
+const CRON_FIELD_LABELS = [
+  { key: 'minute', label: 'minute (0 - 59)', placeholder: '*/1' },
+  { key: 'hour', label: 'hour (0 - 23)', placeholder: '*' },
+  { key: 'dom', label: 'day of month (1 - 31)', placeholder: '*' },
+  { key: 'month', label: 'month (1 - 12)', placeholder: '*' },
+  { key: 'dow', label: 'day of week (0 - 6, Sun=0)', placeholder: '*' },
+] as const;
+
+type CronField = 'minute' | 'hour' | 'dom' | 'month' | 'dow';
+
+function parseCronParts(cron: string): Record<CronField, string> {
+  const parts = cron.trim().split(/\s+/);
+  return {
+    minute: parts[0] ?? '*',
+    hour: parts[1] ?? '*',
+    dom: parts[2] ?? '*',
+    month: parts[3] ?? '*',
+    dow: parts[4] ?? '*',
+  };
+}
+
+function buildCronFromParts(fields: Record<CronField, string>): string {
+  return `${fields.minute} ${fields.hour} ${fields.dom} ${fields.month} ${fields.dow}`;
+}
+
+function nextCronRunMs(cron: string): number | null {
+  const interval = cronToInterval(cron);
+  if (!interval) return null;
+  const now = new Date();
+  const { count, unit } = interval;
+  const next = new Date(now);
+  switch (unit) {
+    case 'Minute': {
+      const nextMin = (Math.floor(now.getMinutes() / count) + 1) * count;
+      next.setSeconds(0, 0);
+      if (nextMin >= 60) { next.setMinutes(0); next.setHours(now.getHours() + 1); }
+      else { next.setMinutes(nextMin); }
+      break;
+    }
+    case 'Hour': {
+      const nextH = (Math.floor(now.getHours() / count) + 1) * count;
+      next.setMinutes(0, 0, 0);
+      if (nextH >= 24) { next.setHours(0); next.setDate(now.getDate() + 1); }
+      else { next.setHours(nextH); }
+      break;
+    }
+    case 'Day':
+      next.setDate(now.getDate() + 1); next.setHours(0, 0, 0, 0); break;
+    case 'Week':
+      next.setDate(now.getDate() + (7 - now.getDay())); next.setHours(0, 0, 0, 0); break;
+    case 'Month':
+      next.setMonth(now.getMonth() + 1); next.setDate(1); next.setHours(0, 0, 0, 0); break;
+    default:
+      return null;
+  }
+  return next.getTime();
+}
+
+function formatTimeUntil(ms: number): string {
+  const diff = Math.max(0, ms - Date.now());
+  const totalSecs = Math.round(diff / 1000);
+  if (totalSecs < 60) return `${totalSecs}s`;
+  const mins = Math.floor(totalSecs / 60);
+  const secs = totalSecs % 60;
+  if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  const hours = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+}
+
+function describeCron(cron: string): string {
+  const interval = cronToInterval(cron);
+  if (!interval) return '';
+  const { count, unit } = interval;
+  return `Executes every ${count === 1 ? unit.toLowerCase() : `${count} ${unit.toLowerCase()}s`}`;
+}
+
+// ── Schedule Dialog ──
+
+function ScheduleDialog({ open, onClose, onSaveSuccess, envId, envName, componentId, orgHandler, versionId, deploymentPipelineId }: { open: boolean; onClose: () => void; onSaveSuccess?: () => void; envId: string; envName: string; componentId: string; orgHandler: string; versionId: string; deploymentPipelineId: string }) {
+  const [tab, setTab] = useState(0);
+  const [intervalCount, setIntervalCount] = useState(1);
+  const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('Minute');
+  const [cronFields, setCronFields] = useState<Record<CronField, string>>({ minute: '*/1', hour: '*', dom: '*', month: '*', dow: '*' });
+  const [timezone, setTimezone] = useState('UTC');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [timeoutSeconds, setTimeoutSeconds] = useState<string>('');
+  const [allowConcurrency, setAllowConcurrency] = useState(false);
+  const [retryCount, setRetryCount] = useState<string>('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const orgUuid = getOrgUuidFromToken() ?? '';
+  const { data: deployment, isLoading: loadingDeployment } = useComponentDeployment(orgHandler, orgUuid, componentId, versionId, envId);
+  const releaseId = deployment?.releaseId ?? '';
+  const { data: existingConfigs, isLoading: loadingExecConfigs } = useExecutionConfigs(componentId, releaseId);
+  const loadingConfigs = loadingDeployment || loadingExecConfigs;
+  const deployTrack = useDeployDeploymentTrack();
+
+  // Populate from existing config
+  useEffect(() => {
+    if (!existingConfigs || !open) return;
+    const freq = existingConfigs.cronjobFrequency || '*/1 * * * *';
+    const tz = existingConfigs.cronjobTimezone || 'UTC';
+    setTimezone(tz);
+    if (existingConfigs.timeoutSeconds != null) setTimeoutSeconds(String(existingConfigs.timeoutSeconds));
+    if (existingConfigs.cronjobAllowConcurrency != null) setAllowConcurrency(existingConfigs.cronjobAllowConcurrency);
+    if (existingConfigs.retryCount != null) setRetryCount(String(existingConfigs.retryCount));
+    const parsed = cronToInterval(freq);
+    if (parsed) {
+      setTab(0);
+      setIntervalCount(parsed.count);
+      setIntervalUnit(parsed.unit);
+    } else {
+      setTab(1);
+      setCronFields(parseCronParts(freq));
+    }
+  }, [existingConfigs, open]);
+
+  const cronExpression = tab === 0 ? intervalToCron(intervalCount, intervalUnit) : buildCronFromParts(cronFields);
+
+  const handleSave = () => {
+    setSaveError(null);
+    deployTrack.mutate(
+      {
+        componentId,
+        id: versionId,
+        imageId: deployment?.build?.buildId ?? '',
+        environmentId: envId,
+        deploymentPipelineId,
+        cron: cronExpression,
+        cronTimezone: timezone,
+        jobTimeoutSeconds: timeoutSeconds ? parseInt(timeoutSeconds, 10) : 300,
+        cronJobAllowConcurrency: allowConcurrency,
+      },
+      {
+        onSuccess: () => { onClose(); onSaveSuccess?.(); },
+        onError: (err) => setSaveError(err instanceof Error ? err.message : 'Failed to save schedule'),
+      },
+    );
+  };
+
+  const description = describeCron(cronExpression);
+
+  const drawerSx = {
+    '& .MuiDrawer-paper': {
+      width: 440,
+      position: 'fixed',
+      top: 64,
+      height: 'calc(100% - 64px)',
+      borderLeft: '1px solid',
+      borderColor: 'divider',
+      display: 'flex',
+      flexDirection: 'column',
+    },
+  };
+
+  return (
+    <Drawer anchor="right" open={open} onClose={onClose} variant="temporary" sx={drawerSx}>
+      {/* Header */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+          Schedule
+        </Typography>
+        <IconButton size="small" aria-label="close" onClick={onClose}>
+          <X size={16} />
+        </IconButton>
+      </Stack>
+
+      {/* Content */}
+      <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 2 }}>
+        {loadingConfigs ? (
+          <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', my: 4 }} />
+        ) : (
+          <>
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+              <Tab label="BY INTERVAL" />
+              <Tab label="BY CRON" />
+            </Tabs>
+
+            {tab === 0 && (
+              <Stack gap={2}>
+                <Typography variant="body2" color="text.secondary">
+                  Repeat beginning of every
+                </Typography>
+                <Stack direction="row" gap={2}>
+                  <TextField type="number" value={intervalCount} onChange={(e) => setIntervalCount(Math.max(1, parseInt(e.target.value, 10) || 1))} inputProps={{ min: 1 }} sx={{ width: 120 }} />
+                  <Select value={intervalUnit} onChange={(e) => setIntervalUnit(e.target.value as IntervalUnit)} sx={{ flex: 1 }}>
+                    {INTERVAL_UNITS.map((u) => (
+                      <MenuItem key={u} value={u}>
+                        {u}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </Stack>
+                {description && (
+                  <Typography variant="body2" color="text.secondary">
+                    {description}
+                  </Typography>
+                )}
+              </Stack>
+            )}
+
+            {tab === 1 && (
+              <Stack gap={1.5}>
+                <Typography variant="body1" sx={{ fontFamily: 'monospace', textAlign: 'center', py: 0.5 }}>
+                  {cronExpression}
+                </Typography>
+                {description && (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
+                    {description}
+                  </Typography>
+                )}
+                {CRON_FIELD_LABELS.map(({ key, label, placeholder }) => (
+                  <Box key={key}>
+                    <Typography variant="caption" color="text.secondary">
+                      {label}
+                    </Typography>
+                    <TextField fullWidth size="small" placeholder={placeholder} value={cronFields[key as CronField]} onChange={(e) => setCronFields((prev) => ({ ...prev, [key]: e.target.value }))} />
+                  </Box>
+                ))}
+                <Typography variant="caption" color="text.secondary">
+                  * any value &nbsp; , separator for multiple values &nbsp; - range of values &nbsp; / step values
+                </Typography>
+              </Stack>
+            )}
+
+            <Box sx={{ mt: 2 }}>
+              <Button variant="text" size="small" endIcon={advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />} onClick={() => setAdvancedOpen((v) => !v)} sx={{ px: 0 }}>
+                Advanced Settings
+              </Button>
+              <Collapse in={advancedOpen}>
+                <Stack gap={2} sx={{ mt: 1.5 }}>
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      In Time Zone
+                    </Typography>
+                    <Autocomplete
+                      options={TIMEZONE_OPTIONS}
+                      value={TIMEZONE_OPTIONS.find((o) => o.value === timezone) ?? { label: getTimezoneLabel(timezone), value: timezone }}
+                      onChange={(_, v) => setTimezone(v?.value ?? 'UTC')}
+                      getOptionLabel={(o) => o.label}
+                      isOptionEqualToValue={(o, v) => o.value === v.value}
+                      renderInput={(params) => <TextField {...params} size="small" />}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1.5 }}>
+                      Execution Behavior
+                    </Typography>
+                    <Stack gap={2}>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                          Job Timeout (in seconds)
+                        </Typography>
+                        <TextField fullWidth size="small" type="number" value={timeoutSeconds} onChange={(e) => setTimeoutSeconds(e.target.value)} placeholder="No timeout" inputProps={{ min: 0 }} />
+                      </Box>
+                      <FormControlLabel
+                        control={<Checkbox checked={allowConcurrency} onChange={(e) => setAllowConcurrency(e.target.checked)} size="small" />}
+                        label="Allow Overlapping Executions"
+                      />
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                          Attempt Count
+                        </Typography>
+                        <TextField fullWidth size="small" type="number" value={retryCount} onChange={(e) => setRetryCount(e.target.value)} placeholder="0" inputProps={{ min: 0 }} />
+                      </Box>
+                    </Stack>
+                  </Box>
+                </Stack>
+              </Collapse>
+            </Box>
+
+            {saveError && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {saveError}
+              </Alert>
+            )}
+          </>
+        )}
+      </Box>
+
+      {/* Footer */}
+      <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
+        <Button onClick={onClose}>Back</Button>
+        <Button variant="contained" onClick={handleSave} disabled={deployTrack.isPending || !deployment?.build?.buildId}>
+          {deployTrack.isPending ? 'Updating…' : 'Update'}
+        </Button>
+      </Stack>
+    </Drawer>
+  );
+}
+
 export default function Environment({
   env,
   componentId,
@@ -514,8 +873,10 @@ export default function Environment({
   displayType,
   componentHandler,
   projectHandler,
-  onSelectArtifact,
-  onOpenDrawerForTab,
+  orgHandler,
+  versionId,
+  deploymentPipelineId,
+  latestCommit,
 }: {
   env: GqlEnvironment;
   componentId: string;
@@ -524,34 +885,56 @@ export default function Environment({
   displayType?: string;
   componentHandler: string;
   projectHandler: string;
-  onSelectArtifact: (a: GqlArtifact, type: string, envId: string) => void;
-  onOpenDrawerForTab: (a: GqlArtifact, type: string, envId: string, tab: string) => void;
+  orgHandler: string;
+  versionId: string;
+  deploymentPipelineId: string;
+  latestCommit?: { sha: string; message: string } | null;
 }) {
-  const refreshEnvironmentArtifacts = useRefreshEnvironmentArtifacts();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<'entryPoints' | 'allArtifacts'>('entryPoints');
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [rotateConfirmOpen, setRotateConfirmOpen] = useState(false);
 
   const isAutomation = (displayType ?? '').toLowerCase() === 'scheduledtask';
   const queryClient = useQueryClient();
-  const { data: automationArtifacts = [], isLoading: loadingAutomations } = useArtifacts('Automation', env.id, componentId, { enabled: isAutomation });
-  const firstAutomation = isAutomation ? (automationArtifacts[0] ?? null) : null;
-  const triggerTaskMutation = useTriggerTask();
-  const [automationTriggerMessage, setAutomationTriggerMessage] = useState<string | null>(null);
+  const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
+  const [pendingTriggerTime, setPendingTriggerTime] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const deployTrack = useDeployDeploymentTrack();
+  const envOrgUuid = getOrgUuidFromToken() ?? '';
+  const { data: envDeployment, isLoading: loadingEnvDeployment } = useComponentDeployment(isAutomation ? orgHandler : '', isAutomation ? envOrgUuid : '', isAutomation ? componentId : '', isAutomation ? versionId : '', isAutomation ? env.id : '');
+  const envReleaseId = envDeployment?.releaseId ?? '';
+  const { data: scheduleConfig } = useExecutionConfigs(isAutomation ? componentId : '', isAutomation ? envReleaseId : '');
+  const scheduleDescription = scheduleConfig?.cronjobFrequency
+    ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}`
+    : null;
+  const [scheduleSavedMessage, setScheduleSavedMessage] = useState<string | null>(null);
 
-  const handleTestAutomation = () => {
-    if (!firstAutomation) return;
-    const taskName = firstAutomation.packageName?.toString() ?? '';
-    triggerTaskMutation.mutate(
-      { componentId, taskName },
-      {
-        onSuccess: () => setAutomationTriggerMessage(`Successfully triggered ${taskName || 'automation'}`),
-        onSettled: () => queryClient.invalidateQueries({ queryKey: ['artifacts', 'Automation', env.id, componentId] }),
-      },
-    );
-  };
+  // Next run countdown
+  const [nextRunLabel, setNextRunLabel] = useState<string | null>(null);
+  const cronFreq = scheduleConfig?.cronjobFrequency ?? null;
+  const lastScheduledTriggerRef = useRef<number>(0);
+  const updateNextRun = useCallback(() => {
+    if (!cronFreq) { setNextRunLabel(null); return; }
+    const ms = nextCronRunMs(cronFreq);
+    if (ms !== null) {
+      const diff = ms - Date.now();
+      // When the countdown reaches 0, show a queued sentinel row (same as manual trigger)
+      if (diff < 1000 && Date.now() - lastScheduledTriggerRef.current > 30000) {
+        lastScheduledTriggerRef.current = Date.now();
+        setPendingTriggerTime(Date.now());
+        queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
+      }
+      setNextRunLabel(`Next run in ${formatTimeUntil(ms)}`);
+    } else {
+      setNextRunLabel(null);
+    }
+  }, [cronFreq, setPendingTriggerTime, queryClient]);
+  useEffect(() => {
+    updateNextRun();
+    const timer = setInterval(updateNextRun, 1000);
+    return () => clearInterval(timer);
+  }, [updateNextRun]);
 
   const generateSecretMutation = useGenerateComponentEnvironmentJwtSecret();
   const rotateSecretMutation = useRotateComponentEnvironmentJwtSecret();
@@ -570,15 +953,6 @@ export default function Environment({
   const handleRotateSecret = () => {
     setRotateConfirmOpen(false);
     rotateSecretMutation.mutate({ componentId, environmentId: env.id });
-  };
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refreshEnvironmentArtifacts(env.id, componentId);
-    } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
-    }
   };
 
   const generateTomlConfig = (secret: string) => {
@@ -620,39 +994,89 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
         <Stack direction="row" alignItems="center" justifyContent="space-between">
-          {/* Left: env name + Configure */}
+          {/* Left: env name + commit info + Configure */}
           <Stack direction="row" alignItems="center" gap={1.5}>
             <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
               {env.name}
             </Typography>
+            {latestCommit && (
+              <Stack direction="row" alignItems="center" gap={0.5}>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
+                  {latestCommit.sha.substring(0, 7)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {latestCommit.message}
+                </Typography>
+              </Stack>
+            )}
             <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
               <Button variant="outlined" size="small" startIcon={<Settings size={14} />} onClick={handleOpenConfigDialog}>
                 Configure
               </Button>
             </Authorized>
           </Stack>
-          {/* Right: Schedule/Test/Run + refresh */}
-          <Stack direction="row" alignItems="center" gap={1}>
-            {isAutomation && (
-              <>
-                <Button variant="contained" size="small" disabled>
+          {/* Right: Next run + Schedule / Test / Refresh */}
+          {isAutomation && (
+            <Stack direction="row" alignItems="center" gap={1}>
+              {nextRunLabel && (
+                <Stack direction="row" alignItems="center" gap={0.5} sx={{ mr: 1 }}>
+                  <Clock size={14} />
+                  <Typography variant="body2" color="text.secondary">{nextRunLabel}</Typography>
+                </Stack>
+              )}
+              <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
+                <Button variant="outlined" size="small" startIcon={<CalendarClock size={14} />} onClick={() => setScheduleDialogOpen(true)}>
                   Schedule
                 </Button>
-                <Button variant="contained" size="small" startIcon={<Play size={14} />} onClick={handleTestAutomation} disabled={!firstAutomation || triggerTaskMutation.isPending || loadingAutomations}>
-                  {env.critical ? 'Run' : 'Test'}
-                </Button>
-              </>
-            )}
-            <IconButton size="small" onClick={handleRefresh} disabled={isRefreshing} aria-label="Refresh">
-              <RefreshCw
-                size={16}
-                style={{
-                  animation: isRefreshing ? 'spin 1s linear infinite' : 'none',
-                  transformOrigin: 'center',
-                }}
-              />
-            </IconButton>
-          </Stack>
+              </Authorized>
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<Play size={14} />}
+                disabled={!envDeployment?.build?.buildId || deployTrack.isPending}
+                onClick={() => deployTrack.mutate(
+                  {
+                    componentId,
+                    id: versionId,
+                    imageId: envDeployment?.build?.buildId ?? '',
+                    environmentId: env.id,
+                    deploymentPipelineId,
+                    cronTimezone: scheduleConfig?.cronjobTimezone ?? envDeployment?.cronTimezone ?? 'UTC',
+                    cron: scheduleConfig?.cronjobFrequency ?? envDeployment?.cron ?? '',
+                    jobTimeoutSeconds: scheduleConfig?.timeoutSeconds ?? 300,
+                    cronJobAllowConcurrency: scheduleConfig?.cronjobAllowConcurrency ?? false,
+                  },
+                  {
+                    onSuccess: () => {
+                      setTriggerMessage('Execution triggered successfully');
+                      setPendingTriggerTime(Date.now());
+                      queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
+                    },
+                  },
+                )}
+              >
+                {env.critical ? 'Run' : 'Test'}
+              </Button>
+              <Tooltip title="Refresh">
+                <IconButton
+                  size="small"
+                  disabled={isRefreshing}
+                  aria-label="Refresh"
+                  onClick={async () => {
+                    setIsRefreshing(true);
+                    try {
+                      await Promise.all([
+                        queryClient.invalidateQueries({ queryKey: ['deploymentStatus', componentId, versionId] }),
+                        queryClient.invalidateQueries({ queryKey: ['taskExecutions'] }),
+                      ]);
+                    } finally { setTimeout(() => setIsRefreshing(false), 500); }
+                  }}
+                >
+                  <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none', transformOrigin: 'center' }} />
+                </IconButton>
+              </Tooltip>
+            </Stack>
+          )}
         </Stack>
         <Dialog open={configDialogOpen} onClose={() => setConfigDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>Configure Runtime - {env.name}</DialogTitle>
@@ -717,44 +1141,38 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
             </Authorized>
           </DialogActions>
         </Dialog>
+        {isAutomation && <ScheduleDialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} onSaveSuccess={() => setScheduleSavedMessage('Schedule updated successfully')} envId={env.id} envName={env.name} componentId={componentId} orgHandler={orgHandler} versionId={versionId} deploymentPipelineId={deploymentPipelineId} />}
         <Divider sx={{ my: 2 }} />
-        {isAutomation ? (
-          <Box>
-            {loadingAutomations ? (
-              <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />
-            ) : firstAutomation ? (
-              <AutomationExecutions artifact={firstAutomation} artifactType="Automation" envId={env.id} componentId={componentId} projectId={projectId} />
-            ) : (
-              <Stack alignItems="center" gap={1} sx={{ py: 4 }}>
-                <CalendarClock size={40} style={{ opacity: 0.3 }} />
-                <Typography color="text.secondary" sx={{ textAlign: 'center' }}>
-                  No execution data available. Click &apos;{env.critical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
-                </Typography>
-              </Stack>
-            )}
+        {isAutomation && envDeployment && scheduleDescription && (
+          <Box sx={{ bgcolor: 'action.selected', borderRadius: 1, px: 2, py: 1, mb: 2 }}>
+            <Typography variant="body2">{scheduleDescription}</Typography>
           </Box>
-        ) : (
-          <>
-            {componentType === 'MI' && (
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Stack direction="row">
-                  <Button variant={viewMode === 'entryPoints' ? 'contained' : 'outlined'} size="small" startIcon={<ListFilter size={14} />} onClick={() => setViewMode('entryPoints')} sx={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
-                    Entry Points
-                  </Button>
-                  <Button variant={viewMode === 'allArtifacts' ? 'contained' : 'outlined'} size="small" startIcon={<LayoutGrid size={14} />} onClick={() => setViewMode('allArtifacts')} sx={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, ml: '-1px' }}>
-                    Supporting Artifacts
-                  </Button>
-                </Stack>
-              </Stack>
-            )}
-            {(componentType !== 'MI' || viewMode === 'entryPoints') && <EntryPointsList envId={env.id} componentId={componentId} projectId={projectId} componentType={componentType} onOpenDrawer={onOpenDrawerForTab} />}
-            {componentType === 'MI' && viewMode === 'allArtifacts' && <ArtifactTypeSelector envId={env.id} componentId={componentId} onSelectArtifact={onSelectArtifact} />}
-          </>
+        )}
+        {isAutomation && !loadingEnvDeployment && envDeployment && (
+          <AutomationExecutions
+            releaseId={envReleaseId}
+            orgHandler={orgHandler}
+            projectHandler={projectHandler}
+            componentHandler={componentHandler}
+            envCritical={env.critical ?? false}
+            pendingTriggerTime={pendingTriggerTime}
+            onTriggerResolved={() => setPendingTriggerTime(null)}
+          />
+        )}
+        {isAutomation && !loadingEnvDeployment && !envDeployment && (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+            No execution data available. Click &apos;{env.critical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
+          </Typography>
         )}
       </CardContent>
-      <Snackbar open={automationTriggerMessage !== null} autoHideDuration={4000} onClose={() => setAutomationTriggerMessage(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert onClose={() => setAutomationTriggerMessage(null)} severity="success" sx={{ width: '100%' }}>
-          {automationTriggerMessage}
+      <Snackbar open={triggerMessage !== null} autoHideDuration={4000} onClose={() => setTriggerMessage(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setTriggerMessage(null)} severity="success" sx={{ width: '100%' }}>
+          {triggerMessage}
+        </Alert>
+      </Snackbar>
+      <Snackbar open={scheduleSavedMessage !== null} autoHideDuration={4000} onClose={() => setScheduleSavedMessage(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setScheduleSavedMessage(null)} severity="success" sx={{ width: '100%' }}>
+          {scheduleSavedMessage}
         </Alert>
       </Snackbar>
     </Card>

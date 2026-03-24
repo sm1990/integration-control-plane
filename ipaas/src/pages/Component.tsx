@@ -297,8 +297,10 @@ export default function Component(scope: ComponentScope): JSX.Element {
                 displayType={displayType}
                 componentHandler={component.handler}
                 projectHandler={project?.handler ?? ''}
-                onSelectArtifact={(a, type, envId) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId })}
-                onOpenDrawerForTab={(a, type, envId, tab) => setSelectedArtifact({ artifact: a, artifactType: type, envId, componentId: component.id, projectId, initialTab: tab })}
+                orgHandler={scope.org}
+                versionId={component.deploymentTracks?.[0]?.id ?? ''}
+                deploymentPipelineId={project?.defaultDeploymentPipelineId ?? ''}
+                latestCommit={latestCommit}
               />
               {index < environments.length - 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>

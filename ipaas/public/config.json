@@ -10,5 +10,6 @@
   "STS_CLIENT_ID": "62j_4D4MnedSLkZ7ZD02EZoKM2ga",
   "STS_SCOPE": "apim:api_manage apim:subscription_manage apim:tier_manage apim:admin apim:publisher_settings environments:view_prod environments:view_dev choreo:user_manage apim:dcr:app_manage choreo:deployment_manage choreo:prod_env_manage choreo:non_prod_env_manage choreo:component_manage choreo:project_manage apim:api_publish apim:document_manage apim:api_settings apim:subscription_view apim:environment_manage choreo:log_view_non_prod choreo:log_view_prod urn:choreocontrolplane:usermanagement:role_mapping_manage urn:choreocontrolplane:usermanagement:role_mapping_view urn:choreocontrolplane:usermanagement:role_mapping_create urn:choreocontrolplane:usermanagement:role_mapping_update urn:choreocontrolplane:usermanagement:role_mapping_delete urn:choreocontrolplane:organizationapi:org_manage choreo:domain_manage choreo:domain_view choreo:url_mapping_manage choreo:url_mapping_view choreo:platform_engineer choreo:userstore_manage choreo:userstore_view environments:view choreo:env_manage choreo:log_view",
   "CHOREO_ORG_API_URL": "https://apis.preview-dv.choreo.dev/orgs/1.0.0",
-  "ASGARDEO_ORG_NUMERIC_ID": ""
+  "ASGARDEO_ORG_NUMERIC_ID": "",
+  "SYSTEM_APIS_BASE_URL": "https://783c6c4d-8b9b-4190-b70a-e717ab1ee739-systemapis.e1-us-east-azure.preview-dv.choreoapis.dev"
 }

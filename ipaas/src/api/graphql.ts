@@ -16,14 +16,36 @@
  * under the License.
  */
 
-import { authenticatedFetch } from '../auth/tokenManager';
+import { authenticatedFetch, getOrgUuidFromToken } from '../auth/tokenManager';
 
 export async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
-  const res = await authenticatedFetch(window.API_CONFIG.graphqlUrl, {
+  let res = await authenticatedFetch(window.API_CONFIG.graphqlUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
+  // Some environments return 404 for auth failures instead of 401.
+  // Only refresh when the token is unscoped (STS is configured but the token lacks an org UUID),
+  // which means it is a raw Asgardeo token rather than a proper org-scoped STS token.
+  // If the token already has an org UUID, a 404 is a genuine resource-not-found — not an auth
+  // failure — so we skip the refresh to avoid noisy connection-refused logs and unnecessary churn.
+  if (res.status === 404) {
+    const stsConfigured = !!window.API_CONFIG.stsTokenEndpoint && !!window.API_CONFIG.stsClientId;
+    const tokenIsUnscoped = stsConfigured && !getOrgUuidFromToken();
+    if (tokenIsUnscoped) {
+      const { refreshAccessToken } = await import('../auth/tokenManager');
+      await refreshAccessToken();
+      const { getAccessToken } = await import('../auth/tokenManager');
+      const token = getAccessToken();
+      const headers = new Headers({ 'Content-Type': 'application/json' });
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      res = await fetch(window.API_CONFIG.graphqlUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ query, variables }),
+      });
+    }
+  }
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`GraphQL request failed (HTTP ${res.status}): ${body || res.statusText}`);

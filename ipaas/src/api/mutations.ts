@@ -410,10 +410,42 @@ export interface DeployDeploymentTrackInput {
 export function useDeployDeploymentTrack() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: DeployDeploymentTrackInput) =>
-      gql<{ deployDeploymentTrack: string }>(DEPLOY_DEPLOYMENT_TRACK, { input }).then((d) => d.deployDeploymentTrack),
+    mutationFn: (input: DeployDeploymentTrackInput) => gql<{ deployDeploymentTrack: string }>(DEPLOY_DEPLOYMENT_TRACK, { input }).then((d) => d.deployDeploymentTrack),
     onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['deploymentStatus', input.componentId, input.id] });
+      qc.invalidateQueries({ queryKey: ['executionConfigs', input.componentId] });
+      qc.invalidateQueries({ queryKey: ['componentDeployment'] });
+    },
+  });
+}
+
+// ── Stop Deployment (clears cron schedule) ──
+
+const STOP_DEPLOYMENT = `
+  mutation StopDeployment($orgHandler: String!, $componentId: String!, $releaseId: String!, $type: String!, $clearCron: Boolean!) {
+    stopDeployment(orgHandler: $orgHandler, componentId: $componentId, releaseId: $releaseId, type: $type, clearCron: $clearCron)
+  }`;
+
+export interface StopDeploymentInput {
+  orgHandler: string;
+  componentId: string;
+  releaseId: string;
+}
+
+export function useStopDeployment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: StopDeploymentInput) =>
+      gql<{ stopDeployment: string }>(STOP_DEPLOYMENT, {
+        orgHandler: input.orgHandler,
+        componentId: input.componentId,
+        releaseId: input.releaseId,
+        type: 'scheduledTask',
+        clearCron: true,
+      }).then((d) => d.stopDeployment),
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['executionConfigs', input.componentId] });
+      qc.invalidateQueries({ queryKey: ['componentDeployment'] });
     },
   });
 }

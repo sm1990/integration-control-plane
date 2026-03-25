@@ -392,6 +392,7 @@ function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArt
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function EntryPointsList({ envId, componentId, projectId, componentType, onOpenDrawer }: { envId: string; componentId: string; projectId: string; componentType: string; onOpenDrawer: (a: GqlArtifact, type: string, envId: string, tab: string) => void }) {
   const [selectedKey, setSelectedKey] = useState('');
   const isMI = componentType === 'MI';
@@ -608,23 +609,38 @@ function nextCronRunMs(cron: string): number | null {
     case 'Minute': {
       const nextMin = (Math.floor(now.getMinutes() / count) + 1) * count;
       next.setSeconds(0, 0);
-      if (nextMin >= 60) { next.setMinutes(0); next.setHours(now.getHours() + 1); }
-      else { next.setMinutes(nextMin); }
+      if (nextMin >= 60) {
+        next.setMinutes(0);
+        next.setHours(now.getHours() + 1);
+      } else {
+        next.setMinutes(nextMin);
+      }
       break;
     }
     case 'Hour': {
       const nextH = (Math.floor(now.getHours() / count) + 1) * count;
       next.setMinutes(0, 0, 0);
-      if (nextH >= 24) { next.setHours(0); next.setDate(now.getDate() + 1); }
-      else { next.setHours(nextH); }
+      if (nextH >= 24) {
+        next.setHours(0);
+        next.setDate(now.getDate() + 1);
+      } else {
+        next.setHours(nextH);
+      }
       break;
     }
     case 'Day':
-      next.setDate(now.getDate() + 1); next.setHours(0, 0, 0, 0); break;
+      next.setDate(now.getDate() + 1);
+      next.setHours(0, 0, 0, 0);
+      break;
     case 'Week':
-      next.setDate(now.getDate() + (7 - now.getDay())); next.setHours(0, 0, 0, 0); break;
+      next.setDate(now.getDate() + (7 - now.getDay()));
+      next.setHours(0, 0, 0, 0);
+      break;
     case 'Month':
-      next.setMonth(now.getMonth() + 1); next.setDate(1); next.setHours(0, 0, 0, 0); break;
+      next.setMonth(now.getMonth() + 1);
+      next.setDate(1);
+      next.setHours(0, 0, 0, 0);
+      break;
     default:
       return null;
   }
@@ -652,7 +668,27 @@ function describeCron(cron: string): string {
 
 // ── Schedule Dialog ──
 
-function ScheduleDialog({ open, onClose, onSaveSuccess, envId, envName, componentId, orgHandler, versionId, deploymentPipelineId }: { open: boolean; onClose: () => void; onSaveSuccess?: () => void; envId: string; envName: string; componentId: string; orgHandler: string; versionId: string; deploymentPipelineId: string }) {
+function ScheduleDialog({
+  open,
+  onClose,
+  onSaveSuccess,
+  envId,
+  envName: _envName,
+  componentId,
+  orgHandler,
+  versionId,
+  deploymentPipelineId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaveSuccess?: () => void;
+  envId: string;
+  envName: string;
+  componentId: string;
+  orgHandler: string;
+  versionId: string;
+  deploymentPipelineId: string;
+}) {
   const [tab, setTab] = useState(0);
   const [intervalCount, setIntervalCount] = useState(1);
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('Minute');
@@ -708,7 +744,10 @@ function ScheduleDialog({ open, onClose, onSaveSuccess, envId, envName, componen
         cronJobAllowConcurrency: allowConcurrency,
       },
       {
-        onSuccess: () => { onClose(); onSaveSuccess?.(); },
+        onSuccess: () => {
+          onClose();
+          onSaveSuccess?.();
+        },
         onError: (err) => setSaveError(err instanceof Error ? err.message : 'Failed to save schedule'),
       },
     );
@@ -829,10 +868,7 @@ function ScheduleDialog({ open, onClose, onSaveSuccess, envId, envName, componen
                         </Typography>
                         <TextField fullWidth size="small" type="number" value={timeoutSeconds} onChange={(e) => setTimeoutSeconds(e.target.value)} placeholder="No timeout" inputProps={{ min: 0 }} />
                       </Box>
-                      <FormControlLabel
-                        control={<Checkbox checked={allowConcurrency} onChange={(e) => setAllowConcurrency(e.target.checked)} size="small" />}
-                        label="Allow Overlapping Executions"
-                      />
+                      <FormControlLabel control={<Checkbox checked={allowConcurrency} onChange={(e) => setAllowConcurrency(e.target.checked)} size="small" />} label="Allow Overlapping Executions" />
                       <Box>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                           Attempt Count
@@ -868,7 +904,7 @@ function ScheduleDialog({ open, onClose, onSaveSuccess, envId, envName, componen
 export default function Environment({
   env,
   componentId,
-  projectId,
+  projectId: _projectId,
   componentType,
   displayType,
   componentHandler,
@@ -905,9 +941,7 @@ export default function Environment({
   const { data: envDeployment, isLoading: loadingEnvDeployment } = useComponentDeployment(isAutomation ? orgHandler : '', isAutomation ? envOrgUuid : '', isAutomation ? componentId : '', isAutomation ? versionId : '', isAutomation ? env.id : '');
   const envReleaseId = envDeployment?.releaseId ?? '';
   const { data: scheduleConfig } = useExecutionConfigs(isAutomation ? componentId : '', isAutomation ? envReleaseId : '');
-  const scheduleDescription = scheduleConfig?.cronjobFrequency
-    ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}`
-    : null;
+  const scheduleDescription = scheduleConfig?.cronjobFrequency ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}` : null;
   const [scheduleSavedMessage, setScheduleSavedMessage] = useState<string | null>(null);
 
   // Next run countdown
@@ -915,7 +949,10 @@ export default function Environment({
   const cronFreq = scheduleConfig?.cronjobFrequency ?? null;
   const lastScheduledTriggerRef = useRef<number>(0);
   const updateNextRun = useCallback(() => {
-    if (!cronFreq) { setNextRunLabel(null); return; }
+    if (!cronFreq) {
+      setNextRunLabel(null);
+      return;
+    }
     const ms = nextCronRunMs(cronFreq);
     if (ms !== null) {
       const diff = ms - Date.now();
@@ -1021,7 +1058,9 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
               {nextRunLabel && (
                 <Stack direction="row" alignItems="center" gap={0.5} sx={{ mr: 1 }}>
                   <Clock size={14} />
-                  <Typography variant="body2" color="text.secondary">{nextRunLabel}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {nextRunLabel}
+                  </Typography>
                 </Stack>
               )}
               <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
@@ -1034,27 +1073,28 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
                 size="small"
                 startIcon={<Play size={14} />}
                 disabled={!envDeployment?.build?.buildId || deployTrack.isPending}
-                onClick={() => deployTrack.mutate(
-                  {
-                    componentId,
-                    id: versionId,
-                    imageId: envDeployment?.build?.buildId ?? '',
-                    environmentId: env.id,
-                    deploymentPipelineId,
-                    cronTimezone: scheduleConfig?.cronjobTimezone ?? envDeployment?.cronTimezone ?? 'UTC',
-                    cron: scheduleConfig?.cronjobFrequency ?? envDeployment?.cron ?? '',
-                    jobTimeoutSeconds: scheduleConfig?.timeoutSeconds ?? 300,
-                    cronJobAllowConcurrency: scheduleConfig?.cronjobAllowConcurrency ?? false,
-                  },
-                  {
-                    onSuccess: () => {
-                      setTriggerMessage('Execution triggered successfully');
-                      setPendingTriggerTime(Date.now());
-                      queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
+                onClick={() =>
+                  deployTrack.mutate(
+                    {
+                      componentId,
+                      id: versionId,
+                      imageId: envDeployment?.build?.buildId ?? '',
+                      environmentId: env.id,
+                      deploymentPipelineId,
+                      cronTimezone: scheduleConfig?.cronjobTimezone ?? envDeployment?.cronTimezone ?? 'UTC',
+                      cron: scheduleConfig?.cronjobFrequency ?? envDeployment?.cron ?? '',
+                      jobTimeoutSeconds: scheduleConfig?.timeoutSeconds ?? 300,
+                      cronJobAllowConcurrency: scheduleConfig?.cronjobAllowConcurrency ?? false,
                     },
-                  },
-                )}
-              >
+                    {
+                      onSuccess: () => {
+                        setTriggerMessage('Execution triggered successfully');
+                        setPendingTriggerTime(Date.now());
+                        queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
+                      },
+                    },
+                  )
+                }>
                 {env.critical ? 'Run' : 'Test'}
               </Button>
               <Tooltip title="Refresh">
@@ -1065,13 +1105,11 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
                   onClick={async () => {
                     setIsRefreshing(true);
                     try {
-                      await Promise.all([
-                        queryClient.invalidateQueries({ queryKey: ['deploymentStatus', componentId, versionId] }),
-                        queryClient.invalidateQueries({ queryKey: ['taskExecutions'] }),
-                      ]);
-                    } finally { setTimeout(() => setIsRefreshing(false), 500); }
-                  }}
-                >
+                      await Promise.all([queryClient.invalidateQueries({ queryKey: ['deploymentStatus', componentId, versionId] }), queryClient.invalidateQueries({ queryKey: ['taskExecutions'] })]);
+                    } finally {
+                      setTimeout(() => setIsRefreshing(false), 500);
+                    }
+                  }}>
                   <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none', transformOrigin: 'center' }} />
                 </IconButton>
               </Tooltip>
@@ -1141,7 +1179,19 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
             </Authorized>
           </DialogActions>
         </Dialog>
-        {isAutomation && <ScheduleDialog open={scheduleDialogOpen} onClose={() => setScheduleDialogOpen(false)} onSaveSuccess={() => setScheduleSavedMessage('Schedule updated successfully')} envId={env.id} envName={env.name} componentId={componentId} orgHandler={orgHandler} versionId={versionId} deploymentPipelineId={deploymentPipelineId} />}
+        {isAutomation && (
+          <ScheduleDialog
+            open={scheduleDialogOpen}
+            onClose={() => setScheduleDialogOpen(false)}
+            onSaveSuccess={() => setScheduleSavedMessage('Schedule updated successfully')}
+            envId={env.id}
+            envName={env.name}
+            componentId={componentId}
+            orgHandler={orgHandler}
+            versionId={versionId}
+            deploymentPipelineId={deploymentPipelineId}
+          />
+        )}
         <Divider sx={{ my: 2 }} />
         {isAutomation && envDeployment && scheduleDescription && (
           <Box sx={{ bgcolor: 'action.selected', borderRadius: 1, px: 2, py: 1, mb: 2 }}>

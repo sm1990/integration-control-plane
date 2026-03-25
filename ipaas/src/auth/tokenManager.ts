@@ -153,7 +153,46 @@ export async function refreshAccessToken(): Promise<void> {
       }
 
       // Step 2: STS exchange with orgHandle for org-scoped token
-      const orgHandle = localStorage.getItem('icp_org_handle');
+      // If orgHandle is missing from localStorage (e.g., old session predating the fix),
+      // fetch it from the orgs API using a base STS token — mirrors the OIDC login flow.
+      let orgHandle = localStorage.getItem('icp_org_handle');
+      if (!orgHandle) {
+        const { choreoOrgApiUrl } = window.API_CONFIG;
+        if (choreoOrgApiUrl) {
+          try {
+            const baseStsRes = await fetch(stsTokenEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+                client_id: stsClientId,
+                subject_token: asgardeoData.access_token,
+                subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+                requested_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+                ...(stsScope ? { scope: stsScope } : {}),
+              }).toString(),
+            });
+            if (baseStsRes.ok) {
+              const { access_token: baseStsToken } = (await baseStsRes.json()) as { access_token: string };
+              const orgsRes = await fetch(`${choreoOrgApiUrl}/orgs`, { headers: { Authorization: `Bearer ${baseStsToken}` } });
+              if (orgsRes.ok) {
+                const orgsData = await orgsRes.json();
+                const orgs: Array<{ handle?: string; orgHandle?: string; org_handle?: string }> = orgsData.list ?? orgsData.organizations ?? (Array.isArray(orgsData) ? orgsData : []);
+                for (const org of orgs) {
+                  const h = org.handle ?? org.orgHandle ?? org.org_handle;
+                  if (h) {
+                    orgHandle = h;
+                    localStorage.setItem('icp_org_handle', h);
+                    break;
+                  }
+                }
+              }
+            }
+          } catch {
+            // fall through — STS exchange will proceed without orgHandle
+          }
+        }
+      }
       const stsParams: Record<string, string> = {
         grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
         client_id: stsClientId,
@@ -237,6 +276,7 @@ export async function switchOrgToken(orgHandle: string): Promise<void> {
   if (!res.ok) throw new Error(`Org token exchange failed (${res.status})`);
 
   const data: { access_token: string; expires_in?: number } = await res.json();
+  localStorage.setItem('icp_org_handle', orgHandle);
   saveTokens({
     token: data.access_token,
     expiresIn: data.expires_in ?? 3600,

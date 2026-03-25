@@ -54,7 +54,7 @@ function formatDuration(startUnix: string, endUnix: string): string {
   return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
-function isInProgress(status: string, completionTime: string): boolean {
+function isInProgress(status: string, _completionTime: string): boolean {
   const val = status?.toLowerCase();
   if (val === 'succeeded' || val === 'success' || val === 'failed' || val === 'failure') return false;
   return true; // InProgress, Queued, or any non-terminal status
@@ -79,10 +79,7 @@ const QUEUED_EXECUTION: TaskExecution = {
   status: 'Queued',
 };
 
-export default function AutomationExecutions({
-  releaseId, orgHandler, projectHandler, componentHandler, envCritical,
-  pendingTriggerTime, onTriggerResolved,
-}: AutomationExecutionsProps) {
+export default function AutomationExecutions({ releaseId, orgHandler, projectHandler, componentHandler, envCritical, pendingTriggerTime, onTriggerResolved }: AutomationExecutionsProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
@@ -117,10 +114,7 @@ export default function AutomationExecutions({
   }, [pendingTriggerTime, onTriggerResolved]);
 
   // Show the queued sentinel row at position 0 while pendingTriggerTime is set and no new exec arrived
-  const showQueued = !!pendingTriggerTime && (
-    executions.length === 0 ||
-    parseInt(executions[0].startTime, 10) * 1000 < pendingTriggerTime - 5000
-  );
+  const showQueued = !!pendingTriggerTime && (executions.length === 0 || parseInt(executions[0].startTime, 10) * 1000 < pendingTriggerTime - 5000);
   const allExecutions = showQueued ? [QUEUED_EXECUTION, ...executions] : executions;
 
   const maxPage = Math.max(0, Math.ceil(allExecutions.length / rowsPerPage) - 1);
@@ -163,23 +157,21 @@ export default function AutomationExecutions({
                     <StatusIcon status={e.status} inProgress={inProgress} />
                   </ListingTable.Cell>
                   <ListingTable.Cell>
-                    <Typography variant="body2">
-                      {inProgress ? '--' : formatTriggeredAt(e.startTime)}
-                    </Typography>
+                    <Typography variant="body2">{inProgress ? '--' : formatTriggeredAt(e.startTime)}</Typography>
                   </ListingTable.Cell>
                   <ListingTable.Cell>
-                    <Typography variant="body2">
-                      {inProgress ? '--' : formatDuration(e.startTime, e.completionTime)}
-                    </Typography>
+                    <Typography variant="body2">{inProgress ? '--' : formatDuration(e.startTime, e.completionTime)}</Typography>
                   </ListingTable.Cell>
                   <ListingTable.Cell>
                     <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                      {inProgress ? '--' : (e.revisionId ? e.revisionId.substring(0, 7) : '—')}
+                      {inProgress ? '--' : e.revisionId ? e.revisionId.substring(0, 7) : '—'}
                     </Typography>
                   </ListingTable.Cell>
                   <ListingTable.Cell>
                     {inProgress ? (
-                      <Typography variant="body2" color="text.secondary">--</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        --
+                      </Typography>
                     ) : (
                       <Tooltip title="View Logs">
                         <IconButton size="small" onClick={() => navigate(logsUrl)}>
@@ -201,7 +193,10 @@ export default function AutomationExecutions({
         page={safePage}
         onPageChange={(_, p) => setPage(p)}
         rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+        onRowsPerPageChange={(e) => {
+          setRowsPerPage(parseInt(e.target.value, 10));
+          setPage(0);
+        }}
         rowsPerPageOptions={[5, 10, 25]}
       />
     </ListingTable.Container>

@@ -17,15 +17,17 @@
  */
 
 import { Card, CardContent } from '@wso2/oxygen-ui';
-import { useEffect, useCallback, useRef, useState } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useComponentDeployment, useExecutionConfigs, type GqlEnvironment } from '../../api/queries';
+import { useComponentDeployment, useExecutionConfigs, useSchemaConfig, type GqlEnvironment } from '../../api/queries';
 import { getOrgUuidFromToken } from '../../auth/tokenManager';
-import { useDeployDeploymentTrack } from '../../api/mutations';
+import { useTriggerComponent } from '../../api/mutations';
 import { nextCronRunMs, formatTimeUntil, describeCron } from '../../utils/cronUtils';
 import EnvironmentCardHeader from './EnvironmentCardHeader';
 import EnvironmentCardBody from './EnvironmentCardBody';
 import EnvironmentCardFooter from './EnvironmentCardFooter';
+import RunWithArgsDialog from './RunWithArgsDialog';
+import ConfigureDrawer from './ConfigureDrawer';
 
 interface EnvironmentProps {
   env: GqlEnvironment;
@@ -41,19 +43,59 @@ interface EnvironmentProps {
   latestCommit?: { sha: string; message: string } | null;
 }
 
-export default function Environment({ env, componentId, projectId: _projectId, componentType: _componentType, displayType, componentHandler, projectHandler, orgHandler, versionId, deploymentPipelineId, latestCommit }: EnvironmentProps) {
+export default function Environment({ env, componentId, projectId, componentType: _componentType, displayType, componentHandler, projectHandler, orgHandler, versionId, deploymentPipelineId, latestCommit }: EnvironmentProps) {
   const isAutomation = (displayType ?? '').toLowerCase() === 'scheduledtask';
   const queryClient = useQueryClient();
+  const [configureOpen, setConfigureOpen] = useState(false);
   const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
   const [pendingTriggerTime, setPendingTriggerTime] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const deployTrack = useDeployDeploymentTrack();
+  const [runWithArgsOpen, setRunWithArgsOpen] = useState(false);
+  const trigger = useTriggerComponent();
   const envOrgUuid = getOrgUuidFromToken() ?? '';
   const { data: envDeployment, isLoading: loadingEnvDeployment } = useComponentDeployment(isAutomation ? orgHandler : '', isAutomation ? envOrgUuid : '', isAutomation ? componentId : '', isAutomation ? versionId : '', isAutomation ? env.id : '');
   const envReleaseId = envDeployment?.releaseId ?? '';
   const { data: scheduleConfig } = useExecutionConfigs(isAutomation ? componentId : '', isAutomation ? envReleaseId : '');
   const scheduleDescription = scheduleConfig?.cronjobFrequency ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}` : null;
   const [scheduleSavedMessage, setScheduleSavedMessage] = useState<string | null>(null);
+
+  const envTemplateId = env.templateId ?? env.id;
+  const { data: schemaConfig } = useSchemaConfig(
+    isAutomation ? projectId : '',
+    isAutomation ? componentId : '',
+    isAutomation ? envTemplateId : '',
+    isAutomation ? versionId : '',
+    latestCommit?.sha,
+  );
+
+  const hasMissingConfigs = useMemo(() => {
+    if (!schemaConfig?.jsonSchema) return false;
+    try {
+      const schema = JSON.parse(atob(schemaConfig.jsonSchema));
+      // Recursively collect all required leaf keys using dot notation (mirrors ConfigureDrawer flattenSchema)
+      function collectRequired(props: Record<string, unknown>, req: string[], prefix = ''): string[] {
+        const result: string[] = [];
+        for (const [name, prop] of Object.entries(props)) {
+          const p = prop as Record<string, unknown>;
+          const key = prefix ? `${prefix}.${name}` : name;
+          if (p.type === 'object' && p.properties) {
+            result.push(...collectRequired(p.properties as Record<string, unknown>, (p.required as string[]) ?? [], key));
+          } else if (req.includes(name)) {
+            result.push(key);
+          }
+        }
+        return result;
+      }
+      const allRequired = collectRequired(schema.properties ?? {}, schema.required ?? []);
+      if (allRequired.length === 0) return false;
+      const filledKeys = new Set(
+        (schemaConfig.configurations ?? []).filter((c) => c.values?.[0]?.value).map((c) => c.key),
+      );
+      return allRequired.some((k) => !filledKeys.has(k));
+    } catch {
+      return false;
+    }
+  }, [schemaConfig]);
 
   const [nextRunLabel, setNextRunLabel] = useState<string | null>(null);
   const cronFreq = scheduleConfig?.cronjobFrequency ?? null;
@@ -83,24 +125,15 @@ export default function Environment({ env, componentId, projectId: _projectId, c
   }, [updateNextRun]);
 
   const handleRun = () => {
-    deployTrack.mutate(
-      {
-        componentId,
-        id: versionId,
-        imageId: envDeployment?.build?.buildId ?? '',
-        environmentId: env.id,
-        deploymentPipelineId,
-        cronTimezone: scheduleConfig?.cronjobTimezone ?? envDeployment?.cronTimezone ?? 'UTC',
-        cron: scheduleConfig?.cronjobFrequency ?? envDeployment?.cron ?? '',
-        jobTimeoutSeconds: scheduleConfig?.timeoutSeconds ?? 300,
-        cronJobAllowConcurrency: scheduleConfig?.cronjobAllowConcurrency ?? false,
-      },
+    trigger.mutate(
+      { orgHandler, projectId, componentId, releaseId: envReleaseId, args: [] },
       {
         onSuccess: () => {
           setTriggerMessage('Execution triggered successfully');
           setPendingTriggerTime(Date.now());
           queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
         },
+        onError: () => setTriggerMessage('Failed to trigger execution'),
       },
     );
   };
@@ -116,7 +149,7 @@ export default function Environment({ env, componentId, projectId: _projectId, c
 
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
-      <CardContent>
+      <CardContent sx={{ pb: (theme) => `${theme.spacing(2)} !important` }}>
         <EnvironmentCardHeader
           envName={env.name}
           envCritical={env.critical}
@@ -124,8 +157,8 @@ export default function Environment({ env, componentId, projectId: _projectId, c
           isAutomation={isAutomation}
           nextRunLabel={nextRunLabel}
           isRefreshing={isRefreshing}
-          deployTrackIsPending={deployTrack.isPending}
-          deploymentBuildId={envDeployment?.build?.buildId}
+          deployTrackIsPending={trigger.isPending}
+          hasDeployment={!!envDeployment}
           scheduleButtonProps={
             isAutomation
               ? {
@@ -143,7 +176,10 @@ export default function Environment({ env, componentId, projectId: _projectId, c
               : undefined
           }
           onRun={handleRun}
+          onRunWithArgs={() => setRunWithArgsOpen(true)}
           onRefresh={handleRefresh}
+          onConfigure={() => setConfigureOpen(true)}
+          hasMissingConfigs={hasMissingConfigs}
         />
 
         <EnvironmentCardBody
@@ -162,6 +198,31 @@ export default function Environment({ env, componentId, projectId: _projectId, c
       </CardContent>
 
       <EnvironmentCardFooter triggerMessage={triggerMessage} scheduleSavedMessage={scheduleSavedMessage} onTriggerMessageClose={() => setTriggerMessage(null)} onScheduleSavedMessageClose={() => setScheduleSavedMessage(null)} />
+
+      <RunWithArgsDialog
+        open={runWithArgsOpen}
+        onClose={() => setRunWithArgsOpen(false)}
+        onRunSuccess={() => {
+          setTriggerMessage('Execution triggered successfully');
+          setPendingTriggerTime(Date.now());
+          queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
+        }}
+        envCritical={env.critical}
+        orgHandler={orgHandler}
+        projectId={projectId}
+        componentId={componentId}
+        releaseId={envReleaseId}
+      />
+
+      <ConfigureDrawer
+        open={configureOpen}
+        onClose={() => setConfigureOpen(false)}
+        projectId={projectId}
+        componentId={componentId}
+        envId={envTemplateId}
+        deploymentTrackId={versionId}
+        commitHash={latestCommit?.sha}
+      />
     </Card>
   );
 }

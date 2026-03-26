@@ -16,8 +16,8 @@
  * under the License.
  */
 
-import { CircularProgress, IconButton, ListingTable, TablePagination, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { ScrollText, CheckCircle2, XCircle } from '@wso2/oxygen-ui-icons-react';
+import { Button, CircularProgress, ListingTable, TablePagination, Typography } from '@wso2/oxygen-ui';
+import { CheckCircle2, XCircle } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -129,7 +129,7 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
 
   return (
     <ListingTable.Container>
-      <ListingTable>
+      <ListingTable density="compact">
         <ListingTable.Head>
           <ListingTable.Row>
             <ListingTable.Cell>Status</ListingTable.Cell>
@@ -173,11 +173,9 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
                         --
                       </Typography>
                     ) : (
-                      <Tooltip title="View Logs">
-                        <IconButton size="small" onClick={() => navigate(logsUrl)}>
-                          <ScrollText size={16} />
-                        </IconButton>
-                      </Tooltip>
+                      <Button variant="text" size="small" onClick={() => navigate(logsUrl)}>
+                        View Logs
+                      </Button>
                     )}
                   </ListingTable.Cell>
                 </ListingTable.Row>

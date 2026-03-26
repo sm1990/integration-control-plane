@@ -17,32 +17,36 @@
  */
 
 import { Button, IconButton, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { Play, RefreshCw, Clock } from '@wso2/oxygen-ui-icons-react';
+import { RefreshCw, Clock, SlidersHorizontal } from '@wso2/oxygen-ui-icons-react';
 import ScheduleButton, { type ScheduleButtonProps } from './ScheduleButton';
+import RunButton from './RunButton';
 
 interface EnvironmentCardHeaderProps {
   envName: string;
   envCritical?: boolean | null;
   latestCommit?: { sha: string; message: string } | null;
   isAutomation: boolean;
+  hasDeployment?: boolean;
   nextRunLabel: string | null;
   isRefreshing: boolean;
   deployTrackIsPending: boolean;
-  deploymentBuildId?: string | null;
   scheduleButtonProps?: ScheduleButtonProps;
   onRun: () => void;
+  onRunWithArgs: () => void;
   onRefresh: () => void;
+  onConfigure?: () => void;
+  hasMissingConfigs?: boolean;
 }
 
-export default function EnvironmentCardHeader({ envName, envCritical, latestCommit, isAutomation, nextRunLabel, isRefreshing, deployTrackIsPending, deploymentBuildId, scheduleButtonProps, onRun, onRefresh }: EnvironmentCardHeaderProps) {
+export default function EnvironmentCardHeader({ envName, envCritical, latestCommit, isAutomation, hasDeployment, nextRunLabel, isRefreshing, deployTrackIsPending, scheduleButtonProps, onRun, onRunWithArgs, onRefresh, onConfigure, hasMissingConfigs }: EnvironmentCardHeaderProps) {
   return (
     <Stack direction="row" alignItems="center" justifyContent="space-between">
-      {/* Left: env name + commit info */}
+      {/* Left: env name + commit info + configure */}
       <Stack direction="row" alignItems="center" gap={1.5}>
         <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize' }}>
           {envName}
         </Typography>
-        {latestCommit && (
+        {hasDeployment && latestCommit && (
           <Stack direction="row" alignItems="center" gap={0.5}>
             <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
               {latestCommit.sha.substring(0, 7)}
@@ -51,6 +55,11 @@ export default function EnvironmentCardHeader({ envName, envCritical, latestComm
               {latestCommit.message}
             </Typography>
           </Stack>
+        )}
+        {hasDeployment && isAutomation && onConfigure && (
+          <Button variant="outlined" size="small" color={hasMissingConfigs ? 'error' : 'primary'} startIcon={<SlidersHorizontal size={14} />} onClick={onConfigure}>
+            {hasMissingConfigs ? 'Configure to Continue' : 'Configure'}
+          </Button>
         )}
       </Stack>
 
@@ -65,10 +74,8 @@ export default function EnvironmentCardHeader({ envName, envCritical, latestComm
               </Typography>
             </Stack>
           )}
-          {scheduleButtonProps && <ScheduleButton {...scheduleButtonProps} />}
-          <Button variant="contained" size="small" startIcon={<Play size={14} />} disabled={!deploymentBuildId || deployTrackIsPending} onClick={onRun}>
-            {envCritical ? 'Run' : 'Test'}
-          </Button>
+          {scheduleButtonProps && <ScheduleButton {...scheduleButtonProps} disabled={hasMissingConfigs} />}
+          <RunButton envCritical={envCritical} disabled={hasMissingConfigs} pending={deployTrackIsPending} onRun={onRun} onRunWithArgs={onRunWithArgs} />
           <Tooltip title="Refresh">
             <IconButton size="small" disabled={isRefreshing} aria-label="Refresh" onClick={onRefresh}>
               <RefreshCw size={16} style={{ animation: isRefreshing ? 'spin 1s linear infinite' : 'none', transformOrigin: 'center' }} />

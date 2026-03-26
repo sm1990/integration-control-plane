@@ -33,11 +33,12 @@ export interface ScheduleButtonProps {
   versionId: string;
   deploymentPipelineId: string;
   hasSchedule: boolean;
+  disabled?: boolean;
   onSaveSuccess?: () => void;
   onStopSuccess?: () => void;
 }
 
-export default function ScheduleButton({ hasSchedule, onSaveSuccess, onStopSuccess, ...dialogProps }: ScheduleButtonProps) {
+export default function ScheduleButton({ hasSchedule, disabled, onSaveSuccess, onStopSuccess, ...dialogProps }: ScheduleButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const splitButtonRef = useRef<HTMLDivElement>(null);
@@ -53,7 +54,7 @@ export default function ScheduleButton({ hasSchedule, onSaveSuccess, onStopSucce
       <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
         {hasSchedule ? (
           <>
-            <ButtonGroup variant="outlined" size="small" ref={splitButtonRef}>
+            <ButtonGroup variant="contained" size="small" ref={splitButtonRef} disabled={disabled}>
               <Button startIcon={<CalendarClock size={14} />} onClick={() => setDialogOpen(true)}>
                 Edit Schedule
               </Button>
@@ -78,7 +79,7 @@ export default function ScheduleButton({ hasSchedule, onSaveSuccess, onStopSucce
             </Popper>
           </>
         ) : (
-          <Button variant="outlined" size="small" startIcon={<CalendarClock size={14} />} onClick={() => setDialogOpen(true)}>
+          <Button variant="contained" size="small" startIcon={<CalendarClock size={14} />} disabled={disabled} onClick={() => setDialogOpen(true)}>
             Schedule
           </Button>
         )}

@@ -16,13 +16,13 @@
  * under the License.
  */
 
-import { Box, Button, CircularProgress, Divider, PageContent } from '@wso2/oxygen-ui';
+import { Box, CircularProgress, Divider, PageContent } from '@wso2/oxygen-ui';
 import { Fragment, useState, type JSX } from 'react';
-import { ArrowDown } from '@wso2/oxygen-ui-icons-react';
 import { useProject, useProjectByHandler, useComponentByHandler, useEnvironments, useComponentRepository, useCommitHistory } from '../api/queries';
 import NotFound from '../components/NotFound';
 import { ArtifactDetail } from '../components/ArtifactDetail';
 import Environment from '../components/EnvironmentCard';
+import PromoteButton from '../components/EnvironmentCard/PromoteButton';
 import ComponentHeader from '../components/ComponentHeader';
 import type { SelectedArtifact } from '../components/artifact-config';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
@@ -94,9 +94,14 @@ export default function Component(scope: ComponentScope): JSX.Element {
               />
               {index < environments.length - 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                  <Button variant="outlined" size="small" startIcon={<ArrowDown size={14} />} disabled>
-                    Promote
-                  </Button>
+                  <PromoteButton
+                    orgHandler={scope.org}
+                    componentId={component.id}
+                    versionId={component.deploymentTracks?.[0]?.id ?? ''}
+                    deploymentPipelineId={project?.defaultDeploymentPipelineId ?? ''}
+                    sourceEnvId={env.id}
+                    targetEnvId={environments[index + 1].id}
+                  />
                 </Box>
               )}
             </Fragment>

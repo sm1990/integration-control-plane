@@ -18,7 +18,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import { authenticatedFetch, getOrgUuidFromToken } from '../auth/tokenManager';
+import { authenticatedFetch, getOrgUuidFromToken, getOrRefreshAsgardeoToken } from '../auth/tokenManager';
 
 export interface GqlProject {
   id: string;
@@ -175,6 +175,7 @@ export interface GqlEnvironment {
   id: string;
   name: string;
   critical: boolean;
+  templateId?: string;
   description?: string;
   createdAt?: string;
 }
@@ -182,7 +183,7 @@ export interface GqlEnvironment {
 const ENVIRONMENTS_QUERY = `
   query GetEnvironments($orgUuid: String!, $projectId: String!) {
     environments(orgUuid: $orgUuid, type: "external", projectId: $projectId) {
-      id, name, critical
+      id, name, critical, templateId
     }
   }`;
 
@@ -689,6 +690,43 @@ export function useTaskExecutions(releaseId: string) {
     enabled: !!baseUrl && !!releaseId,
     retry: false,
     staleTime: 0,
+  });
+}
+
+// ── Schema-based configurable values ──
+
+export interface SchemaConfigValue {
+  value: string;
+  environmentUuid?: string;
+}
+
+export interface SchemaConfigItem {
+  key: string;
+  values: SchemaConfigValue[];
+  valueType?: string;
+  isRequired?: boolean;
+  isSensitive?: boolean;
+}
+
+export interface SchemaConfigData {
+  jsonSchema?: string; // base64-encoded JSON schema
+  mappingId?: string;
+  configurations: SchemaConfigItem[];
+}
+
+export function useSchemaConfig(projectId: string, componentId: string, envId: string, deploymentTrackId: string, commitHash?: string) {
+  return useQuery({
+    queryKey: ['schemaConfig', projectId, componentId, envId, deploymentTrackId, commitHash],
+    queryFn: async (): Promise<SchemaConfigData | null> => {
+      const base = new URL(window.API_CONFIG.graphqlUrl).origin;
+      const qs = commitHash ? `?commitHash=${encodeURIComponent(commitHash)}` : '';
+      const url = `${base}/configuration-schema/v1.0/projects/${projectId}/components/${componentId}/env-template/${envId}/deployment-track/${deploymentTrackId}/configurations${qs}`;
+      const res = await authenticatedFetch(url);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!projectId && !!componentId && !!envId && !!deploymentTrackId,
+    retry: false,
   });
 }
 

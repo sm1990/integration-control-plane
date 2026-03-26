@@ -18,7 +18,8 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject } from './queries';
+import { authenticatedFetch } from '../auth/tokenManager';
+import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject, SchemaConfigItem } from './queries';
 import { toBackendArtifactType } from './artifactToggleMutations';
 
 export interface CreateProjectInput {
@@ -446,6 +447,72 @@ export function useStopDeployment() {
     onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['executionConfigs', input.componentId] });
       qc.invalidateQueries({ queryKey: ['componentDeployment'] });
+    },
+  });
+}
+
+// ── Run-pod trigger (manual execution with optional arguments) ──
+
+export interface SaveSchemaConfigInput {
+  projectId: string;
+  componentId: string;
+  envId: string;
+  deploymentTrackId: string;
+  configurations: SchemaConfigItem[];
+  mappingId?: string;
+  commitHash?: string;
+}
+
+export function useSaveSchemaConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SaveSchemaConfigInput) => {
+      const base = new URL(window.API_CONFIG.graphqlUrl).origin;
+      const url = `${base}/configuration-schema/v1.0/projects/${input.projectId}/components/${input.componentId}/env-template/${input.envId}/deployment-track/${input.deploymentTrackId}/configurations`;
+      const res = await authenticatedFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configurations: input.configurations, ...(input.commitHash ? { commitHash: input.commitHash } : {}) }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json().catch(() => ({}));
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['schemaConfig', vars.projectId, vars.componentId, vars.envId, vars.deploymentTrackId] });
+    },
+  });
+}
+
+export interface TriggerComponentInput {
+  orgHandler: string;
+  projectId: string;
+  componentId: string;
+  releaseId: string;
+  args?: { argument_name: string; argument_value: string }[];
+}
+
+export function useTriggerComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TriggerComponentInput) => {
+      const origin = new URL(window.API_CONFIG.graphqlUrl).origin;
+      const url = `${origin}/component-mgt/1.0.0/orgs/${input.orgHandler}/projects/${input.projectId}/components/${input.componentId}/releases/${input.releaseId}/run-pod`;
+      const res = await authenticatedFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ args: input.args ?? [] }),
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json().catch(() => ({}));
+    },
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['taskExecutions', input.releaseId] });
     },
   });
 }

@@ -135,7 +135,7 @@ export default function ComponentHeader({ component, project, repository, latest
                 Open in Cloud&nbsp;
                 <Chip label="Beta" size="small" color="primary" sx={{ height: 16, fontSize: 10, cursor: 'pointer' }} />
               </Button>
-              <Button size="small" sx={{ px: 0.5 }} onClick={() => setSplitOpen((prev) => !prev)}>
+              <Button size="small" sx={{ px: 0.5 }} aria-label="More options" aria-expanded={splitOpen} onClick={() => setSplitOpen((prev) => !prev)}>
                 <ChevronDown size={14} />
               </Button>
             </ButtonGroup>
@@ -222,7 +222,7 @@ export default function ComponentHeader({ component, project, repository, latest
               <Typography variant="body2" color="text.secondary">
                 {formatDistanceToNow(latestCommit.author.date)}
               </Typography>
-              <Avatar src={latestCommit.author.avatarUrl} sx={{ width: 16, height: 16, fontSize: 10 }}>
+              <Avatar src={latestCommit.author.avatarUrl} alt={latestCommit.author.name ?? 'Commit author'} sx={{ width: 16, height: 16, fontSize: 10 }}>
                 {latestCommit.author.name?.[0]?.toUpperCase()}
               </Avatar>
               <Typography variant="body2" color="text.secondary">

@@ -57,10 +57,10 @@ export default function RunButton({ envCritical, disabled, pending, onRun, onRun
   return (
     <>
       <ButtonGroup variant="contained" size="small" ref={anchorRef} disabled={disabled || pending}>
-        <Button startIcon={<Play size={14} />} onClick={handlePrimaryClick}>
+        <Button startIcon={<Play size={14} />} aria-label={selectedAction === 'runWithArgs' ? `${label} with Arguments` : label} onClick={handlePrimaryClick}>
           {selectedAction === 'runWithArgs' ? `${label} with Arguments` : label}
         </Button>
-        <Button size="small" sx={{ px: 0.5 }} aria-label="More run options" onClick={() => setSplitOpen((prev) => !prev)}>
+        <Button size="small" sx={{ px: 0.5 }} aria-label="More run options" aria-expanded={splitOpen} onClick={() => setSplitOpen((prev) => !prev)}>
           <ChevronDown size={14} />
         </Button>
       </ButtonGroup>

@@ -16,12 +16,13 @@
  * under the License.
  */
 
-import { Button, CircularProgress, ListingTable, TablePagination, Typography } from '@wso2/oxygen-ui';
-import { CheckCircle2, XCircle } from '@wso2/oxygen-ui-icons-react';
-import { useEffect, useState } from 'react';
+import { Button, CircularProgress, IconButton, ListingTable, TablePagination, Typography } from '@wso2/oxygen-ui';
+import { CheckCircle2, ChevronRight, XCircle } from '@wso2/oxygen-ui-icons-react';
+import { Fragment, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTaskExecutions, type TaskExecution } from '../api/queries';
+import ExecutionDrawer from './EnvironmentCard/ExecutionDrawer';
 
 interface AutomationExecutionsProps {
   releaseId: string;
@@ -84,6 +85,7 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [selectedExecution, setSelectedExecution] = useState<TaskExecution | null>(null);
 
   const { data: executions = [], isLoading } = useTaskExecutions(releaseId);
 
@@ -128,6 +130,7 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
   }
 
   return (
+    <Fragment>
     <ListingTable.Container>
       <ListingTable density="compact">
         <ListingTable.Head>
@@ -137,12 +140,13 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
             <ListingTable.Cell>Duration</ListingTable.Cell>
             <ListingTable.Cell>Commit ID</ListingTable.Cell>
             <ListingTable.Cell>Latest Logs</ListingTable.Cell>
+            <ListingTable.Cell></ListingTable.Cell>
           </ListingTable.Row>
         </ListingTable.Head>
         <ListingTable.Body>
           {paged.length === 0 ? (
             <ListingTable.Row>
-              <ListingTable.Cell colSpan={5} align="center">
+              <ListingTable.Cell colSpan={6} align="center">
                 <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                   No execution data available. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
                 </Typography>
@@ -178,6 +182,13 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
                       </Button>
                     )}
                   </ListingTable.Cell>
+                  <ListingTable.Cell>
+                    {e.id !== QUEUED_SENTINEL && (
+                      <IconButton size="small" aria-label="View execution details" onClick={() => setSelectedExecution(e)}>
+                        <ChevronRight size={16} />
+                      </IconButton>
+                    )}
+                  </ListingTable.Cell>
                 </ListingTable.Row>
               );
             })
@@ -198,5 +209,15 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
         rowsPerPageOptions={[5, 10, 25]}
       />
     </ListingTable.Container>
+
+    <ExecutionDrawer
+      open={!!selectedExecution}
+      execution={selectedExecution}
+      onClose={() => setSelectedExecution(null)}
+      orgHandler={orgHandler}
+      projectHandler={projectHandler}
+      componentHandler={componentHandler}
+    />
+    </Fragment>
   );
 }

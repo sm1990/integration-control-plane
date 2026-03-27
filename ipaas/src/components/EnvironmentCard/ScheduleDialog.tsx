@@ -142,7 +142,19 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, envId, en
                   Repeat beginning of every
                 </Typography>
                 <Stack direction="row" gap={2}>
-                  <TextField type="number" value={intervalCount} onChange={(e) => setIntervalCount(Math.max(1, parseInt(e.target.value, 10) || 1))} inputProps={{ min: 1 }} sx={{ width: 120 }} />
+                  <TextField
+                    type="text"
+                    inputMode="numeric"
+                    value={intervalCount}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, '');
+                      setIntervalCount(raw === '' ? ('' as unknown as number) : parseInt(raw, 10));
+                    }}
+                    onBlur={() => {
+                      if (!intervalCount || intervalCount < 1) setIntervalCount(1);
+                    }}
+                    sx={{ width: 120 }}
+                  />
                   <Select value={intervalUnit} onChange={(e) => setIntervalUnit(e.target.value as IntervalUnit)} sx={{ flex: 1 }}>
                     {INTERVAL_UNITS.map((u) => (
                       <MenuItem key={u} value={u}>

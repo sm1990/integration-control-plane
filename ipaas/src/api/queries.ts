@@ -725,7 +725,7 @@ export function useSchemaConfig(projectId: string, componentId: string, envId: s
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: !!projectId && !!componentId && !!envId && !!deploymentTrackId,
+    enabled: !!projectId && !!componentId && !!envId && !!deploymentTrackId && !!commitHash,
     retry: false,
   });
 }

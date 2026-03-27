@@ -141,9 +141,14 @@ export default function Environment({ env, componentId, projectId, componentType
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ['deploymentStatus', componentId, versionId] }), queryClient.invalidateQueries({ queryKey: ['taskExecutions'] })]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['componentDeployment'] }),
+        queryClient.invalidateQueries({ queryKey: ['executionConfigs'] }),
+        queryClient.invalidateQueries({ queryKey: ['taskExecutions'] }),
+        queryClient.invalidateQueries({ queryKey: ['schemaConfig'] }),
+      ]);
     } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
+      setIsRefreshing(false);
     }
   };
 
@@ -194,6 +199,7 @@ export default function Environment({ env, componentId, projectId, componentType
           envCritical={env.critical ?? false}
           pendingTriggerTime={pendingTriggerTime}
           onTriggerResolved={() => setPendingTriggerTime(null)}
+          isRefreshing={isRefreshing}
         />
       </CardContent>
 

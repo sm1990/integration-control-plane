@@ -19,7 +19,7 @@
 import { Button, Tooltip } from '@wso2/oxygen-ui';
 import { ArrowDown } from '@wso2/oxygen-ui-icons-react';
 import { useComponentDeployment } from '../../api/queries';
-import { useDeployDeploymentTrack } from '../../api/mutations';
+import { usePromote } from '../../api/mutations';
 import { getOrgUuidFromToken } from '../../auth/tokenManager';
 import Authorized from '../Authorized';
 import { Permissions } from '../../constants/permissions';
@@ -36,33 +36,38 @@ interface PromoteButtonProps {
 export default function PromoteButton({ orgHandler, componentId, versionId, deploymentPipelineId, sourceEnvId, targetEnvId }: PromoteButtonProps) {
   const orgUuid = getOrgUuidFromToken() ?? '';
   const { data: sourceDeployment } = useComponentDeployment(orgHandler, orgUuid, componentId, versionId, sourceEnvId);
-  const deployTrack = useDeployDeploymentTrack();
+  const { data: targetDeployment } = useComponentDeployment(orgHandler, orgUuid, componentId, versionId, targetEnvId);
+  const promote = usePromote();
 
   const buildId = sourceDeployment?.build?.buildId;
+  const sourceReleaseId = sourceDeployment?.releaseId;
+  const alreadyPromoted = !!buildId && buildId === targetDeployment?.build?.buildId;
 
   const handlePromote = () => {
-    if (!buildId) return;
-    deployTrack.mutate({
+    if (!buildId || !sourceReleaseId || alreadyPromoted) return;
+    promote.mutate({
       componentId,
-      id: versionId,
-      imageId: buildId,
-      environmentId: targetEnvId,
+      apiVersionId: versionId,
+      sourceReleaseId,
+      targetEnvironmentId: targetEnvId,
       deploymentPipelineId,
     });
   };
 
+  const tooltipTitle = !buildId ? 'No build available to promote' : alreadyPromoted ? 'Already deployed in target environment' : '';
+
   return (
     <Authorized permissions={Permissions.ENVIRONMENT_MANAGE}>
-      <Tooltip title={!buildId ? 'No build available to promote' : ''}>
+      <Tooltip title={tooltipTitle}>
         <span>
           <Button
             variant="outlined"
             size="small"
             startIcon={<ArrowDown size={14} />}
-            disabled={!buildId || deployTrack.isPending}
+            disabled={!buildId || !sourceReleaseId || alreadyPromoted || promote.isPending}
             onClick={handlePromote}
           >
-            {deployTrack.isPending ? 'Promoting…' : 'Promote'}
+            {promote.isPending ? 'Promoting…' : 'Promote'}
           </Button>
         </span>
       </Tooltip>

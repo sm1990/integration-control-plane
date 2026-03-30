@@ -89,14 +89,18 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
 
   const { data: executions = [], isLoading } = useTaskExecutions(releaseId);
 
-  // Poll every 3s regardless of window focus
+  // Only poll while there is something to wait for: a pending trigger or an in-progress execution.
+  // Once all executions reach a terminal state and no trigger is pending, stop polling.
+  const hasInProgress = executions.some((e) => isInProgress(e.status, e.completionTime));
+  const shouldPoll = !!pendingTriggerTime || hasInProgress;
+
   useEffect(() => {
-    if (!releaseId) return;
+    if (!releaseId || !shouldPoll) return;
     const timer = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['taskExecutions', releaseId] });
     }, 3000);
     return () => clearInterval(timer);
-  }, [releaseId, queryClient]);
+  }, [releaseId, shouldPoll, queryClient]);
 
   // Detect when the real new execution arrives and clear the queued sentinel
   useEffect(() => {
@@ -129,6 +133,14 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
     return <CircularProgress size={24} sx={{ display: 'block', mx: 'auto', py: 4 }} />;
   }
 
+  if (allExecutions.length === 0) {
+    return (
+      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+        No execution data available. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
+      </Typography>
+    );
+  }
+
   return (
     <Fragment>
     <ListingTable.Container>
@@ -144,16 +156,7 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
           </ListingTable.Row>
         </ListingTable.Head>
         <ListingTable.Body>
-          {paged.length === 0 ? (
-            <ListingTable.Row>
-              <ListingTable.Cell colSpan={6} align="center">
-                <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                  No execution data available. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
-                </Typography>
-              </ListingTable.Cell>
-            </ListingTable.Row>
-          ) : (
-            paged.map((e) => {
+          {paged.map((e) => {
               const inProgress = isInProgress(e.status, e.completionTime);
               return (
                 <ListingTable.Row key={e.id}>
@@ -191,8 +194,7 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
                   </ListingTable.Cell>
                 </ListingTable.Row>
               );
-            })
-          )}
+            })}
         </ListingTable.Body>
       </ListingTable>
       <TablePagination

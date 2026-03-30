@@ -47,7 +47,7 @@ export default function Environment({ env, componentId, projectId, componentType
   const isAutomation = (displayType ?? '').toLowerCase() === 'scheduledtask';
   const queryClient = useQueryClient();
   const [configureOpen, setConfigureOpen] = useState(false);
-  const [triggerMessage, setTriggerMessage] = useState<string | null>(null);
+  const [triggerMessage, setTriggerMessage] = useState<{ text: string; severity: 'success' | 'error' } | null>(null);
   const [pendingTriggerTime, setPendingTriggerTime] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [runWithArgsOpen, setRunWithArgsOpen] = useState(false);
@@ -58,6 +58,7 @@ export default function Environment({ env, componentId, projectId, componentType
   const { data: scheduleConfig } = useExecutionConfigs(isAutomation ? componentId : '', isAutomation ? envReleaseId : '');
   const scheduleDescription = scheduleConfig?.cronjobFrequency ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}` : null;
   const [scheduleSavedMessage, setScheduleSavedMessage] = useState<string | null>(null);
+  const [scheduleErrorMessage, setScheduleErrorMessage] = useState<string | null>(null);
 
   const envTemplateId = env.templateId ?? env.id;
   const { data: schemaConfig } = useSchemaConfig(
@@ -129,11 +130,14 @@ export default function Environment({ env, componentId, projectId, componentType
       { orgHandler, projectId, componentId, releaseId: envReleaseId, args: [] },
       {
         onSuccess: () => {
-          setTriggerMessage('Execution triggered successfully');
+          setTriggerMessage({ text: 'Execution triggered successfully', severity: 'success' });
           setPendingTriggerTime(Date.now());
           queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
         },
-        onError: () => setTriggerMessage('Failed to trigger execution'),
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : 'Failed to trigger execution';
+          setTriggerMessage({ text: msg, severity: 'error' });
+        },
       },
     );
   };
@@ -176,6 +180,7 @@ export default function Environment({ env, componentId, projectId, componentType
                   deploymentPipelineId,
                   hasSchedule: !!scheduleConfig?.cronjobFrequency,
                   onSaveSuccess: () => setScheduleSavedMessage('Schedule updated successfully'),
+                  onSaveError: () => setScheduleErrorMessage('Failed to save schedule. Please try again.'),
                   onStopSuccess: () => setScheduleSavedMessage('Schedule stopped successfully'),
                 }
               : undefined
@@ -199,17 +204,16 @@ export default function Environment({ env, componentId, projectId, componentType
           envCritical={env.critical ?? false}
           pendingTriggerTime={pendingTriggerTime}
           onTriggerResolved={() => setPendingTriggerTime(null)}
-          isRefreshing={isRefreshing}
         />
       </CardContent>
 
-      <EnvironmentCardFooter triggerMessage={triggerMessage} scheduleSavedMessage={scheduleSavedMessage} onTriggerMessageClose={() => setTriggerMessage(null)} onScheduleSavedMessageClose={() => setScheduleSavedMessage(null)} />
+      <EnvironmentCardFooter triggerMessage={triggerMessage} scheduleSavedMessage={scheduleSavedMessage} scheduleErrorMessage={scheduleErrorMessage} onTriggerMessageClose={() => setTriggerMessage(null)} onScheduleSavedMessageClose={() => setScheduleSavedMessage(null)} onScheduleErrorMessageClose={() => setScheduleErrorMessage(null)} />
 
       <RunWithArgsDialog
         open={runWithArgsOpen}
         onClose={() => setRunWithArgsOpen(false)}
         onRunSuccess={() => {
-          setTriggerMessage('Execution triggered successfully');
+          setTriggerMessage({ text: 'Execution triggered successfully', severity: 'success' });
           setPendingTriggerTime(Date.now());
           queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
         }}

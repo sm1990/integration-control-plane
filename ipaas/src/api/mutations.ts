@@ -18,7 +18,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import { authenticatedFetch } from '../auth/tokenManager';
+import { authenticatedFetch, refreshAccessToken } from '../auth/tokenManager';
 import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject, SchemaConfigItem } from './queries';
 import { toBackendArtifactType } from './artifactToggleMutations';
 
@@ -420,6 +420,42 @@ export function useDeployDeploymentTrack() {
   });
 }
 
+// ── Promote ──
+
+const PROMOTE_MUTATION = `
+  mutation promote($componentId: String!, $promoteSchema: Promote!) {
+    promote(componentId: $componentId, promoteSchema: $promoteSchema)
+  }`;
+
+export interface PromoteInput {
+  componentId: string;
+  apiVersionId: string;
+  sourceReleaseId: string;
+  targetEnvironmentId: string;
+  deploymentPipelineId: string;
+}
+
+export function usePromote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PromoteInput) =>
+      gql<{ promote: string }>(PROMOTE_MUTATION, {
+        componentId: input.componentId,
+        promoteSchema: {
+          apiVersionId: input.apiVersionId,
+          sourceReleaseId: input.sourceReleaseId,
+          targetEnvironmentId: input.targetEnvironmentId,
+          deploymentPipelineId: input.deploymentPipelineId,
+          jobRetryCount: 0,
+        },
+      }).then((d) => d.promote),
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['componentDeployment'] });
+      qc.invalidateQueries({ queryKey: ['deploymentStatus', input.componentId] });
+    },
+  });
+}
+
 // ── Stop Deployment (clears cron schedule) ──
 
 const STOP_DEPLOYMENT = `
@@ -494,19 +530,45 @@ export interface TriggerComponentInput {
   args?: { argument_name: string; argument_value: string }[];
 }
 
+async function runPod(url: string, args: TriggerComponentInput['args']): Promise<Response> {
+  return authenticatedFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ args: args ?? [] }),
+  });
+}
+
 export function useTriggerComponent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: TriggerComponentInput) => {
       const origin = new URL(window.API_CONFIG.graphqlUrl).origin;
       const url = `${origin}/component-mgt/1.0.0/orgs/${input.orgHandler}/projects/${input.projectId}/components/${input.componentId}/releases/${input.releaseId}/run-pod`;
-      const res = await authenticatedFetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ args: input.args ?? [] }),
-      });
+      let res = await runPod(url, input.args);
+
+      // A 403 with scope validation failure means the cached token was issued before
+      // component_trigger was added to STS_SCOPE. Force a refresh and retry once.
+      if (res.status === 403) {
+        const text = await res.text().catch(() => '');
+        let isScopeError = false;
+        try {
+          const parsed = JSON.parse(text);
+          isScopeError = parsed?.code === '900910' || !!parsed?.error_description?.includes('Scope validation');
+        } catch { /* not JSON */ }
+
+        if (isScopeError) {
+          await refreshAccessToken();
+          res = await runPod(url, input.args);
+        } else {
+          throw new Error('Permission denied (403)');
+        }
+      }
+
       if (!res.ok) {
         const text = await res.text().catch(() => '');
+        if (res.status === 403) {
+          throw new Error('You do not have permission to trigger this component');
+        }
         throw new Error(text || `HTTP ${res.status}`);
       }
       return res.json().catch(() => ({}));

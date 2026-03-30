@@ -35,10 +35,11 @@ export interface ScheduleButtonProps {
   hasSchedule: boolean;
   disabled?: boolean;
   onSaveSuccess?: () => void;
+  onSaveError?: (msg: string) => void;
   onStopSuccess?: () => void;
 }
 
-export default function ScheduleButton({ hasSchedule, disabled, onSaveSuccess, onStopSuccess, ...dialogProps }: ScheduleButtonProps) {
+export default function ScheduleButton({ hasSchedule, disabled, onSaveSuccess, onSaveError, onStopSuccess, ...dialogProps }: ScheduleButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const splitButtonRef = useRef<HTMLDivElement>(null);
@@ -84,7 +85,7 @@ export default function ScheduleButton({ hasSchedule, disabled, onSaveSuccess, o
           </Button>
         )}
       </Authorized>
-      <ScheduleDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSaveSuccess={onSaveSuccess} {...dialogProps} />
+      <ScheduleDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSaveSuccess={onSaveSuccess} onSaveError={onSaveError} {...dialogProps} />
     </>
   );
 }

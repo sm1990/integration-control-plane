@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Box, CircularProgress, Divider, Typography } from '@wso2/oxygen-ui';
+import { Box, Divider, Typography } from '@wso2/oxygen-ui';
 import AutomationExecutions from '../AutomationExecutions';
 
 interface EnvironmentCardBodyProps {
@@ -31,29 +31,23 @@ interface EnvironmentCardBodyProps {
   envCritical: boolean;
   pendingTriggerTime: number | null;
   onTriggerResolved: () => void;
-  isRefreshing?: boolean;
 }
 
-export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment, hasDeployment, scheduleDescription, releaseId, orgHandler, projectHandler, componentHandler, envCritical, pendingTriggerTime, onTriggerResolved, isRefreshing }: EnvironmentCardBodyProps) {
+export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment, hasDeployment, scheduleDescription, releaseId, orgHandler, projectHandler, componentHandler, envCritical, pendingTriggerTime, onTriggerResolved }: EnvironmentCardBodyProps) {
   return (
     <>
       <Divider sx={{ my: 2 }} />
-      {isRefreshing && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-          <CircularProgress size={24} />
-        </Box>
-      )}
-      {!isRefreshing && isAutomation && hasDeployment && scheduleDescription && (
+      {isAutomation && hasDeployment && scheduleDescription && (
         <Box sx={{ bgcolor: 'action.selected', borderRadius: 1, px: 2, py: 1, mb: 2 }}>
           <Typography variant="body2">{scheduleDescription}</Typography>
         </Box>
       )}
-      {!isRefreshing && isAutomation && !loadingEnvDeployment && hasDeployment && (
+      {isAutomation && !loadingEnvDeployment && hasDeployment && (
         <AutomationExecutions releaseId={releaseId} orgHandler={orgHandler} projectHandler={projectHandler} componentHandler={componentHandler} envCritical={envCritical} pendingTriggerTime={pendingTriggerTime} onTriggerResolved={onTriggerResolved} />
       )}
-      {!isRefreshing && isAutomation && !loadingEnvDeployment && !hasDeployment && (
+      {isAutomation && !loadingEnvDeployment && !hasDeployment && (
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-          No execution data available. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
+          No deployments yet. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
         </Typography>
       )}
     </>

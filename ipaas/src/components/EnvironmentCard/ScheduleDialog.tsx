@@ -28,6 +28,7 @@ interface ScheduleDialogProps {
   open: boolean;
   onClose: () => void;
   onSaveSuccess?: () => void;
+  onSaveError?: (msg: string) => void;
   envId: string;
   envName: string;
   componentId: string;
@@ -36,7 +37,7 @@ interface ScheduleDialogProps {
   deploymentPipelineId: string;
 }
 
-export default function ScheduleDialog({ open, onClose, onSaveSuccess, envId, envName: _envName, componentId, orgHandler, versionId, deploymentPipelineId }: ScheduleDialogProps) {
+export default function ScheduleDialog({ open, onClose, onSaveSuccess, onSaveError, envId, envName: _envName, componentId, orgHandler, versionId, deploymentPipelineId }: ScheduleDialogProps) {
   const [tab, setTab] = useState(0);
   const [intervalCount, setIntervalCount] = useState(1);
   const [intervalUnit, setIntervalUnit] = useState<IntervalUnit>('Minute');
@@ -46,7 +47,6 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, envId, en
   const [timeoutSeconds, setTimeoutSeconds] = useState<string>('');
   const [allowConcurrency, setAllowConcurrency] = useState(false);
   const [retryCount, setRetryCount] = useState<string>('');
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const orgUuid = getOrgUuidFromToken() ?? '';
   const { data: deployment, isLoading: loadingDeployment } = useComponentDeployment(orgHandler, orgUuid, componentId, versionId, envId);
@@ -77,7 +77,6 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, envId, en
   const cronExpression = tab === 0 ? intervalToCron(intervalCount, intervalUnit) : buildCronFromParts(cronFields);
 
   const handleSave = () => {
-    setSaveError(null);
     deployTrack.mutate(
       {
         componentId,
@@ -95,7 +94,11 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, envId, en
           onClose();
           onSaveSuccess?.();
         },
-        onError: (err) => setSaveError(err instanceof Error ? err.message : 'Failed to save schedule'),
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : 'Failed to save schedule';
+          onClose();
+          onSaveError?.(msg);
+        },
       },
     );
   };
@@ -238,11 +241,6 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, envId, en
               </Collapse>
             </Box>
 
-            {saveError && (
-              <Alert severity="error" sx={{ mt: 2 }}>
-                {saveError}
-              </Alert>
-            )}
           </>
         )}
       </Box>

@@ -70,15 +70,28 @@ export default function ComponentHeader({ component, project, repository, latest
   const [nameEditing, setNameEditing] = useState(false);
   const [nameValue, setNameValue] = useState(component.displayName ?? component.handler);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const updateComponent = useUpdateComponent();
+  const updateName = useUpdateComponent();
+
+  const [descEditing, setDescEditing] = useState(false);
+  const [descValue, setDescValue] = useState(component.description?.trim() ?? '');
+  const descInputRef = useRef<HTMLInputElement>(null);
+  const updateDesc = useUpdateComponent();
 
   useEffect(() => {
     setNameValue(component.displayName ?? component.handler);
   }, [component.displayName, component.handler]);
 
   useEffect(() => {
+    setDescValue(component.description?.trim() ?? '');
+  }, [component.description]);
+
+  useEffect(() => {
     if (nameEditing) nameInputRef.current?.select();
   }, [nameEditing]);
+
+  useEffect(() => {
+    if (descEditing) descInputRef.current?.focus();
+  }, [descEditing]);
 
   const commitNameEdit = () => {
     const trimmed = nameValue.trim();
@@ -91,7 +104,7 @@ export default function ComponentHeader({ component, project, repository, latest
       setNameEditing(false);
       return;
     }
-    updateComponent.mutate(
+    updateName.mutate(
       {
         id: component.id,
         displayName: trimmed,
@@ -115,6 +128,31 @@ export default function ComponentHeader({ component, project, repository, latest
     setNameEditing(false);
   };
 
+  const commitDescEdit = () => {
+    const trimmed = descValue.trim();
+    const original = component.description?.trim() ?? '';
+    if (trimmed === original) { setDescEditing(false); return; }
+    updateDesc.mutate(
+      {
+        id: component.id,
+        displayName: component.displayName ?? component.handler,
+        description: trimmed || ' ',
+        version: component.version ?? 'v1.0',
+        projectId,
+        handler: component.handler,
+      },
+      {
+        onSuccess: () => setDescEditing(false),
+        onError: () => { setDescValue(original); setDescEditing(false); },
+      },
+    );
+  };
+
+  const cancelDescEdit = () => {
+    setDescValue(component.description?.trim() ?? '');
+    setDescEditing(false);
+  };
+
   const handleCopyRepoUrl = useCallback((url: string) => {
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
@@ -124,7 +162,6 @@ export default function ComponentHeader({ component, project, repository, latest
 
   const displayType = component.displayType ?? '';
   const typeLabel = DISPLAY_TYPE_LABELS[displayType] ?? (displayType || null);
-  const description = component.description?.trim() || null;
   const statusNorm = (component.status ?? '').toLowerCase();
   const buildCompleted = ['completed', 'active', 'success', 'successful'].includes(statusNorm);
   const buildFailed = ['failed', 'error'].includes(statusNorm);
@@ -199,12 +236,12 @@ export default function ComponentHeader({ component, project, repository, latest
                         background: 'transparent',
                       },
                     })}
-                    disabled={updateComponent.isPending}
+                    disabled={updateName.isPending}
                     autoComplete="off"
                   />
                 )}
               </Box>
-              {updateComponent.isPending ? (
+              {updateName.isPending ? (
                 <CircularProgress size={14} />
               ) : (
                 !nameEditing && (
@@ -262,9 +299,64 @@ export default function ComponentHeader({ component, project, repository, latest
           </Box>
         )}
       </Stack>
-      <Typography variant="body2" color={description ? 'text.secondary' : 'primary'}>
-        {description || '+ Add Description'}
-      </Typography>
+      <Stack direction="row" alignItems="flex-start" gap={0.5} sx={{ cursor: descEditing ? 'text' : (descValue ? 'text' : 'pointer'), columnGap: (descEditing && !updateDesc.isPending) ? 0 : 1.5 }} onClick={() => !descEditing && setDescEditing(true)}>
+        <Box sx={{ position: 'relative', flex: 1 }}>
+          {/* Ghost text: always in DOM to hold height; updates live with descValue so container grows as user types */}
+          <Typography
+            variant="body2"
+            sx={{
+              visibility: descEditing ? 'hidden' : 'visible',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: descValue ? 'text.secondary' : 'primary.main',
+              minHeight: '1.4em',
+            }}
+          >
+            {descEditing ? (descValue || '\u200b') : (descValue || '+ Add Description')}
+          </Typography>
+          {descEditing && (
+            <InputBase
+              inputRef={descInputRef}
+              multiline
+              value={descValue}
+              onChange={(e) => setDescValue(e.target.value)}
+              onBlur={commitDescEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') { e.preventDefault(); cancelDescEdit(); }
+              }}
+              sx={(theme) => ({
+                position: 'absolute',
+                inset: '-4px',
+                padding: '4px',
+                border: `2px solid ${theme.palette.primary.main}`,
+                borderRadius: `${theme.shape.borderRadius}px`,
+                alignItems: 'flex-start',
+                '& textarea': {
+                  ...theme.typography.body2,
+                  padding: 0,
+                  resize: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                },
+              })}
+              disabled={updateDesc.isPending}
+              autoComplete="off"
+            />
+          )}
+        </Box>
+        {updateDesc.isPending ? (
+          <CircularProgress size={12} sx={{ mt: 0.25 }} />
+        ) : (
+          !descEditing && descValue && (
+            <Tooltip title="Edit description">
+              <IconButton size="small" sx={{ p: 0.25, mt: '-2px', opacity: 0, '.MuiStack-root:hover &': { opacity: 1 } }} onClick={(e) => { e.stopPropagation(); setDescEditing(true); }}>
+                <Pencil size={12} />
+              </IconButton>
+            </Tooltip>
+          )
+        )}
+      </Stack>
       <Stack direction="row" alignItems="center" gap={0.5}>
         <Tag size={12} />
         <Typography variant="body2" color="primary" sx={{ cursor: 'pointer' }}>

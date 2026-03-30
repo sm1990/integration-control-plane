@@ -16,10 +16,11 @@
  * under the License.
  */
 
-import { Avatar, Box, Button, ButtonGroup, Chip, ClickAwayListener, Grow, IconButton, MenuList, MenuItem, Paper, Popper, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { useRef, useState, useCallback } from 'react';
-import { CheckCircle2, XCircle, Clock, Tag, Cloud, Github, GitCommitHorizontal, Copy, Check, ChevronDown, Code2 } from '@wso2/oxygen-ui-icons-react';
+import { Avatar, Box, Button, ButtonGroup, Chip, CircularProgress, ClickAwayListener, Grow, IconButton, InputBase, MenuList, MenuItem, Paper, Popper, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { useRef, useState, useCallback, useEffect } from 'react';
+import { CheckCircle2, XCircle, Clock, Tag, Cloud, Github, GitCommitHorizontal, Copy, Check, ChevronDown, Code2, Pencil } from '@wso2/oxygen-ui-icons-react';
 import { type GqlComponentDetail, type GqlProject, type GqlRepository, type GqlCommit } from '../api/queries';
+import { useUpdateComponent } from '../api/mutations';
 import { formatDistanceToNow } from '../utils/time';
 import { useAuth } from '../auth/AuthContext';
 import { getOrgUuidFromToken } from '../auth/tokenManager';
@@ -65,6 +66,54 @@ export default function ComponentHeader({ component, project, repository, latest
   const [copied, setCopied] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const splitButtonRef = useRef<HTMLDivElement>(null);
+
+  const [nameEditing, setNameEditing] = useState(false);
+  const [nameValue, setNameValue] = useState(component.displayName ?? component.handler);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const updateComponent = useUpdateComponent();
+
+  useEffect(() => {
+    setNameValue(component.displayName ?? component.handler);
+  }, [component.displayName, component.handler]);
+
+  useEffect(() => {
+    if (nameEditing) nameInputRef.current?.select();
+  }, [nameEditing]);
+
+  const commitNameEdit = () => {
+    const trimmed = nameValue.trim();
+    if (!trimmed) {
+      setNameValue(component.displayName ?? component.handler);
+      setNameEditing(false);
+      return;
+    }
+    if (trimmed === (component.displayName ?? component.handler)) {
+      setNameEditing(false);
+      return;
+    }
+    updateComponent.mutate(
+      {
+        id: component.id,
+        displayName: trimmed,
+        description: component.description ?? ' ',
+        version: component.version ?? 'v1.0',
+        projectId,
+        handler: component.handler,
+      },
+      {
+        onSuccess: () => setNameEditing(false),
+        onError: () => {
+          setNameValue(component.displayName ?? component.handler);
+          setNameEditing(false);
+        },
+      },
+    );
+  };
+
+  const cancelNameEdit = () => {
+    setNameValue(component.displayName ?? component.handler);
+    setNameEditing(false);
+  };
 
   const handleCopyRepoUrl = useCallback((url: string) => {
     navigator.clipboard.writeText(url).then(() => {
@@ -115,12 +164,58 @@ export default function ComponentHeader({ component, project, repository, latest
   return (
     <Stack sx={{ mb: 3 }} gap={1}>
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
-        <Stack direction="row" alignItems="flex-start" gap={2}>
-          <Avatar sx={{ width: 48, height: 48, fontSize: 22, bgcolor: 'text.primary', color: 'background.paper', mt: 0.5 }}>{component.displayName?.[0]?.toUpperCase() ?? 'C'}</Avatar>
+        <Stack direction="row" alignItems="center" gap={2}>
+          <Avatar sx={{ width: 48, height: 48, fontSize: 22, bgcolor: 'text.primary', color: 'background.paper' }}>{(nameValue)?.[0]?.toUpperCase() ?? 'C'}</Avatar>
           <Box>
-            <Typography variant="h1" sx={{ mb: 0.25 }}>
-              {component.displayName ?? component.handler}
-            </Typography>
+            <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 0.25, cursor: 'text', columnGap: nameEditing ? 1.5 : 0.5 }} onClick={() => !nameEditing && setNameEditing(true)}>
+              {/* The Typography always stays in the DOM and determines the layout size.
+                  The InputBase is absolutely overlaid on top when editing — zero layout shift. */}
+              <Box sx={{ position: 'relative', display: 'inline-flex', minWidth: 200 }}>
+                <Typography variant="h1" sx={{ visibility: nameEditing ? 'hidden' : 'visible', whiteSpace: 'pre' }}>
+                  {nameValue || '\u200b'}
+                </Typography>
+                {nameEditing && (
+                  <InputBase
+                    inputRef={nameInputRef}
+                    value={nameValue}
+                    onChange={(e) => setNameValue(e.target.value)}
+                    onBlur={commitNameEdit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); commitNameEdit(); }
+                      if (e.key === 'Escape') { e.preventDefault(); cancelNameEdit(); }
+                    }}
+                    sx={(theme) => ({
+                      position: 'absolute',
+                      inset: '-4px',
+                      border: `2px solid ${theme.palette.primary.main}`,
+                      borderRadius: `${theme.shape.borderRadius}px`,
+                      '& input': {
+                        ...theme.typography.h1,
+                        width: '100%',
+                        height: '100%',
+                        padding: 0,
+                        border: 'none',
+                        outline: 'none',
+                        background: 'transparent',
+                      },
+                    })}
+                    disabled={updateComponent.isPending}
+                    autoComplete="off"
+                  />
+                )}
+              </Box>
+              {updateComponent.isPending ? (
+                <CircularProgress size={14} />
+              ) : (
+                !nameEditing && (
+                  <Tooltip title="Edit name">
+                    <IconButton size="small" sx={{ p: 0.25, opacity: 0, '.MuiStack-root:hover &': { opacity: 1 } }} onClick={(e) => { e.stopPropagation(); setNameEditing(true); }}>
+                      <Pencil size={14} />
+                    </IconButton>
+                  </Tooltip>
+                )
+              )}
+            </Stack>
             {typeLabel && (
               <Typography variant="body2" color="text.secondary">
                 {typeLabel}

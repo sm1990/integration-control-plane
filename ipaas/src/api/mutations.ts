@@ -487,6 +487,48 @@ export function useStopDeployment() {
   });
 }
 
+// ── Update component display name ──
+
+const UPDATE_COMPONENT = `
+  mutation UpdateComponent($id: String!, $displayName: String!, $description: String!, $version: String!) {
+    updateComponent(component: {
+      id: $id,
+      displayName: $displayName,
+      description: $description,
+      version: $version,
+      labels: "",
+      serviceAccessMode: "null",
+    }) {
+      id, name, handler, description, displayType, displayName, version, createdAt, updatedAt, projectId
+    }
+  }`;
+
+export interface UpdateComponentInput {
+  id: string;
+  displayName: string;
+  description: string;
+  version: string;
+  projectId: string;
+  handler: string;
+}
+
+export function useUpdateComponent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateComponentInput) =>
+      gql<{ updateComponent: GqlComponent }>(UPDATE_COMPONENT, {
+        id: input.id,
+        displayName: input.displayName,
+        description: input.description,
+        version: input.version,
+      }).then((d) => d.updateComponent),
+    onSuccess: (_data, input) => {
+      qc.invalidateQueries({ queryKey: ['component', input.projectId, input.handler] });
+      qc.invalidateQueries({ queryKey: ['components'] });
+    },
+  });
+}
+
 // ── Run-pod trigger (manual execution with optional arguments) ──
 
 export interface SaveSchemaConfigInput {

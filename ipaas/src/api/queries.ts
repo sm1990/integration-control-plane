@@ -48,6 +48,7 @@ export interface GqlComponent {
   version: string;
   createdAt: string;
   lastBuildDate: string;
+  labels?: string | string[];
 }
 
 const PROJECT_FIELDS = 'id, orgId, name, handler, description, version, createdDate, updatedAt, region, type, defaultDeploymentPipelineId';
@@ -158,7 +159,7 @@ const COMPONENT_BY_HANDLER_QUERY = `
     component(projectId: $projectId, componentHandler: $componentHandler) {
       projectId, id, name, handler, displayName, displayType,
       description, status, componentSubType,
-      version, createdAt, lastBuildDate, orgHandler,
+      version, createdAt, lastBuildDate, orgHandler, labels,
       deploymentTracks { id }
     }
   }`;
@@ -168,6 +169,21 @@ export function useComponentByHandler(projectId: string, handler: string | undef
     queryKey: ['component', projectId, handler],
     queryFn: () => gql<{ component: GqlComponentDetail }>(COMPONENT_BY_HANDLER_QUERY, { projectId, componentHandler: handler }).then((d) => d.component),
     enabled: !!projectId && !!handler,
+  });
+}
+
+const PROJECT_COMPONENT_LABELS_QUERY = `
+  query GetProjectComponentLabels($projectId: String!, $orgId: Int!) {
+    projectComponentLabels(projectId: $projectId, orgId: $orgId)
+  }`;
+
+export function useProjectComponentLabels(projectId: string) {
+  const id = orgId();
+  return useQuery({
+    queryKey: ['projectComponentLabels', projectId],
+    queryFn: () => gql<{ projectComponentLabels: string[] }>(PROJECT_COMPONENT_LABELS_QUERY, { projectId, orgId: id }).then((d) => d.projectComponentLabels ?? []),
+    enabled: !!projectId && id > 0,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

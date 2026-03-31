@@ -490,16 +490,16 @@ export function useStopDeployment() {
 // ── Update component display name ──
 
 const UPDATE_COMPONENT = `
-  mutation UpdateComponent($id: String!, $displayName: String!, $description: String!, $version: String!) {
+  mutation UpdateComponent($id: String!, $displayName: String!, $description: String!, $version: String!, $labels: String!) {
     updateComponent(component: {
       id: $id,
       displayName: $displayName,
       description: $description,
       version: $version,
-      labels: "",
+      labels: $labels,
       serviceAccessMode: "null",
     }) {
-      id, name, handler, description, displayType, displayName, version, createdAt, updatedAt, projectId
+      id, name, handler, description, displayType, displayName, version, labels, createdAt, updatedAt, projectId
     }
   }`;
 
@@ -510,6 +510,7 @@ export interface UpdateComponentInput {
   version: string;
   projectId: string;
   handler: string;
+  labels?: string;
 }
 
 export function useUpdateComponent() {
@@ -521,6 +522,7 @@ export function useUpdateComponent() {
         displayName: input.displayName,
         description: input.description,
         version: input.version,
+        labels: input.labels ?? '',
       }).then((d) => d.updateComponent),
     onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['component', input.projectId, input.handler] });

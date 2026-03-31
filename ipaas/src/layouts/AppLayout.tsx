@@ -618,6 +618,12 @@ export default function AppLayout(): JSX.Element {
                   SelectDisplayProps={{ 'aria-label': 'Select integration' }}
                   renderValue={() => <ComplexSelect.MenuItem.Text primary={getComponentDisplayName()} secondary="Integration" />}
                   label="Integrations">
+                  {/* Fallback keeps the value valid while components are loading */}
+                  {!components.some((c) => c.handler === scope.component) && (
+                    <ComplexSelect.MenuItem key="__current" value={scope.component} sx={{ display: 'none' }}>
+                      <ComplexSelect.MenuItem.Text primary="" secondary="" />
+                    </ComplexSelect.MenuItem>
+                  )}
                   {components.map((c) => (
                     <ComplexSelect.MenuItem key={c.id} value={c.handler}>
                       <ComplexSelect.MenuItem.Text primary={c.displayName} secondary={c.displayType} />

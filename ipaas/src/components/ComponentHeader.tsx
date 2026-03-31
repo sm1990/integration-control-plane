@@ -21,6 +21,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { CheckCircle2, XCircle, Clock, Tag, Cloud, Github, GitCommitHorizontal, Copy, Check, ChevronDown, Code2, Pencil } from '@wso2/oxygen-ui-icons-react';
 import { type GqlComponentDetail, type GqlProject, type GqlRepository, type GqlCommit } from '../api/queries';
 import { useUpdateComponent } from '../api/mutations';
+import LabelDialog from './LabelDialog';
 import { formatDistanceToNow } from '../utils/time';
 import { useAuth } from '../auth/AuthContext';
 import { getOrgUuidFromToken } from '../auth/tokenManager';
@@ -66,6 +67,8 @@ export default function ComponentHeader({ component, project, repository, latest
   const [copied, setCopied] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const splitButtonRef = useRef<HTMLDivElement>(null);
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [descHovered, setDescHovered] = useState(false);
 
   const [nameEditing, setNameEditing] = useState(false);
   const [nameValue, setNameValue] = useState(component.displayName ?? component.handler);
@@ -204,7 +207,7 @@ export default function ComponentHeader({ component, project, repository, latest
         <Stack direction="row" alignItems="center" gap={2}>
           <Avatar sx={{ width: 48, height: 48, fontSize: 22, bgcolor: 'text.primary', color: 'background.paper' }}>{(nameValue)?.[0]?.toUpperCase() ?? 'C'}</Avatar>
           <Box>
-            <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 0.25, cursor: 'text', columnGap: nameEditing ? 1.5 : 0.5 }} onClick={() => !nameEditing && setNameEditing(true)}>
+            <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 0.25, cursor: 'text', columnGap: nameEditing ? 1.5 : 0.5, '&:hover .pencil-btn': { opacity: 1 } }} onClick={() => !nameEditing && setNameEditing(true)}>
               {/* The Typography always stays in the DOM and determines the layout size.
                   The InputBase is absolutely overlaid on top when editing — zero layout shift. */}
               <Box sx={{ position: 'relative', display: 'inline-flex', minWidth: 200 }}>
@@ -246,7 +249,7 @@ export default function ComponentHeader({ component, project, repository, latest
               ) : (
                 !nameEditing && (
                   <Tooltip title="Edit name">
-                    <IconButton size="small" sx={{ p: 0.25, opacity: 0, '.MuiStack-root:hover &': { opacity: 1 } }} onClick={(e) => { e.stopPropagation(); setNameEditing(true); }}>
+                    <IconButton className="pencil-btn" size="small" sx={{ p: 0.25, opacity: 0 }} onClick={(e) => { e.stopPropagation(); setNameEditing(true); }}>
                       <Pencil size={14} />
                     </IconButton>
                   </Tooltip>
@@ -299,70 +302,110 @@ export default function ComponentHeader({ component, project, repository, latest
           </Box>
         )}
       </Stack>
-      <Stack direction="row" alignItems="flex-start" gap={0.5} sx={{ cursor: descEditing ? 'text' : (descValue ? 'text' : 'pointer'), columnGap: (descEditing && !updateDesc.isPending) ? 0 : 1.5 }} onClick={() => !descEditing && setDescEditing(true)}>
-        <Box sx={{ position: 'relative', flex: 1 }}>
-          {/* Ghost text: always in DOM to hold height; updates live with descValue so container grows as user types */}
-          <Typography
-            variant="body2"
-            sx={{
-              visibility: descEditing ? 'hidden' : 'visible',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              color: descValue ? 'text.secondary' : 'primary.main',
-              minHeight: '1.4em',
-            }}
-          >
-            {descEditing ? (descValue || '\u200b') : (descValue || '+ Add Description')}
-          </Typography>
-          {descEditing && (
-            <InputBase
-              inputRef={descInputRef}
-              multiline
-              value={descValue}
-              onChange={(e) => setDescValue(e.target.value)}
-              onBlur={commitDescEdit}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') { e.preventDefault(); cancelDescEdit(); }
-              }}
-              sx={(theme) => ({
-                position: 'absolute',
-                inset: '-4px',
-                padding: '4px',
-                border: `2px solid ${theme.palette.primary.main}`,
-                borderRadius: `${theme.shape.borderRadius}px`,
-                alignItems: 'flex-start',
-                '& textarea': {
-                  ...theme.typography.body2,
-                  padding: 0,
-                  resize: 'none',
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
-                },
-              })}
-              disabled={updateDesc.isPending}
-              autoComplete="off"
-            />
+      <Stack direction="row" alignItems="flex-start" gap={1} onMouseEnter={() => setDescHovered(true)} onMouseLeave={() => setDescHovered(false)}>
+      <Box
+        sx={{ position: 'relative', flex: 1, cursor: descEditing ? 'text' : (descValue ? 'text' : 'pointer') }}
+        onClick={() => !descEditing && setDescEditing(true)}
+      >
+        {/* Ghost text determines height; pencil sits inline after last word */}
+        <Typography
+          variant="body2"
+          component="div"
+          sx={{
+            visibility: descEditing ? 'hidden' : 'visible',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            color: descValue ? 'text.secondary' : 'primary.main',
+            minHeight: '1.4em',
+          }}
+        >
+          {descEditing ? (descValue || '\u200b') : (
+            <>
+              {descValue || '+ Add Description'}
+              {descValue && (
+                <Box component="span" sx={{ display: 'inline-flex', verticalAlign: 'middle', ml: 0.5 }}>
+                  <Tooltip title="Edit description">
+                    <IconButton size="small" sx={{ p: 0.25, opacity: descHovered ? 1 : 0, transition: 'opacity 0.15s' }} onClick={(e) => { e.stopPropagation(); setDescEditing(true); }}>
+                      <Pencil size={12} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
+            </>
           )}
-        </Box>
-        {updateDesc.isPending ? (
-          <CircularProgress size={12} sx={{ mt: 0.25 }} />
-        ) : (
-          !descEditing && descValue && (
-            <Tooltip title="Edit description">
-              <IconButton size="small" sx={{ p: 0.25, mt: '-2px', opacity: 0, '.MuiStack-root:hover &': { opacity: 1 } }} onClick={(e) => { e.stopPropagation(); setDescEditing(true); }}>
-                <Pencil size={12} />
-              </IconButton>
-            </Tooltip>
-          )
-        )}
-      </Stack>
-      <Stack direction="row" alignItems="center" gap={0.5}>
-        <Tag size={12} />
-        <Typography variant="body2" color="primary" sx={{ cursor: 'pointer' }}>
-          + Add Labels
         </Typography>
+        {descEditing && (
+          <InputBase
+            inputRef={descInputRef}
+            multiline
+            value={descValue}
+            onChange={(e) => setDescValue(e.target.value)}
+            onBlur={commitDescEdit}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { e.preventDefault(); cancelDescEdit(); }
+            }}
+            sx={(theme) => ({
+              position: 'absolute',
+              inset: '-4px',
+              padding: '4px',
+              border: `2px solid ${theme.palette.primary.main}`,
+              borderRadius: `${theme.shape.borderRadius}px`,
+              alignItems: 'flex-start',
+              '& textarea': {
+                ...theme.typography.body2,
+                padding: 0,
+                resize: 'none',
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+              },
+            })}
+            disabled={updateDesc.isPending}
+            autoComplete="off"
+          />
+        )}
+      </Box>
+      {updateDesc.isPending && <CircularProgress size={12} sx={{ mt: 0.25 }} />}
       </Stack>
+      {(() => {
+        const raw = component.labels;
+        const labelList: string[] = Array.isArray(raw) ? raw : (raw ? raw.split(',').filter(Boolean) : []);
+        return (
+          <>
+            <LabelDialog
+              open={labelDialogOpen}
+              onClose={() => setLabelDialogOpen(false)}
+              component={component}
+              projectId={projectId}
+              currentLabels={labelList}
+            />
+            <Stack direction="row" alignItems="center" gap={0.5} flexWrap="wrap" sx={{ '&:hover .pencil-btn': { opacity: 1 } }}>
+              <Tag size={12} />
+              {labelList.length === 0 ? (
+                <Typography variant="body2" color="primary" sx={{ cursor: 'pointer' }} onClick={() => setLabelDialogOpen(true)}>
+                  + Add Labels
+                </Typography>
+              ) : (
+                <>
+                  {labelList.slice(0, 3).map((label) => (
+                    <Chip key={label} label={label} size="small" variant="outlined" />
+                  ))}
+                  {labelList.length > 3 && (
+                    <Typography variant="body2" color="primary" sx={{ cursor: 'pointer' }} onClick={() => setLabelDialogOpen(true)}>
+                      +{labelList.length - 3} more
+                    </Typography>
+                  )}
+                  <Tooltip title="Edit labels">
+                    <IconButton className="pencil-btn" size="small" sx={{ p: 0.25, opacity: 0 }} onClick={(e) => { (e.currentTarget as HTMLElement).blur(); setLabelDialogOpen(true); }}>
+                      <Pencil size={12} />
+                    </IconButton>
+                  </Tooltip>
+                </>
+              )}
+            </Stack>
+          </>
+        );
+      })()}
       <Stack gap={0.5}>
         <Stack direction="row" alignItems="center" gap={1}>
           <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110 }}>

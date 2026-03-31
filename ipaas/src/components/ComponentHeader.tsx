@@ -18,7 +18,7 @@
 
 import { Avatar, Box, Button, ButtonGroup, Chip, CircularProgress, ClickAwayListener, Grow, IconButton, InputBase, MenuList, MenuItem, Paper, Popper, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { CheckCircle2, XCircle, Clock, Tag, Cloud, Github, GitCommitHorizontal, Copy, Check, ChevronDown, Code2, Pencil } from '@wso2/oxygen-ui-icons-react';
+import { Tag, Cloud, Github, GitCommitHorizontal, Copy, Check, ChevronDown, Code2, Pencil } from '@wso2/oxygen-ui-icons-react';
 import { type GqlComponentDetail, type GqlProject, type GqlRepository, type GqlCommit } from '../api/queries';
 import { useUpdateComponent } from '../api/mutations';
 import LabelDialog from './LabelDialog';
@@ -165,11 +165,6 @@ export default function ComponentHeader({ component, project, repository, latest
 
   const displayType = component.displayType ?? '';
   const typeLabel = DISPLAY_TYPE_LABELS[displayType] ?? (displayType || null);
-  const statusNorm = (component.status ?? '').toLowerCase();
-  const buildCompleted = ['completed', 'active', 'success', 'successful'].includes(statusNorm);
-  const buildFailed = ['failed', 'error'].includes(statusNorm);
-  const buildStatusLabel = statusNorm === 'successful' || statusNorm === 'completed' || statusNorm === 'active' || statusNorm === 'success' ? 'Completed' : statusNorm === 'failed' || statusNorm === 'error' ? 'Failed' : (component.status ?? '');
-
   const envMatch = (window.API_CONFIG?.choreoOrgApiUrl ?? '').match(/\/\/apis\.([^.]+)\.choreo\.dev/);
   const devantOrigin = envMatch ? `https://${envMatch[1]}.devant.dev` : null;
 
@@ -465,17 +460,6 @@ export default function ComponentHeader({ component, project, repository, latest
             </Typography>
           )}
         </Stack>
-        {component.status && (
-          <Stack direction="row" alignItems="center" gap={1}>
-            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110 }}>
-              Build Status:
-            </Typography>
-            {buildCompleted && <CheckCircle2 size={14} color="green" />}
-            {buildFailed && <XCircle size={14} color="red" />}
-            {!buildCompleted && !buildFailed && <Clock size={14} />}
-            <Typography variant="body2">{buildStatusLabel}</Typography>
-          </Stack>
-        )}
       </Stack>
     </Stack>
   );

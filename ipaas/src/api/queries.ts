@@ -661,12 +661,13 @@ export interface GqlDeploymentStatus {
   name: string;
   failureReason: number;
   sourceCommitId: string;
+  buildRef?: string;
 }
 
 const DEPLOYMENT_STATUS_QUERY = `
   query GetDeploymentStatus($versionId: String!, $componentId: String!) {
     deploymentStatusByVersion(versionId: $versionId, componentId: $componentId) {
-      id, sha, started_at, completed_at, status, conclusion, conclusionV2, isAutoDeploy, name, failureReason, sourceCommitId
+      id, sha, started_at, completed_at, status, conclusion, conclusionV2, isAutoDeploy, name, failureReason, sourceCommitId, buildRef
     }
   }`;
 

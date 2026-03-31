@@ -17,7 +17,7 @@
  */
 
 import { Button, IconButton, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { RefreshCw, Clock, SlidersHorizontal } from '@wso2/oxygen-ui-icons-react';
+import { RefreshCw, Clock, SlidersHorizontal, GitCommit } from '@wso2/oxygen-ui-icons-react';
 import ScheduleButton, { type ScheduleButtonProps } from './ScheduleButton';
 import RunButton from './RunButton';
 
@@ -48,6 +48,7 @@ export default function EnvironmentCardHeader({ envName, envCritical, latestComm
         </Typography>
         {hasDeployment && latestCommit && (
           <Stack direction="row" alignItems="center" gap={0.5}>
+            <GitCommit size={14} style={{ opacity: 0.55, flexShrink: 0 }} />
             <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary' }}>
               {latestCommit.sha.substring(0, 7)}
             </Typography>

@@ -27,6 +27,7 @@ import ComponentHeader from '../components/ComponentHeader';
 import type { SelectedArtifact } from '../components/artifact-config';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 import { useLoadComponentPermissions } from '../hooks/usePermissionLoader';
+import BuildCard from '../components/BuildCard';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -73,6 +74,15 @@ export default function Component(scope: ComponentScope): JSX.Element {
         <PageContent>
           {/* Component header */}
           <ComponentHeader component={component} project={project} repository={repository} latestCommit={latestCommit} orgHandler={scope.org} projectId={projectId} />
+
+          {/* Latest build card */}
+          <BuildCard
+            componentId={component.id}
+            versionId={component.deploymentTracks?.[0]?.id ?? ''}
+            orgHandler={scope.org}
+            projectId={projectId}
+            latestCommit={latestCommit}
+          />
 
           <Divider sx={{ mb: 3 }} />
 

@@ -75,6 +75,7 @@ export default function LabelDialog({ open, onClose, component, projectId, curre
 
   useEffect(() => {
     if (open) setLabels(currentLabels);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const options = [...new Set([...LABEL_OPTIONS, ...projectLabels])];

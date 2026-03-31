@@ -18,7 +18,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
-import { authenticatedFetch, getOrgUuidFromToken, getOrRefreshAsgardeoToken } from '../auth/tokenManager';
+import { authenticatedFetch, getOrgUuidFromToken } from '../auth/tokenManager';
 
 export interface GqlProject {
   id: string;

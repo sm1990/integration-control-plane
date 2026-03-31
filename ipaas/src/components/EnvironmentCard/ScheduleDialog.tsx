@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Autocomplete, Box, Button, Checkbox, CircularProgress, Collapse, Drawer, FormControlLabel, IconButton, MenuItem, Select, Stack, Tab, Tabs, TextField, Typography } from '@wso2/oxygen-ui';
+import { Autocomplete, Box, Button, Checkbox, CircularProgress, Collapse, Drawer, FormControlLabel, IconButton, MenuItem, Select, Stack, Tab, Tabs, TextField, Typography } from '@wso2/oxygen-ui';
 import { ChevronDown, ChevronUp, X } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useState } from 'react';
 import { useComponentDeployment, useExecutionConfigs } from '../../api/queries';

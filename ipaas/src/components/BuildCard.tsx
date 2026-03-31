@@ -168,6 +168,7 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
       cancelled = true;
       clearInterval(interval);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, runId, orgHandler, projectId, componentId, isInProgress]);
 
   // Scroll logs to bottom on update

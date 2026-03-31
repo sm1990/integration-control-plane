@@ -33,7 +33,7 @@ interface FlatField {
 }
 
 function flattenSchema(
-  properties: Record<string, any>,
+  properties: Record<string, Record<string, unknown>>,
   required: string[],
   dotPrefix = '',
   slashPrefix = '',

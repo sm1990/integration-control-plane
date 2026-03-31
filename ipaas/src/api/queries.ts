@@ -19,6 +19,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
 import { authenticatedFetch, getOrgUuidFromToken } from '../auth/tokenManager';
+import { choreoDevopsApiUrl } from '../config/api';
 
 export interface GqlProject {
   id: string;
@@ -95,6 +96,10 @@ interface OrgEntry {
   orgHandle?: string;
   id?: string | number;
   orgId?: string | number;
+  // The org UUID may be returned under any of these field names depending on API version
+  uuid?: string;
+  orgUuid?: string;
+  org_uuid?: string;
 }
 
 export function useOrgs() {
@@ -105,7 +110,13 @@ export function useOrgs() {
       if (!res.ok) throw new Error('Failed to fetch orgs');
       const data = await res.json();
       const list: OrgEntry[] = Array.isArray(data) ? data : (data.list ?? data.organizations ?? []);
-      return list.map((o) => ({ handle: o.handle ?? o.orgHandle ?? '', numericId: parseInt(String(o.id ?? o.orgId ?? '0'), 10) })).filter((o) => o.handle && o.numericId > 0);
+      return list
+        .map((o) => ({
+          handle: o.handle ?? o.orgHandle ?? '',
+          numericId: parseInt(String(o.id ?? o.orgId ?? '0'), 10),
+          uuid: o.uuid ?? o.orgUuid ?? o.org_uuid ?? '',
+        }))
+        .filter((o) => o.handle && o.numericId > 0);
     },
     staleTime: 5 * 60 * 1000,
   });
@@ -193,6 +204,7 @@ export interface GqlEnvironment {
   name: string;
   critical: boolean;
   templateId?: string;
+  dpId?: string;
   description?: string;
   createdAt?: string;
 }
@@ -200,7 +212,7 @@ export interface GqlEnvironment {
 const ENVIRONMENTS_QUERY = `
   query GetEnvironments($orgUuid: String!, $projectId: String!) {
     environments(orgUuid: $orgUuid, type: "external", projectId: $projectId) {
-      id, name, critical, templateId
+      id, name, critical, templateId, dpId
     }
   }`;
 
@@ -216,13 +228,35 @@ export function useEnvironments(orgUuid: string, projectId: string) {
 }
 
 const ALL_ENVIRONMENTS_QUERY = `{
-  environments { id, name, description, critical, createdAt }
+  environments { id, name, description, critical, dpId, createdAt }
 }`;
 
 export function useAllEnvironments() {
   return useQuery({
     queryKey: ['environments'],
     queryFn: () => gql<{ environments: GqlEnvironment[] }>(ALL_ENVIRONMENTS_QUERY).then((d) => d.environments),
+    retry: false,
+  });
+}
+
+export interface CloudDataPlane {
+  id: string;
+  external_gateway_virtual_host: string;
+  internal_gateway_virtual_host: string;
+  region: string;
+  is_cilium?: boolean;
+}
+
+export function useCloudDataPlanes(orgUuid: string) {
+  return useQuery({
+    queryKey: ['cloud-data-planes', orgUuid],
+    queryFn: async () => {
+      const res = await authenticatedFetch(`${choreoDevopsApiUrl()}/api/v1/clusters/clouddataplanes?org_uuid=${encodeURIComponent(orgUuid)}`);
+      if (!res.ok) throw new Error(`Failed to fetch cloud data planes: ${res.status}`);
+      return res.json() as Promise<CloudDataPlane[]>;
+    },
+    enabled: !!orgUuid,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

@@ -38,7 +38,8 @@ import CreateProject from '../pages/CreateProject';
 import CreateComponent from '../pages/CreateComponent';
 import Project from '../pages/Project';
 import Component from '../pages/Component';
-import RuntimeLogs from '../pages/RuntimeLogs';
+import RuntimeLogsProject from '../pages/RuntimeLogsProject';
+import RuntimeLogsIntegration from '../pages/RuntimeLogsIntegration';
 import Metrics from '../pages/Metrics';
 import Environments from '../pages/Environments';
 import CreateEnvironment from '../pages/CreateEnvironment';
@@ -61,7 +62,7 @@ export interface AppRoute extends Omit<RouteProps, 'children'> {
 
 const MATRIX: Matrix = {
   overview: { segment: '', pages: { organizations: Projects, projects: Project, components: Component } },
-  logs: { segment: 'logs', pages: { projects: RuntimeLogs, components: RuntimeLogs } },
+  logs: { segment: 'logs', pages: { projects: RuntimeLogsProject, components: RuntimeLogsIntegration } },
   loggers: { segment: loggersSegment, pages: { components: ManageLoggers } },
   metrics: { segment: 'metrics', pages: { projects: Metrics, components: Metrics } },
   runtimes: { segment: 'runtimes', pages: { projects: Runtime, components: Runtime } },

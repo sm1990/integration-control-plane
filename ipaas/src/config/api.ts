@@ -37,6 +37,7 @@ interface RuntimeConfig {
   CHOREO_ORG_API_URL?: string;
   ASGARDEO_ORG_NUMERIC_ID?: string;
   SYSTEM_APIS_BASE_URL?: string;
+  SYS_API_PREFIX?: string;
 }
 
 export interface ApiConfig {
@@ -54,6 +55,7 @@ export interface ApiConfig {
   choreoOrgApiUrl: string;
   asgardeoOrgNumericId?: number;
   systemApisBaseUrl?: string;
+  sysApiPrefix: string;
 }
 
 // Extend window interface
@@ -78,6 +80,7 @@ const DEFAULT_CONFIG: ApiConfig = {
   stsScope: '',
   choreoOrgApiUrl: 'https://apis.preview-dv.choreo.dev/orgs/1.0.0',
   systemApisBaseUrl: '',
+  sysApiPrefix: '783c6c4d-8b9b-4190-b70a-e717ab1ee739-systemapis',
 };
 
 /**
@@ -112,6 +115,7 @@ export async function loadConfig(): Promise<void> {
         const stored = localStorage.getItem('icp_org_numeric_id');
         return stored ? parseInt(stored, 10) : undefined;
       })(),
+      sysApiPrefix: config.SYS_API_PREFIX || DEFAULT_CONFIG.sysApiPrefix,
     };
 
     console.info('✓ Runtime configuration loaded from config.json');
@@ -127,5 +131,15 @@ export const refreshTokenApiUrl = (): string => `${window.API_CONFIG.authBaseUrl
 export const revokeTokenApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/revoke-token`;
 export const oidcAuthorizeApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/oidc/authorize-url`;
 export const oidcCallbackApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/login/oidc`;
+export const choreoDevopsApiUrl = (): string => window.API_CONFIG.choreoOrgApiUrl.replace('/orgs/1.0.0', '/devops/1.0.0');
 export const changePasswordApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/change-password`;
 export const forceChangePasswordApiUrl = (): string => `${window.API_CONFIG.authBaseUrl}/force-change-password`;
+export const choreologgingProjectLogsApiUrl = (gatewayHost: string): string => {
+  const { sysApiPrefix } = window.API_CONFIG;
+  return `https://${sysApiPrefix}.${gatewayHost}/systemapis/choreologgingapi/0.2.0/logs/project/application?live=true`;
+};
+
+export const choreologgingComponentLogsApiUrl = (gatewayHost: string): string => {
+  const { sysApiPrefix } = window.API_CONFIG;
+  return `https://${sysApiPrefix}.${gatewayHost}/systemapis/choreologgingapi/0.2.0/logs/component/application?live=true`;
+};

@@ -18,6 +18,8 @@
 
 import { Box, Divider, Typography } from '@wso2/oxygen-ui';
 import AutomationExecutions from '../AutomationExecutions';
+import EnvCardInsights from './EnvCardInsights';
+import EnvCardAutomationInsights from './EnvCardAutomationInsights';
 
 interface EnvironmentCardBodyProps {
   isAutomation: boolean;
@@ -31,9 +33,16 @@ interface EnvironmentCardBodyProps {
   envCritical: boolean;
   pendingTriggerTime: number | null;
   onTriggerResolved: () => void;
+  envId?: string;
+  envName?: string;
+  projectId?: string;
+  apiId?: string;
 }
 
-export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment, hasDeployment, scheduleDescription, releaseId, orgHandler, projectHandler, componentHandler, envCritical, pendingTriggerTime, onTriggerResolved }: EnvironmentCardBodyProps) {
+export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment, hasDeployment, scheduleDescription, releaseId, orgHandler, projectHandler, componentHandler, envCritical, pendingTriggerTime, onTriggerResolved, envId, envName, projectId, apiId }: EnvironmentCardBodyProps) {
+  const showServiceInsights = !isAutomation && envCritical && !!apiId && !!envId && !!envName && !!projectId;
+  const showAutomationInsights = isAutomation && envCritical && !!releaseId;
+
   return (
     <>
       <Divider sx={{ my: 2 }} />
@@ -49,6 +58,12 @@ export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
           No deployments yet. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
         </Typography>
+      )}
+      {showServiceInsights && (
+        <EnvCardInsights envName={envName!} envId={envId!} projectId={projectId!} apiId={apiId!} />
+      )}
+      {showAutomationInsights && (
+        <EnvCardAutomationInsights releaseId={releaseId} />
       )}
     </>
   );

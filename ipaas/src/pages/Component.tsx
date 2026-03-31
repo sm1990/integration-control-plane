@@ -91,6 +91,7 @@ export default function Component(scope: ComponentScope): JSX.Element {
                 versionId={component.deploymentTracks?.[0]?.id ?? ''}
                 deploymentPipelineId={project?.defaultDeploymentPipelineId ?? ''}
                 latestCommit={latestCommit}
+                apiId={component.apiId}
               />
               {index < environments.length - 1 && (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>

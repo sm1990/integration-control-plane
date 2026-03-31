@@ -41,9 +41,10 @@ interface EnvironmentProps {
   versionId: string;
   deploymentPipelineId: string;
   latestCommit?: { sha: string; message: string } | null;
+  apiId?: string;
 }
 
-export default function Environment({ env, componentId, projectId, componentType: _componentType, displayType, componentHandler, projectHandler, orgHandler, versionId, deploymentPipelineId, latestCommit }: EnvironmentProps) {
+export default function Environment({ env, componentId, projectId, componentType: _componentType, displayType, componentHandler, projectHandler, orgHandler, versionId, deploymentPipelineId, latestCommit, apiId }: EnvironmentProps) {
   const isAutomation = (displayType ?? '').toLowerCase() === 'scheduledtask';
   const queryClient = useQueryClient();
   const [configureOpen, setConfigureOpen] = useState(false);
@@ -204,6 +205,10 @@ export default function Environment({ env, componentId, projectId, componentType
           envCritical={env.critical ?? false}
           pendingTriggerTime={pendingTriggerTime}
           onTriggerResolved={() => setPendingTriggerTime(null)}
+          envId={env.id}
+          envName={env.name}
+          projectId={projectId}
+          apiId={apiId ?? componentId}
         />
       </CardContent>
 

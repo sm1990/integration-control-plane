@@ -49,6 +49,7 @@ export interface GqlComponent {
   createdAt: string;
   lastBuildDate: string;
   labels?: string | string[];
+  apiId?: string;
 }
 
 const PROJECT_FIELDS = 'id, orgId, name, handler, description, version, createdDate, updatedAt, region, type, defaultDeploymentPipelineId';
@@ -159,7 +160,7 @@ const COMPONENT_BY_HANDLER_QUERY = `
     component(projectId: $projectId, componentHandler: $componentHandler) {
       projectId, id, name, handler, displayName, displayType,
       description, status, componentSubType,
-      version, createdAt, lastBuildDate, orgHandler, labels,
+      version, createdAt, lastBuildDate, orgHandler, labels, apiId,
       deploymentTracks { id }
     }
   }`;
@@ -706,6 +707,28 @@ export function useTaskExecutions(releaseId: string) {
     enabled: !!baseUrl && !!releaseId,
     retry: false,
     staleTime: 0,
+  });
+}
+
+export function useTaskExecutionCount(releaseId: string) {
+  const baseUrl = window.API_CONFIG?.systemApisBaseUrl ?? '';
+  return useQuery({
+    queryKey: ['taskExecutionCount', releaseId, baseUrl],
+    queryFn: async (): Promise<number | null> => {
+      if (!baseUrl || !releaseId) return null;
+      const to = new Date();
+      const from = new Date(to);
+      from.setDate(to.getDate() - 30);
+      const url = `${baseUrl}/systemapis/choreoobsapi/0.3.0/tasks/executions/count?releaseId=${releaseId}&from=${from.toISOString()}&to=${to.toISOString()}`;
+      const res = await authenticatedFetch(url);
+      if (!res.ok) return null;
+      const data: { count: number } = await res.json();
+      return data.count ?? null;
+    },
+    enabled: !!baseUrl && !!releaseId,
+    retry: false,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 }
 

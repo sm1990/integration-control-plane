@@ -20,12 +20,7 @@ import { Avatar, Box, CircularProgress, Divider, Stack, Typography } from '@wso2
 import { Activity, AlertTriangle, Clock, TrendingUp } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { getOrgUuidFromToken } from '../../auth/tokenManager';
-import {
-  fetchComponentInsights,
-  fetchInsightsEnvironments,
-  type ComponentInsights,
-  type InsightsEnvironment,
-} from '../../api/insights';
+import { fetchComponentInsights, fetchInsightsEnvironments, type ComponentInsights, type InsightsEnvironment } from '../../api/insights';
 
 interface MetricTileProps {
   icon: React.ReactNode;
@@ -38,9 +33,7 @@ interface MetricTileProps {
 function MetricTile({ icon, label, value, unit, loading }: MetricTileProps) {
   return (
     <Stack direction="row" alignItems="center" gap={1.5} sx={{ flex: 1, minWidth: 0 }}>
-      <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', flexShrink: 0 }}>
-        {icon}
-      </Avatar>
+      <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', flexShrink: 0 }}>{icon}</Avatar>
       <Box sx={{ minWidth: 0 }}>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>
           {label}
@@ -53,7 +46,9 @@ function MetricTile({ icon, label, value, unit, loading }: MetricTileProps) {
               {value ?? '—'}
             </Typography>
             {unit && value !== null && (
-              <Typography variant="caption" color="text.secondary">{unit}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {unit}
+              </Typography>
             )}
           </Stack>
         )}
@@ -78,7 +73,9 @@ export default function EnvCardInsights({ envName, envId, projectId, apiId }: En
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+    };
   }, []);
 
   // Fetch and match insights environment once
@@ -89,9 +86,7 @@ export default function EnvCardInsights({ envName, envId, projectId, apiId }: En
     }
     fetchInsightsEnvironments(orgUuid, projectId).then((envs) => {
       if (!mounted.current) return;
-      const match = envs.find(
-        (e) => e.externalEnvId === envId || e.name?.toLowerCase() === envName?.toLowerCase(),
-      );
+      const match = envs.find((e) => e.externalEnvId === envId || e.name?.toLowerCase() === envName?.toLowerCase());
       if (match) {
         setInsightsEnv(match);
       } else {
@@ -123,32 +118,10 @@ export default function EnvCardInsights({ envName, envId, projectId, apiId }: En
         Last 6 months
       </Typography>
       <Stack direction="row" gap={2} flexWrap="wrap">
-        <MetricTile
-          icon={<TrendingUp size={16} />}
-          label="Total Traffic"
-          value={insights?.requestCount ?? null}
-          loading={loading}
-        />
-        <MetricTile
-          icon={<AlertTriangle size={16} />}
-          label="Error Count"
-          value={insights?.errorCount ?? null}
-          loading={loading}
-        />
-        <MetricTile
-          icon={<Activity size={16} />}
-          label="Avg Error Rate"
-          value={insights?.errorRate ?? null}
-          unit="%"
-          loading={loading}
-        />
-        <MetricTile
-          icon={<Clock size={16} />}
-          label="P99 Latency"
-          value={insights?.latency ?? null}
-          unit="ms"
-          loading={loading}
-        />
+        <MetricTile icon={<TrendingUp size={16} />} label="Total Traffic" value={insights?.requestCount ?? null} loading={loading} />
+        <MetricTile icon={<AlertTriangle size={16} />} label="Error Count" value={insights?.errorCount ?? null} loading={loading} />
+        <MetricTile icon={<Activity size={16} />} label="Avg Error Rate" value={insights?.errorRate ?? null} unit="%" loading={loading} />
+        <MetricTile icon={<Clock size={16} />} label="P99 Latency" value={insights?.latency ?? null} unit="ms" loading={loading} />
       </Stack>
     </>
   );

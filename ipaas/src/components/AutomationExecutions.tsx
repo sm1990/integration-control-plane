@@ -143,20 +143,20 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
 
   return (
     <Fragment>
-    <ListingTable.Container>
-      <ListingTable density="compact">
-        <ListingTable.Head>
-          <ListingTable.Row>
-            <ListingTable.Cell>Status</ListingTable.Cell>
-            <ListingTable.Cell>Triggered At</ListingTable.Cell>
-            <ListingTable.Cell>Duration</ListingTable.Cell>
-            <ListingTable.Cell>Commit ID</ListingTable.Cell>
-            <ListingTable.Cell>Latest Logs</ListingTable.Cell>
-            <ListingTable.Cell></ListingTable.Cell>
-          </ListingTable.Row>
-        </ListingTable.Head>
-        <ListingTable.Body>
-          {paged.map((e) => {
+      <ListingTable.Container>
+        <ListingTable density="compact">
+          <ListingTable.Head>
+            <ListingTable.Row>
+              <ListingTable.Cell>Status</ListingTable.Cell>
+              <ListingTable.Cell>Triggered At</ListingTable.Cell>
+              <ListingTable.Cell>Duration</ListingTable.Cell>
+              <ListingTable.Cell>Commit ID</ListingTable.Cell>
+              <ListingTable.Cell>Latest Logs</ListingTable.Cell>
+              <ListingTable.Cell></ListingTable.Cell>
+            </ListingTable.Row>
+          </ListingTable.Head>
+          <ListingTable.Body>
+            {paged.map((e) => {
               const inProgress = isInProgress(e.status, e.completionTime);
               return (
                 <ListingTable.Row key={e.id}>
@@ -195,31 +195,24 @@ export default function AutomationExecutions({ releaseId, orgHandler, projectHan
                 </ListingTable.Row>
               );
             })}
-        </ListingTable.Body>
-      </ListingTable>
-      <TablePagination
-        sx={{ borderTop: '1px solid', borderColor: 'divider' }}
-        component="div"
-        count={allExecutions.length}
-        page={safePage}
-        onPageChange={(_, p) => setPage(p)}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => {
-          setRowsPerPage(parseInt(e.target.value, 10));
-          setPage(0);
-        }}
-        rowsPerPageOptions={[5, 10, 25]}
-      />
-    </ListingTable.Container>
+          </ListingTable.Body>
+        </ListingTable>
+        <TablePagination
+          sx={{ borderTop: '1px solid', borderColor: 'divider' }}
+          component="div"
+          count={allExecutions.length}
+          page={safePage}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => {
+            setRowsPerPage(parseInt(e.target.value, 10));
+            setPage(0);
+          }}
+          rowsPerPageOptions={[5, 10, 25]}
+        />
+      </ListingTable.Container>
 
-    <ExecutionDrawer
-      open={!!selectedExecution}
-      execution={selectedExecution}
-      onClose={() => setSelectedExecution(null)}
-      orgHandler={orgHandler}
-      projectHandler={projectHandler}
-      componentHandler={componentHandler}
-    />
+      <ExecutionDrawer open={!!selectedExecution} execution={selectedExecution} onClose={() => setSelectedExecution(null)} orgHandler={orgHandler} projectHandler={projectHandler} componentHandler={componentHandler} />
     </Fragment>
   );
 }

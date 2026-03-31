@@ -152,10 +152,18 @@ export default function ExecutionDrawer({ execution, open, onClose, orgHandler, 
           {tab === 0 && (
             <Box sx={{ px: 2, py: 2 }}>
               <Stack direction="row" sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 1 }}>
-                <Typography variant="caption" sx={{ fontWeight: 700, flex: '0 0 100px' }}>ATTEMPT ID</Typography>
-                <Typography variant="caption" sx={{ fontWeight: 700, flex: '0 0 80px' }}>DURATION</Typography>
-                <Typography variant="caption" sx={{ fontWeight: 700, flex: 1 }}>TRIGGERED AT</Typography>
-                <Typography variant="caption" sx={{ fontWeight: 700 }}>ACTIONS</Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, flex: '0 0 100px' }}>
+                  ATTEMPT ID
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, flex: '0 0 80px' }}>
+                  DURATION
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700, flex: 1 }}>
+                  TRIGGERED AT
+                </Typography>
+                <Typography variant="caption" sx={{ fontWeight: 700 }}>
+                  ACTIONS
+                </Typography>
               </Stack>
               <Stack direction="row" alignItems="center" sx={{ py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Stack direction="row" alignItems="center" gap={0.75} sx={{ flex: '0 0 100px' }}>
@@ -168,7 +176,13 @@ export default function ExecutionDrawer({ execution, open, onClose, orgHandler, 
                 <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
                   {isTerminal(execution.status) ? formatTriggeredAt(execution.startTime) : '--'}
                 </Typography>
-                <Button variant="text" size="small" onClick={() => { onClose(); navigate(logsUrl); }}>
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => {
+                    onClose();
+                    navigate(logsUrl);
+                  }}>
                   View Logs
                 </Button>
               </Stack>
@@ -190,9 +204,7 @@ export default function ExecutionDrawer({ execution, open, onClose, orgHandler, 
               <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
                 Arguments
               </Typography>
-              <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1, fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>
-                {execution.runId ? execution.runId : '[]'}
-              </Box>
+              <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1, fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>{execution.runId ? execution.runId : '[]'}</Box>
             </Box>
           )}
         </Box>

@@ -403,9 +403,7 @@ export function AutomationExecutions({ artifact, orgHandler, projectHandler, com
             paged.map((exec, i) => (
               <ListingTable.Row key={`${exec.runtimeId}-${exec.timestamp}-${i}`}>
                 <ListingTable.Cell>
-                  <Typography variant="body2">
-                    {new Date(exec.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })}
-                  </Typography>
+                  <Typography variant="body2">{new Date(exec.timestamp).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'medium' })}</Typography>
                 </ListingTable.Cell>
                 <ListingTable.Cell>
                   <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
@@ -434,7 +432,10 @@ export function AutomationExecutions({ artifact, orgHandler, projectHandler, com
         page={safePage}
         onPageChange={(_, p) => setPage(p)}
         rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+        onRowsPerPageChange={(e) => {
+          setRowsPerPage(parseInt(e.target.value, 10));
+          setPage(0);
+        }}
         rowsPerPageOptions={[5, 10, 25]}
       />
     </ListingTable.Container>

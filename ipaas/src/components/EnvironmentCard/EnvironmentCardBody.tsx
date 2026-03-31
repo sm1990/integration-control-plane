@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Box, Divider, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Divider, Typography } from '@wso2/oxygen-ui';
 import AutomationExecutions from '../AutomationExecutions';
 import EnvCardInsights from './EnvCardInsights';
 import EnvCardAutomationInsights from './EnvCardAutomationInsights';
@@ -37,19 +37,45 @@ interface EnvironmentCardBodyProps {
   envName?: string;
   projectId?: string;
   apiId?: string;
+  notification?: { text: string; severity: 'success' | 'error' } | null;
 }
 
-export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment, hasDeployment, scheduleDescription, releaseId, orgHandler, projectHandler, componentHandler, envCritical, pendingTriggerTime, onTriggerResolved, envId, envName, projectId, apiId }: EnvironmentCardBodyProps) {
+export default function EnvironmentCardBody({
+  isAutomation,
+  loadingEnvDeployment,
+  hasDeployment,
+  scheduleDescription,
+  releaseId,
+  orgHandler,
+  projectHandler,
+  componentHandler,
+  envCritical,
+  pendingTriggerTime,
+  onTriggerResolved,
+  envId,
+  envName,
+  projectId,
+  apiId,
+  notification,
+}: EnvironmentCardBodyProps) {
   const showServiceInsights = !isAutomation && envCritical && !!apiId && !!envId && !!envName && !!projectId;
   const showAutomationInsights = isAutomation && envCritical && !!releaseId;
 
   return (
     <>
       <Divider sx={{ my: 2 }} />
-      {isAutomation && hasDeployment && scheduleDescription && (
-        <Box sx={{ bgcolor: 'action.selected', borderRadius: 1, px: 2, py: 1, mb: 2 }}>
-          <Typography variant="body2">{scheduleDescription}</Typography>
-        </Box>
+      {notification ? (
+        <Alert severity={notification.severity} sx={{ mb: 2 }}>
+          {notification.text}
+        </Alert>
+      ) : (
+        isAutomation &&
+        hasDeployment &&
+        scheduleDescription && (
+          <Box sx={{ bgcolor: 'action.selected', borderRadius: 1, px: 2, py: 1, mb: 2 }}>
+            <Typography variant="body2">{scheduleDescription}</Typography>
+          </Box>
+        )
       )}
       {isAutomation && !loadingEnvDeployment && hasDeployment && (
         <AutomationExecutions releaseId={releaseId} orgHandler={orgHandler} projectHandler={projectHandler} componentHandler={componentHandler} envCritical={envCritical} pendingTriggerTime={pendingTriggerTime} onTriggerResolved={onTriggerResolved} />
@@ -59,12 +85,8 @@ export default function EnvironmentCardBody({ isAutomation, loadingEnvDeployment
           No deployments yet. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
         </Typography>
       )}
-      {showServiceInsights && (
-        <EnvCardInsights envName={envName!} envId={envId!} projectId={projectId!} apiId={apiId!} />
-      )}
-      {showAutomationInsights && (
-        <EnvCardAutomationInsights releaseId={releaseId} />
-      )}
+      {showServiceInsights && <EnvCardInsights envName={envName!} envId={envId!} projectId={projectId!} apiId={apiId!} />}
+      {showAutomationInsights && <EnvCardAutomationInsights releaseId={releaseId} />}
     </>
   );
 }

@@ -23,41 +23,91 @@ import { useProjectComponentLabels } from '../api/queries';
 import { useUpdateComponent } from '../api/mutations';
 
 const LABEL_OPTIONS = [
-  'Business Intelligence/Analytics', 'Business Intelligence/Artificial Intelligence',
-  'Business Intelligence/Dashboards', 'Business Intelligence/Data Warehouse',
-  'Business Intelligence/Language Analysis', 'Business Intelligence/Reporting',
-  'Business Intelligence/Visualization', 'Business Management/ERP', 'Commerce/eCommerce',
-  'Communication/Call & SMS', 'Communication/Call Tracking', 'Communication/Email',
-  'Communication/Notifications', 'Communication/Team Chat', 'Communication/Video Conferencing',
-  'Content & Files/Blogs', 'Content & Files/Documents', 'Content & Files/File Management & Storage',
-  'Content & Files/Images & Design', 'Content & Files/Notes', 'Content & Files/Video & Audio',
-  'Education/Dictionary', 'Education/eLearning', 'Education/Translator',
-  'Finance/Accounting', 'Finance/Asset Management', 'Finance/Billing',
-  'Finance/Cryptocurrency', 'Finance/Payment', 'Finance/Payroll',
-  'Human Resources/HRMS', 'Human Resources/Talent Acquisition',
+  'Business Intelligence/Analytics',
+  'Business Intelligence/Artificial Intelligence',
+  'Business Intelligence/Dashboards',
+  'Business Intelligence/Data Warehouse',
+  'Business Intelligence/Language Analysis',
+  'Business Intelligence/Reporting',
+  'Business Intelligence/Visualization',
+  'Business Management/ERP',
+  'Commerce/eCommerce',
+  'Communication/Call & SMS',
+  'Communication/Call Tracking',
+  'Communication/Email',
+  'Communication/Notifications',
+  'Communication/Team Chat',
+  'Communication/Video Conferencing',
+  'Content & Files/Blogs',
+  'Content & Files/Documents',
+  'Content & Files/File Management & Storage',
+  'Content & Files/Images & Design',
+  'Content & Files/Notes',
+  'Content & Files/Video & Audio',
+  'Education/Dictionary',
+  'Education/eLearning',
+  'Education/Translator',
+  'Finance/Accounting',
+  'Finance/Asset Management',
+  'Finance/Billing',
+  'Finance/Cryptocurrency',
+  'Finance/Payment',
+  'Finance/Payroll',
+  'Human Resources/HRMS',
+  'Human Resources/Talent Acquisition',
   'Internet of Things/Device Management',
-  'IT Operations/Browser Tools', 'IT Operations/Bug Trackers', 'IT Operations/Build Tools',
-  'IT Operations/Cloud Services', 'IT Operations/Databases', 'IT Operations/Data Ingestion',
-  'IT Operations/Debug Tools', 'IT Operations/Enterprise Architecture Tools',
-  'IT Operations/Geographic Information Systems', 'IT Operations/Message Brokers',
-  'IT Operations/Security & Identity Tools', 'IT Operations/Server Monitoring',
-  'IT Operations/Source Control', 'IT Operations/Testing Tools',
-  'Lifestyle & Entertainment/App Store', 'Lifestyle & Entertainment/Books',
-  'Lifestyle & Entertainment/Fitness', 'Lifestyle & Entertainment/Gaming',
-  'Lifestyle & Entertainment/News & Lifestyle', 'Lifestyle & Entertainment/Ride-Hailing',
-  'Marketing/Ads & Conversion', 'Marketing/Drip Emails', 'Marketing/Email Newsletters',
-  'Marketing/Event Management', 'Marketing/Marketing Automation',
-  'Marketing/Social Media Accounts', 'Marketing/Social Media Marketing',
-  'Marketing/Transactional Email', 'Marketing/Url Shortener', 'Marketing/Webinar',
-  'Productivity/Calendars', 'Productivity/Product Management', 'Productivity/Project Management',
-  'Productivity/Spreadsheets', 'Productivity/Task Management', 'Productivity/Time Tracking',
-  'Sales & CRM/Contact Management', 'Sales & CRM/Customer Relationship Management',
-  'Sales & CRM/Forms & Surveys', 'Sales & CRM/Scheduling & Booking',
-  'Support/Customer Appreciation', 'Support/Customer Support',
-  'Vendor/Amazon', 'Vendor/Google', 'Vendor/Microsoft',
-  'Website & App Building/App Builders', 'Website & App Building/SEO',
-  'Website & App Building/Website Builders', 'Website & App Building/Web Scraper',
-  'Cost/Free', 'Cost/Freemium', 'Cost/Paid',
+  'IT Operations/Browser Tools',
+  'IT Operations/Bug Trackers',
+  'IT Operations/Build Tools',
+  'IT Operations/Cloud Services',
+  'IT Operations/Databases',
+  'IT Operations/Data Ingestion',
+  'IT Operations/Debug Tools',
+  'IT Operations/Enterprise Architecture Tools',
+  'IT Operations/Geographic Information Systems',
+  'IT Operations/Message Brokers',
+  'IT Operations/Security & Identity Tools',
+  'IT Operations/Server Monitoring',
+  'IT Operations/Source Control',
+  'IT Operations/Testing Tools',
+  'Lifestyle & Entertainment/App Store',
+  'Lifestyle & Entertainment/Books',
+  'Lifestyle & Entertainment/Fitness',
+  'Lifestyle & Entertainment/Gaming',
+  'Lifestyle & Entertainment/News & Lifestyle',
+  'Lifestyle & Entertainment/Ride-Hailing',
+  'Marketing/Ads & Conversion',
+  'Marketing/Drip Emails',
+  'Marketing/Email Newsletters',
+  'Marketing/Event Management',
+  'Marketing/Marketing Automation',
+  'Marketing/Social Media Accounts',
+  'Marketing/Social Media Marketing',
+  'Marketing/Transactional Email',
+  'Marketing/Url Shortener',
+  'Marketing/Webinar',
+  'Productivity/Calendars',
+  'Productivity/Product Management',
+  'Productivity/Project Management',
+  'Productivity/Spreadsheets',
+  'Productivity/Task Management',
+  'Productivity/Time Tracking',
+  'Sales & CRM/Contact Management',
+  'Sales & CRM/Customer Relationship Management',
+  'Sales & CRM/Forms & Surveys',
+  'Sales & CRM/Scheduling & Booking',
+  'Support/Customer Appreciation',
+  'Support/Customer Support',
+  'Vendor/Amazon',
+  'Vendor/Google',
+  'Vendor/Microsoft',
+  'Website & App Building/App Builders',
+  'Website & App Building/SEO',
+  'Website & App Building/Website Builders',
+  'Website & App Building/Web Scraper',
+  'Cost/Free',
+  'Cost/Freemium',
+  'Cost/Paid',
 ];
 
 interface LabelDialogProps {
@@ -75,7 +125,7 @@ export default function LabelDialog({ open, onClose, component, projectId, curre
 
   useEffect(() => {
     if (open) setLabels(currentLabels);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const options = [...new Set([...LABEL_OPTIONS, ...projectLabels])];
@@ -118,14 +168,7 @@ export default function LabelDialog({ open, onClose, component, projectId, curre
                 return <Chip key={key} label={option} size="small" variant="outlined" {...tagProps} />;
               })
             }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="outlined"
-                size="small"
-                placeholder={labels.length === 0 ? 'Press enter to add labels' : ''}
-              />
-            )}
+            renderInput={(params) => <TextField {...params} variant="outlined" size="small" placeholder={labels.length === 0 ? 'Press enter to add labels' : ''} />}
           />
         </Stack>
       </DialogContent>
@@ -133,12 +176,7 @@ export default function LabelDialog({ open, onClose, component, projectId, curre
         <Button variant="outlined" onClick={onClose} disabled={updateComponent.isPending}>
           Cancel
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={!hasChanges || updateComponent.isPending}
-          startIcon={updateComponent.isPending ? <CircularProgress size={13} /> : undefined}
-        >
+        <Button variant="contained" onClick={handleSave} disabled={!hasChanges || updateComponent.isPending} startIcon={updateComponent.isPending ? <CircularProgress size={13} /> : undefined}>
           Save
         </Button>
       </DialogActions>

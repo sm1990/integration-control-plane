@@ -40,8 +40,7 @@ export function SuccessIcon({ size = 20 }: StatusIconProps) {
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-      }}
-    >
+      }}>
       <Check size={iconSize} style={{ color: '#fff' }} />
     </Box>
   );
@@ -60,8 +59,7 @@ export function QueuedIcon({ size = 20 }: StatusIconProps) {
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-      }}
-    >
+      }}>
       <Clock size={iconSize} style={{ color: '#757575' }} />
     </Box>
   );
@@ -80,8 +78,7 @@ export function FailedIcon({ size = 20 }: StatusIconProps) {
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
-      }}
-    >
+      }}>
       <X size={iconSize} style={{ color: '#fff' }} />
     </Box>
   );

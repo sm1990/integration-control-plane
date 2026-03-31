@@ -85,11 +85,7 @@ function formatForInsights(date: Date): string {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 }
 
-export async function fetchComponentInsights(
-  orgUuid: string,
-  insightsEnv: InsightsEnvironment,
-  apiId: string,
-): Promise<ComponentInsights | null> {
+export async function fetchComponentInsights(orgUuid: string, insightsEnv: InsightsEnvironment, apiId: string): Promise<ComponentInsights | null> {
   const now = new Date();
   const from = new Date(now);
   from.setUTCMonth(now.getUTCMonth() - 6);

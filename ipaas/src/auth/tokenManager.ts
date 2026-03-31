@@ -151,7 +151,9 @@ export async function refreshAccessToken(): Promise<void> {
     try {
       const stored = localStorage.getItem('icp_user');
       if (stored) isOidcSession = JSON.parse(stored).isOidcUser === true;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
 
     // Try internal backend refresh (for non-OIDC users only)
     if (!isOidcSession) {

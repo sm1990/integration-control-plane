@@ -81,7 +81,9 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   // Runs once on mount; no-ops if already cached or if not an OIDC session.
   useEffect(() => {
     if (isAuthenticated && !getAsgardeoToken()) {
-      getOrRefreshAsgardeoToken().catch(() => { /* best-effort */ });
+      getOrRefreshAsgardeoToken().catch(() => {
+        /* best-effort */
+      });
     }
   }, [isAuthenticated]);
 

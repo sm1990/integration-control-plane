@@ -16,20 +16,7 @@
  * under the License.
  */
 
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Collapse,
-  Divider,
-  IconButton,
-  Stack,
-  Step,
-  StepLabel,
-  Stepper,
-  Tooltip,
-  Typography,
-} from '@wso2/oxygen-ui';
+import { Box, Button, CircularProgress, Collapse, Divider, IconButton, Stack, Step, StepLabel, Stepper, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ChevronDown, ChevronUp, GitCommit, List } from '@wso2/oxygen-ui-icons-react';
 import { InProgressIcon, SuccessIcon, QueuedIcon, FailedIcon } from './StatusIcons';
 import React, { useEffect, useRef, useState } from 'react';
@@ -135,7 +122,9 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Reset log view when build changes
@@ -168,7 +157,7 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
       cancelled = true;
       clearInterval(interval);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expanded, runId, orgHandler, projectId, componentId, isInProgress]);
 
   // Scroll logs to bottom on update
@@ -181,8 +170,12 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
   if (!lastBuild) {
     return (
       <Box sx={{ mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
-        <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize', mb: 1 }}>Latest Build</Typography>
-        <Typography variant="body2" color="text.secondary">No builds yet.</Typography>
+        <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize', mb: 1 }}>
+          Latest Build
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          No builds yet.
+        </Typography>
       </Box>
     );
   }
@@ -196,10 +189,19 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
 
   let statusLabel = 'Unknown';
   let statusDotColor = 'text.disabled';
-  if (status === 'queued') { statusLabel = 'Queued'; statusDotColor = 'text.secondary'; }
-  else if (status === 'in_progress') { statusLabel = 'In Progress'; statusDotColor = 'warning.main'; }
-  else if (status === 'completed' && conclusion === 'success') { statusLabel = 'Completed'; statusDotColor = 'success.main'; }
-  else if (status === 'completed' && (conclusion === 'failure' || conclusion === 'failed')) { statusLabel = 'Failed'; statusDotColor = 'error.main'; }
+  if (status === 'queued') {
+    statusLabel = 'Queued';
+    statusDotColor = 'text.secondary';
+  } else if (status === 'in_progress') {
+    statusLabel = 'In Progress';
+    statusDotColor = 'warning.main';
+  } else if (status === 'completed' && conclusion === 'success') {
+    statusLabel = 'Completed';
+    statusDotColor = 'success.main';
+  } else if (status === 'completed' && (conclusion === 'failure' || conclusion === 'failed')) {
+    statusLabel = 'Failed';
+    statusDotColor = 'error.main';
+  }
 
   const logText = buildLogText(logs);
 
@@ -216,11 +218,7 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
             <Tooltip title={commitTooltip} placement="bottom">
               <Stack direction="row" alignItems="center" gap={0.5} sx={{ minWidth: 0, cursor: 'default' }}>
                 <GitCommit size={14} style={{ opacity: 0.55, flexShrink: 0 }} />
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ fontFamily: 'monospace', flexShrink: 0 }}
-                >
+                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', flexShrink: 0 }}>
                   {commitSha}
                 </Typography>
                 {commitMessage && (
@@ -232,8 +230,7 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       maxWidth: 260,
-                    }}
-                  >
+                    }}>
                     {commitMessage}
                   </Typography>
                 )}
@@ -243,7 +240,9 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
 
           <Stack direction="row" alignItems="center" gap={0.75} sx={{ flexShrink: 0 }}>
             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: statusDotColor, flexShrink: 0 }} />
-            <Typography variant="body2" color="text.secondary">{statusLabel}</Typography>
+            <Typography variant="body2" color="text.secondary">
+              {statusLabel}
+            </Typography>
           </Stack>
         </Stack>
 
@@ -256,8 +255,7 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
               if (!expanded) setExpanded(true);
               setShowLogs((v) => !v);
             }}
-            sx={{ textTransform: 'none', fontSize: '0.75rem' }}
-          >
+            sx={{ textTransform: 'none', fontSize: '0.75rem' }}>
             {showLogs ? 'Hide Logs' : 'View Logs'}
           </Button>
           <Tooltip title={expanded ? 'Collapse' : 'Expand'}>
@@ -283,7 +281,9 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
             else icon = <QueuedIcon size={24} />;
             return (
               <Step key={key} active={stepStatus === 'active'} completed={stepStatus === 'success'}>
-                <StepLabel error={stepStatus === 'error'} icon={icon}>{label}</StepLabel>
+                <StepLabel error={stepStatus === 'error'} icon={icon}>
+                  {label}
+                </StepLabel>
               </Step>
             );
           })}
@@ -314,9 +314,8 @@ export default function BuildCard({ componentId, versionId, orgHandler, projectI
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-all',
                   color: '#e0e0e0',
-                }}
-              >
-                {logText === null ? 'No log data available' : (logText || 'Waiting for build logs...')}
+                }}>
+                {logText === null ? 'No log data available' : logText || 'Waiting for build logs...'}
               </Box>
             )}
           </>

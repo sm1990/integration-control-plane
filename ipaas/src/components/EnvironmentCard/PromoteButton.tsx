@@ -60,13 +60,7 @@ export default function PromoteButton({ orgHandler, componentId, versionId, depl
     <Authorized permissions={Permissions.ENVIRONMENT_MANAGE}>
       <Tooltip title={tooltipTitle}>
         <span>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<ArrowDown size={14} />}
-            disabled={!buildId || !sourceReleaseId || alreadyPromoted || promote.isPending}
-            onClick={handlePromote}
-          >
+          <Button variant="outlined" size="small" startIcon={<ArrowDown size={14} />} disabled={!buildId || !sourceReleaseId || alreadyPromoted || promote.isPending} onClick={handlePromote}>
             {promote.isPending ? 'Promoting…' : 'Promote'}
           </Button>
         </span>

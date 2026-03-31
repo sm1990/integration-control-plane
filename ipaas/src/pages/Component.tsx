@@ -76,13 +76,7 @@ export default function Component(scope: ComponentScope): JSX.Element {
           <ComponentHeader component={component} project={project} repository={repository} latestCommit={latestCommit} orgHandler={scope.org} projectId={projectId} />
 
           {/* Latest build card */}
-          <BuildCard
-            componentId={component.id}
-            versionId={component.deploymentTracks?.[0]?.id ?? ''}
-            orgHandler={scope.org}
-            projectId={projectId}
-            latestCommit={latestCommit}
-          />
+          <BuildCard componentId={component.id} versionId={component.deploymentTracks?.[0]?.id ?? ''} orgHandler={scope.org} projectId={projectId} latestCommit={latestCommit} />
 
           <Divider sx={{ mb: 3 }} />
 

@@ -31,9 +31,7 @@ interface MetricTileProps {
 function MetricTile({ icon, label, value, unit, loading }: MetricTileProps) {
   return (
     <Stack direction="row" alignItems="center" gap={1.5} sx={{ flex: 1, minWidth: 0 }}>
-      <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', flexShrink: 0 }}>
-        {icon}
-      </Avatar>
+      <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main', flexShrink: 0 }}>{icon}</Avatar>
       <Box sx={{ minWidth: 0 }}>
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', whiteSpace: 'nowrap' }}>
           {label}
@@ -46,7 +44,9 @@ function MetricTile({ icon, label, value, unit, loading }: MetricTileProps) {
               {value ?? '—'}
             </Typography>
             {unit && value !== null && (
-              <Typography variant="caption" color="text.secondary">{unit}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {unit}
+              </Typography>
             )}
           </Stack>
         )}
@@ -63,17 +63,11 @@ export default function EnvCardAutomationInsights({ releaseId }: EnvCardAutomati
   const { data: count, isLoading: countLoading } = useTaskExecutionCount(releaseId);
   const { data: executions, isLoading: execLoading } = useTaskExecutions(releaseId);
 
-  const durations = executions
-    ?.map((e) => Number(e.completionTime) - Number(e.startTime))
-    .filter((d) => d > 0) ?? [];
+  const durations = executions?.map((e) => Number(e.completionTime) - Number(e.startTime)).filter((d) => d > 0) ?? [];
 
-  const errorRate = executions?.length
-    ? Math.round((executions.filter((e) => e.status !== 'Succeeded').length / executions.length) * 100)
-    : null;
+  const errorRate = executions?.length ? Math.round((executions.filter((e) => e.status !== 'Succeeded').length / executions.length) * 100) : null;
 
-  const avgDuration = durations.length
-    ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
-    : null;
+  const avgDuration = durations.length ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length) : null;
 
   const p99Duration = durations.length
     ? (() => {
@@ -87,33 +81,10 @@ export default function EnvCardAutomationInsights({ releaseId }: EnvCardAutomati
     <>
       <Divider sx={{ mt: 2, mb: 1.5 }} />
       <Stack direction="row" gap={2} flexWrap="wrap">
-        <MetricTile
-          icon={<AlertTriangle size={16} />}
-          label="Error Rate"
-          value={errorRate}
-          unit="%"
-          loading={execLoading}
-        />
-        <MetricTile
-          icon={<Clock size={16} />}
-          label="Avg Duration"
-          value={avgDuration}
-          unit="s"
-          loading={execLoading}
-        />
-        <MetricTile
-          icon={<Activity size={16} />}
-          label="99th Percentile Latency"
-          value={p99Duration}
-          unit="s"
-          loading={execLoading}
-        />
-        <MetricTile
-          icon={<TrendingUp size={16} />}
-          label="Total Executions"
-          value={count ?? null}
-          loading={countLoading}
-        />
+        <MetricTile icon={<AlertTriangle size={16} />} label="Error Rate" value={errorRate} unit="%" loading={execLoading} />
+        <MetricTile icon={<Clock size={16} />} label="Avg Duration" value={avgDuration} unit="s" loading={execLoading} />
+        <MetricTile icon={<Activity size={16} />} label="99th Percentile Latency" value={p99Duration} unit="s" loading={execLoading} />
+        <MetricTile icon={<TrendingUp size={16} />} label="Total Executions" value={count ?? null} loading={countLoading} />
       </Stack>
     </>
   );

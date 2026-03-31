@@ -47,9 +47,7 @@ export default function RunWithArgsDialog({ open, onClose, onRunSuccess, orgHand
 
   const handleRun = () => {
     setRunError(null);
-    const execArgs = args
-      .filter((a) => a.trim() !== '')
-      .map((a) => ({ argument_name: '', argument_value: a }));
+    const execArgs = args.filter((a) => a.trim() !== '').map((a) => ({ argument_name: '', argument_value: a }));
 
     trigger.mutate(
       { orgHandler, projectId, componentId, releaseId, args: execArgs },
@@ -111,9 +109,7 @@ export default function RunWithArgsDialog({ open, onClose, onRunSuccess, orgHand
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
               Arguments
             </Typography>
-            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1, fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>
-              {previewJson}
-            </Box>
+            <Box sx={{ bgcolor: 'action.hover', borderRadius: 1, px: 1.5, py: 1, fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>{previewJson}</Box>
           </Box>
 
           {args.map((arg, index) => (
@@ -122,13 +118,7 @@ export default function RunWithArgsDialog({ open, onClose, onRunSuccess, orgHand
                 Arg {index + 1}
               </Typography>
               <Stack direction="row" gap={1} alignItems="center">
-                <TextField
-                  size="small"
-                  fullWidth
-                  placeholder="Enter the argument"
-                  value={arg}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                />
+                <TextField size="small" fullWidth placeholder="Enter the argument" value={arg} onChange={(e) => handleChange(index, e.target.value)} />
                 <IconButton size="small" aria-label="Remove argument" disabled={args.length === 1} onClick={() => handleRemoveArg(index)}>
                   <Trash2 size={14} />
                 </IconButton>

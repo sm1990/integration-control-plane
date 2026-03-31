@@ -240,7 +240,6 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, onSaveErr
                 </Stack>
               </Collapse>
             </Box>
-
           </>
         )}
       </Box>

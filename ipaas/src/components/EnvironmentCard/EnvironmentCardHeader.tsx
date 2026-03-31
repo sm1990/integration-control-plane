@@ -38,7 +38,22 @@ interface EnvironmentCardHeaderProps {
   hasMissingConfigs?: boolean;
 }
 
-export default function EnvironmentCardHeader({ envName, envCritical, latestCommit, isAutomation, hasDeployment, nextRunLabel, isRefreshing, deployTrackIsPending, scheduleButtonProps, onRun, onRunWithArgs, onRefresh, onConfigure, hasMissingConfigs }: EnvironmentCardHeaderProps) {
+export default function EnvironmentCardHeader({
+  envName,
+  envCritical,
+  latestCommit,
+  isAutomation,
+  hasDeployment,
+  nextRunLabel,
+  isRefreshing,
+  deployTrackIsPending,
+  scheduleButtonProps,
+  onRun,
+  onRunWithArgs,
+  onRefresh,
+  onConfigure,
+  hasMissingConfigs,
+}: EnvironmentCardHeaderProps) {
   return (
     <Stack direction="row" alignItems="center" justifyContent="space-between">
       {/* Left: env name + commit info + configure */}

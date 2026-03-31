@@ -32,12 +32,7 @@ interface FlatField {
   isSensitive: boolean;
 }
 
-function flattenSchema(
-  properties: Record<string, Record<string, unknown>>,
-  required: string[],
-  dotPrefix = '',
-  slashPrefix = '',
-): FlatField[] {
+function flattenSchema(properties: Record<string, Record<string, unknown>>, required: string[], dotPrefix = '', slashPrefix = ''): FlatField[] {
   const fields: FlatField[] = [];
   for (const [name, prop] of Object.entries(properties)) {
     const dotKey = dotPrefix ? `${dotPrefix}.${name}` : name;
@@ -93,12 +88,7 @@ function FieldRow({ field, value, onChange }: FieldRowProps) {
         <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
           {field.leafKey}
         </Typography>
-        <Chip
-          label={field.type}
-          size="small"
-          variant="outlined"
-          sx={{ height: 18, fontSize: '0.65rem', borderRadius: 0.75 }}
-        />
+        <Chip label={field.type} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem', borderRadius: 0.75 }} />
       </Stack>
       {field.description && (
         <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.25 }}>
@@ -110,14 +100,7 @@ function FieldRow({ field, value, onChange }: FieldRowProps) {
           Add
         </Button>
       ) : (
-        <TextField
-          size="small"
-          fullWidth
-          type={field.isSensitive ? 'password' : 'text'}
-          placeholder="Enter a value"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <TextField size="small" fullWidth type={field.isSensitive ? 'password' : 'text'} placeholder="Enter a value" value={value} onChange={(e) => onChange(e.target.value)} />
       )}
     </Box>
   );
@@ -134,13 +117,7 @@ function FieldGroup({ groupPath, fields, values, onChange }: FieldGroupProps) {
   const [open, setOpen] = useState(true);
   return (
     <Box sx={{ mx: 1.5, mb: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        onClick={() => setOpen((p) => !p)}
-        sx={{ px: 1.5, py: 0.75, cursor: 'pointer', userSelect: 'none', borderBottom: open ? '1px solid' : 'none', borderColor: 'divider' }}
-      >
+      <Stack direction="row" alignItems="center" justifyContent="space-between" onClick={() => setOpen((p) => !p)} sx={{ px: 1.5, py: 0.75, cursor: 'pointer', userSelect: 'none', borderBottom: open ? '1px solid' : 'none', borderColor: 'divider' }}>
         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
           {groupPath}
         </Typography>
@@ -170,13 +147,7 @@ function Section({ title, groups, values, onChange, defaultOpen = true }: Sectio
   if (groups.length === 0) return null;
   return (
     <Box sx={{ mb: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        onClick={() => setOpen((p) => !p)}
-        sx={{ px: 2, py: 1.25, cursor: 'pointer', userSelect: 'none' }}
-      >
+      <Stack direction="row" alignItems="center" justifyContent="space-between" onClick={() => setOpen((p) => !p)} sx={{ px: 2, py: 1.25, cursor: 'pointer', userSelect: 'none' }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           {title}
         </Typography>
@@ -247,9 +218,7 @@ export default function ConfigureDrawer({ open, onClose, projectId, componentId,
 
   const handleSave = () => {
     setSaveError(null);
-    const configurations: SchemaConfigItem[] = fields
-      .filter((f) => f.type !== 'object[]' && values[f.key] !== undefined && values[f.key] !== '')
-      .map((f) => ({ key: f.key, values: [{ environmentUuid: envId, value: values[f.key] }] }));
+    const configurations: SchemaConfigItem[] = fields.filter((f) => f.type !== 'object[]' && values[f.key] !== undefined && values[f.key] !== '').map((f) => ({ key: f.key, values: [{ environmentUuid: envId, value: values[f.key] }] }));
     save.mutate(
       { projectId, componentId, envId, deploymentTrackId, configurations, commitHash },
       {
@@ -292,7 +261,11 @@ export default function ConfigureDrawer({ open, onClose, projectId, componentId,
       <>
         <Section title="Required" groups={requiredGroups} values={values} onChange={handleChange} />
         <Section title="Optional" groups={optionalGroups} values={values} onChange={handleChange} defaultOpen={false} />
-        {saveError && <Alert severity="error" sx={{ mt: 1 }}>{saveError}</Alert>}
+        {saveError && (
+          <Alert severity="error" sx={{ mt: 1 }}>
+            {saveError}
+          </Alert>
+        )}
       </>
     );
   };
@@ -311,9 +284,7 @@ export default function ConfigureDrawer({ open, onClose, projectId, componentId,
         </IconButton>
       </Stack>
 
-      <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 2 }}>
-        {renderContent()}
-      </Box>
+      <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 2 }}>{renderContent()}</Box>
 
       {hasSchema && (
         <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', flexShrink: 0 }}>

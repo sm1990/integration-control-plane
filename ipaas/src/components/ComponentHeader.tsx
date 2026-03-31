@@ -134,7 +134,10 @@ export default function ComponentHeader({ component, project, repository, latest
   const commitDescEdit = () => {
     const trimmed = descValue.trim();
     const original = component.description?.trim() ?? '';
-    if (trimmed === original) { setDescEditing(false); return; }
+    if (trimmed === original) {
+      setDescEditing(false);
+      return;
+    }
     updateDesc.mutate(
       {
         id: component.id,
@@ -146,7 +149,10 @@ export default function ComponentHeader({ component, project, repository, latest
       },
       {
         onSuccess: () => setDescEditing(false),
-        onError: () => { setDescValue(original); setDescEditing(false); },
+        onError: () => {
+          setDescValue(original);
+          setDescEditing(false);
+        },
       },
     );
   };
@@ -200,7 +206,7 @@ export default function ComponentHeader({ component, project, repository, latest
     <Stack sx={{ mb: 3 }} gap={1}>
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
         <Stack direction="row" alignItems="center" gap={2}>
-          <Avatar sx={{ width: 48, height: 48, fontSize: 22, bgcolor: 'text.primary', color: 'background.paper' }}>{(nameValue)?.[0]?.toUpperCase() ?? 'C'}</Avatar>
+          <Avatar sx={{ width: 48, height: 48, fontSize: 22, bgcolor: 'text.primary', color: 'background.paper' }}>{nameValue?.[0]?.toUpperCase() ?? 'C'}</Avatar>
           <Box>
             <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 0.25, cursor: 'text', columnGap: nameEditing ? 1.5 : 0.5, '&:hover .pencil-btn': { opacity: 1 } }} onClick={() => !nameEditing && setNameEditing(true)}>
               {/* The Typography always stays in the DOM and determines the layout size.
@@ -216,8 +222,14 @@ export default function ComponentHeader({ component, project, repository, latest
                     onChange={(e) => setNameValue(e.target.value)}
                     onBlur={commitNameEdit}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') { e.preventDefault(); commitNameEdit(); }
-                      if (e.key === 'Escape') { e.preventDefault(); cancelNameEdit(); }
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        commitNameEdit();
+                      }
+                      if (e.key === 'Escape') {
+                        e.preventDefault();
+                        cancelNameEdit();
+                      }
                     }}
                     sx={(theme) => ({
                       position: 'absolute',
@@ -244,7 +256,14 @@ export default function ComponentHeader({ component, project, repository, latest
               ) : (
                 !nameEditing && (
                   <Tooltip title="Edit name">
-                    <IconButton className="pencil-btn" size="small" sx={{ p: 0.25, opacity: 0 }} onClick={(e) => { e.stopPropagation(); setNameEditing(true); }}>
+                    <IconButton
+                      className="pencil-btn"
+                      size="small"
+                      sx={{ p: 0.25, opacity: 0 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setNameEditing(true);
+                      }}>
                       <Pencil size={14} />
                     </IconButton>
                   </Tooltip>
@@ -298,82 +317,83 @@ export default function ComponentHeader({ component, project, repository, latest
         )}
       </Stack>
       <Stack direction="row" alignItems="flex-start" gap={1} onMouseEnter={() => setDescHovered(true)} onMouseLeave={() => setDescHovered(false)}>
-      <Box
-        sx={{ position: 'relative', flex: 1, cursor: descEditing ? 'text' : (descValue ? 'text' : 'pointer') }}
-        onClick={() => !descEditing && setDescEditing(true)}
-      >
-        {/* Ghost text determines height; pencil sits inline after last word */}
-        <Typography
-          variant="body2"
-          component="div"
-          sx={{
-            visibility: descEditing ? 'hidden' : 'visible',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            color: descValue ? 'text.secondary' : 'primary.main',
-            minHeight: '1.4em',
-          }}
-        >
-          {descEditing ? (descValue || '\u200b') : (
-            <>
-              {descValue || '+ Add Description'}
-              {descValue && (
-                <Box component="span" sx={{ display: 'inline-flex', verticalAlign: 'middle', ml: 0.5 }}>
-                  <Tooltip title="Edit description">
-                    <IconButton size="small" sx={{ p: 0.25, opacity: descHovered ? 1 : 0, transition: 'opacity 0.15s' }} onClick={(e) => { e.stopPropagation(); setDescEditing(true); }}>
-                      <Pencil size={12} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              )}
-            </>
+        <Box sx={{ position: 'relative', flex: 1, cursor: descEditing ? 'text' : descValue ? 'text' : 'pointer' }} onClick={() => !descEditing && setDescEditing(true)}>
+          {/* Ghost text determines height; pencil sits inline after last word */}
+          <Typography
+            variant="body2"
+            component="div"
+            sx={{
+              visibility: descEditing ? 'hidden' : 'visible',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              color: descValue ? 'text.secondary' : 'primary.main',
+              minHeight: '1.4em',
+            }}>
+            {descEditing ? (
+              descValue || '\u200b'
+            ) : (
+              <>
+                {descValue || '+ Add Description'}
+                {descValue && (
+                  <Box component="span" sx={{ display: 'inline-flex', verticalAlign: 'middle', ml: 0.5 }}>
+                    <Tooltip title="Edit description">
+                      <IconButton
+                        size="small"
+                        sx={{ p: 0.25, opacity: descHovered ? 1 : 0, transition: 'opacity 0.15s' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDescEditing(true);
+                        }}>
+                        <Pencil size={12} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )}
+              </>
+            )}
+          </Typography>
+          {descEditing && (
+            <InputBase
+              inputRef={descInputRef}
+              multiline
+              value={descValue}
+              onChange={(e) => setDescValue(e.target.value)}
+              onBlur={commitDescEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  cancelDescEdit();
+                }
+              }}
+              sx={(theme) => ({
+                position: 'absolute',
+                inset: '-4px',
+                padding: '4px',
+                border: `2px solid ${theme.palette.primary.main}`,
+                borderRadius: `${theme.shape.borderRadius}px`,
+                alignItems: 'flex-start',
+                '& textarea': {
+                  ...theme.typography.body2,
+                  padding: 0,
+                  resize: 'none',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                },
+              })}
+              disabled={updateDesc.isPending}
+              autoComplete="off"
+            />
           )}
-        </Typography>
-        {descEditing && (
-          <InputBase
-            inputRef={descInputRef}
-            multiline
-            value={descValue}
-            onChange={(e) => setDescValue(e.target.value)}
-            onBlur={commitDescEdit}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') { e.preventDefault(); cancelDescEdit(); }
-            }}
-            sx={(theme) => ({
-              position: 'absolute',
-              inset: '-4px',
-              padding: '4px',
-              border: `2px solid ${theme.palette.primary.main}`,
-              borderRadius: `${theme.shape.borderRadius}px`,
-              alignItems: 'flex-start',
-              '& textarea': {
-                ...theme.typography.body2,
-                padding: 0,
-                resize: 'none',
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-              },
-            })}
-            disabled={updateDesc.isPending}
-            autoComplete="off"
-          />
-        )}
-      </Box>
-      {updateDesc.isPending && <CircularProgress size={12} sx={{ mt: 0.25 }} />}
+        </Box>
+        {updateDesc.isPending && <CircularProgress size={12} sx={{ mt: 0.25 }} />}
       </Stack>
       {(() => {
         const raw = component.labels;
-        const labelList: string[] = Array.isArray(raw) ? raw : (raw ? raw.split(',').filter(Boolean) : []);
+        const labelList: string[] = Array.isArray(raw) ? raw : raw ? raw.split(',').filter(Boolean) : [];
         return (
           <>
-            <LabelDialog
-              open={labelDialogOpen}
-              onClose={() => setLabelDialogOpen(false)}
-              component={component}
-              projectId={projectId}
-              currentLabels={labelList}
-            />
+            <LabelDialog open={labelDialogOpen} onClose={() => setLabelDialogOpen(false)} component={component} projectId={projectId} currentLabels={labelList} />
             <Stack direction="row" alignItems="center" gap={0.5} flexWrap="wrap" sx={{ '&:hover .pencil-btn': { opacity: 1 } }}>
               <Tag size={12} />
               {labelList.length === 0 ? (
@@ -391,7 +411,14 @@ export default function ComponentHeader({ component, project, repository, latest
                     </Typography>
                   )}
                   <Tooltip title="Edit labels">
-                    <IconButton className="pencil-btn" size="small" sx={{ p: 0.25, opacity: 0 }} onClick={(e) => { (e.currentTarget as HTMLElement).blur(); setLabelDialogOpen(true); }}>
+                    <IconButton
+                      className="pencil-btn"
+                      size="small"
+                      sx={{ p: 0.25, opacity: 0 }}
+                      onClick={(e) => {
+                        (e.currentTarget as HTMLElement).blur();
+                        setLabelDialogOpen(true);
+                      }}>
                       <Pencil size={12} />
                     </IconButton>
                   </Tooltip>

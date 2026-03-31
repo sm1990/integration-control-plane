@@ -598,7 +598,9 @@ export function useTriggerComponent() {
         try {
           const parsed = JSON.parse(text);
           isScopeError = parsed?.code === '900910' || !!parsed?.error_description?.includes('Scope validation');
-        } catch { /* not JSON */ }
+        } catch {
+          /* not JSON */
+        }
 
         if (isScopeError) {
           await refreshAccessToken();

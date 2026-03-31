@@ -402,10 +402,10 @@ export function useArtifacts(artifactType: string, envId: string, componentId: s
     queryKey: ['artifacts', artifactType, envId, componentId],
     queryFn: async () => {
       if (!mapping) return [];
-      const data = await gql<Record<string, GqlArtifact[]>>(
-        `query ArtifactQuery($environmentId: String!, $componentId: String!) { ${mapping.field}(environmentId: $environmentId, componentId: $componentId) { ${mapping.gqlFields} } }`,
-        { environmentId: envId, componentId },
-      ).catch(() => ({} as Record<string, GqlArtifact[]>));
+      const data = await gql<Record<string, GqlArtifact[]>>(`query ArtifactQuery($environmentId: String!, $componentId: String!) { ${mapping.field}(environmentId: $environmentId, componentId: $componentId) { ${mapping.gqlFields} } }`, {
+        environmentId: envId,
+        componentId,
+      }).catch(() => ({}) as Record<string, GqlArtifact[]>);
       return data[mapping.field] ?? [];
     },
     enabled: !!artifactType && !!envId && !!componentId && !!mapping && (options?.enabled ?? true),

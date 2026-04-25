@@ -35,6 +35,7 @@ interface EnvironmentCardHeaderProps {
   nextRunLabel: string | null;
   isRefreshing: boolean;
   deployTrackIsPending: boolean;
+  schemaConfigChecking?: boolean;
   scheduleButtonProps?: ScheduleButtonProps;
   onRun: () => void;
   onRunWithArgs: () => void;
@@ -67,6 +68,7 @@ export default function EnvironmentCardHeader({
   nextRunLabel,
   isRefreshing,
   deployTrackIsPending,
+  schemaConfigChecking,
   scheduleButtonProps,
   onRun,
   onRunWithArgs,
@@ -76,7 +78,7 @@ export default function EnvironmentCardHeader({
   onTest,
   hasMissingConfigs,
 }: EnvironmentCardHeaderProps) {
-  const statusDot = isGenericService && deploymentStatusV2 ? STATUS_DOT_MAP[deploymentStatusV2] : null;
+  const statusDot = (isGenericService || isAutomation) && deploymentStatusV2 ? STATUS_DOT_MAP[deploymentStatusV2] : null;
   const canStop = isGenericService && (deploymentStatusV2 === 'ACTIVE' || deploymentStatusV2 === 'ERROR');
   const canStart = isGenericService && deploymentStatusV2 === 'SUSPENDED';
   const isInProgress = isGenericService && deploymentStatusV2 === 'IN_PROGRESS';
@@ -88,7 +90,7 @@ export default function EnvironmentCardHeader({
         <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize', flexShrink: 0 }}>
           {envName}
         </Typography>
-        {hasDeployment && latestCommit && (
+        {latestCommit && (!envCritical || hasDeployment) && (
           <Stack direction="row" alignItems="center" gap={0.5} sx={{ minWidth: 0 }}>
             <GitCommit size={14} style={{ opacity: 0.55, flexShrink: 0 }} />
             <Typography variant="body2" sx={{ fontFamily: 'monospace', color: 'text.secondary', flexShrink: 0 }}>
@@ -158,8 +160,8 @@ export default function EnvironmentCardHeader({
                 </Typography>
               </Stack>
             )}
-            {scheduleButtonProps && <ScheduleButton {...scheduleButtonProps} disabled={hasMissingConfigs} />}
-            <RunButton envCritical={envCritical} disabled={hasMissingConfigs} pending={deployTrackIsPending} onRun={onRun} onRunWithArgs={onRunWithArgs} />
+            {scheduleButtonProps && <ScheduleButton {...scheduleButtonProps} disabled={hasMissingConfigs || schemaConfigChecking} />}
+            <RunButton envCritical={envCritical} disabled={hasMissingConfigs || schemaConfigChecking} pending={deployTrackIsPending} onRun={onRun} onRunWithArgs={onRunWithArgs} />
           </>
         )}
         <Tooltip title="Refresh">

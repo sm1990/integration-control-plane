@@ -151,6 +151,7 @@ export function useProjectByHandler(handler: string) {
     queryFn: () => gql<{ projectByHandler: GqlProject }>(PROJECT_BY_HANDLER_QUERY, { orgId: id, projectHandler: handler }).then((d) => d.projectByHandler),
     // Guard: never call if handler is empty or looks like a UUID (should use useProject instead)
     enabled: !!handler && id > 0 && !UUID_RE.test(handler),
+    retry: false,
   });
 }
 
@@ -1048,6 +1049,10 @@ export interface SchemaConfigItem {
   valueType?: string;
   isRequired?: boolean;
   isSensitive?: boolean;
+  keyId?: string;
+  configGroupId?: string;
+  configKeyId?: string;
+  isDynamic?: boolean;
 }
 
 export interface SchemaConfigData {
@@ -1070,6 +1075,22 @@ export interface CertGroup {
   groupName: string;
   groupDisplayName?: string;
   configurations: CertGroupKey[];
+}
+
+export function useConfigGroups(projectId: string, componentId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['configGroups', projectId, componentId],
+    queryFn: async (): Promise<CertGroup[]> => {
+      const base = new URL(window.API_CONFIG.graphqlUrl).origin;
+      const params = new URLSearchParams({ projectId, componentId, nested_search: 'true' });
+      const res = await authenticatedFetch(`${base}/config-svc/v1.0/configs/groups?${params}`);
+      if (!res.ok) return [];
+      const data: CertGroup[] = await res.json();
+      return data.filter((g) => !g.groupName.startsWith('certificates-'));
+    },
+    enabled: enabled && !!projectId && !!componentId,
+    retry: false,
+  });
 }
 
 export function useCertificateGroups(projectId: string, componentId: string, enabled: boolean) {

@@ -19,7 +19,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { gql } from './graphql';
 import { authenticatedFetch, refreshAccessToken } from '../auth/tokenManager';
-import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject, SchemaConfigItem, CertMapping } from './queries';
+import type { GqlArtifact, GqlComponent, GqlEnvironment, GqlProject, SchemaConfigItem, CertMapping, SchemaConfigData } from './queries';
 import { toBackendArtifactType } from './artifactToggleMutations';
 import type { DeployComponentInput, UpdateBuildpackConfigsInput } from '../types/build';
 
@@ -767,7 +767,16 @@ export function useSaveSchemaConfig() {
       }
       return res.json().catch(() => ({}));
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (responseData: SchemaConfigData, vars) => {
+      // The POST response includes saved configurations with keyIds. Cache them immediately
+      // so subsequent saves in the same session can look up keyIds without waiting for a refetch.
+      if (responseData?.configurations?.length) {
+        qc.setQueryData(
+          ['schemaConfig', vars.projectId, vars.componentId, vars.envId, vars.deploymentTrackId, vars.commitHash],
+          (old: SchemaConfigData | null | undefined) => ({ ...(old ?? {}), configurations: responseData.configurations }),
+        );
+      }
+      // Invalidate so the query refetches fresh data (GET after save also returns configurations+keyIds).
       qc.invalidateQueries({ queryKey: ['schemaConfig', vars.projectId, vars.componentId, vars.envId, vars.deploymentTrackId] });
     },
   });

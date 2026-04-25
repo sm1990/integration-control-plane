@@ -68,14 +68,24 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
   // Poll for transitional states or briefly after explicit stop/redeploy actions
   const [serviceRefetchInterval, setServiceRefetchInterval] = useState<number | false>(false);
   const [shouldPollOnce, setShouldPollOnce] = useState(false);
+  // Poll for automation deployment right after a build (dev env only, stops when found or after 3 min)
+  const [pollAutomationDeployment, setPollAutomationDeployment] = useState(isAutomation && !env.critical);
   const { data: envDeployment, isLoading: loadingEnvDeployment } = useComponentDeployment(
     fetchDeployment ? orgHandler : '',
     fetchDeployment ? envOrgUuid : '',
     fetchDeployment ? componentId : '',
     fetchDeployment ? versionId : '',
     fetchDeployment ? env.id : '',
-    { refetchInterval: isGenericService ? serviceRefetchInterval : undefined },
+    { refetchInterval: isGenericService ? serviceRefetchInterval : (pollAutomationDeployment ? 8000 : undefined) },
   );
+
+  // Stop polling once deployment is found, or after 3 minutes to avoid indefinite requests
+  useEffect(() => {
+    if (!pollAutomationDeployment) return;
+    if (envDeployment) { setPollAutomationDeployment(false); return; }
+    const timer = setTimeout(() => setPollAutomationDeployment(false), 3 * 60 * 1000);
+    return () => clearTimeout(timer);
+  }, [envDeployment, pollAutomationDeployment]);
 
   const deploymentStatusV2 = envDeployment?.deploymentStatusV2 ?? null;
 
@@ -105,7 +115,13 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
   const scheduleDescription = scheduleConfig?.cronjobFrequency ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}` : null;
 
   const envTemplateId = env.templateId ?? env.id;
-  const { data: schemaConfig } = useSchemaConfig(isAutomation ? projectId : '', isAutomation ? componentId : '', isAutomation ? envTemplateId : '', isAutomation ? versionId : '', latestCommit?.sha);
+  const { data: schemaConfig, isLoading: schemaConfigLoading } = useSchemaConfig(
+    isAutomation && !!envDeployment ? projectId : '',
+    isAutomation && !!envDeployment ? componentId : '',
+    isAutomation && !!envDeployment ? envTemplateId : '',
+    isAutomation && !!envDeployment ? versionId : '',
+    latestCommit?.sha,
+  );
 
   const hasMissingConfigs = useMemo(() => {
     if (!schemaConfig?.jsonSchema) return false;
@@ -248,7 +264,8 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
           onRedeploy={handleRedeploy}
           nextRunLabel={nextRunLabel}
           isRefreshing={isRefreshing}
-          deployTrackIsPending={trigger.isPending}
+          deployTrackIsPending={trigger.isPending || !!pendingTriggerTime}
+          schemaConfigChecking={isAutomation && schemaConfigLoading}
           hasDeployment={!!envDeployment}
           scheduleButtonProps={
             isAutomation

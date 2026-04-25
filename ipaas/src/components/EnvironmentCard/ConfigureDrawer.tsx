@@ -17,12 +17,29 @@
  */
 
 import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Collapse, Dialog, DialogActions, DialogContent, DialogTitle, Drawer, IconButton, MenuItem, Select as MuiSelect, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { Building2, Check, ChevronDown, ChevronUp, Copy, Folder, Globe, Link, Pencil, Plus, Settings, Trash2, Upload, X } from '@wso2/oxygen-ui-icons-react';
+import { Building2, Check, ChevronDown, ChevronUp, Copy, Folder, Globe, Link, Pencil, Settings, Trash2, Upload, X } from '@wso2/oxygen-ui-icons-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEnvEndpoints, useGetConfigMgt, useSchemaConfig, useCertificateGroups, useCertificateMappings, type ConfigMgtItem, type GqlEnvEndpoint, type SchemaConfigItem, type CertGroup, type CertMapping, type CertMappingConfig } from '../../api/queries';
+import {
+  useEnvEndpoints,
+  useGetConfigMgt,
+  useSchemaConfig,
+  useConfigGroups,
+  useCertificateGroups,
+  useCertificateMappings,
+  type ConfigMgtItem,
+  type GqlEnvEndpoint,
+  type SchemaConfigItem,
+  type CertGroup,
+  type CertMapping,
+  type CertMappingConfig,
+} from '../../api/queries';
 import { usePostConfigMgt, useRedeployDeployment, useUpdateEndpoint, useSaveSchemaConfig, usePostCertificateMappings, type ConfigMgtSaveItem } from '../../api/mutations';
 import ManageDrawer from './ManageDrawer';
+import { ConfigForm } from '../SchemaConfigForm/ConfigForm';
+import type { LinkingInfo } from '../SchemaConfigForm/ConfigForm';
+import { type BaseType, type JSONSchema, getRequiredPathsAtLevel } from '../SchemaConfigForm/schemaUtils';
+import { parseConfigToml, filterTomlValuesBySchema, getAllSchemaKeys } from '../SchemaConfigForm/tomlUtils';
 
 // ── Schema parsing ────────────────────────────────────────────────────────────
 
@@ -518,182 +535,97 @@ function ManageEndpoint({ ep, componentId, versionId, releaseId, onBack }: Manag
 
 // ── Automation configure drawer ───────────────────────────────────────────────
 
-interface AutoFlatField {
-  key: string;
-  leafKey: string;
-  parentPath: string;
-  type: string;
-  description?: string;
-  required: boolean;
-  isSensitive: boolean;
-}
-
-function autoFlattenSchema(properties: Record<string, Record<string, unknown>>, required: string[], dotPrefix = '', slashPrefix = ''): AutoFlatField[] {
-  const fields: AutoFlatField[] = [];
-  for (const [name, prop] of Object.entries(properties)) {
-    const dotKey = dotPrefix ? `${dotPrefix}.${name}` : name;
-    const slashPath = slashPrefix ? `${slashPrefix}/${name}` : name;
-    if (prop.type === 'object' && prop.properties) {
-      const childRequired = Array.isArray(prop.required) ? (prop.required as string[]) : [];
-      fields.push(...autoFlattenSchema(prop.properties as Record<string, Record<string, unknown>>, childRequired, dotKey, slashPath));
-    } else {
-      fields.push({
-        key: dotKey,
-        leafKey: name,
-        parentPath: slashPrefix,
-        type: typeof prop.type === 'string' && prop.type === 'array' ? 'object[]' : typeof prop.type === 'string' ? prop.type : 'string',
-        description: typeof prop.description === 'string' ? prop.description : undefined,
-        required: required.includes(name),
-        isSensitive: typeof prop['x-sensitive'] === 'boolean' ? (prop['x-sensitive'] as boolean) : false,
-      });
-    }
-  }
-  return fields;
-}
-
-function autoParseFields(base64: string | undefined): AutoFlatField[] {
-  if (!base64) return [];
+function parseSchemaBase64(base64: string | undefined): JSONSchema | null {
+  if (!base64) return null;
   try {
-    const schema = JSON.parse(atob(base64));
-    return autoFlattenSchema(schema.properties ?? {}, schema.required ?? []);
+    return JSON.parse(atob(base64)) as JSONSchema;
   } catch {
-    return [];
+    return null;
   }
 }
 
-function autoGroupFields(fields: AutoFlatField[]): { groupPath: string; fields: AutoFlatField[] }[] {
-  const map = new Map<string, AutoFlatField[]>();
-  for (const f of fields) {
-    const g = f.parentPath || f.leafKey;
-    if (!map.has(g)) map.set(g, []);
-    map.get(g)!.push(f);
-  }
-  return Array.from(map.entries()).map(([groupPath, groupFields]) => ({ groupPath, fields: groupFields }));
-}
-
-// ── Config.toml parser ────────────────────────────────────────────────────────
-// Parses a subset of TOML: section headers ([a.b.c]) and scalar key = "value"
-// lines. Multiline strings and arrays are skipped. Result is a flat map of
-// dot-joined paths → string values, matching the schema key format.
-
-function parseTomlConfig(content: string): Record<string, string> {
-  const result: Record<string, string> = {};
+function parseTomlConfigLegacy(content: string): Map<string, BaseType> {
+  const result = new Map<string, BaseType>();
   let section = '';
+  const stripQuotes = (value: string) => {
+    const trimmedValue = value.trim();
+    if ((trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) || (trimmedValue.startsWith("'") && trimmedValue.endsWith("'"))) {
+      return trimmedValue.slice(1, -1);
+    }
+    return trimmedValue;
+  };
+  const stripComment = (value: string) => {
+    let inString = false;
+    let stringChar = '';
+    for (let i = 0; i < value.length; i++) {
+      const char = value[i];
+      const previousChar = value[i - 1];
+      if (!inString && (char === '"' || char === "'")) {
+        inString = true;
+        stringChar = char;
+      } else if (inString && char === stringChar && previousChar !== '\\') {
+        inString = false;
+        stringChar = '';
+      } else if (!inString && char === '#') {
+        return value.slice(0, i).trim();
+      }
+    }
+    return value.trim();
+  };
+
   for (const raw of content.split('\n')) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
+
     const sectionMatch = /^\[([^\]]+)\]$/.exec(line);
     if (sectionMatch) {
-      section = sectionMatch[1].trim();
+      section = stripQuotes(sectionMatch[1]);
       continue;
     }
+
     const eqIdx = line.indexOf('=');
     if (eqIdx === -1) continue;
-    const key = line.slice(0, eqIdx).trim();
+
+    const key = stripQuotes(line.slice(0, eqIdx));
     if (!key) continue;
-    const rawVal = line.slice(eqIdx + 1).trim();
-    // Skip multiline strings and arrays
+
+    const rawVal = stripComment(line.slice(eqIdx + 1));
     if (rawVal.startsWith('"""') || rawVal.startsWith("'''") || rawVal.startsWith('[')) continue;
-    let value: string;
+
+    let value: BaseType = rawVal;
     if ((rawVal.startsWith('"') && rawVal.endsWith('"')) || (rawVal.startsWith("'") && rawVal.endsWith("'"))) {
       value = rawVal.slice(1, -1);
-    } else {
-      value = rawVal;
+    } else if (rawVal === 'true' || rawVal === 'false') {
+      value = rawVal === 'true';
+    } else if (/^[+-]?\d+(\.\d+)?$/.test(rawVal)) {
+      value = Number(rawVal);
     }
+
     const fullKey = section ? `${section}.${key}` : key;
-    result[fullKey] = value;
+    result.set(fullKey, value);
   }
+
   return result;
 }
 
-interface AutoFieldRowProps {
-  field: AutoFlatField;
-  value: string;
-  onChange: (v: string) => void;
-}
+const normalizeConfigPath = (key: string): string =>
+  key
+    .replace(/\//g, '.')
+    .replace(/\.\[/g, '[')
+    .replace(/\[\*\]/g, '[]')
+    .replace(/\[\d+\]/g, '[]')
+    .replace(/\.\*/g, '.*')
+    .replace(/\.+/g, '.')
+    .replace(/^\./, '')
+    .replace(/\.$/, '');
 
-function AutoFieldRow({ field, value, onChange }: AutoFieldRowProps) {
-  return (
-    <Box sx={{ mb: 1.5 }}>
-      <Stack direction="row" alignItems="center" gap={0.75} sx={{ mb: 0.5 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace' }}>
-          {field.leafKey}
-        </Typography>
-        <Chip label={field.type} size="small" variant="outlined" sx={{ height: 18, fontSize: '0.65rem', borderRadius: 0.75 }} />
-      </Stack>
-      {field.description && (
-        <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 0.25 }}>
-          {field.description}
-        </Typography>
-      )}
-      {field.type === 'object[]' ? (
-        <Button variant="outlined" size="small" startIcon={<Plus size={12} />} sx={{ mt: 0.25 }}>
-          Add
-        </Button>
-      ) : (
-        <TextField size="small" fullWidth type={field.isSensitive ? 'password' : 'text'} placeholder="Enter a value" value={value} onChange={(e) => onChange(e.target.value)} />
-      )}
-    </Box>
-  );
-}
-
-interface AutoFieldGroupProps {
-  groupPath: string;
-  fields: AutoFlatField[];
-  values: Record<string, string>;
-  onChange: (key: string, value: string) => void;
-}
-
-function AutoFieldGroup({ groupPath, fields, values, onChange }: AutoFieldGroupProps) {
-  const [open, setOpen] = useState(true);
-  return (
-    <Box sx={{ mx: 1.5, mb: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" onClick={() => setOpen((p) => !p)} sx={{ px: 1.5, py: 0.75, cursor: 'pointer', userSelect: 'none', borderBottom: open ? '1px solid' : 'none', borderColor: 'divider' }}>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
-          {groupPath}
-        </Typography>
-        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-      </Stack>
-      <Collapse in={open}>
-        <Box sx={{ px: 1.5, pb: 1.5, pt: 1 }}>
-          {fields.map((field) => (
-            <AutoFieldRow key={field.key} field={field} value={values[field.key] ?? ''} onChange={(v) => onChange(field.key, v)} />
-          ))}
-        </Box>
-      </Collapse>
-    </Box>
-  );
-}
-
-interface AutoSectionProps {
-  title: string;
-  groups: { groupPath: string; fields: AutoFlatField[] }[];
-  values: Record<string, string>;
-  onChange: (key: string, value: string) => void;
-  defaultOpen?: boolean;
-}
-
-function AutoSection({ title, groups, values, onChange, defaultOpen = true }: AutoSectionProps) {
-  const [open, setOpen] = useState(defaultOpen);
-  if (groups.length === 0) return null;
-  return (
-    <Box sx={{ mb: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1, overflow: 'hidden' }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" onClick={() => setOpen((p) => !p)} sx={{ px: 2, py: 1.25, cursor: 'pointer', userSelect: 'none' }}>
-        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          {title}
-        </Typography>
-        {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </Stack>
-      <Collapse in={open}>
-        <Box sx={{ pt: 1 }}>
-          {groups.map(({ groupPath, fields }) => (
-            <AutoFieldGroup key={groupPath} groupPath={groupPath} fields={fields} values={values} onChange={onChange} />
-          ))}
-        </Box>
-      </Collapse>
-    </Box>
-  );
-}
+const findMatchingSchemaKey = (tomlKey: string, schemaKeys: string[]): string | undefined => {
+  const normalizedTomlKey = normalizeConfigPath(tomlKey);
+  return schemaKeys.find((schemaKey) => {
+    const normalizedSchemaKey = normalizeConfigPath(schemaKey);
+    return schemaKey === tomlKey || normalizedSchemaKey === normalizedTomlKey || normalizedSchemaKey.endsWith(`.${normalizedTomlKey}`) || normalizedTomlKey.endsWith(`.${normalizedSchemaKey}`);
+  });
+};
 
 // ── Certificate Mount step components ──────────────────────────────────────────
 
@@ -945,29 +877,64 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
   };
 
   const { data, isLoading, isError } = useSchemaConfig(projectId, componentId, envId, deploymentTrackId, commitHash);
+  const { data: configGroups = [] } = useConfigGroups(projectId, componentId, open);
   const { data: existingCertMappings } = useCertificateMappings(projectId, componentId, envId, deploymentTrackId, open);
   const save = useSaveSchemaConfig();
   const saveCertMappings = usePostCertificateMappings();
   const redeploy = useRedeployDeployment();
   const [step, setStep] = useState(1);
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [valueMap, setValueMap] = useState<Map<string, BaseType>>(new Map());
+  const [validationMap, setValidationMap] = useState<Map<string, boolean>>(new Map());
+  const [sensitiveMap, setSensitiveMap] = useState<Map<string, boolean>>(new Map());
+  const [linkingMap, setLinkingMap] = useState<Map<string, LinkingInfo>>(new Map());
   const [saveError, setSaveError] = useState<string | null>(null);
   const [importedFileName, setImportedFileName] = useState<string | null>(null);
   const [linkedCerts, setLinkedCerts] = useState<LinkedCert[]>([]);
   const certSeededRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fields = useMemo(() => {
-    const base = autoParseFields(data?.jsonSchema);
-    const reqKeys = new Set((data?.configurations ?? []).filter((c) => c.isRequired).map((c) => c.key));
-    if (!reqKeys.size) return base;
-    return base.map((f) => ({ ...f, required: f.required || reqKeys.has(f.key) }));
-  }, [data]);
+  const parsedSchema = useMemo(() => parseSchemaBase64(data?.jsonSchema), [data?.jsonSchema]);
+  const requiredJsonPathList = useMemo(() => (parsedSchema ? getRequiredPathsAtLevel(parsedSchema) : []), [parsedSchema]);
 
-  const requiredFields = useMemo(() => fields.filter((f) => f.required), [fields]);
-  const optionalFields = useMemo(() => fields.filter((f) => !f.required), [fields]);
-  const requiredGroups = useMemo(() => autoGroupFields(requiredFields), [requiredFields]);
-  const optionalGroups = useMemo(() => autoGroupFields(optionalFields), [optionalFields]);
+  const buildInitialConfigState = useCallback(
+    (configurations: SchemaConfigItem[] | undefined) => {
+      const initialValues = new Map<string, BaseType>();
+      const initialValidations = new Map<string, boolean>();
+      const initialSensitive = new Map<string, boolean>();
+      const initialLinking = new Map<string, LinkingInfo>();
+
+      for (const cfg of configurations ?? []) {
+        if (cfg.values?.length) {
+          initialValues.set(cfg.key, cfg.values[0]?.value ?? '');
+          initialValidations.set(cfg.key, true);
+        }
+        if (cfg.isSensitive !== undefined) {
+          initialSensitive.set(cfg.key, cfg.isSensitive);
+        }
+        if (cfg.configGroupId || cfg.configKeyId || cfg.isDynamic !== undefined) {
+          initialLinking.set(cfg.key, {
+            configGroupId: cfg.configGroupId,
+            configKeyId: cfg.configKeyId,
+            isDynamic: cfg.isDynamic,
+          });
+        }
+      }
+
+      for (const path of requiredJsonPathList) {
+        if (!initialValidations.has(path) && !path.includes('[*]') && !path.includes('.*')) {
+          initialValidations.set(path, false);
+        }
+      }
+
+      return {
+        initialSensitive,
+        initialValidations,
+        initialValues,
+        initialLinking,
+      };
+    },
+    [requiredJsonPathList],
+  );
 
   // Seed values only on open; avoid clobbering edits on background refetches.
   const seededRef = useRef(false);
@@ -978,23 +945,26 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
     setImportedFileName(null);
     certSeededRef.current = false;
     if (data !== undefined) {
-      const initial: Record<string, string> = {};
-      for (const cfg of data?.configurations ?? []) initial[cfg.key] = cfg.values?.[0]?.value ?? '';
-      setValues(initial);
+      const { initialSensitive, initialValidations, initialValues, initialLinking } = buildInitialConfigState(data?.configurations);
+      setValueMap(initialValues);
+      setValidationMap(initialValidations);
+      setSensitiveMap(initialSensitive);
+      setLinkingMap(initialLinking);
       seededRef.current = true;
     } else {
       seededRef.current = false;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, buildInitialConfigState, data]);
 
   useEffect(() => {
     if (!open || seededRef.current || data === undefined) return;
-    const initial: Record<string, string> = {};
-    for (const cfg of data?.configurations ?? []) initial[cfg.key] = cfg.values?.[0]?.value ?? '';
-    setValues(initial);
+    const { initialSensitive, initialValidations, initialValues, initialLinking } = buildInitialConfigState(data?.configurations);
+    setValueMap(initialValues);
+    setValidationMap(initialValidations);
+    setSensitiveMap(initialSensitive);
+    setLinkingMap(initialLinking);
     seededRef.current = true;
-  }, [open, data]);
+  }, [open, data, buildInitialConfigState]);
 
   // Seed cert mappings from existing data
   useEffect(() => {
@@ -1029,8 +999,28 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
     certSeededRef.current = true;
   }, [open, existingCertMappings]);
 
-  const handleChange = (key: string, value: string) => {
-    setValues((prev) => ({ ...prev, [key]: value }));
+  const handleValueChange = (key: string, value: BaseType, configMap?: Map<string, BaseType>) => {
+    if (configMap) {
+      setValueMap(configMap);
+    } else {
+      setValueMap((prev) => {
+        const next = new Map(prev);
+        next.set(key, value);
+        return next;
+      });
+    }
+  };
+
+  const handleValidationChange = (key: string, isValid: boolean, configValidationMap?: Map<string, boolean>) => {
+    if (configValidationMap) {
+      setValidationMap(configValidationMap);
+    } else {
+      setValidationMap((prev) => {
+        const next = new Map(prev);
+        next.set(key, isValid);
+        return next;
+      });
+    }
   };
 
   const handleTomlImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1038,27 +1028,63 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const parsed = parseTomlConfig((ev.target?.result as string) ?? '');
-      setValues((prev) => {
-        const merged = { ...prev };
-        for (const f of fields) {
-          if (f.type === 'object[]') continue;
-          // Exact match first; then suffix match to handle module-relative TOML sections
-          // e.g. field key "org.module.var" matches TOML key "module.var" or "var"
-          if (parsed[f.key] !== undefined) {
-            merged[f.key] = parsed[f.key];
-          } else {
-            for (const [parsedKey, parsedVal] of Object.entries(parsed)) {
-              if (f.key.endsWith('.' + parsedKey)) {
-                merged[f.key] = parsedVal;
-                break;
-              }
+      const content = ((ev.target?.result as string) ?? '').replace(/^\uFEFF/, '');
+      if (!file.name.toLowerCase().endsWith('.toml')) {
+        setSaveError('Invalid file type. Please import a .toml file.');
+        setImportedFileName(null);
+        return;
+      }
+      if (!content.trim()) {
+        setSaveError('File is empty. Please import a valid config.toml file with configuration values.');
+        setImportedFileName(null);
+        return;
+      }
+      const parsed = parseConfigToml(content);
+      const legacyParsed = parseTomlConfigLegacy(content);
+      const parsedValues = parsed.success && parsed.data ? parsed.data : legacyParsed.size > 0 ? legacyParsed : null;
+
+      if (parsedValues) {
+        setImportedFileName(file.name);
+        let filtered = parsedSchema ? filterTomlValuesBySchema(parsedValues, parsedSchema) : parsedValues;
+
+        if (filtered.size === 0 && parsedSchema) {
+          const validKeys = getAllSchemaKeys(parsedSchema);
+          const fallback = new Map<string, BaseType>();
+
+          legacyParsed.forEach((value, tomlKey) => {
+            const matchedKey = findMatchingSchemaKey(tomlKey, validKeys);
+            if (matchedKey) {
+              fallback.set(matchedKey, value);
             }
+          });
+
+          filtered = fallback;
+        }
+
+        if (filtered.size === 0) {
+          setSaveError('The file was imported, but no matching configuration keys were found to populate.');
+          return;
+        }
+
+        const mergedValues = new Map(valueMap);
+        filtered.forEach((val, key) => mergedValues.set(key, val));
+
+        const nextValidationMap = new Map(validationMap);
+        filtered.forEach((_, key) => nextValidationMap.set(key, true));
+        for (const path of requiredJsonPathList) {
+          if (!path.includes('[*]') && !path.includes('.*')) {
+            const value = mergedValues.get(path);
+            nextValidationMap.set(path, value !== undefined && value !== '' && value !== null);
           }
         }
-        return merged;
-      });
-      setImportedFileName(file.name);
+
+        setValueMap(mergedValues);
+        setValidationMap(nextValidationMap);
+        setSaveError(null);
+      } else {
+        setImportedFileName(null);
+        setSaveError(parsed.error ?? 'Failed to parse config.toml file.');
+      }
     };
     reader.readAsText(file);
     e.target.value = '';
@@ -1066,9 +1092,9 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
 
   const handleClearToml = () => {
     setImportedFileName(null);
-    const initial: Record<string, string> = {};
-    for (const cfg of data?.configurations ?? []) initial[cfg.key] = cfg.values?.[0]?.value ?? '';
-    setValues(initial);
+    const { initialValidations, initialValues } = buildInitialConfigState(data?.configurations);
+    setValueMap(initialValues);
+    setValidationMap(initialValidations);
   };
 
   const handleNext = () => {
@@ -1076,13 +1102,29 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
       setStep((s) => s + 1);
     } else {
       setSaveError(null);
-      const configurations: SchemaConfigItem[] = fields.filter((f) => f.type !== 'object[]' && values[f.key] !== undefined && values[f.key] !== '').map((f) => ({ key: f.key, values: [{ environmentUuid: envId, value: values[f.key] }] }));
+      const configurations: SchemaConfigItem[] = [];
+      const existingConfigMap = new Map((data?.configurations ?? []).map((cfg) => [cfg.key, cfg]));
+      valueMap.forEach((value, key) => {
+        if (value !== undefined && value !== '') {
+          const existingConfig = existingConfigMap.get(key);
+          const linking = linkingMap.get(key);
+          configurations.push({
+            key,
+            values: [{ environmentUuid: envId, value: String(value) }],
+            isSensitive: sensitiveMap.get(key) ?? existingConfig?.isSensitive,
+            keyId: existingConfig?.keyId,
+            configGroupId: linking?.configGroupId ?? existingConfig?.configGroupId,
+            configKeyId: linking?.configKeyId ?? existingConfig?.configKeyId,
+            isDynamic: linking?.isDynamic ?? existingConfig?.isDynamic,
+          });
+        }
+      });
 
       const doRedeploy = () => {
+        // Close the drawer immediately so the user isn't blocked waiting for redeploy.
+        onClose();
         if (releaseId && displayType) {
-          redeploy.mutate({ orgHandler, componentId, releaseId, type: displayType, releaseMgtReleaseId, releaseMgtDeploymentId }, { onSettled: onClose });
-        } else {
-          onClose();
+          redeploy.mutate({ orgHandler, componentId, releaseId, type: displayType, releaseMgtReleaseId, releaseMgtDeploymentId });
         }
       };
 
@@ -1152,7 +1194,7 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
         </Box>
       );
     }
-    if (!data?.jsonSchema || fields.length === 0) {
+    if (!data?.jsonSchema || !parsedSchema) {
       return (
         <Box sx={{ py: 4, px: 2, textAlign: 'center' }}>
           <Typography variant="body2" color="text.secondary">
@@ -1163,8 +1205,18 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
     }
     return (
       <>
-        <AutoSection title="Required" groups={requiredGroups} values={values} onChange={handleChange} />
-        <AutoSection title="Optional" groups={optionalGroups} values={values} onChange={handleChange} defaultOpen={false} />
+        <ConfigForm
+          schema={parsedSchema}
+          valueMap={valueMap}
+          validationMap={validationMap}
+          sensitiveMap={sensitiveMap}
+          setSensitiveMap={setSensitiveMap}
+          configGroups={configGroups}
+          linkingMap={linkingMap}
+          setLinkingMap={setLinkingMap}
+          handleValueChange={handleValueChange}
+          handleValidationChange={handleValidationChange}
+        />
         {saveError && (
           <Alert severity="error" sx={{ mt: 1 }}>
             {saveError}
@@ -1176,11 +1228,11 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
 
   const renderCertificateMount = () => <CertificateMountStep projectId={projectId} componentId={componentId} envId={envId} deploymentTrackId={deploymentTrackId} open={open} linkedCerts={linkedCerts} onChange={setLinkedCerts} />;
 
-  const hasSchema = !isLoading && !isError && data !== null && !!data?.jsonSchema && fields.length > 0;
-  const hasRequiredMissing = requiredFields.some((f) => !values[f.key]);
+  const hasSchema = !isLoading && !isError && data !== null && !!data?.jsonSchema && !!parsedSchema;
+  const hasRequiredMissing = Array.from(validationMap.values()).some((isValid) => !isValid);
   const isApplying = save.isPending || saveCertMappings.isPending || redeploy.isPending;
   const prevLabel = step === 1 ? 'Cancel' : 'Back';
-  const nextLabel = step === 2 ? (isApplying ? 'Applying…' : 'Apply') : 'Next';
+  const nextLabel = step === 2 ? (isApplying ? 'Updating…' : 'Update') : 'Next';
   const nextDisabled = step === 1 ? hasRequiredMissing || isLoading : isApplying;
 
   return (

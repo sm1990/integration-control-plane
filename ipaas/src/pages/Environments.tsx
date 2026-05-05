@@ -16,13 +16,14 @@
  * under the License.
  */
 
-import { Alert, Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, PageContent, PageTitle, Stack, ListingTable, TablePagination, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, Avatar, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, PageContent, PageTitle, Stack, ListingTable, TablePagination, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { Clock, Layers, Pencil, Plus, Trash2, AlertTriangle } from '@wso2/oxygen-ui-icons-react';
 import { useState, useMemo, useEffect, type JSX } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useAllEnvironments, type GqlEnvironment } from '../api/queries';
 import { useDeleteEnvironment } from '../api/mutations';
 import { editEnvironmentUrl } from '../paths';
+import CenteredLoader from '../components/CenteredLoader';
 import EmptyListing from '../components/EmptyListing';
 import SearchField from '../components/SearchField';
 import { formatDistanceToNow } from '../utils/time';
@@ -148,7 +149,7 @@ export default function Environments(scope: OrgScope | ProjectScope): JSX.Elemen
       </PageTitle>
 
       {isLoading ? (
-        <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
+        <CenteredLoader />
       ) : !environments?.length ? (
         <EmptyListing icon={<Layers size={48} />} title="No environments found" description="Create your first environment to get started" showAction={canManageEnv} actionLabel="Create Environment" onAction={() => navigate(newEnvironmentUrl(scope))} />
       ) : (

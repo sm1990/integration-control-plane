@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Autocomplete, Avatar, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, ListingTable, PageContent, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, Autocomplete, Avatar, Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, ListingTable, PageContent, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useCallback, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
@@ -27,6 +27,7 @@ import { Permissions } from '../constants/permissions';
 import { useUsers, useGroups, useUpdateUserGroups, useRemoveUserFromGroup } from '../api/authQueries';
 import type { User, Group } from '../api/auth';
 import { orgAccessControlUrl } from '../paths';
+import CenteredLoader from '../components/CenteredLoader';
 import { FormDialog } from './access-control/shared';
 import { useFiltered, getUserInitial } from './access-control/utils';
 
@@ -206,7 +207,7 @@ export default function EditUser(): JSX.Element {
   if (isLoading)
     return (
       <PageContent>
-        <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
+        <CenteredLoader />
       </PageContent>
     );
 

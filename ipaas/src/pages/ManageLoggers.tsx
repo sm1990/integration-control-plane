@@ -22,6 +22,7 @@ import { useState, type JSX } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProjectByHandler, useComponentByHandler, useEnvironments, useLoggers } from '../api/queries';
 import { useUpdateLogLevel } from '../api/mutations';
+import CenteredLoader from '../components/CenteredLoader';
 import NotFound from '../components/NotFound';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 
@@ -147,8 +148,8 @@ export default function ManageLoggers(scope: ComponentScope): JSX.Element {
   const isLoading = loadingProject || loadingComponent;
   if (isLoading)
     return (
-      <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-        <CircularProgress />
+      <PageContent>
+        <CenteredLoader />
       </PageContent>
     );
 
@@ -175,9 +176,7 @@ export default function ManageLoggers(scope: ComponentScope): JSX.Element {
           </Typography>
 
           {loadingEnvironments ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress />
-            </Box>
+            <CenteredLoader />
           ) : environments.length === 0 ? (
             <Card variant="outlined">
               <CardContent sx={{ py: 8, textAlign: 'center' }}>

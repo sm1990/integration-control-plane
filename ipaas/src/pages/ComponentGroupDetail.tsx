@@ -16,16 +16,17 @@
  * under the License.
  */
 
-import { CircularProgress, PageContent, Typography } from '@wso2/oxygen-ui';
+import { PageContent, Typography } from '@wso2/oxygen-ui';
 import { type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import CenteredLoader from '../components/CenteredLoader';
 import { useGroups } from '../api/authQueries';
 import { useProjectByHandler, useComponentByHandler } from '../api/queries';
 import { componentAccessControlUrl } from '../paths';
 import { GroupDetailView } from './EditGroup';
 
 function Loading() {
-  return <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />;
+  return <CenteredLoader />;
 }
 
 export default function ComponentGroupDetail(): JSX.Element {

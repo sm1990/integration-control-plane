@@ -16,10 +16,16 @@
  * under the License.
  */
 
+<<<<<<< Updated upstream
 import { Box, CircularProgress, Divider, PageContent } from '@wso2/oxygen-ui';
 import { Fragment, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProject, useProjectByHandler, useProjects, useComponentByHandler, useEnvironments, useCommitHistory, useComponentEndpoints, useApimApi, useDeploymentStatus, useComponentRepository } from '../api/queries';
+=======
+import { Box, Divider, PageContent } from '@wso2/oxygen-ui';
+import { Fragment, useEffect, useState, type JSX } from 'react';
+import { useProject, useProjectByHandler, useComponentByHandler, useEnvironments, useCommitHistory, useComponentEndpoints, useApimApi } from '../api/queries';
+>>>>>>> Stashed changes
 import BusinessInfo from '../components/BusinessInfo';
 import NotFound from '../components/NotFound';
 import { ArtifactDetail } from '../components/ArtifactDetail';
@@ -31,6 +37,7 @@ import type { SelectedArtifact } from '../components/artifact-config';
 import { resourceUrl, broaden, type ComponentScope } from '../nav';
 import { useLoadComponentPermissions } from '../hooks/usePermissionLoader';
 import BuildCard from '../components/BuildCard';
+import CenteredLoader from '../components/CenteredLoader';
 import { UUID_RE } from '../utils/string';
 
 export default function Component(scope: ComponentScope): JSX.Element {
@@ -87,9 +94,15 @@ export default function Component(scope: ComponentScope): JSX.Element {
   const isLoading = loadingProject || loadingComponent;
   if (isLoading)
     return (
+<<<<<<< Updated upstream
       <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <CircularProgress color="primary" />
       </Box>
+=======
+      <PageContent>
+        <CenteredLoader />
+      </PageContent>
+>>>>>>> Stashed changes
     );
   if (!component) return <NotFound message="Component not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Project" />;
 

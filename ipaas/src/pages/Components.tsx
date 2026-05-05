@@ -17,9 +17,10 @@
  */
 
 import { useState, useMemo, type JSX } from 'react';
-import { Box, Button, Card, CardContent, Chip, IconButton, ListingTable, Menu, MenuItem, Select, FormControl, FormLabel, TablePagination, PageContent, PageTitle, type ListingTableDensity, CircularProgress } from '@wso2/oxygen-ui';
+import { Box, Button, Card, CardContent, Chip, IconButton, ListingTable, Menu, MenuItem, Select, FormControl, FormLabel, TablePagination, PageContent, PageTitle, type ListingTableDensity } from '@wso2/oxygen-ui';
 import { Plus, MoreVertical, Filter, Download, FileText, Key, Shield, RefreshCw, Lock, Inbox } from '@wso2/oxygen-ui-icons-react';
 import { useNavigate, useParams, Link as NavigateLink } from 'react-router';
+import CenteredLoader from '../components/CenteredLoader';
 import { useComponents } from '../api/queries';
 import { projectUrl, newComponentUrl, componentUrl, editComponentUrl } from '../paths';
 import { getStatusColor } from '../config/statusColors';
@@ -158,7 +159,7 @@ export default function Components(): JSX.Element {
                 {isLoading ? (
                   <ListingTable.Row>
                     <ListingTable.Cell colSpan={7} align="center">
-                      <CircularProgress size={32} sx={{ my: 4 }} />
+                      <CenteredLoader />
                     </ListingTable.Cell>
                   </ListingTable.Row>
                 ) : paginated.length === 0 ? (

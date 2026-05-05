@@ -16,11 +16,15 @@
  * under the License.
  */
 
-import { CircularProgress, PageContent, Typography } from '@wso2/oxygen-ui';
+import { PageContent, Typography } from '@wso2/oxygen-ui';
 import type { JSX } from 'react';
 import { useComponentByHandler, useCommitHistory, useDeploymentStatus, useEnvironments, useOrgs, useComponentRepository } from '../api/queries';
 import BuildHistory from '../components/Build/BuildHistory';
+<<<<<<< Updated upstream
 import ComingSoon from './ComingSoon';
+=======
+import CenteredLoader from '../components/CenteredLoader';
+>>>>>>> Stashed changes
 import type { ComponentScope } from '../nav';
 import { UUID_RE } from '../utils/string';
 import { useProjectId } from '../hooks/useProjectId';
@@ -52,8 +56,8 @@ export default function Build(scope: ComponentScope): JSX.Element {
 
   if (isLoading) {
     return (
-      <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-        <CircularProgress />
+      <PageContent>
+        <CenteredLoader />
       </PageContent>
     );
   }

@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { CircularProgress, PageContent } from '@wso2/oxygen-ui';
+import { PageContent } from '@wso2/oxygen-ui';
 import { ScrollText } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, type JSX } from 'react';
 import { useOrgs, useProjectsByOrg, useComponentByHandler, useEnvironments, useAllEnvironments } from '../api/queries';
@@ -24,6 +24,7 @@ import { useInfiniteComponentLogs, type ComponentLogsRequest } from '../api/logs
 import { choreologgingComponentLogsApiUrl, choreologgingComponentGatewayLogsApiUrl } from '../config/api';
 import { GENERIC_SERVICE_TYPES } from '../constants/integrations';
 import { AUTO_FETCH_INTERVAL, DEFAULT_DP_REGION, PAGE_SIZE } from '../utils/logs';
+import CenteredLoader from '../components/CenteredLoader';
 import LogsFilters from '../components/Logs/LogsFilters';
 import LogsPageLayout from '../components/Logs/LogsPageLayout';
 import LogsPanel from '../components/Logs/LogsPanel';
@@ -85,8 +86,8 @@ export default function RuntimeLogsIntegration(scope: ComponentScope): JSX.Eleme
 
   if (loadingOrgs || loadingProjects || loadingComponent || loadingEnvironments) {
     return (
-      <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-        <CircularProgress />
+      <PageContent>
+        <CenteredLoader />
       </PageContent>
     );
   }

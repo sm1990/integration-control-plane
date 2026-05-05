@@ -19,11 +19,54 @@
 import { useEffect, useRef, useState } from 'react';
 import type { JSX } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { Alert, Box, CircularProgress, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Typography } from '@wso2/oxygen-ui';
 import { useAuth } from '../auth/AuthContext';
 import { validateAndClearOIDCState, getAndClearRedirectUrl } from '../auth/tokenManager';
+<<<<<<< Updated upstream
 import { gql } from '../api/graphql';
 import { loginUrl, projectHomeUrl, projectsRedirectUrl, registerOrgUrl } from '../paths';
+=======
+import { authenticatedFetch } from '../auth/tokenManager';
+import CenteredLoader from '../components/CenteredLoader';
+import { loginUrl, orgHomeUrl, projectHomeUrl } from '../paths';
+
+async function resolvePostLoginUrl(): Promise<string> {
+  try {
+    const res = await authenticatedFetch(`${window.API_CONFIG.choreoOrgApiUrl}/orgs`);
+    if (res.ok) {
+      const data = await res.json();
+      const orgs: Array<{ handle?: string; orgHandle?: string; org_handle?: string; id?: number; orgId?: number }> = data.list ?? data.organizations ?? (Array.isArray(data) ? data : []);
+      for (const org of orgs) {
+        const handle = org.handle ?? org.orgHandle ?? org.org_handle;
+        if (!handle) continue;
+        const rawOrgId = org.id ?? org.orgId;
+        const orgId = rawOrgId !== undefined ? (typeof rawOrgId === 'string' ? parseInt(rawOrgId, 10) : rawOrgId) : undefined;
+        if (orgId) {
+          // Try to navigate to first project's home page
+          try {
+            const gqlRes = await authenticatedFetch(window.API_CONFIG.graphqlUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: `{ projects(orgId: ${orgId}) { id } }` }),
+            });
+            if (gqlRes.ok) {
+              const gqlData = await gqlRes.json();
+              const projects: Array<{ id: string }> = gqlData.data?.projects ?? [];
+              if (projects.length > 0) return projectHomeUrl(handle, projects[0].id);
+            }
+          } catch {
+            /* fall through to org page */
+          }
+        }
+        return orgHomeUrl(handle);
+      }
+    }
+  } catch {
+    /* ignore — fall through to default */
+  }
+  return orgHomeUrl('default');
+}
+>>>>>>> Stashed changes
 
 export default function OIDCCallback(): JSX.Element {
   const [searchParams] = useSearchParams();
@@ -151,7 +194,7 @@ export default function OIDCCallback(): JSX.Element {
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'background.default' }}>
       <Box sx={{ textAlign: 'center' }}>
-        <CircularProgress sx={{ mb: 2 }} />
+        <CenteredLoader />
         <Typography variant="body1" color="text.secondary">
           Completing sign in...
         </Typography>

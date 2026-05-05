@@ -16,8 +16,9 @@
  * under the License.
  */
 
-import { Box, CircularProgress, Typography } from '@wso2/oxygen-ui';
+import { Box, Typography } from '@wso2/oxygen-ui';
 import { useEffect, type JSX } from 'react';
+import CenteredLoader from '../components/CenteredLoader';
 import { GITHUB_AUTH } from '../constants/import';
 
 export default function GitHubOAuthCallback(): JSX.Element {
@@ -33,7 +34,7 @@ export default function GitHubOAuthCallback(): JSX.Element {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 2 }}>
-      <CircularProgress size={32} />
+      <CenteredLoader />
       <Typography color="text.secondary">Completing GitHub authentication…</Typography>
     </Box>
   );

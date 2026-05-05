@@ -19,6 +19,7 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
 import { Alert, Avatar, Box, Button, Card, CardContent, Chip, CircularProgress, Divider, IconButton, InputAdornment, InputLabel, OutlinedInput, Stack, Typography } from '@wso2/oxygen-ui';
+import CenteredLoader from '../components/CenteredLoader';
 import { Eye, EyeOff } from '@wso2/oxygen-ui-icons-react';
 import { useAuth } from '../auth/AuthContext';
 import { useCurrentUser, useChangePassword } from '../api/authQueries';
@@ -38,7 +39,7 @@ export default function Profile(): JSX.Element {
   const { data: user, isLoading } = useCurrentUser('default', userId);
 
   if (isLoading) {
-    return <CircularProgress sx={{ display: 'block', mx: 'auto', my: 8 }} />;
+    return <CenteredLoader />;
   }
 
   return (

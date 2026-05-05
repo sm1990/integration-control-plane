@@ -16,10 +16,11 @@
  * under the License.
  */
 
-import { Box, Button, Checkbox, CircularProgress, Drawer, FormControlLabel, IconButton, InputAdornment, OutlinedInput, Stack, Typography } from '@wso2/oxygen-ui';
+import { Box, Button, Checkbox, Drawer, FormControlLabel, IconButton, InputAdornment, OutlinedInput, Stack, Typography } from '@wso2/oxygen-ui';
 import { RefreshCcw, Search, X } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import CenteredLoader from '../CenteredLoader';
 import { useExecutionLogs } from '../../api/queries';
 
 interface LogsDrawerProps {
@@ -132,9 +133,13 @@ export default function LogsDrawer({ open, onClose, executionId, componentId, de
       {/* Log content */}
       <Box sx={{ flex: 1, overflow: 'auto', px: 2, py: 1 }}>
         {isLoading ? (
+<<<<<<< Updated upstream
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress size={32} color="primary" />
           </Box>
+=======
+          <CenteredLoader />
+>>>>>>> Stashed changes
         ) : !logs || logs.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <Typography variant="body2" color="text.secondary">

@@ -16,10 +16,11 @@
  * under the License.
  */
 
-import { Box, Button, ButtonGroup, CircularProgress, PageContent, Typography } from '@wso2/oxygen-ui';
+import { Box, Button, ButtonGroup, PageContent, Typography } from '@wso2/oxygen-ui';
 import { type JSX, useState } from 'react';
 import { useCloudDataPlanes, useComponentByHandler, useEnvironments, useOrgs } from '../api/queries';
 import AlertsConfigurePage from '../components/Alerts/AlertsConfigurePage';
+import CenteredLoader from '../components/CenteredLoader';
 import AlertsHistoryPage from '../components/Alerts/AlertsHistoryPage';
 import type { ComponentScope } from '../nav';
 import { UUID_RE } from '../utils/string';
@@ -46,8 +47,8 @@ export default function Alerts(scope: ComponentScope): JSX.Element {
 
   if (isLoading) {
     return (
-      <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-        <CircularProgress />
+      <PageContent>
+        <CenteredLoader />
       </PageContent>
     );
   }

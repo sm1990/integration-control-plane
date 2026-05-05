@@ -16,10 +16,11 @@
  * under the License.
  */
 
-import { Box, Button, Card, CardContent, CircularProgress, Divider, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Box, Button, Card, CardContent, Divider, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ExternalLink, FileText } from '@wso2/oxygen-ui-icons-react';
 import { useNavigate } from 'react-router';
 import { useApiDocuments } from '../../api/marketplace';
+import CenteredLoader from '../CenteredLoader';
 
 interface Props {
   apimId: string | null;

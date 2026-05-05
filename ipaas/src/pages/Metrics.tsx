@@ -15,12 +15,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-import { Button, Card, CardContent, Checkbox, CircularProgress, Grid, IconButton, ListItemText, MenuItem, PageContent, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Button, Card, CardContent, Checkbox, Grid, IconButton, ListItemText, MenuItem, PageContent, Select, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { LineChart } from '@wso2/oxygen-ui-charts-react';
 import { BarChart3, RefreshCw } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, useState, type JSX } from 'react';
 import { useProjectByHandler, useComponentByHandler, useComponents, useEnvironments, useProjectRuntimes } from '../api/queries';
 import { useMetrics, type MetricEntry, type MetricsRequest } from '../api/metrics';
+import CenteredLoader from '../components/CenteredLoader';
 import EmptyListing from '../components/EmptyListing';
 import NotFound from '../components/NotFound';
 import { resourceUrl, broaden, hasComponent, type ProjectScope, type ComponentScope } from '../nav';
@@ -306,8 +307,8 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
   const loadingContext = isComponent ? loadingComponent : loadingComponents;
   if (loadingProject || loadingContext || loadingEnvironments) {
     return (
-      <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-        <CircularProgress />
+      <PageContent>
+        <CenteredLoader />
       </PageContent>
     );
   }
@@ -373,7 +374,7 @@ export default function Metrics(scope: ProjectScope | ComponentScope): JSX.Eleme
       </Stack>
 
       {isLoading ? (
-        <CircularProgress size={28} sx={{ display: 'block', mx: 'auto', my: 6 }} />
+        <CenteredLoader />
       ) : error ? (
         <Stack alignItems="center" gap={2} sx={{ py: 6 }}>
           <Typography color="error" textAlign="center">

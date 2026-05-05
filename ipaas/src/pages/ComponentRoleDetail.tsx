@@ -22,7 +22,6 @@ import {
   Box,
   Button,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -43,6 +42,7 @@ import {
 import { ArrowLeft, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import CenteredLoader from '../components/CenteredLoader';
 import SearchField from '../components/SearchField';
 import { useRoleDetail, useRoleGroups, useGroups, useAddRolesToGroup, useRemoveRoleFromGroup } from '../api/authQueries';
 import { Permissions, ALL_ROLE_MODIFY_PERMISSIONS } from '../constants/permissions';
@@ -52,7 +52,7 @@ import { useAllEnvironments, useProjectByHandler, useComponentByHandler } from '
 import { componentAccessControlUrl } from '../paths';
 
 function Loading() {
-  return <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />;
+  return <CenteredLoader />;
 }
 
 function AssignRoleToGroupsDialog({

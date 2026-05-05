@@ -16,13 +16,14 @@
  * under the License.
  */
 
-import { CircularProgress, MenuItem, PageContent, Select } from '@wso2/oxygen-ui';
+import { MenuItem, PageContent, Select } from '@wso2/oxygen-ui';
 import { ScrollText } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, useState, type JSX } from 'react';
 import { useOrgs, useProjectsByOrg, useComponents, useEnvironments, useAllEnvironments, useCloudDataPlanes } from '../api/queries';
 import { useInfiniteLogs, type LogsRequest } from '../api/logs';
 import { choreologgingProjectLogsApiUrl } from '../config/api';
 import { AUTO_FETCH_INTERVAL, DEFAULT_DP_REGION, PAGE_SIZE } from '../utils/logs';
+import CenteredLoader from '../components/CenteredLoader';
 import LogsFilters from '../components/Logs/LogsFilters';
 import LogsPageLayout from '../components/Logs/LogsPageLayout';
 import LogsPanel from '../components/Logs/LogsPanel';
@@ -91,8 +92,8 @@ export default function RuntimeLogsProject(scope: ProjectScope): JSX.Element {
 
   if (loadingProject || loadingComponents || loadingEnvironments || loadingCdps) {
     return (
-      <PageContent sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
-        <CircularProgress />
+      <PageContent>
+        <CenteredLoader />
       </PageContent>
     );
   }

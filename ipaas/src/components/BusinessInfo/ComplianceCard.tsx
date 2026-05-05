@@ -16,10 +16,11 @@
  * under the License.
  */
 
-import { Box, Card, CardContent, CircularProgress, Divider, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Box, Card, CardContent, Divider, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ShieldOff } from '@wso2/oxygen-ui-icons-react';
 import { useMemo } from 'react';
 import { useRuleAdherence } from '../../api/marketplace';
+import CenteredLoader from '../CenteredLoader';
 
 interface Props {
   projectId: string;
@@ -60,9 +61,7 @@ export default function ComplianceCard({ projectId, componentId, apimId }: Props
       <Divider />
       <CardContent sx={{ flexGrow: 1, pb: (theme) => `${theme.spacing(2)} !important` }}>
         {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-            <CircularProgress size={20} />
-          </Box>
+          <CenteredLoader />
         ) : !hasPolicies ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2, gap: 1 }}>
             <ShieldOff size={32} style={{ opacity: 0.3 }} />

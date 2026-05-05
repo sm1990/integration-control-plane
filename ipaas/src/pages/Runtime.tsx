@@ -16,8 +16,9 @@
  * under the License.
  */
 
-import { Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, PageContent, PageTitle, TablePagination, Typography } from '@wso2/oxygen-ui';
+import { Button, Chip, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, PageContent, PageTitle, TablePagination, Typography } from '@wso2/oxygen-ui';
 import { Trash2 } from '@wso2/oxygen-ui-icons-react';
+import CenteredLoader from '../components/CenteredLoader';
 import SearchField from '../components/SearchField';
 import { useState, type JSX } from 'react';
 import { useQueries } from '@tanstack/react-query';
@@ -73,7 +74,7 @@ export default function Runtime(scope: ProjectScope | ComponentScope): JSX.Eleme
       </PageTitle>
 
       {isLoading ? (
-        <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
+        <CenteredLoader />
       ) : (
         <>
           <ListingTable.Container>

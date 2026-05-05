@@ -16,12 +16,17 @@
  * under the License.
  */
 
+<<<<<<< Updated upstream
 import { Avatar, Box, Button, Card, CardContent, CircularProgress, Grid, IconButton, PageContent, PageTitle, Stack, TablePagination, ToggleButton, ToggleButtonGroup, Typography } from '@wso2/oxygen-ui';
+=======
+import { Avatar, Button, Card, CardContent, Grid, IconButton, PageContent, PageTitle, Stack, TablePagination, ToggleButton, ToggleButtonGroup, Typography } from '@wso2/oxygen-ui';
+>>>>>>> Stashed changes
 import { Clock, Folder, LayoutGrid, List, Plus, RefreshCw, Settings } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useNavigate } from 'react-router';
 import { useState, type JSX } from 'react';
 import { useProjectsByOrg, type GqlProject } from '../api/queries';
+import CenteredLoader from '../components/CenteredLoader';
 import EmptyListing from '../components/EmptyListing';
 import { formatDistanceToNow } from '../utils/time';
 import { newProjectUrl, type OrgScope } from '../nav';
@@ -116,7 +121,13 @@ export default function Projects(scope: OrgScope): JSX.Element {
         </Authorized>
       </Stack>
 
+<<<<<<< Updated upstream
       {filtered.length === 0 ? (
+=======
+      {isLoading ? (
+        <CenteredLoader />
+      ) : filtered.length === 0 ? (
+>>>>>>> Stashed changes
         <EmptyListing
           icon={<Folder size={48} />}
           title="No projects found"

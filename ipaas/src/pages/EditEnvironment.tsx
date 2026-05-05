@@ -16,10 +16,11 @@
  * under the License.
  */
 
-import { Alert, Button, Checkbox, CircularProgress, FormControlLabel, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
+import { Alert, Button, Checkbox, FormControlLabel, PageContent, Stack, TextField, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import CenteredLoader from '../components/CenteredLoader';
 import { useAllEnvironments, type GqlEnvironment } from '../api/queries';
 import { useUpdateEnvironment } from '../api/mutations';
 import { resourceUrl } from '../nav';
@@ -86,7 +87,7 @@ export default function EditEnvironment(): JSX.Element {
   if (isLoading)
     return (
       <PageContent>
-        <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
+        <CenteredLoader />
       </PageContent>
     );
   if (isError)

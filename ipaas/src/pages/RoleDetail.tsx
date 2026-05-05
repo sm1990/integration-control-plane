@@ -23,7 +23,6 @@ import {
   Button,
   Checkbox,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -46,6 +45,7 @@ import {
 import { ArrowLeft, ChevronDown, ChevronUp, Link2, Lock, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useState, useMemo, useCallback, type JSX } from 'react';
 import { useParams, useNavigate } from 'react-router';
+import CenteredLoader from '../components/CenteredLoader';
 import SearchField from '../components/SearchField';
 import { useRoleDetail, useAllPermissions, useRoleGroups, useUpdateRole, useGroups, useAddRolesToGroup, useRemoveRoleFromGroup } from '../api/authQueries';
 import type { Permission, RoleGroupMapping, Group } from '../api/auth';
@@ -56,7 +56,7 @@ import { ALL_ROLE_MODIFY_PERMISSIONS } from '../constants/permissions';
 import { useAccessControl } from '../contexts/AccessControlContext';
 
 function Loading() {
-  return <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />;
+  return <CenteredLoader />;
 }
 
 function PermissionsEditor({ allPermissions, selectedIds, onChange }: { allPermissions: Record<string, Permission[]>; selectedIds: Set<string>; onChange: (ids: Set<string>) => void }) {

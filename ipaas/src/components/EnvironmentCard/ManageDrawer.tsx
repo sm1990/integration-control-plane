@@ -20,6 +20,7 @@ import { Alert, Box, Button, Checkbox, CircularProgress, Collapse, Divider, Draw
 import { ChevronDown, ChevronUp, Search, X } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useReducer, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import CenteredLoader from '../CenteredLoader';
 import { useApimApi } from '../../api/queries';
 import { useThrottlingPolicies } from '../../api/marketplace';
 import { updateApimApi, deploySettingsV2, type ApimApiOperation, type CorsConfiguration } from '../../api/apim';
@@ -406,9 +407,13 @@ export default function ManageDrawer({ open, onClose, apimId, componentId, versi
       {/* Content */}
       <Box sx={{ flex: 1, overflowY: 'auto', px: 2, py: 2 }}>
         {isLoading ? (
+<<<<<<< Updated upstream
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress color="primary" />
           </Box>
+=======
+          <CenteredLoader />
+>>>>>>> Stashed changes
         ) : !apimId ? (
           <Alert severity="info">No API configured for this endpoint.</Alert>
         ) : (

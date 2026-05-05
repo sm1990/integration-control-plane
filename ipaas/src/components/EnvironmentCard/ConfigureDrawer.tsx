@@ -20,8 +20,14 @@ import { Alert, Box, Button, Checkbox, Chip, CircularProgress, Collapse, Dialog,
 import { ChevronDown, ChevronUp, Link, Trash2, X } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+<<<<<<< Updated upstream
 import { useEnvEndpoints, useSchemaConfig, useCertificateGroups, useCertificateMappings, useConfigGroups, type GqlEnvEndpoint, type SchemaConfigItem, type CertGroup, type CertMapping, type CertMappingConfig } from '../../api/queries';
 import { useGenerateComponentEndpoints, useUpdateEndpoint, useSaveSchemaConfig, usePostCertificateMappings, useDeployDeploymentTrack } from '../../api/mutations';
+=======
+import CenteredLoader from '../CenteredLoader';
+import { useEnvEndpoints, useGetConfigMgt, useSchemaConfig, type ConfigMgtItem, type GqlEnvEndpoint, type SchemaConfigItem } from '../../api/queries';
+import { usePostConfigMgt, useRedeployDeployment, useUpdateEndpoint, useSaveSchemaConfig, type ConfigMgtSaveItem } from '../../api/mutations';
+>>>>>>> Stashed changes
 import ManageDrawer from './ManageDrawer';
 import { EndpointCard, VISIBILITY_OPTS } from './EndpointCard';
 import { ConfigForm, type BaseType, type LinkingInfo, type JSONSchema } from '../SchemaConfigForm';
@@ -680,11 +686,15 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
 
   const renderConfigurations = () => {
     if (isLoading) {
+<<<<<<< Updated upstream
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
           <CircularProgress size={32} color="primary" />
         </Box>
       );
+=======
+      return <CenteredLoader />;
+>>>>>>> Stashed changes
     }
     if (isError || data === null) {
       return (
@@ -1130,11 +1140,15 @@ function GenericServiceConfigureDrawer({
 
   const renderConfigurations = () => {
     if (isLoading) {
+<<<<<<< Updated upstream
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
           <CircularProgress size={32} color="primary" />
         </Box>
       );
+=======
+      return <CenteredLoader />;
+>>>>>>> Stashed changes
     }
     if (isError || data === null) {
       return (

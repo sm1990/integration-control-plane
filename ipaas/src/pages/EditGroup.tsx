@@ -54,6 +54,7 @@ import { useGroups, useGroupRoles, useGroupUsers, useAddRolesToGroup, useRemoveR
 import { useAllEnvironments } from '../api/queries';
 import type { Group, Role } from '../api/auth';
 import { orgAccessControlUrl } from '../paths';
+import CenteredLoader from '../components/CenteredLoader';
 import { FormDialog } from './access-control/shared';
 import { useFiltered, mappingLevel, envLabel, getUserInitial } from './access-control/utils';
 
@@ -516,7 +517,7 @@ export default function EditGroup(): JSX.Element {
   if (isLoading)
     return (
       <PageContent>
-        <CircularProgress sx={{ display: 'block', mx: 'auto', py: 8 }} />
+        <CenteredLoader />
       </PageContent>
     );
   if (isError)

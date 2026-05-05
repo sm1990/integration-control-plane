@@ -16,6 +16,7 @@
  * under the License.
  */
 
+<<<<<<< Updated upstream
 import {
   Alert,
   Avatar,
@@ -43,6 +44,10 @@ import {
   Typography,
 } from '@wso2/oxygen-ui';
 import { ArrowRight, Bitbucket, GitHub, GitLab, Link2, Plus, PlugZap, RefreshCw, Trash2 } from '@wso2/oxygen-ui-icons-react';
+=======
+import { Alert, Avatar, Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, IconButton, ListingTable, PageContent, Stack, TablePagination, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Plus, PlugZap, RefreshCw, Trash2 } from '@wso2/oxygen-ui-icons-react';
+>>>>>>> Stashed changes
 import EmptyListing from '../components/EmptyListing';
 import IntegrationTypesCard from '../components/IntegrationTypesCard';
 import ArchitectureCard from '../components/ArchitectureCard';
@@ -70,7 +75,11 @@ import { SUPPORTED_DISPLAY_TYPES, getDisplayLabel, displayTypeFromSample } from 
 import { GITHUB_AUTH } from '../constants/import';
 import { CARD_HOVER_SX, PROVIDER_ICON_SX } from '../constants/styles';
 import Authorized from '../components/Authorized';
+<<<<<<< Updated upstream
 import { useAccessControl } from '../contexts/AccessControlContext';
+=======
+import CenteredLoader from '../components/CenteredLoader';
+>>>>>>> Stashed changes
 import { useLoadProjectPermissions } from '../hooks/usePermissionLoader';
 import { UUID_RE, toHandler } from '../utils/string';
 import { useSamples } from '../hooks/useSamples';
@@ -584,7 +593,11 @@ function IntegrationsTable({
       </Stack>
 
       {isLoading ? (
+<<<<<<< Updated upstream
         <CircularProgress size={24} color="primary" sx={{ display: 'block', mx: 'auto', py: 4 }} />
+=======
+        <CenteredLoader />
+>>>>>>> Stashed changes
       ) : filtered.length === 0 ? (
         <EmptyListing icon={<PlugZap size={48} />} title="No integrations found" description={query ? 'Try adjusting your search' : 'Create your first integration to get started'} />
       ) : (
@@ -709,9 +722,15 @@ export default function Project(scope: ProjectScope): JSX.Element {
 
   if (loadingProject) {
     return (
+<<<<<<< Updated upstream
       <Box sx={{ display: 'flex', flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <CircularProgress color="primary" />
       </Box>
+=======
+      <PageContent>
+        <CenteredLoader />
+      </PageContent>
+>>>>>>> Stashed changes
     );
   }
   if (!project) {

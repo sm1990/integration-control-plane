@@ -54,11 +54,9 @@ export default function Signup(): JSX.Element {
     const origin = window.location.origin;
     const postRegisterCallback = `${origin}/login?method=basic&returnToUrl=%2F`;
     const params = new URLSearchParams({
-      'initiated-platform': 'devant',
-      'template-name': 'DevantLiteUserEmailConfirmation',
+      'initiated-platform': 'wip-oxygenui',
       'tenant-url-prefix': origin,
       'post-register-callback': postRegisterCallback,
-      portalVal: origin,
     });
     window.location.href = `${window.API_CONFIG.asgardeoSignupUrl}?${params}`;
   };

@@ -24,7 +24,7 @@ import { ArrowRight, Settings, Users } from '@wso2/oxygen-ui-icons-react';
 import { getOrgUuidFromToken } from '../auth/tokenManager';
 import { initOrg, createDefaultProject } from '../api/org';
 import { fetchProjectsByOrgId } from '../api/queries';
-import { projectHomeUrl } from '../paths';
+import { orgHomeUrl, projectHomeUrl } from '../paths';
 import Projects from './Projects';
 
 const PERSONA_KEY = 'icp_persona';
@@ -77,6 +77,32 @@ function OnboardingShell({ children }: { children: React.ReactNode }) {
 export default function OrgHome(): JSX.Element {
   const { orgHandler } = useParams<{ orgHandler: string }>();
   const navigate = useNavigate();
+
+  // If the org in the URL doesn't match the user's real org, redirect to the last-accessed
+  // project or the real org home. This handles stale URLs like /organizations/default/home.
+  useEffect(() => {
+    const realOrgHandle = localStorage.getItem('icp_org_handle');
+    if (!realOrgHandle || orgHandler === realOrgHandle) return;
+
+    try {
+      const stored = localStorage.getItem('icp_user');
+      const userId = stored ? (JSON.parse(stored) as { userId?: string })?.userId : undefined;
+      if (userId) {
+        const lastProjectRaw = localStorage.getItem(`icp_last_project:${userId}`);
+        if (lastProjectRaw) {
+          const { org, project } = JSON.parse(lastProjectRaw) as { org: string; project: string };
+          if (project) {
+            navigate(projectHomeUrl(org, project), { replace: true });
+            return;
+          }
+        }
+      }
+    } catch {
+      // ignore — fall through to org home
+    }
+
+    navigate(orgHomeUrl(realOrgHandle), { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState<'checking' | 'persona' | 'region' | 'done'>(() => (localStorage.getItem(PERSONA_KEY) ? 'done' : 'checking'));
   const [persona, setPersona] = useState<string>('developer');

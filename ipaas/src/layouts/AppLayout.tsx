@@ -19,7 +19,6 @@
 import { useContext } from 'react';
 import {
   AppShell,
-  Badge,
   Button,
   ColorSchemeToggle,
   ComplexSelect,
@@ -30,12 +29,10 @@ import {
   DialogTitle,
   Divider,
   Footer,
-  formatRelativeTime,
   Header,
   IconButton,
   InputAdornment,
   MenuItem,
-  NotificationPanel,
   Box,
   Popover,
   Sidebar,
@@ -44,7 +41,6 @@ import {
   Typography,
   UserMenu,
   useAppShell,
-  useNotifications,
 } from '@wso2/oxygen-ui';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -111,7 +107,6 @@ import { SUPPORTED_DISPLAY_TYPES, GENERIC_SERVICE_TYPES } from '../constants/int
 import { fetchOrgPermissions } from '../api/auth';
 import { switchOrgToken } from '../auth/tokenManager';
 import { fetchOrgList } from '../api/org';
-import { mockNotifications } from '../mock-data/mockNotifications';
 import { useScope, useResource, resourceUrl, broaden, narrow, newProjectUrl, newComponentUrl, hasProject, hasComponent, type Resource } from '../nav';
 import { componentOverviewUrl, cookiePolicyUrl, loginUrl, orgHomeUrl, privacyPolicyUrl, profileUrl, projectHomeUrl } from '../paths';
 import { useAuth } from '../auth/AuthContext';
@@ -296,7 +291,6 @@ function AppLayoutInner(): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNavId]);
 
-  const [tabIndex, setTabIndex] = useState(0);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [featurePreviewOpen, setFeaturePreviewOpen] = useState(false);
   const orgCardRef = useRef<HTMLDivElement>(null);
@@ -314,14 +308,6 @@ function AppLayoutInner(): JSX.Element {
   const [orgSearch, setOrgSearch] = useState('');
   const orgSearchRef = useRef<HTMLInputElement>(null);
   const { data: orgsData = [] } = useOrgs();
-
-  const { notifications, actions: notifActions, unreadCount, unreadNotifications } = useNotifications({ initialNotifications: [...mockNotifications] });
-  const alertNotifications = notifications.filter((n) => n.type === 'warning' || n.type === 'error');
-  const getFilteredNotifications = () => {
-    if (tabIndex === 1) return unreadNotifications;
-    if (tabIndex === 2) return alertNotifications;
-    return notifications;
-  };
 
   const projectParam = hasProject(scope) ? scope.project : '';
   const isProjectUuid = UUID_RE.test(projectParam);
@@ -978,13 +964,6 @@ function AppLayoutInner(): JSX.Element {
           <Header.Spacer />
           <Header.Actions>
             <ColorSchemeToggle />
-            <Tooltip title="Notifications">
-              <IconButton onClick={actions.toggleNotificationPanel} size="small" sx={{ color: 'text.secondary' }}>
-                <Badge badgeContent={unreadCount ?? 0} color="error" max={99} invisible={(unreadCount ?? 0) === 0}>
-                  <Bell size={20} />
-                </Badge>
-              </IconButton>
-            </Tooltip>
             <Button
               variant="outlined"
               size="small"
@@ -1633,50 +1612,6 @@ function AppLayoutInner(): JSX.Element {
       </AppShell.Footer>
 
       <AppShell.NotificationPanel>
-        <NotificationPanel open={shell.notificationPanelOpen} onClose={actions.toggleNotificationPanel}>
-          <NotificationPanel.Header>
-            <NotificationPanel.HeaderIcon>
-              <Bell size={20} />
-            </NotificationPanel.HeaderIcon>
-            <NotificationPanel.HeaderTitle>Notifications</NotificationPanel.HeaderTitle>
-            {unreadCount > 0 && <NotificationPanel.HeaderBadge>{unreadCount}</NotificationPanel.HeaderBadge>}
-            <NotificationPanel.HeaderClose />
-          </NotificationPanel.Header>
-          <NotificationPanel.Tabs
-            tabs={[
-              { label: 'All', count: notifications.length },
-              {
-                label: 'Unread',
-                count: unreadNotifications.length,
-                color: 'primary',
-              },
-              {
-                label: 'Alerts',
-                count: alertNotifications.length,
-                color: 'warning',
-              },
-            ]}
-            value={tabIndex}
-            onChange={setTabIndex}
-          />
-          {notifications.length > 0 && <NotificationPanel.Actions hasUnread={unreadNotifications.length > 0} onMarkAllRead={notifActions.markAllRead} onClearAll={notifActions.clearAll} />}
-          {getFilteredNotifications().length === 0 ? (
-            <NotificationPanel.EmptyState />
-          ) : (
-            <NotificationPanel.List>
-              {getFilteredNotifications().map((notification) => (
-                <NotificationPanel.Item key={notification.id} id={notification.id} type={notification.type ?? 'info'} read={notification.read} onMarkRead={notifActions.markRead} onDismiss={notifActions.dismiss}>
-                  <NotificationPanel.ItemAvatar>{notification.avatar}</NotificationPanel.ItemAvatar>
-                  <NotificationPanel.ItemTitle>{notification.title}</NotificationPanel.ItemTitle>
-                  <NotificationPanel.ItemMessage>{notification.message}</NotificationPanel.ItemMessage>
-                  <NotificationPanel.ItemTimestamp>{formatRelativeTime(notification.timestamp)}</NotificationPanel.ItemTimestamp>
-                  {notification.actionLabel && <NotificationPanel.ItemAction>{notification.actionLabel}</NotificationPanel.ItemAction>}
-                </NotificationPanel.Item>
-              ))}
-            </NotificationPanel.List>
-          )}
-        </NotificationPanel>
-
         <FeaturePreviewModal open={featurePreviewOpen} onClose={() => setFeaturePreviewOpen(false)} />
 
         {/* Confirm Dialog - managed locally */}

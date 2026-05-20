@@ -111,7 +111,7 @@ export default function Component(scope: ComponentScope): JSX.Element {
         {tracks.length > 0 && <DeploymentTrackBar tracks={tracks} selectedId={versionId} onChange={setSelectedTrackId} orgHandler={scope.org} projectHandler={project?.handler ?? ''} componentHandler={component.handler} />}
 
         {/* <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}> */}
-        <PageContent fullWidth sx={{ overflowX: 'auto' }}>
+        <PageContent>
           {/* Component header */}
           <ComponentHeader component={component} project={project} repository={repository} latestCommit={latestCommit} orgHandler={scope.org} projectId={projectId} projectHandler={project?.handler ?? scope.project} apimId={apimId} />
 

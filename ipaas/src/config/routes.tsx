@@ -73,6 +73,7 @@ import OrgDeploy from '../pages/OrgDeploy';
 import ProjectDeploy from '../pages/ProjectDeploy';
 import CloudEditorDeployment from '../pages/CloudEditorDeployment';
 import TestConsole from '../pages/TestConsole';
+import ApiChat from '../pages/ApiChat';
 import Deploy from '../pages/Deploy';
 import ProjectsRedirect from '../pages/ProjectsRedirect';
 import OrgHome from '../pages/OrgHome';
@@ -211,7 +212,7 @@ const routes: AppRoute[] = [
               },
               {
                 path: 'organizations/:orgHandler/projects/:projectHandler/components/:componentHandler/test/api-chat',
-                element: <ComingSoon title="Coming Soon" description="API Chat is currently under development." />,
+                element: createElement(withScope(ApiChat, ['components'])),
               },
               {
                 path: 'organizations/:orgHandler/projects/:projectHandler/components/:componentHandler/manage/lifecycle',

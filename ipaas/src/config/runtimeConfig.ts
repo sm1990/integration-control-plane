@@ -44,6 +44,7 @@ interface RuntimeConfig {
   ASGARDEO_SIGNUP_URL?: string;
   AI_COPILOT_URL_SUFFIX?: string;
   AI_COPILOT_DATACOLLECTOR_BASE_URL?: string;
+  EMAIL_LOGIN_FORCE_REAUTH?: string;
 }
 
 export interface ApiConfig {
@@ -75,6 +76,7 @@ export interface ApiConfig {
   asgardeoSignupUrl: string;
   aiCopilotUrlSuffix: string;
   aiCopilotDatacollectorBaseUrl: string;
+  emailLoginForceReauth: boolean;
 }
 
 // Extend window interface
@@ -111,6 +113,7 @@ const DEFAULT_CONFIG: ApiConfig = {
   asgardeoSignupUrl: 'https://dev.asgardeo.io/signup',
   aiCopilotUrlSuffix: '',
   aiCopilotDatacollectorBaseUrl: '',
+  emailLoginForceReauth: false,
 };
 
 /**
@@ -162,6 +165,7 @@ export async function loadConfig(): Promise<void> {
       asgardeoSignupUrl: config.ASGARDEO_SIGNUP_URL || DEFAULT_CONFIG.asgardeoSignupUrl,
       aiCopilotUrlSuffix: config.AI_COPILOT_URL_SUFFIX || DEFAULT_CONFIG.aiCopilotUrlSuffix,
       aiCopilotDatacollectorBaseUrl: trim(config.AI_COPILOT_DATACOLLECTOR_BASE_URL || DEFAULT_CONFIG.aiCopilotDatacollectorBaseUrl),
+      emailLoginForceReauth: config.EMAIL_LOGIN_FORCE_REAUTH === 'true',
     };
 
     console.info('✓ Runtime configuration loaded from config.json');

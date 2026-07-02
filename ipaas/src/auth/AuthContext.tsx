@@ -151,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
       code_challenge_method: 'S256',
     });
     if (fidp) params.set('fidp', fidp);
+    if (fidp === 'LOCAL' && window.API_CONFIG.emailLoginForceReauth) params.set('prompt', 'login');
     window.location.href = `${asgardeoAuthorizeEndpoint}?${params}`;
   }, []);
 

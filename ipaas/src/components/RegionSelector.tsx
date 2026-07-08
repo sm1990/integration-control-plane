@@ -71,7 +71,13 @@ export default function RegionSelector({ currentPage }: RegionSelectorProps): JS
   };
 
   return (
-    <Select value={selectedRegion} onChange={handleChange} size="small" variant="outlined" inputProps={{ 'aria-label': 'Select region' }} sx={{ minWidth: 110, borderRadius: '8px', fontSize: '0.875rem' }}>
+    <Select
+      value={selectedRegion}
+      onChange={handleChange}
+      size="small"
+      variant="outlined"
+      inputProps={{ 'aria-label': 'Select region' }}
+      sx={{ minWidth: 110, borderRadius: '8px', fontSize: '0.875rem' }}>
       {Array.from(regionDomainMap.keys()).map((region) => (
         <MenuItem key={region} value={region}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

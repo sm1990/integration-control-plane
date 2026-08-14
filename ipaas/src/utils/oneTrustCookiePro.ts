@@ -17,29 +17,47 @@
  */
 
 // Ported from choreo-console's src/utils/oneTrustCookiePro — trimmed to the one category this app
-// actually gates on (Moesif requires Strictly Necessary consent). Add the other categories back
-// here if another tracker needs to check them.
+// actually gates on (Moesif is a behavioral/API-analytics tracker, so it belongs under OneTrust's
+// "Performance Cookies" analytics category, not "Strictly Necessary" — that category is typically
+// pre-granted regardless of user choice, which would make consent-gating on it meaningless). Add
+// the other categories back here if another tracker needs to check them.
 
 declare global {
   const OnetrustActiveGroups: string;
+  const OneTrust: { OnConsentChanged: (callback: (event: Event) => void) => void };
 }
 
 enum CookieProCategory {
-  StrictlyNecessary = 'Strictly Necessary Cookies',
+  Analytics = 'Performance Cookies',
 }
 
 // OneTrust's own script populates `OnetrustActiveGroups` (a comma-joined list of consented
-// category codes, e.g. "C0001,C0003") once it finishes initializing — see the OptanonWrapper
-// callback in tracking.ts, which only calls this after that has happened.
+// category codes, e.g. "C0001,C0002") once it finishes initializing — see onConsentChange below,
+// which only reads this after OneTrust has signaled it's ready.
 function getUserAllowedCategories(): CookieProCategory[] | null {
   if (typeof OnetrustActiveGroups === 'undefined') return null;
-  const categoryLabels: Record<string, CookieProCategory> = { C0001: CookieProCategory.StrictlyNecessary };
+  const categoryLabels: Record<string, CookieProCategory> = { C0002: CookieProCategory.Analytics };
   return OnetrustActiveGroups.split(',')
     .filter(Boolean)
     .map((code) => categoryLabels[code])
     .filter((category): category is CookieProCategory => category !== undefined);
 }
 
-export function isStrictlyNecessaryCookiesAllowed(): boolean {
-  return getUserAllowedCategories()?.includes(CookieProCategory.StrictlyNecessary) ?? false;
+export function isAnalyticsCookiesAllowed(): boolean {
+  return getUserAllowedCategories()?.includes(CookieProCategory.Analytics) ?? false;
+}
+
+/**
+ * Runs `callback` once immediately and again every time the user changes their consent choices
+ * later (e.g. via "manage cookie preferences"), via OneTrust's own OnConsentChanged hook. Callers
+ * only need this once OneTrust itself has signaled it's ready (see the OptanonWrapper callback in
+ * tracking.ts) — `OnetrustActiveGroups`/`OneTrust` aren't populated before that.
+ */
+export function onConsentChange(callback: () => void): void {
+  callback();
+  // typeof, not optional chaining — OneTrust may not exist as a global at all (rather than
+  // existing-but-undefined), and only typeof is safe against a truly undeclared identifier.
+  if (typeof OneTrust !== 'undefined') {
+    OneTrust.OnConsentChanged(callback);
+  }
 }

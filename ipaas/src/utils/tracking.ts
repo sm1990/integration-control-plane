@@ -19,7 +19,7 @@
 // @ts-expect-error: moesif-browser-js does not ship types
 import moesif from 'moesif-browser-js';
 import { IS_CLOUD, IS_WIP } from '../features';
-import { isStrictlyNecessaryCookiesAllowed } from './oneTrustCookiePro';
+import { isAnalyticsCookiesAllowed, onConsentChange } from './oneTrustCookiePro';
 
 declare global {
   interface Window {
@@ -44,10 +44,16 @@ const WIP_COOKIEPRO_DOMAIN_SCRIPT_ID: Record<'dev' | 'stage' | 'prod', string> =
   prod: '01956090-3b3e-72fc-8434-dd70c76c43d2',
 };
 
-// Cloud has no tracking codes of its own yet — replace these before Cloud ships with tracking enabled.
-const CLOUD_GTM_CONTAINER_ID = 'GTM-XXXXXXX';
-const CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID = 'REPLACE_WITH_CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID';
-const CLOUD_MOESIF_APP_API_KEY = 'REPLACE_WITH_CLOUD_MOESIF_APP_API_KEY';
+// Cloud has no tracking codes of its own yet — replace these before Cloud ships with tracking
+// enabled. initTracking() compares against the placeholders below and no-ops until all three are
+// replaced, so an unconfigured Cloud build never fires real GTM/CookiePro/Moesif requests with
+// bogus IDs (which could otherwise render a broken consent banner or hit third-party CDNs pointlessly).
+const CLOUD_GTM_PLACEHOLDER = 'GTM-XXXXXXX';
+const CLOUD_COOKIEPRO_PLACEHOLDER = 'REPLACE_WITH_CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID';
+const CLOUD_MOESIF_PLACEHOLDER = 'REPLACE_WITH_CLOUD_MOESIF_APP_API_KEY';
+const CLOUD_GTM_CONTAINER_ID = CLOUD_GTM_PLACEHOLDER;
+const CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID = CLOUD_COOKIEPRO_PLACEHOLDER;
+const CLOUD_MOESIF_APP_API_KEY = CLOUD_MOESIF_PLACEHOLDER;
 
 function injectGtm(containerId: string): void {
   window.dataLayer = window.dataLayer || [];
@@ -88,9 +94,23 @@ function injectCookiePro(domainScriptId: string, onReady: () => void): void {
 // Bootstraps the Moesif SDK, which auto-instruments fetch/XHR to capture API traffic — mirrors
 // choreo-console's getMoesifClient(), minus the org-registration/identify calls that depend on
 // this app's auth context (out of scope for just wiring up the tracking codes themselves).
-function initMoesif(applicationId: string | undefined): void {
-  if (!applicationId || !isStrictlyNecessaryCookiesAllowed()) return;
-  moesif.init({ applicationId, batchEnabled: true, batchSize: 20, batchMaxTime: 5000 }).start();
+//
+// moesif.init() can create cookies/localStorage immediately regardless of consent status (per the
+// SDK's own docs), so init() itself is deferred until consent is actually granted rather than
+// gated after the fact — and start()/stop() track consent being granted/withdrawn thereafter,
+// since onConsentChange re-runs this on every later preference-center change too.
+let moesifClient: ReturnType<typeof moesif.init> | null = null;
+
+function syncMoesifConsent(applicationId: string | undefined): void {
+  if (!applicationId) return;
+
+  if (!isAnalyticsCookiesAllowed()) {
+    moesifClient?.stop();
+    return;
+  }
+
+  moesifClient ??= moesif.init({ applicationId, batchEnabled: true, batchSize: 20, batchMaxTime: 5000 });
+  moesifClient.start();
 }
 
 /**
@@ -102,13 +122,16 @@ export function initTracking(): void {
   if (IS_WIP) {
     const env = window.API_CONFIG?.trackingEnv ?? 'dev';
     injectGtm(WIP_GTM_CONTAINER_ID[env]);
-    injectCookiePro(WIP_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () => initMoesif(window.API_CONFIG?.moesifAppApiKey));
+    injectCookiePro(WIP_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () => onConsentChange(() => syncMoesifConsent(window.API_CONFIG?.moesifAppApiKey)));
     return;
   }
 
   if (IS_CLOUD) {
+    const cloudConfigured = CLOUD_GTM_CONTAINER_ID !== CLOUD_GTM_PLACEHOLDER && CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID !== CLOUD_COOKIEPRO_PLACEHOLDER && CLOUD_MOESIF_APP_API_KEY !== CLOUD_MOESIF_PLACEHOLDER;
+    if (!cloudConfigured) return;
+
     injectGtm(CLOUD_GTM_CONTAINER_ID);
-    injectCookiePro(CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID, () => initMoesif(CLOUD_MOESIF_APP_API_KEY));
+    injectCookiePro(CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID, () => onConsentChange(() => syncMoesifConsent(CLOUD_MOESIF_APP_API_KEY)));
   }
 
   // ICP: no tracking.

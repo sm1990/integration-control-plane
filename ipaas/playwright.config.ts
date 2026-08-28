@@ -5,7 +5,11 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Safe to parallelize: the shared session's access token defaults to a 1-hour TTL
+  // (tokenManager.ts/AuthContext.tsx), well beyond this workflow's 30-minute job timeout, so it
+  // can't expire mid-run and trigger concurrent workers racing to refresh the same (rotating)
+  // refresh token. Revisit if the suite grows enough to approach that timeout.
+  workers: process.env.CI ? 4 : undefined,
   reporter: [['html', { open: 'never' }], ['list']],
   timeout: 60_000,
   use: {

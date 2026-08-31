@@ -44,16 +44,25 @@ const WIP_COOKIEPRO_DOMAIN_SCRIPT_ID: Record<'dev' | 'stage' | 'prod', string> =
   prod: '01956090-3b3e-72fc-8434-dd70c76c43d2',
 };
 
-// Cloud has no tracking codes of its own yet — replace these before Cloud ships with tracking
-// enabled. initTracking() compares against the placeholders below and no-ops until all three are
-// replaced, so an unconfigured Cloud build never fires real GTM/CookiePro/Moesif requests with
-// bogus IDs (which could otherwise render a broken consent banner or hit third-party CDNs pointlessly).
+// Cloud has no GTM/CookiePro codes of its own yet — replace these per tier before Cloud ships with
+// tracking enabled. Tiered the same way as WIP's, matching choreo-console's own pattern of a
+// distinct GTM container + CookiePro domain script per deployment tier (not one shared value
+// across dev/stage/prod). initTracking() compares against the placeholders below and no-ops until
+// both are replaced for the active tier, so an unconfigured environment never fires real
+// GTM/CookiePro requests with bogus IDs (which could otherwise render a broken consent banner or
+// hit third-party CDNs pointlessly).
 const CLOUD_GTM_PLACEHOLDER = 'GTM-XXXXXXX';
 const CLOUD_COOKIEPRO_PLACEHOLDER = 'REPLACE_WITH_CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID';
-const CLOUD_MOESIF_PLACEHOLDER = 'REPLACE_WITH_CLOUD_MOESIF_APP_API_KEY';
-const CLOUD_GTM_CONTAINER_ID = CLOUD_GTM_PLACEHOLDER;
-const CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID = CLOUD_COOKIEPRO_PLACEHOLDER;
-const CLOUD_MOESIF_APP_API_KEY = CLOUD_MOESIF_PLACEHOLDER;
+const CLOUD_GTM_CONTAINER_ID: Record<'dev' | 'stage' | 'prod', string> = {
+  dev: CLOUD_GTM_PLACEHOLDER,
+  stage: CLOUD_GTM_PLACEHOLDER,
+  prod: CLOUD_GTM_PLACEHOLDER,
+};
+const CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID: Record<'dev' | 'stage' | 'prod', string> = {
+  dev: CLOUD_COOKIEPRO_PLACEHOLDER,
+  stage: CLOUD_COOKIEPRO_PLACEHOLDER,
+  prod: CLOUD_COOKIEPRO_PLACEHOLDER,
+};
 
 function injectGtm(containerId: string): void {
   window.dataLayer = window.dataLayer || [];
@@ -115,8 +124,9 @@ function syncMoesifConsent(applicationId: string | undefined): void {
 
 /**
  * Loads the product's tracking scripts: GTM (which also carries Clarity as a GTM tag), CookiePro,
- * and Moesif. WIP uses choreo-console's real codes; Cloud uses placeholders until it has its own;
- * ICP loads nothing.
+ * and Moesif. WIP uses choreo-console's real per-tier codes; Cloud uses per-tier placeholders for
+ * GTM/CookiePro until it has its own (Moesif already comes from runtime config either way, so no
+ * placeholder is needed for it). ICP loads nothing.
  */
 export function initTracking(): void {
   if (IS_WIP) {
@@ -127,11 +137,14 @@ export function initTracking(): void {
   }
 
   if (IS_CLOUD) {
-    const cloudConfigured = CLOUD_GTM_CONTAINER_ID !== CLOUD_GTM_PLACEHOLDER && CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID !== CLOUD_COOKIEPRO_PLACEHOLDER && CLOUD_MOESIF_APP_API_KEY !== CLOUD_MOESIF_PLACEHOLDER;
+    const env = window.API_CONFIG?.trackingEnv ?? 'dev';
+    const cloudConfigured = CLOUD_GTM_CONTAINER_ID[env] !== CLOUD_GTM_PLACEHOLDER && CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID[env] !== CLOUD_COOKIEPRO_PLACEHOLDER;
     if (!cloudConfigured) return;
 
-    injectGtm(CLOUD_GTM_CONTAINER_ID);
-    injectCookiePro(CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID, () => onConsentChange(() => syncMoesifConsent(CLOUD_MOESIF_APP_API_KEY)));
+    // Moesif's app key comes from window.API_CONFIG the same way WIP's does — it's runtime config
+    // (Cloud's own deployed config.json per environment), not a value to hardcode in source here.
+    injectGtm(CLOUD_GTM_CONTAINER_ID[env]);
+    injectCookiePro(CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () => onConsentChange(() => syncMoesifConsent(window.API_CONFIG?.moesifAppApiKey)));
   }
 
   // ICP: no tracking.

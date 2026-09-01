@@ -18,6 +18,7 @@
 
 // @ts-expect-error: moesif-browser-js does not ship types
 import moesif from 'moesif-browser-js';
+import { getOrgHandle, getOrgUuidFromToken } from '../auth/tokenManager';
 import { IS_CLOUD, IS_WIP } from '../features';
 import { isAnalyticsCookiesAllowed, onConsentChange } from './oneTrustCookiePro';
 
@@ -120,6 +121,117 @@ function syncMoesifConsent(applicationId: string | undefined): void {
 
   moesifClient ??= moesif.init({ applicationId, batchEnabled: true, batchSize: 20, batchMaxTime: 5000 });
   moesifClient.start();
+}
+
+// Ported from choreo-console's MOESIF_EVENT_MAP (src/utils/tracking.ts) — maps this app's internal
+// event keys to the Moesif event names already established in existing Moesif dashboards. The
+// 7 hybrid-gateway-* entries from the original map are dropped: this app has no hybrid gateway
+// feature to fire them from. Event names are kept verbatim (including "Component-*", even though
+// this app calls the concept "integration") for continuity with the existing Moesif taxonomy.
+interface MoesifEventEntry {
+  name: string;
+  properties?: Record<string, unknown>;
+}
+
+const MOESIF_EVENT_MAP: Record<string, MoesifEventEntry> = {
+  'visit-login-page': { name: 'Landing-SignIn-Viewed' },
+  'signup-success': { name: 'Landing-SignUp-Succeeded' },
+  'invitation-signup-success': { name: 'Landing-SignUp-Succeeded', properties: { referral: 'invitation' } },
+  'login-clickbutton-success': { name: 'Landing-SignIn-Succeeded' },
+  'login-clickbutton-error': { name: 'Landing-SignIn-Failed' },
+  'visit-home': { name: 'Portal-Viewed-Home' },
+  'navbar-home': { name: 'Navbar-Clicked-Home' },
+  'navbar-documentation': { name: 'Navbar-Clicked-Documentation' },
+  'navbar-user-billing': { name: 'Navbar-Clicked-Billing' },
+  'navbar-user-logout': { name: 'Navbar-Clicked-Logout' },
+  'navbar-dev-portal': { name: 'Navbar-Clicked-DevPortal' },
+  'navbar-project-dropdown-existing': { name: 'Project-Clicked' },
+  'project-create-start': { name: 'Project-Created-Start' },
+  'project-create-end': { name: 'Project-Created-End' },
+  'component-create-start': { name: 'Component-Created-Start' },
+  'component-create-end': { name: 'Component-Created-End' },
+  'component-delete': { name: 'Component-Deleted' },
+  'component-overview': { name: 'Component-Viewed-Page', properties: { page: 'overview' } },
+  'component-develop': { name: 'Component-Viewed-Page', properties: { page: 'develop' } },
+  'component-test': { name: 'Component-Viewed-Page', properties: { page: 'test' } },
+  'component-build': { name: 'Component-Built' },
+  'component-deploy': { name: 'Component-Deployed' },
+  'component-promote': { name: 'Component-Promoted' },
+  'component-test-execute': { name: 'Component-Tested' },
+  'component-test-openapi-get-test-key': { name: 'Component-Generated-Key', properties: { keyType: 'test' } },
+  'component-manage-lifecycle-state-change-to-publish': { name: 'Component-Published' },
+  'component-manage-lifecycle-state-change-to-demote-to-created': { name: 'Component-Unpublished' },
+  'component-manage-dev-portal': { name: 'DevPortal-Visited' },
+  'visit-moesif-dashboard': { name: 'Moesif-Viewed-Dashboard' },
+};
+
+// trackEvent/identify are called imperatively from event handlers (button clicks, mutation
+// onSuccess callbacks), not from React render, so they read auth state directly out of
+// localStorage/the access token rather than via the useAuth()/useOrgUuid() hooks.
+interface StoredUserInfo {
+  userId?: string;
+  username?: string;
+  displayName?: string;
+}
+
+function getStoredUserInfo(): StoredUserInfo | null {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function convertKeysToSnakeCase(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(obj).map(([key, value]) => [key.replace(/([A-Z])/g, '_$1').toLowerCase(), value]));
+}
+
+export function identifyMoesifUser(): void {
+  if (!moesifClient) return;
+  const user = getStoredUserInfo();
+  if (!user?.userId) return;
+  moesifClient.identifyUser(user.userId, {
+    email: user.username,
+    name: user.displayName,
+    isWSO2User: user.username?.endsWith('@wso2.com') ?? false,
+  });
+}
+
+export function identifyMoesifCompany(orgUuid: string, orgHandle?: string | null): void {
+  if (!moesifClient || !orgUuid) return;
+  moesifClient.identifyCompany(orgUuid, orgHandle ? { name: orgHandle } : undefined);
+}
+
+/**
+ * Records a product-usage event in Moesif, matching choreo-console's `trackEvent()`. `name` is
+ * looked up in MOESIF_EVENT_MAP — an unmapped name is a no-op (Azure App Insights, the old code's
+ * fallback destination for unmapped events, is not used by this app). Pass `identify: true` at
+ * the same call sites the old code did (post-login/signup) to also (re-)identify the current
+ * user/company in Moesif.
+ */
+export function trackEvent(name: string, properties?: Record<string, unknown>, identify?: boolean): void {
+  if (!moesifClient) return;
+  const mapped = MOESIF_EVENT_MAP[name];
+  if (!mapped) return;
+
+  if (identify) {
+    identifyMoesifUser();
+    const orgUuid = getOrgUuidFromToken();
+    if (orgUuid) identifyMoesifCompany(orgUuid, getOrgHandle());
+  }
+
+  const user = getStoredUserInfo();
+  moesifClient.track(mapped.name, {
+    product: 'integration',
+    asset_type: 'console',
+    domain: window.location.hostname,
+    deployment_model: 'saas',
+    idp_id: user?.userId,
+    is_wso2_user: user?.username?.endsWith('@wso2.com') ?? false,
+    ...convertKeysToSnakeCase(properties ?? {}),
+    ...mapped.properties,
+  });
 }
 
 /**

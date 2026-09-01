@@ -18,6 +18,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { UUID_RE } from '../utils/string';
+import { trackEvent } from '../utils/tracking';
 import { fetchProjects, fetchProject, fetchProjectContributors, fetchProjectComponentLabels, fetchProjectHandlerAvailability, createProject, createMonoRepoProject, linkProjectRepository, updateProject, deleteProject } from '#api/projects';
 import type { CreateProjectInput, CreateMonoRepoProjectInput, LinkProjectRepositoryInput, UpdateProjectInput } from '../types/project';
 import { useOrgs } from './useOrg';
@@ -101,8 +102,14 @@ export function useProjectHandlerAvailability(candidate: string, enabled: boolea
 export function useCreateProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateProjectInput) => createProject(input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    mutationFn: (input: CreateProjectInput) => {
+      trackEvent('project-create-start');
+      return createProject(input);
+    },
+    onSuccess: () => {
+      trackEvent('project-create-end');
+      qc.invalidateQueries({ queryKey: ['projects'] });
+    },
   });
 }
 
@@ -128,8 +135,14 @@ export function useDeleteProject() {
 export function useCreateMonoRepoProject() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreateMonoRepoProjectInput) => createMonoRepoProject(input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    mutationFn: (input: CreateMonoRepoProjectInput) => {
+      trackEvent('project-create-start');
+      return createMonoRepoProject(input);
+    },
+    onSuccess: () => {
+      trackEvent('project-create-end');
+      qc.invalidateQueries({ queryKey: ['projects'] });
+    },
   });
 }
 

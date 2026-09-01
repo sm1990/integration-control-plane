@@ -86,6 +86,7 @@ import { useAuth } from '../auth/AuthContext';
 import { componentOverviewUrl, importComponentUrl, browseSamplesUrl, prebuiltIntegrationsUrl, importComingSoonUrl, buildGitHubOAuthUrl } from '../paths';
 import { Permissions } from '../constants/permissions';
 import { isSupportedIntegration, getDisplayLabel, displayTypeFromSample, getNonIntegrationPlatform } from '../constants/integrations';
+import { trackEvent } from '../utils/tracking';
 import { GITHUB_AUTH } from '../constants/github';
 import { CARD_HOVER_SX, PROVIDER_ICON_SX, GITHUB_ICON_SX } from '../constants/styles';
 import Authorized from '../components/Authorized';
@@ -455,6 +456,7 @@ function DeleteDialog({ component, scope, projectId, onClose, onDeleted }: { com
       {
         onSuccess: (result) => {
           if (result.canDelete) {
+            trackEvent('component-delete');
             onDeleted(component.displayName);
             return;
           }

@@ -130,12 +130,26 @@ describe('initTracking', () => {
     expect(moesifClient.stop).toHaveBeenCalledTimes(1);
   });
 
-  it('loads nothing for an unconfigured Cloud build', () => {
+  it('loads the dev/stage GTM container and CookiePro test domain script for Cloud by default', () => {
     mockFeatures.IS_CLOUD = true;
 
     initTracking();
 
-    expect(document.head.querySelector('script[src*="googletagmanager"]')).toBeNull();
-    expect(document.head.querySelector('script[src*="cookiepro"]')).toBeNull();
+    const gtmScript = document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]');
+    expect(gtmScript?.getAttribute('src')).toContain('GTM-58K3W2QB');
+    const cookieProScript = document.head.querySelector('script[src*="cookiepro"]');
+    expect(cookieProScript?.getAttribute('data-domain-script')).toBe('486163bc-a8c5-40d8-b185-c707cc718a23-test');
+  });
+
+  it('loads the prod GTM container and CookiePro prod domain script for Cloud when trackingEnv is prod', () => {
+    mockFeatures.IS_CLOUD = true;
+    (window as unknown as { API_CONFIG: unknown }).API_CONFIG = { trackingEnv: 'prod' };
+
+    initTracking();
+
+    const gtmScript = document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]');
+    expect(gtmScript?.getAttribute('src')).toContain('GTM-5VPGH8GR');
+    const cookieProScript = document.head.querySelector('script[src*="cookiepro"]');
+    expect(cookieProScript?.getAttribute('data-domain-script')).toBe('486163bc-a8c5-40d8-b185-c707cc718a23');
   });
 });

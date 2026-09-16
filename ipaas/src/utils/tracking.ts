@@ -55,14 +55,19 @@ const WIP_COOKIEPRO_DOMAIN_SCRIPT_ID: Record<'dev' | 'stage' | 'prod', string> =
 const CLOUD_GTM_PLACEHOLDER = 'GTM-XXXXXXX';
 const CLOUD_COOKIEPRO_PLACEHOLDER = 'REPLACE_WITH_CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID';
 const CLOUD_GTM_CONTAINER_ID: Record<'dev' | 'stage' | 'prod', string> = {
-  dev: CLOUD_GTM_PLACEHOLDER,
-  stage: CLOUD_GTM_PLACEHOLDER,
-  prod: CLOUD_GTM_PLACEHOLDER,
+  // Dev shares stage's container ID (integration-console-staging.txt) — no separate dev code was
+  // provided. Real prod container ID is distinct (integration-platform-prod.txt).
+  dev: 'GTM-58K3W2QB',
+  stage: 'GTM-58K3W2QB',
+  prod: 'GTM-5VPGH8GR',
 };
 const CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID: Record<'dev' | 'stage' | 'prod', string> = {
-  dev: CLOUD_COOKIEPRO_PLACEHOLDER,
-  stage: CLOUD_COOKIEPRO_PLACEHOLDER,
-  prod: CLOUD_COOKIEPRO_PLACEHOLDER,
+  // Real domain-script IDs from Thimuth: dev/stage share the "-test" variant
+  // (CookiePro-Staging.txt), prod uses the same underlying script without the "-test" suffix
+  // (CookiePro-wso2com-Prod.txt) — same pairing pattern as the WIP build's own codes.
+  dev: '486163bc-a8c5-40d8-b185-c707cc718a23-test',
+  stage: '486163bc-a8c5-40d8-b185-c707cc718a23-test',
+  prod: '486163bc-a8c5-40d8-b185-c707cc718a23',
 };
 
 function injectGtm(containerId: string): void {

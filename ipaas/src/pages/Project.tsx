@@ -52,7 +52,7 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui';
-import { ChevronDown, ChevronUp, ExternalLink, FileText, Filter, GitHub, GitBranch, Info, Link2, Pencil, Plus, PlugZap, RefreshCw, Search, Trash2 } from '@wso2/oxygen-ui-icons-react';
+import { ChevronDown, ChevronUp, Cloud, ExternalLink, FileText, Filter, GitHub, GitBranch, Info, Link2, Pencil, Plus, PlugZap, RefreshCw, Search, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import CreateIntegrationPanels from '../components/CreateIntegrationPanels';
 import EmptyListing from '../components/EmptyListing';
 import IntegrationTypesCard from '../components/IntegrationTypesCard';
@@ -951,18 +951,8 @@ export default function Project(scope: ProjectScope): JSX.Element {
                   </Popper>
                 </>
               ) : (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={
-                    <Box component="span" sx={{ color: 'text.primary', display: 'flex' }}>
-                      <IntegratorIcon width={16} height={16} />
-                    </Box>
-                  }
-                  onClick={handleOpenInCloud}
-                  disabled={!codeServerSample}
-                  sx={{ whiteSpace: 'nowrap' }}>
-                  Open in Cloud
+                <Button variant="outlined" size="small" startIcon={<Cloud size={14} />} onClick={handleOpenInCloud} disabled={!codeServerSample} sx={{ whiteSpace: 'nowrap' }}>
+                  Open in Cloud Editor
                 </Button>
               )}
             </Box>

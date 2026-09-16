@@ -17,14 +17,14 @@
  */
 
 import { Box, Button, Typography } from '@wso2/oxygen-ui';
-import { ExternalLink, Network, PenTool, Rocket } from '@wso2/oxygen-ui-icons-react';
-import React, { type JSX, type ReactNode } from 'react';
+import { ExternalLink, FlaskConical, Network, Rocket } from '@wso2/oxygen-ui-icons-react';
+import React, { Fragment, useEffect, useState, type JSX, type ReactNode } from 'react';
 import { activityBarSx, antLineSx, canvasSx, frameSx, nodeGlowSx, nodeLabelSx, nodeRowSx, nodeTileSx, titleBarSx, trafficLightSx } from './IDEMockup.styles';
 
 function NodeTile({ children, label, active = false }: { children: ReactNode; label: string; active?: boolean }): JSX.Element {
   return (
     <Box sx={{ position: 'relative', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75 }}>
-      {active && <Box sx={nodeGlowSx} />}
+      <Box sx={nodeGlowSx(active)} />
       <Box sx={nodeTileSx(active)}>{children}</Box>
       <Typography sx={nodeLabelSx(active)}>{label}</Typography>
     </Box>
@@ -40,7 +40,22 @@ export interface IDEMockupProps {
   onOpenClick?: () => void;
 }
 
+const STAGES = [
+  { label: 'Develop', Icon: Network },
+  { label: 'Test', Icon: FlaskConical },
+  { label: 'Deploy', Icon: Rocket },
+] as const;
+
+const STAGE_INTERVAL_MS = 1000;
+
 export default function IDEMockup({ onOpenClick }: IDEMockupProps): JSX.Element {
+  const [activeStage, setActiveStage] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setActiveStage((stage) => (stage + 1) % STAGES.length), STAGE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <Box sx={frameSx}>
       {/* Title bar */}
@@ -72,19 +87,15 @@ export default function IDEMockup({ onOpenClick }: IDEMockupProps): JSX.Element 
             <Box sx={{ width: 32, height: 6, bgcolor: 'action.selected', borderRadius: 0.5 }} />
           </Box>
 
-          {/* Node flow */}
           <Box sx={nodeRowSx}>
-            <NodeTile label="design">
-              <PenTool size={24} />
-            </NodeTile>
-            <AntLine />
-            <NodeTile label="develop" active>
-              <Network size={26} />
-            </NodeTile>
-            <AntLine />
-            <NodeTile label="deploy">
-              <Rocket size={24} />
-            </NodeTile>
+            {STAGES.map(({ label, Icon }, index) => (
+              <Fragment key={label}>
+                {index > 0 && <AntLine />}
+                <NodeTile label={label} active={activeStage === index}>
+                  <Icon size={26} />
+                </NodeTile>
+              </Fragment>
+            ))}
           </Box>
 
           <Box sx={{ mt: 3, position: 'relative', zIndex: 10 }}>

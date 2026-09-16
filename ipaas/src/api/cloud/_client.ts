@@ -51,17 +51,25 @@ export const items = <T>(r: ListResponse<T> | null | undefined): T[] => r?.items
 
 const bffBaseUrl = (): string => window.API_CONFIG?.choreoBaseApiUrl ?? '';
 
-/**
- * BFF request failure carrying the HTTP status and raw body so domain files
- * can branch on semantic statuses (e.g. 409 "github-auth-required"). The
- * message keeps the exact `HTTP {status}: {body}` shape callers already parse.
- */
+/** Pulls the user-facing sentence out of the BFF's `{ error, message }` envelope. */
+function readableMessage(status: number, body: string): string {
+  try {
+    const parsed = JSON.parse(body) as { message?: string; error?: string };
+    const message = parsed?.message || parsed?.error;
+    if (message) return message;
+  } catch {
+    // Not JSON (a gateway or proxy error) — fall through to the raw body.
+  }
+  return `HTTP ${status}: ${body}`;
+}
+
+/** `message` is the BFF's wording and reaches alerts unchanged — branch on `status`/`body`, never parse it. */
 export class BffError extends Error {
   readonly status: number;
   readonly body: string;
 
   constructor(status: number, body: string) {
-    super(`HTTP ${status}: ${body}`);
+    super(readableMessage(status, body));
     this.name = 'BffError';
     this.status = status;
     this.body = body;

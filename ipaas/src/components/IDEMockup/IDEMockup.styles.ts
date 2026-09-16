@@ -91,23 +91,26 @@ export const nodeRowSx = {
   zIndex: 10,
 } as const;
 
-export const nodeGlowSx = {
-  position: 'absolute',
-  top: -6,
-  left: -6,
-  right: -6,
-  height: 74,
-  borderRadius: 3,
-  bgcolor: 'primary.main',
-  opacity: 0.09,
-  filter: 'blur(4px)',
-} as const;
+export const nodeGlowSx = (active: boolean) =>
+  ({
+    position: 'absolute',
+    top: -6,
+    left: -6,
+    right: -6,
+    height: 74,
+    borderRadius: 3,
+    bgcolor: 'primary.main',
+    opacity: active ? 0.09 : 0,
+    filter: 'blur(4px)',
+    transition: 'opacity 400ms ease',
+  }) as const;
 
 export const nodeTileSx = (active: boolean) =>
   ({
     position: 'relative',
-    width: active ? 72 : 62,
-    height: active ? 62 : 52,
+    // Fixed size: the highlight cycles between tiles, and resizing would shift the row on every step.
+    width: 68,
+    height: 58,
     borderRadius: 1.2,
     bgcolor: 'background.paper',
     border: '1px solid',
@@ -116,6 +119,7 @@ export const nodeTileSx = (active: boolean) =>
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    transition: 'border-color 400ms ease, color 400ms ease',
   }) as const;
 
 export const nodeLabelSx = (active: boolean) =>
@@ -124,6 +128,7 @@ export const nodeLabelSx = (active: boolean) =>
     fontSize: 11,
     letterSpacing: '0.04em',
     color: active ? 'primary.main' : 'text.secondary',
+    transition: 'color 400ms ease',
   }) as const;
 
 /** One shift of a whole dash period, so the loop is seamless. */

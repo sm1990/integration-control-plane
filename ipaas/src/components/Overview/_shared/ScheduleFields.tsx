@@ -25,7 +25,7 @@ import type { ScheduleFormApi } from './useScheduleForm';
 /** Presentational cron editor bound to a {@link useScheduleForm} instance. */
 export default function ScheduleFields({ form }: { form: ScheduleFormApi }): JSX.Element {
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const { tab, setTab, intervalCount, setIntervalCount, intervalUnit, setIntervalUnit, cronFields, setCronFields, cron, description } = form;
+  const { tab, setTab, intervalCount, setIntervalCount, intervalUnit, setIntervalUnit, cronFields, setCronFields, cron, description, errors } = form;
 
   return (
     <Stack gap={2}>
@@ -50,6 +50,8 @@ export default function ScheduleFields({ form }: { form: ScheduleFormApi }): JSX
               onBlur={() => {
                 if (typeof intervalCount !== 'number' || intervalCount < 1) setIntervalCount(1);
               }}
+              error={!!errors.intervalCount}
+              helperText={errors.intervalCount}
               sx={{ width: 120 }}
             />
             <Select value={intervalUnit} onChange={(e) => setIntervalUnit(e.target.value as IntervalUnit)} sx={{ flex: 1 }}>
@@ -81,7 +83,15 @@ export default function ScheduleFields({ form }: { form: ScheduleFormApi }): JSX
               <Typography variant="caption" color="text.secondary">
                 {label}
               </Typography>
-              <TextField fullWidth size="small" placeholder={placeholder} value={cronFields[key as CronField]} onChange={(e) => setCronFields((prev) => ({ ...prev, [key]: e.target.value }))} />
+              <TextField
+                fullWidth
+                size="small"
+                placeholder={placeholder}
+                value={cronFields[key as CronField]}
+                onChange={(e) => setCronFields((prev) => ({ ...prev, [key]: e.target.value }))}
+                error={!!errors.cron[key as CronField]}
+                helperText={errors.cron[key as CronField]}
+              />
             </Box>
           ))}
           <Typography variant="caption" color="text.secondary">
@@ -113,7 +123,7 @@ export default function ScheduleFields({ form }: { form: ScheduleFormApi }): JSX
               <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                 Job Timeout (in seconds)
               </Typography>
-              <TextField fullWidth size="small" type="number" value={form.timeoutSeconds} onChange={(e) => form.setTimeoutSeconds(e.target.value)} placeholder="No timeout" inputProps={{ min: 0 }} />
+              <TextField fullWidth size="small" type="number" value={form.timeoutSeconds} onChange={(e) => form.setTimeoutSeconds(e.target.value)} placeholder="No timeout" error={!!errors.timeout} helperText={errors.timeout} />
             </Box>
             <FormControlLabel control={<Checkbox checked={form.allowConcurrency} onChange={(e) => form.setAllowConcurrency(e.target.checked)} size="small" />} label="Allow Overlapping Executions" />
           </Stack>

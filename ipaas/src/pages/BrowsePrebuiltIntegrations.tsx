@@ -261,38 +261,40 @@ function DiagramPanel({ integration, onSetup }: { integration: PrebuiltIntegrati
     <Stack direction="row" spacing={1.5} alignItems="flex-start" sx={{ mt: 1, flex: 1 }}>
       <Box sx={{ width: 88, flexShrink: 0 }} />
 
-      <Box
-        sx={{
-          flex: 1,
-          position: 'relative',
-          border: '1px solid',
-          borderColor: 'divider',
-          borderRadius: 2,
-          overflow: 'hidden',
-          height: 320,
-          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.13) 0.5px, transparent 2px)',
-          backgroundSize: '24px 24px',
-          bgcolor: 'background.paper',
-        }}>
-        {isDiagramLoading ? (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CircularProgress size={28} />
-          </Box>
-        ) : diagram ? (
-          <IntegrationFlowChart diagram={diagram} />
-        ) : (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              No flow diagram available
-            </Typography>
-          </Box>
-        )}
-        <Box sx={{ position: 'absolute', bottom: 16, right: 16, zIndex: 5 }}>
+      <Stack sx={{ flex: 1, minWidth: 0 }} gap={1.5}>
+        <Box
+          sx={{
+            position: 'relative',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: 2,
+            overflow: 'hidden',
+            height: 320,
+            backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.13) 0.5px, transparent 2px)',
+            backgroundSize: '24px 24px',
+            bgcolor: 'background.paper',
+          }}>
+          {isDiagramLoading ? (
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CircularProgress size={28} />
+            </Box>
+          ) : diagram ? (
+            <IntegrationFlowChart diagram={diagram} />
+          ) : (
+            <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                No flow diagram available
+              </Typography>
+            </Box>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
           <Button variant="contained" endIcon={<ArrowRight size={16} />} onClick={onSetup}>
             Configure &amp; Deploy
           </Button>
         </Box>
-      </Box>
+      </Stack>
 
       {/* Right spacer — matches AppSlot width */}
       <Box sx={{ width: 88, flexShrink: 0 }} />

@@ -57,7 +57,7 @@ export default function ScheduleStep({ componentId, versionId, envId, releaseId,
     <Stack gap={2}>
       <ScheduleFields form={form} />
       <Stack direction="row" justifyContent="flex-end">
-        <Button variant="contained" onClick={save} disabled={deployTrack.isPending || !buildId} startIcon={deployTrack.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
+        <Button variant="contained" onClick={save} disabled={deployTrack.isPending || !buildId || !form.isValid} startIcon={deployTrack.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
           {deployTrack.isPending ? 'Updating…' : 'Update Schedule'}
         </Button>
       </Stack>

@@ -16,8 +16,9 @@
  * under the License.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { type IntervalUnit, type CronField, intervalToCron, cronToInterval, parseCronParts, buildCronFromParts, describeCron } from '../../../utils/cronUtils';
+import { validateCronFields, validateIntervalCount, validateTimeout } from '../../../utils/scheduleValidation';
 import type { ExecutionConfigs } from '../../../types/executions';
 import type { DeployDeploymentTrackInput } from '../../../types/deployment';
 
@@ -30,7 +31,16 @@ export interface ScheduleValues {
   allowConcurrency: boolean;
 }
 
+export interface ScheduleFormErrors {
+  timeout?: string;
+  intervalCount?: string;
+  cron: Partial<Record<CronField, string>>;
+}
+
 export interface ScheduleFormApi extends ScheduleValues {
+  errors: ScheduleFormErrors;
+  /** False while any visible field is invalid, so callers can block the write. */
+  isValid: boolean;
   tab: number;
   setTab: (v: number) => void;
   /** Empty string while the field is being cleared/edited; coerced to a valid count for the cron. */
@@ -79,7 +89,38 @@ export function useScheduleForm(existingConfigs: ExecutionConfigs | null | undef
   }, [existingConfigs]);
 
   const cron = tab === 0 ? intervalToCron(intervalCount || 1, intervalUnit) : buildCronFromParts(cronFields);
-  return { tab, setTab, intervalCount, setIntervalCount, intervalUnit, setIntervalUnit, cronFields, setCronFields, timezone, setTimezone, timeoutSeconds, setTimeoutSeconds, allowConcurrency, setAllowConcurrency, cron, description: describeCron(cron) };
+
+  // Only the active tab's fields are validated: the other tab's state is not written.
+  const errors = useMemo<ScheduleFormErrors>(
+    () => ({
+      timeout: validateTimeout(timeoutSeconds),
+      intervalCount: tab === 0 ? validateIntervalCount(intervalCount) : undefined,
+      cron: tab === 1 ? validateCronFields(cronFields) : {},
+    }),
+    [timeoutSeconds, tab, intervalCount, cronFields],
+  );
+  const isValid = !errors.timeout && !errors.intervalCount && Object.keys(errors.cron).length === 0;
+
+  return {
+    tab,
+    setTab,
+    intervalCount,
+    setIntervalCount,
+    intervalUnit,
+    setIntervalUnit,
+    cronFields,
+    setCronFields,
+    timezone,
+    setTimezone,
+    timeoutSeconds,
+    setTimeoutSeconds,
+    allowConcurrency,
+    setAllowConcurrency,
+    cron,
+    description: describeCron(cron),
+    errors,
+    isValid,
+  };
 }
 
 /** Identifiers a schedule redeploy needs, alongside the {@link useScheduleForm} values. */

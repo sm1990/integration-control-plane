@@ -471,7 +471,7 @@ export default function ComponentHeader({ component, project, repository, latest
           {hasSource && (
             <Stack gap={0.5}>
               <Stack direction="row" alignItems="center" gap={1}>
-                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110 }}>
+                <Typography variant="body2" color="text.secondary">
                   Source:
                 </Typography>
                 {repoUrl ? (
@@ -500,7 +500,7 @@ export default function ComponentHeader({ component, project, repository, latest
               <Stack direction="row" flexWrap="wrap" alignItems="center" gap={1}>
                 <Stack direction="row" alignItems="center" gap={1}>
                   <Typography variant="body2" color="text.secondary" sx={{ minWidth: 110 }}>
-                    Latest Commit:
+                    Latest Commit on Source:
                   </Typography>
                   {latestCommit && (
                     <>

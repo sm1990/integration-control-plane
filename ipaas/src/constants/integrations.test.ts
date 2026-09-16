@@ -17,13 +17,19 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { getDisplayLabel, isSupportedIntegration } from './integrations';
+import { componentSubTypeFromSample, getDisplayLabel, isSupportedIntegration } from './integrations';
 
 describe('project listing — RAG components', () => {
   it('labels the ingestion cronjob as "RAG Ingestion" (not Automation)', () => {
     expect(getDisplayLabel('byoiCronjob', 'rag-ingestion')).toBe('RAG Ingestion');
     // a plain byoiCronjob with no RAG subtype still reads as Automation
     expect(getDisplayLabel('byoiCronjob', null)).toBe('Automation');
+  });
+
+  it('labels every foreign-runtime component "Other"', () => {
+    expect(getDisplayLabel('otherAiAgent', null)).toBe('Other');
+    expect(getDisplayLabel('otherService', null)).toBe('Other');
+    expect(getDisplayLabel('other', null)).toBe('Other');
   });
 
   it('labels the RAG services as Integration as API', () => {
@@ -50,5 +56,18 @@ describe('project listing — foreign runtimes', () => {
     expect(isSupportedIntegration('ballerinaService', null, 'other')).toBe(false);
     // MCP short-circuits the displayType allowlist, so the buildpack has to win over it.
     expect(isSupportedIntegration('otherService', 'MCP', 'other')).toBe(false);
+  });
+});
+
+describe('componentSubTypeFromSample', () => {
+  it('subtypes webhook samples so create stamps the component-type annotation', () => {
+    expect(componentSubTypeFromSample('webhook', 'ballerina')).toBe('webhook');
+    expect(componentSubTypeFromSample('webhook', 'wso2-mi')).toBe('webhook');
+  });
+
+  it('leaves categories that need no further subtyping undefined', () => {
+    expect(componentSubTypeFromSample('service', 'ballerina')).toBeUndefined();
+    expect(componentSubTypeFromSample('scheduled-task', 'ballerina')).toBeUndefined();
+    expect(componentSubTypeFromSample('event-handler', 'ballerina')).toBeUndefined();
   });
 });

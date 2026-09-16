@@ -17,6 +17,7 @@
  */
 
 import { Alert, Button, CircularProgress, FormControlLabel, PageContent, PageTitle, Stack, Switch, TextField } from '@wso2/oxygen-ui';
+import { IS_CLOUD } from '../../features';
 import BusyFields from '../common/BusyFields';
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, useState, type JSX } from 'react';
@@ -94,7 +95,7 @@ export default function CdPipelineForm({ orgHandler, envTemplates, existingPipel
         Back
       </Button>
       <PageTitle>
-        <PageTitle.Header>{existing ? 'Edit CD Pipeline' : 'Create CD Pipeline'}</PageTitle.Header>
+        <PageTitle.Header>{existing ? 'Edit Deployment Pipeline' : 'Create Deployment Pipeline'}</PageTitle.Header>
       </PageTitle>
 
       <Stack gap={3} sx={{ maxWidth: 640, mt: 1 }}>
@@ -112,7 +113,8 @@ export default function CdPipelineForm({ orgHandler, envTemplates, existingPipel
               helperText={showNameError ? nameError : ' '}
               sx={{ flex: 1, ...REQUIRED_SX }}
             />
-            <FormControlLabel control={<Switch checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />} label="Mark as default" sx={{ flexShrink: 0, whiteSpace: 'nowrap', mr: 0 }} />
+            {/* Hidden on cloud: the flag is accepted by the form but never persisted upstream. */}
+            {!IS_CLOUD && <FormControlLabel control={<Switch checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />} label="Mark as default" sx={{ flexShrink: 0, whiteSpace: 'nowrap', mr: 0 }} />}
           </Stack>
 
           <PromotionChainBuilder envTemplates={envTemplates} value={chain} onChange={setChain} disabled={saving} />

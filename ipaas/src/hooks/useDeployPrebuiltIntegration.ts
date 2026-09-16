@@ -20,7 +20,7 @@ import { useState, useCallback, useRef } from 'react';
 import { useCreateComponent, useDeleteComponent } from './useComponents';
 import { useDeployPrebuiltImage } from './useDeployments';
 import { getOrgUuidFromToken } from '../auth/tokenManager';
-import { displayTypeFromSample } from '../constants/integrations';
+import { componentSubTypeFromSample, displayTypeFromSample } from '../constants/integrations';
 import { derivePrebuiltSlug } from '../utils/prebuilt';
 import { checkNameAvailability, fetchComponentDetail, fetchFirstEnvironment, fetchLatestCommitSha, savePrebuiltConfig } from '#api/prebuilt';
 import { IS_CLOUD } from '../features';
@@ -70,6 +70,7 @@ export function useDeployPrebuiltIntegration() {
         orgHandler,
         projectId,
         displayType,
+        componentSubType: componentSubTypeFromSample(integration.componentType, integration.buildPack),
         srcGitRepoUrl: integration.repositoryUrl,
         repositorySubPath: integration.componentPath,
         repositoryBranch: integration.branch ?? 'main',

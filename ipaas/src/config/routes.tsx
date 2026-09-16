@@ -157,7 +157,6 @@ const EditUser = lazyPage(() => import('../pages/EditUser'));
 const CreateRole = lazyPage(() => import('../pages/CreateRole'));
 const CreateGroup = lazyPage(() => import('../pages/CreateGroup'));
 const EditGroup = lazyPage(() => import('../pages/EditGroup'));
-const Profile = lazyPage(() => import('../pages/Profile'));
 const ComingSoon = lazyPage(() => import('../pages/ComingSoon'));
 const ProjectConnections = lazyPage(() => import('../pages/ProjectConnections'));
 const ComponentConnections = lazyPage(() => import('../pages/ComponentConnections'));
@@ -235,7 +234,7 @@ const routes: AppRoute[] = [
                 { path: 'organizations/:orgHandler/insights/compliance', element: createElement(RouteErrorBoundary, null, createElement(withScope(OrgCompliance, ['organizations']))) },
               ]),
               { path: 'organizations/:orgHandler/logs', element: <ComingSoon description="Runtime logs across the whole organization are on the way. For now, open an integration to read its logs." /> },
-              { path: 'organizations/:orgHandler/metrics', element: <ComingSoon description="One view of throughput, latency and errors for every integration you run. Coming soon." /> },
+              { path: 'organizations/:orgHandler/metrics', element: <ComingSoon description="One view of throughput, latency and errors for every integration you run." /> },
               { path: 'organizations/:orgHandler/rag/scheduled-ingestion', element: createElement(withScope(SetupRagIngestion, ['organizations'])) },
               { path: 'organizations/:orgHandler/rag/service', element: createElement(withScope(SetupRagService, ['organizations'])) },
               { path: 'organizations/:orgHandler/rag/retrieval', element: createElement(withScope(RagRetrieval, ['organizations'])) },
@@ -306,7 +305,7 @@ const routes: AppRoute[] = [
               { path: 'organizations/:orgHandler/projects/:projectHandler/runtimes', element: <ComingSoon title="Coming Soon" description="Runtime management is currently under development." /> },
               { path: 'organizations/:orgHandler/projects/:projectHandler/metrics', element: <ComingSoon title="Coming Soon" description="Metrics are currently under development." /> },
               { path: 'organizations/:orgHandler/projects/:projectHandler/observe/runtimelogs', element: createElement(withScope(RuntimeLogsProject, ['projects'])) },
-              { path: 'organizations/:orgHandler/projects/:projectHandler/observe/metrics', element: <ComingSoon description="Throughput, latency and errors for every integration in the project. Coming soon." /> },
+              { path: 'organizations/:orgHandler/projects/:projectHandler/observe/metrics', element: <ComingSoon description="Throughput, latency and errors for every integration in the project." /> },
               ...hideable(IS_CLOUD, 'projects', [
                 { path: 'organizations/:orgHandler/projects/:projectHandler/admin/connections', element: createElement(RouteErrorBoundary, null, createElement(withScope(ProjectConnections, ['projects']))) },
                 { path: 'organizations/:orgHandler/projects/:projectHandler/admin/connections/new', element: createElement(RouteErrorBoundary, null, createElement(withScope(NewConnection, ['projects']))) },
@@ -358,7 +357,6 @@ const routes: AppRoute[] = [
               { path: componentRoleDetailUrl(':orgHandler', ':projectHandler', ':componentHandler', ':roleId'), element: <ComponentRoleDetail /> },
               { path: projectGroupDetailUrl(':orgHandler', ':projectHandler', ':groupId'), element: <ProjectGroupDetail /> },
               { path: componentGroupDetailUrl(':orgHandler', ':projectHandler', ':componentHandler', ':groupId'), element: <ComponentGroupDetail /> },
-              { path: '/profile', element: <Profile /> },
               // cloud: prebuilt integrations are supported on OpenChoreo, so the
               // routes are enabled for cloud as well as wip (icp is stubs-only).
               ...(IS_WIP || IS_CLOUD
@@ -435,7 +433,7 @@ const routes: AppRoute[] = [
               ]),
               {
                 path: 'organizations/:orgHandler/projects/:projectHandler/components/:componentHandler/metrics',
-                element: <ComingSoon description="Throughput, latency and errors over time, per environment. Coming soon." />,
+                element: <ComingSoon description="Throughput, latency and errors over time, per environment." />,
               },
               ...hideable(IS_CLOUD, 'components', [
                 {

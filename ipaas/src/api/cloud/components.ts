@@ -73,6 +73,12 @@ const ANN_DESCRIPTION = 'openchoreo.dev/description';
 // integration is marked with this annotation; the BFF reads it back to report
 // component.isPrebuilt and to deploy the supplied image instead of building.
 const ANN_PREBUILT = 'openchoreo.dev/prebuilt';
+// OpenChoreo has no ComponentType for a webhook, so one builds on another type's
+// runtime and this annotation is what makes it read back as a webhook.
+const ANN_COMPONENT_TYPE = 'ipaas.wso2.com/component-type';
+const WEBHOOK_DISPLAY_TYPES = new Set(['webhook', 'miWebhook']);
+// Samples build as integration-as-api, so they carry the identity in componentSubType instead.
+const isWebhookInput = (input: CreateComponentInput): boolean => WEBHOOK_DISPLAY_TYPES.has(input.displayType) || input.componentSubType === 'webhook';
 
 // Frontend DisplayType -> OpenChoreo ComponentType reference + Workflow
 // (buildpack builder). `componentType` is the {workloadType}/{componentTypeName}
@@ -108,6 +114,7 @@ const LOGICAL_TYPE_TO_DISPLAY_TYPE: Record<string, { bi: string; mi: string }> =
   service: { bi: 'ballerinaService', mi: 'miApiService' },
   automation: { bi: 'scheduledTask', mi: 'miCronjob' },
   eventIntegration: { bi: 'ballerinaEventHandler', mi: 'miEventHandler' },
+  webhook: { bi: 'ballerinaWebhook', mi: 'miWebhook' },
   proxy: { bi: 'proxy', mi: 'proxy' },
 };
 
@@ -168,6 +175,7 @@ function toBffCreateComponentBody(input: CreateComponentInput) {
         // Marked prebuilt so the BFF reports isPrebuilt and the deploy path uses
         // the supplied image; the annotation is omitted for normal components.
         ...(input.isPrebuilt ? { [ANN_PREBUILT]: 'true' } : {}),
+        ...(isWebhookInput(input) ? { [ANN_COMPONENT_TYPE]: 'webhook' } : {}),
       },
     },
     spec: {

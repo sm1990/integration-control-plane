@@ -127,11 +127,13 @@ export const deleteEnvironmentTemplate = async (_orgUuid: string, templateId: st
   await deleteEnvironment(templateId);
 };
 
-/** A `{ name, displayName }` BFF row — projects and components share the shape here. */
+/** `name` is the display label and `handler` the URL slug; a label with spaces breaks the upstream label selector. */
 interface BffNamed {
   name: string;
-  displayName?: string;
+  handler?: string;
 }
+
+const slugOf = (row: BffNamed): string => row.handler || row.name;
 
 /**
  * Stands in for a component whose deployment state could not be read. It has to
@@ -142,22 +144,22 @@ const UNVERIFIED_COMPONENT = 'unknown (deployment state could not be read)';
 
 /** Components of `project` deployed to `environmentId`. Never rejects. */
 const deployedInProject = async (project: BffNamed, environmentId: string): Promise<ProjectDeployedComponents> => {
-  const detail = { projectId: project.name, projectName: project.displayName || project.name };
+  const detail = { projectId: slugOf(project), projectName: project.name };
 
   let components: BffNamed[];
   try {
-    components = items(await bff.get<ListResponse<BffNamed>>(`/projects/${seg(project.name)}/components`));
+    components = items(await bff.get<ListResponse<BffNamed>>(`/projects/${seg(slugOf(project))}/components`));
   } catch {
     return { ...detail, components: [{ componentName: UNVERIFIED_COMPONENT }] };
   }
 
   const deployed = await Promise.all(
     components.map(async (component) => {
-      const entry = { componentId: component.name, componentName: component.displayName || component.name };
+      const entry = { componentId: slugOf(component), componentName: component.name };
       try {
         // "Not deployed" is 200 with a null body, so only a genuine failure lands
         // in the catch — an unreadable component is unknown, not empty.
-        return (await bff.get<unknown>(`/components/${seg(component.name)}/deployments${q({ environmentId })}`)) ? entry : null;
+        return (await bff.get<unknown>(`/components/${seg(slugOf(component))}/deployments${q({ environmentId })}`)) ? entry : null;
       } catch {
         return entry;
       }

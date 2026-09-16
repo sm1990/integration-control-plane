@@ -146,7 +146,8 @@ export default function CreateEnvironment(scope: OrgScope): JSX.Element {
               )}
             </Box>
           )}
-          <FormControlLabel control={<Checkbox checked={critical} onChange={(_, v) => setCritical(v)} />} label="Mark as Critical Environment" />
+          {/* Hidden on cloud: marking an environment critical does not take effect. */}
+          {!IS_CLOUD && <FormControlLabel control={<Checkbox checked={critical} onChange={(_, v) => setCritical(v)} />} label="Mark as Critical Environment" />}
         </Stack>
       </BusyFields>
 

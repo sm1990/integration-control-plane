@@ -153,9 +153,10 @@ export function getDisplayLabel(displayType: string, componentSubType: string | 
     case 'miJob':
     case 'buildpackJob':
       return 'Manual Task';
-    default:
-      return displayType ?? 'Unknown';
   }
+  // Foreign-runtime components arrive as lower(buildpackType)+Cap(componentType), e.g. 'otherAiAgent'.
+  if (displayType?.startsWith(OTHER_BUILDPACK)) return 'Other';
+  return displayType ?? 'Unknown';
 }
 
 export const COMPONENT_TYPE_LABELS: Record<string, string> = {
@@ -212,6 +213,11 @@ export function displayTypeFromSample(componentType: string, buildPack: string):
 export function componentSubTypeFromSample(componentType: string, buildPack: string): string | undefined {
   if (componentType === 'file-integration') {
     return buildPack === 'wso2-mi' ? 'miFileIntegration' : 'ballerinaFileIntegration';
+  }
+  // Webhooks build on the shared service runtime, so the subtype is what carries
+  // the webhook identity through to the Component annotation.
+  if (componentType === 'webhook') {
+    return 'webhook';
   }
   // AI agents share a generic service displayType across runtimes; `aiAgent` is
   // the discriminator (runtime-independent), matching devant's create flow.

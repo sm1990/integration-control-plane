@@ -95,7 +95,7 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, onSaveErr
 
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
         <Button onClick={onClose}>Back</Button>
-        <Button variant="contained" onClick={handleSave} disabled={deployTrack.isPending || !buildId} startIcon={deployTrack.isPending ? <CircularProgress color="inherit" size={16} /> : undefined}>
+        <Button variant="contained" onClick={handleSave} disabled={deployTrack.isPending || !buildId || !form.isValid} startIcon={deployTrack.isPending ? <CircularProgress color="inherit" size={16} /> : undefined}>
           {deployTrack.isPending ? 'Updating…' : 'Update'}
         </Button>
       </Stack>

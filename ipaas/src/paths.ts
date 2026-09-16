@@ -23,10 +23,6 @@ export function oidcCallbackUrl(): string {
   return '/signin';
 }
 
-export function profileUrl(): string {
-  return '/profile';
-}
-
 export function privacyPolicyUrl(): string {
   return 'https://wso2.com/privacy-policy';
 }

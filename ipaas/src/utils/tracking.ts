@@ -168,6 +168,43 @@ const MOESIF_EVENT_MAP: Record<string, MoesifEventEntry> = {
   'component-manage-lifecycle-state-change-to-demote-to-created': { name: 'Component-Unpublished' },
   'component-manage-dev-portal': { name: 'DevPortal-Visited' },
   'visit-moesif-dashboard': { name: 'Moesif-Viewed-Dashboard' },
+
+  // Integration-creation flow (src/components/CreateIntegrationPanels.tsx,
+  // src/pages/ImportIntegration.tsx, src/pages/BrowseSamples.tsx). One event per git provider
+  // rather than a single shared event, so each import shortcut is its own series.
+  'component-create-import-public-url': { name: 'Component-Import-PublicURL' },
+  'component-create-import-github': { name: 'Component-Import-GitHub' },
+  'component-create-import-gitlab': { name: 'Component-Import-GitLab' },
+  'component-create-import-bitbucket': { name: 'Component-Import-Bitbucket' },
+  'component-create-import-azure-devops': { name: 'Component-Import-AzureDevOps' },
+
+  // One event per integration-type card; anything not in this list (a type added later, before
+  // this map is updated for it) falls through to the generic 'component-create-select-type' at
+  // the call site instead of vanishing silently.
+  'component-create-select-type-automation': { name: 'Component-SelectedType-Automation' },
+  'component-create-select-type-ai-agent': { name: 'Component-SelectedType-AIAgent' },
+  'component-create-select-type-integration-as-api': { name: 'Component-SelectedType-IntegrationAsAPI' },
+  'component-create-select-type-mcp-server': { name: 'Component-SelectedType-MCPServer' },
+  'component-create-select-type-event-integration': { name: 'Component-SelectedType-EventIntegration' },
+  'component-create-select-type-file-integration': { name: 'Component-SelectedType-FileIntegration' },
+  'component-create-select-type-webhook': { name: 'Component-SelectedType-Webhook' },
+  'component-create-select-type': { name: 'Component-SelectedType' },
+
+  // Fires on click, before the create API call — 'component-create-end' (above) only fires on
+  // success, so the gap between the two is the real submit-to-success drop-off.
+  'component-create-submit': { name: 'Component-Created-Submit' },
+  // TODO(component-create-multiple-start / Component-CreateMultiple-Start): no "Create Multiple"
+  // UI exists anywhere in this app yet (see ImportIntegration.tsx / CreateIntegrationPanels.tsx —
+  // there is only a single Create flow). Add this once that flow exists.
+  'components-new-browse-more-samples': { name: 'Sample-Explored' },
+  'components-new-get-started-tab': { name: 'GetStartedQuickly-TabClicked' },
+
+  // These didn't have any call site at all before this batch (not just an unmapped one) — added
+  // alongside their call sites, not backfilled onto existing ones.
+  'open-cloud-editor-click': { name: 'CloudEditor-Opened' },
+  'quick-deploy-click': { name: 'Sample-Deployed' },
+  'featured-prebuilt-integration-click': { name: 'PrebuiltIntegration-Clicked' },
+  'prebuilt-integration-explore-click': { name: 'PrebuiltIntegration-Explored' },
 };
 
 // trackEvent/identify are called imperatively from event handlers (button clicks, mutation

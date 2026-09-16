@@ -24,6 +24,7 @@ import { useAppNavigate } from '../../../hooks/useAppNavigate';
 import { useRedeployDeployment, useStopDeployment } from '../../../hooks/useDeployments';
 import { IS_CLOUD } from '../../../features';
 import type { EnvCardActionsProps } from '../../../types/integration';
+import { isDeploymentHealthy } from '../../../utils/deploymentStatus';
 import ServiceLogsDrawer from '../integration-as-api/ServiceLogsDrawer';
 
 /**
@@ -54,10 +55,15 @@ export default function EnvCardActions({
   const redeployMutation = useRedeployDeployment();
   const isActionPending = stopMutation.isPending || redeployMutation.isPending;
 
-  const canStop = deploymentStatusV2 === 'ACTIVE' || deploymentStatusV2 === 'ERROR';
+  const canStop = deploymentStatusV2 === 'ACTIVE';
   const canStart = deploymentStatusV2 === 'SUSPENDED';
+  // A failed deployment is already not serving, so stopping it achieves nothing —
+  // offer the recovery action instead.
+  const hasError = deploymentStatusV2 === 'ERROR';
   const isInProgress = deploymentStatusV2 === 'IN_PROGRESS';
   const buildDisabled = !!isBuildInProgress && !hasDeployment;
+  // The agent chat opens a live connection, so only a running workload qualifies.
+  const canTest = isDeploymentHealthy(deploymentStatusV2);
 
   const handleStop = () => {
     stopMutation.mutate(
@@ -94,7 +100,7 @@ export default function EnvCardActions({
           size="small"
           startIcon={<Funnel size={14} />}
           onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/test/agent-chat`)}
-          disabled={buildDisabled}
+          disabled={buildDisabled || !canTest}
           sx={{ textTransform: 'none' }}>
           Test
         </Button>
@@ -118,6 +124,15 @@ export default function EnvCardActions({
           <span>
             <Button variant="outlined" size="small" color="success" startIcon={<RotateCw size={14} />} onClick={handleRedeploy} disabled={isActionPending}>
               Start
+            </Button>
+          </span>
+        </Tooltip>
+      )}
+      {hasError && (
+        <Tooltip title="Redeploy">
+          <span>
+            <Button variant="outlined" size="small" color="error" startIcon={<RotateCw size={14} />} onClick={handleRedeploy} disabled={isActionPending}>
+              Redeploy
             </Button>
           </span>
         </Tooltip>

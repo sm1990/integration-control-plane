@@ -22,6 +22,8 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useExecutionLogs } from '../../hooks/useExecutions';
 import { highlightText } from '../../utils/highlight';
+import { formatExecutionLogLine, spansMultipleContainers } from '../../utils/logs';
+import type { ExecutionLogWindow } from '../../types/executions';
 
 interface LogsDrawerProps {
   open: boolean;
@@ -30,6 +32,8 @@ interface LogsDrawerProps {
   componentId: string;
   deploymentTrackId: string;
   environmentId: string;
+  /** The run's bounds, which cloud needs to isolate this execution's log lines. */
+  run?: ExecutionLogWindow;
 }
 
 const drawerSx = {
@@ -43,9 +47,9 @@ const drawerSx = {
   },
 } as const;
 
-export default function LogsDrawer({ open, onClose, executionId, componentId, deploymentTrackId, environmentId }: LogsDrawerProps) {
+export default function LogsDrawer({ open, onClose, executionId, componentId, deploymentTrackId, environmentId, run }: LogsDrawerProps) {
   const queryClient = useQueryClient();
-  const { data: logs = [], isLoading } = useExecutionLogs(componentId, deploymentTrackId, executionId, environmentId, open && !!executionId);
+  const { data: logs = [], isLoading } = useExecutionLogs(componentId, deploymentTrackId, executionId, environmentId, open && !!executionId, run);
   const [search, setSearch] = useState('');
   const [filterMode, setFilterMode] = useState(false);
 
@@ -58,20 +62,23 @@ export default function LogsDrawer({ open, onClose, executionId, componentId, de
     queryClient.invalidateQueries({ queryKey: ['executionLogs', componentId, deploymentTrackId, executionId, environmentId] });
   };
 
+  const showContainer = useMemo(() => spansMultipleContainers(logs), [logs]);
+
+  const lines = useMemo(() => logs.map((e) => formatExecutionLogLine(e, showContainer)), [logs, showContainer]);
+
   const filtered = useMemo(() => {
-    if (!filterMode || !search.trim()) return logs;
+    if (!filterMode || !search.trim()) return lines;
     const lower = search.toLowerCase();
-    return logs.filter((e) => {
-      const line = `${e.timestamp} ${e.message}`.toLowerCase();
-      return line.includes(lower);
-    });
-  }, [logs, search, filterMode]);
+    return lines.filter((line) => line.toLowerCase().includes(lower));
+  }, [lines, search, filterMode]);
 
   return (
     <Drawer anchor="right" open={open} onClose={handleClose} variant="temporary" sx={drawerSx}>
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
-        <Typography variant="h5">Latest Logs</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 600 }}>
+          Latest Logs
+        </Typography>
         <IconButton size="small" aria-label="close" onClick={handleClose}>
           <X size={16} />
         </IconButton>
@@ -135,14 +142,11 @@ export default function LogsDrawer({ open, onClose, executionId, componentId, de
           </Box>
         ) : (
           <Box component="pre" sx={{ m: 0, fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            {filtered.map((entry, i) => {
-              const line = entry.timestamp ? `${entry.timestamp} ${entry.message}` : entry.message;
-              return (
-                <Box key={i} component="span" sx={{ display: 'block' }}>
-                  {search && !filterMode ? highlightText(line, search) : line}
-                </Box>
-              );
-            })}
+            {filtered.map((line, i) => (
+              <Box key={i} component="span" sx={{ display: 'block' }}>
+                {search && !filterMode ? highlightText(line, search) : line}
+              </Box>
+            ))}
           </Box>
         )}
       </Box>

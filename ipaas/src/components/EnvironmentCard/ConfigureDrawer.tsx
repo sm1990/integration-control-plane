@@ -28,6 +28,9 @@ import { useGenerateComponentEndpoints, useUpdateEndpoint } from '../../hooks/us
 import { useSaveSchemaConfig, usePostCertificateMappings } from '../../hooks/useConfiguration';
 import { useDeployDeploymentTrack } from '../../hooks/useDeployments';
 import ManageDrawer from './ManageDrawer';
+import ApiSettingsDrawer from '../Overview/integration-as-api/ApiSettingsDrawer';
+import { IS_CLOUD } from '../../features';
+import { toEndpointOptions } from '../../utils/endpoints';
 import { EndpointCard, VISIBILITY_OPTS } from '../EndpointCard';
 import { ConfigForm, type BaseType, type LinkingInfo, type JSONSchema } from '../SchemaConfigForm';
 import ImportConfigTomlButton from '../ImportConfigTomlButton';
@@ -86,12 +89,13 @@ function StepIndicator({ step, steps }: { step: number; steps: string[] }) {
 interface ManageEndpointProps {
   ep: EnvEndpoint;
   componentId: string;
+  projectId: string;
   versionId: string;
   releaseId: string;
   onBack: () => void;
 }
 
-function ManageEndpoint({ ep, componentId, versionId, releaseId, onBack }: ManageEndpointProps) {
+function ManageEndpoint({ ep, componentId, projectId, versionId, releaseId, onBack }: ManageEndpointProps) {
   const [visibilities, setVisibilities] = useState<string[]>(ep.networkVisibilities ?? [ep.visibility ?? 'Public']);
   const [saveError, setSaveError] = useState<string | null>(null);
   const updateEp = useUpdateEndpoint();
@@ -103,7 +107,7 @@ function ManageEndpoint({ ep, componentId, versionId, releaseId, onBack }: Manag
   const handleSave = () => {
     setSaveError(null);
     updateEp.mutate(
-      { componentId, versionId, releaseId, endpointId: ep.id, displayName: ep.displayName, networkVisibilities: visibilities },
+      { componentId, projectId, versionId, releaseId, endpointId: ep.id, displayName: ep.displayName, networkVisibilities: visibilities },
       {
         onSuccess: onBack,
         onError: (err) => setSaveError(err instanceof Error ? err.message : 'Failed to update endpoint'),
@@ -439,7 +443,7 @@ interface AutomationConfigureDrawerProps {
   buildId?: string;
 }
 
-function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envId, actualEnvId, deploymentTrackId, commitHash, orgHandler: _orgHandler, buildId }: AutomationConfigureDrawerProps) {
+function AutomationConfigureDrawer({ open, onClose, onSaved, projectId, componentId, envId, actualEnvId, deploymentTrackId, commitHash, orgHandler: _orgHandler, buildId }: AutomationConfigureDrawerProps) {
   const handleClose = () => {
     (document.activeElement as HTMLElement)?.blur();
     onClose();
@@ -653,10 +657,14 @@ function AutomationConfigureDrawer({ open, onClose, projectId, componentId, envI
           if (buildId) {
             deployTrack
               .mutateAsync({ componentId, id: deploymentTrackId, imageId: buildId, environmentId: actualEnvId, cronTimezone: '' })
-              .then(() => onClose())
+              .then(() => {
+                onClose();
+                onSaved?.();
+              })
               .catch((err: unknown) => setSaveError(err instanceof Error ? err.message : 'Failed to update deployment track'));
           } else {
             onClose();
+            onSaved?.();
           }
         };
 
@@ -834,6 +842,7 @@ export default function ConfigureDrawer(props: ConfigureDrawerProps) {
       <AutomationConfigureDrawer
         open={props.open}
         onClose={props.onClose}
+        onSaved={props.onSaved}
         projectId={props.projectId}
         componentId={props.componentId}
         envId={props.envTemplateId ?? props.envId}
@@ -887,7 +896,7 @@ function GenericServiceConfigureDrawer({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [managingEp, setManagingEp] = useState<EnvEndpoint | null>(null);
   const [manageDrawerOpen, setManageDrawerOpen] = useState(false);
-  const [manageApimId, setManageApimId] = useState<string | null>(null);
+  const [settingsEp, setSettingsEp] = useState<EnvEndpoint | null>(null);
   const seededRef = useRef(false);
   const certSeededRef = useRef(false);
   const queryClient = useQueryClient();
@@ -1139,7 +1148,7 @@ function GenericServiceConfigureDrawer({
   };
 
   const handleSettings = (ep: EnvEndpoint) => {
-    setManageApimId(ep.apimId ?? null);
+    setSettingsEp(ep);
     setManageDrawerOpen(true);
   };
 
@@ -1197,7 +1206,7 @@ function GenericServiceConfigureDrawer({
 
   const renderEndpoints = () => {
     if (managingEp) {
-      return <ManageEndpoint ep={managingEp} componentId={componentId} versionId={versionId} releaseId={releaseId ?? ''} onBack={() => setManagingEp(null)} />;
+      return <ManageEndpoint ep={managingEp} componentId={componentId} projectId={projectId} versionId={versionId} releaseId={releaseId ?? ''} onBack={() => setManagingEp(null)} />;
     }
     if (!endpoints.length) {
       return (
@@ -1280,7 +1289,11 @@ function GenericServiceConfigureDrawer({
         )}
       </Drawer>
 
-      <ManageDrawer open={manageDrawerOpen} onClose={() => setManageDrawerOpen(false)} apimId={manageApimId} />
+      {IS_CLOUD ? (
+        <ApiSettingsDrawer open={manageDrawerOpen} onClose={() => setManageDrawerOpen(false)} componentName={componentId} envName={envId} endpoints={toEndpointOptions(endpoints)} activeEndpointName={settingsEp?.id} />
+      ) : (
+        <ManageDrawer open={manageDrawerOpen} onClose={() => setManageDrawerOpen(false)} apimId={settingsEp?.apimId ?? null} />
+      )}
     </>
   );
 }

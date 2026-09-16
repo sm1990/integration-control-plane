@@ -20,77 +20,71 @@ import { Box, Button, PageContent, Stack, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
 import type { JSX } from 'react';
 import { useAppNavigate } from '../hooks/useAppNavigate';
+import { artSx, descriptionSx, pageSx, textStackSx } from './ComingSoon.styles';
+
+const HEADING = 'Coming Soon';
+
 interface ComingSoonProps {
+  /** Overrides the heading for states that aren't literally "coming soon". */
   title?: string;
   description?: string;
 }
 
-export default function ComingSoon({ title = 'Coming Soon', description = 'This feature is currently under development. Check back soon!' }: ComingSoonProps): JSX.Element {
+export default function ComingSoon({ title = HEADING, description = 'This feature is currently under development. Check back soon!' }: ComingSoonProps): JSX.Element {
   const navigate = useAppNavigate();
 
   return (
-    <PageContent
-      sx={{
-        display: 'flex',
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-      <Stack alignItems="center" gap={3} sx={{ maxWidth: 480, textAlign: 'center' }}>
-        {/* Illustration */}
-        <Box sx={{ position: 'relative', width: 200, height: 160 }}>
-          <svg viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg" width="200" height="160">
-            {/* Background circle */}
-            <circle cx="100" cy="80" r="72" fill="currentColor" fillOpacity="0.06" />
+    <PageContent sx={pageSx}>
+      <Stack alignItems="center" gap={3} sx={textStackSx}>
+        {/* Illustration: the wait itself — a dotted ring drifting round a clock whose second
+            hand sweeps. Sized tight to the art so the text sits close beneath it. */}
+        <Box sx={artSx}>
+          <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="auto" role="img" aria-label="A clock, waiting">
+            {/* Concentric wash */}
+            <circle cx="100" cy="100" r="92" fill="currentColor" fillOpacity="0.04" />
+            <circle cx="100" cy="100" r="74" fill="currentColor" fillOpacity="0.05" />
 
-            {/* Outer ring */}
-            <circle cx="100" cy="80" r="58" stroke="currentColor" strokeOpacity="0.12" strokeWidth="1.5" strokeDasharray="6 4" />
+            {/* Drifting dotted frame */}
+            <circle className="cs-ring" cx="100" cy="100" r="84" stroke="currentColor" strokeOpacity="0.4" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="0.5 7" />
 
-            {/* Clock face */}
-            <circle cx="100" cy="80" r="38" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeOpacity="0.2" strokeWidth="1.5" />
+            {/* Progress track, then the part already elapsed */}
+            <circle cx="100" cy="100" r="66" stroke="currentColor" strokeOpacity="0.09" strokeWidth="7" />
+            <path d="M 100 34 A 66 66 0 0 1 133 157.2" stroke="currentColor" strokeOpacity="0.85" strokeWidth="7" strokeLinecap="round" />
 
-            {/* Clock hour hand */}
-            <line x1="100" y1="80" x2="100" y2="54" stroke="currentColor" strokeOpacity="0.5" strokeWidth="2.5" strokeLinecap="round" />
+            {/* Face */}
+            <circle cx="100" cy="100" r="52" fill="var(--oxygen-palette-background-paper, #fff)" />
 
-            {/* Clock minute hand */}
-            <line x1="100" y1="80" x2="118" y2="72" stroke="currentColor" strokeOpacity="0.5" strokeWidth="2" strokeLinecap="round" />
+            {/* Quarter ticks */}
+            <g stroke="currentColor" strokeOpacity="0.22" strokeWidth="3" strokeLinecap="round">
+              <line x1="100" y1="56" x2="100" y2="64" />
+              <line x1="144" y1="100" x2="136" y2="100" />
+              <line x1="100" y1="144" x2="100" y2="136" />
+              <line x1="56" y1="100" x2="64" y2="100" />
+            </g>
 
-            {/* Clock center dot */}
-            <circle cx="100" cy="80" r="3" fill="currentColor" fillOpacity="0.5" />
+            {/* Hour and minute hands */}
+            <g stroke="var(--oxygen-palette-text-primary, #3c4043)" strokeOpacity="0.8" strokeLinecap="round">
+              <line x1="100" y1="100" x2="100" y2="72" strokeWidth="4" />
+              <line x1="100" y1="100" x2="128" y2="128" strokeWidth="3.5" />
+            </g>
 
-            {/* Clock tick marks */}
-            <line x1="100" y1="44" x2="100" y2="48" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" strokeLinecap="round" />
-            <line x1="100" y1="112" x2="100" y2="116" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" strokeLinecap="round" />
-            <line x1="64" y1="80" x2="68" y2="80" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" strokeLinecap="round" />
-            <line x1="132" y1="80" x2="136" y2="80" stroke="currentColor" strokeOpacity="0.3" strokeWidth="2" strokeLinecap="round" />
+            {/* Sweeping second hand */}
+            <line className="cs-second" x1="100" y1="100" x2="62" y2="78" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
 
-            {/* Loading bar 1 */}
-            <rect x="24" y="130" width="60" height="7" rx="3.5" fill="currentColor" fillOpacity="0.1" />
-            <rect x="24" y="130" width="36" height="7" rx="3.5" fill="currentColor" fillOpacity="0.35" />
-
-            {/* Loading bar 2 */}
-            <rect x="116" y="130" width="60" height="7" rx="3.5" fill="currentColor" fillOpacity="0.1" />
-            <rect x="116" y="130" width="48" height="7" rx="3.5" fill="currentColor" fillOpacity="0.25" />
-
-            {/* Sparkle top-right */}
-            <path d="M158 28 L160 22 L162 28 L168 30 L162 32 L160 38 L158 32 L152 30 Z" fill="currentColor" fillOpacity="0.3" />
-
-            {/* Sparkle top-left */}
-            <path d="M36 20 L37.5 16 L39 20 L43 21.5 L39 23 L37.5 27 L36 23 L32 21.5 Z" fill="currentColor" fillOpacity="0.2" />
+            {/* Spindle */}
+            <circle cx="100" cy="100" r="5" fill="var(--oxygen-palette-background-paper, #fff)" stroke="currentColor" strokeWidth="2.5" />
           </svg>
         </Box>
 
-        {/* Text */}
-        <Stack alignItems="center" gap={1}>
+        <Stack alignItems="center" gap={0.75}>
           <Typography variant="h4" fontWeight={700}>
             {title}
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 360 }}>
+          <Typography variant="body2" color="text.secondary" sx={descriptionSx}>
             {description}
           </Typography>
         </Stack>
 
-        {/* Back button */}
         <Button variant="outlined" startIcon={<ArrowLeft size={16} />} onClick={() => navigate(-1)}>
           Go Back
         </Button>

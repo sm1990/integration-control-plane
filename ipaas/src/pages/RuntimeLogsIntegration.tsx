@@ -23,7 +23,7 @@ import { useOrgs } from '../hooks/useOrg';
 import { useProjectsByOrg } from '../hooks/useProjects';
 import { useComponentByHandler } from '../hooks/useComponents';
 import { useEnvironments, useAllEnvironments } from '../hooks/useEnvironments';
-import { useInfiniteComponentLogs } from '../hooks/useLogs';
+import { useInfiniteComponentLogs, useVisibleLogs } from '../hooks/useLogs';
 import type { ComponentLogsRequest } from '../types/logs';
 import { choreologgingComponentLogsApiUrl, choreologgingComponentGatewayLogsApiUrl } from '../config/runtimeConfig';
 import { GENERIC_SERVICE_TYPES } from '../constants/integrations';
@@ -86,7 +86,7 @@ export default function RuntimeLogsIntegration(scope: ComponentScope): JSX.Eleme
 
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteComponentLogs(logsRequest, autoFetch ? AUTO_FETCH_INTERVAL : false, logsApiUrl);
 
-  const logs = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const logs = useVisibleLogs(data, { levels: levelFilter });
 
   if (loadingOrgs || loadingProjects || loadingComponent || loadingEnvironments) {
     return (

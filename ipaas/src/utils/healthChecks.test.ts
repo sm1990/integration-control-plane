@@ -87,10 +87,9 @@ describe('isProbeFormValid', () => {
     expect(isProbeFormValid({ ...base, httpHeaders: [{ name: 'k', value: 'v' }] })).toBe(true);
   });
 
-  it('validates tcp port and always accepts exec', () => {
+  it('validates tcp port', () => {
     expect(isProbeFormValid({ ...defaultProbeForm(), type: 'tcp', port: '9090' })).toBe(true);
     expect(isProbeFormValid({ ...defaultProbeForm(), type: 'tcp', port: '' })).toBe(false);
-    expect(isProbeFormValid({ ...defaultProbeForm(), type: 'exec', command: [] })).toBe(true);
   });
 });
 
@@ -118,11 +117,25 @@ describe('serializeProbeForWrite', () => {
     expect(w.probe.httpGet?.port).toBe(0);
   });
 
-  it('re-encodes an exec probe command to base64 (API returns it decoded)', () => {
+  it('round-trips an exec probe command unencoded', () => {
     const exec: HCProbe = { type: 'exec', probe: { failureThreshold: 3, initialDelaySeconds: 10, periodSeconds: 30, successThreshold: 1, timeoutSeconds: 10, exec: { command: ['sh', '-c'] } } };
     const w = serializeProbeForWrite(exec) as HCProbe;
     expect(w.type).toBe('exec');
-    expect(w.probe.exec).toEqual({ command: ['c2g=', 'LWM='] });
+    expect(w.probe.exec).toEqual({ command: ['sh', '-c'] });
+  });
+});
+
+describe('isProbeFormValid exec', () => {
+  it('rejects an exec probe with no command', () => {
+    expect(isProbeFormValid({ ...defaultProbeForm(), type: 'exec', command: [] })).toBe(false);
+  });
+
+  it('rejects an exec probe whose only entry is blank', () => {
+    expect(isProbeFormValid({ ...defaultProbeForm(), type: 'exec', command: ['   '] })).toBe(false);
+  });
+
+  it('accepts an exec probe with a command', () => {
+    expect(isProbeFormValid({ ...defaultProbeForm(), type: 'exec', command: ['sh', '-c'] })).toBe(true);
   });
 });
 
@@ -142,10 +155,10 @@ describe('formToProbe', () => {
     expect(p.probe.exec).toEqual({ command: [] });
   });
 
-  it('builds an exec probe, base64-encoding the command', () => {
+  it('builds an exec probe with the command verbatim', () => {
     const p = formToProbe({ ...defaultProbeForm(), type: 'exec', command: ['some', 'one'] });
     expect(p.type).toBe('exec');
-    expect(p.probe.exec).toEqual({ command: ['c29tZQ==', 'b25l'] });
+    expect(p.probe.exec).toEqual({ command: ['some', 'one'] });
     expect(p.probe.httpGet?.port).toBe(0);
     expect(p.probe.tcpSocket).toEqual({ port: 0 });
   });

@@ -205,6 +205,62 @@ describe('corsFromApi', () => {
 });
 
 describe('applyCors', () => {
+  it('drops credentials when all origins are allowed', () => {
+    const value: CorsConfig = {
+      enabled: true,
+      allowAllOrigins: true,
+      origins: [],
+      headers: ['authorization'],
+      methods: ['GET'],
+      allowCredentials: true,
+    };
+    const cors = applyCors(baseApi, value).corsConfiguration!;
+    expect(cors.accessControlAllowOrigins).toEqual(['*']);
+    expect(cors.accessControlAllowCredentials).toBe(false);
+  });
+
+  it('drops credentials when a literal * is typed as an origin', () => {
+    const value: CorsConfig = {
+      enabled: true,
+      allowAllOrigins: false,
+      origins: ['*'],
+      headers: ['authorization'],
+      methods: ['GET'],
+      allowCredentials: true,
+    };
+    const cors = applyCors(baseApi, value).corsConfiguration!;
+    expect(cors.accessControlAllowOrigins).toEqual(['*']);
+    expect(cors.accessControlAllowCredentials).toBe(false);
+  });
+
+  it('collapses a typed wildcard alongside other origins', () => {
+    const value: CorsConfig = {
+      enabled: true,
+      allowAllOrigins: false,
+      origins: ['https://app.example', ' * '],
+      headers: [],
+      methods: [],
+      allowCredentials: true,
+    };
+    const cors = applyCors(baseApi, value).corsConfiguration!;
+    expect(cors.accessControlAllowOrigins).toEqual(['*']);
+    expect(cors.accessControlAllowCredentials).toBe(false);
+  });
+
+  it('keeps credentials when the origins are explicit', () => {
+    const value: CorsConfig = {
+      enabled: true,
+      allowAllOrigins: false,
+      origins: ['https://app.example'],
+      headers: ['authorization'],
+      methods: ['GET'],
+      allowCredentials: true,
+    };
+    const cors = applyCors(baseApi, value).corsConfiguration!;
+    expect(cors.accessControlAllowOrigins).toEqual(['https://app.example']);
+    expect(cors.accessControlAllowCredentials).toBe(true);
+  });
+
   it('produces an empty, disabled CORS configuration when disabled', () => {
     const value: CorsConfig = {
       enabled: false,
@@ -235,7 +291,7 @@ describe('applyCors', () => {
     expect(applyCors(baseApi, value).corsConfiguration).toEqual({
       corsConfigurationEnabled: true,
       accessControlAllowOrigins: ['*'],
-      accessControlAllowCredentials: true,
+      accessControlAllowCredentials: false, // the wildcard wins over the requested credentials
       accessControlAllowHeaders: ['X-Test'],
       accessControlAllowMethods: ['GET'],
     });

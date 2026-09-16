@@ -16,48 +16,65 @@
  * under the License.
  */
 
-import { Alert, Avatar, Box, Button, Card, CardContent, CircularProgress, Grid, IconButton, ListingTable, PageContent, PageTitle, Stack, TablePagination, ToggleButton, ToggleButtonGroup, Typography } from '@wso2/oxygen-ui';
+import { Alert, Avatar, Box, Button, Card, CardContent, CircularProgress, Grid, IconButton, ListingTable, PageContent, PageTitle, Stack, TablePagination, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { Clock, Folder, FolderInput, LayoutGrid, List, Plus, RefreshCw, Settings } from '@wso2/oxygen-ui-icons-react';
 import SearchField from '../components/SearchField';
 import { useLocation } from 'react-router';
 import { useAppNavigate } from '../hooks/useAppNavigate';
 import { useEffect, useState, type JSX } from 'react';
 import { useProjectsByOrg } from '../hooks/useProjects';
+import { useRemovalNotice } from '../hooks/useRemovalNotice';
 import type { Project } from '../types/project';
 import EmptyListing from '../components/EmptyListing';
 import { formatDistanceToNow } from '../utils/time';
+import ExploreMore from '../components/ExploreMore';
 import { newProjectUrl, importProjectUrl, projectSettingsSectionUrl, type OrgScope } from '../nav';
 import { projectHomeUrl } from '../paths';
 import { useAccessControl } from '../contexts/AccessControlContext';
 import { Permissions } from '../constants/permissions';
 import Authorized from '../components/Authorized';
+import * as styles from './Projects.styles';
 import { trackEvent } from '../utils/tracking';
 
 function ProjectCard({ project, onClick, onSettingsClick }: { project: Project; onClick: () => void; onSettingsClick: () => void }) {
+  const deleting = project.deleting === true;
   return (
-    <Card variant="outlined" sx={{ cursor: 'pointer', '&:hover': { boxShadow: 2 } }} onClick={onClick}>
-      <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
-        <Avatar sx={{ bgcolor: 'action.hover', color: 'text.secondary', width: 48, height: 48 }}>{project.name[0].toUpperCase()}</Avatar>
-        <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
-          {project.name}
-        </Typography>
-      </CardContent>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, pb: 2 }}>
-        <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
-          <Clock size={14} />
-          {formatDistanceToNow(project.updatedAt)}
-        </Typography>
-        <IconButton
-          size="small"
-          aria-label={`Settings for ${project.name}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSettingsClick();
-          }}>
-          <Settings size={16} />
-        </IconButton>
-      </Stack>
-    </Card>
+    <Tooltip title={deleting ? 'This project is being deleted' : ''}>
+      <Card variant="outlined" aria-disabled={deleting || undefined} sx={deleting ? styles.cardDeleting : styles.card} onClick={deleting ? undefined : onClick}>
+        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2.5 }}>
+          <Avatar variant="rounded" sx={{ bgcolor: 'action.hover', color: 'text.secondary', width: 48, height: 48, borderRadius: 1 }}>
+            {project.name[0].toUpperCase()}
+          </Avatar>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, flex: 1 }}>
+            {project.name}
+          </Typography>
+        </CardContent>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ px: 2.5, pb: 2 }}>
+          {deleting ? (
+            <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: 'text.secondary' }}>
+              <CircularProgress size={12} color="inherit" />
+              Deleting
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="caption" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: 'text.secondary' }}>
+                <Clock size={14} />
+                {formatDistanceToNow(project.updatedAt)}
+              </Typography>
+              <IconButton
+                size="small"
+                aria-label={`Settings for ${project.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSettingsClick();
+                }}>
+                <Settings size={16} />
+              </IconButton>
+            </>
+          )}
+        </Stack>
+      </Card>
+    </Tooltip>
   );
 }
 
@@ -76,12 +93,16 @@ export default function Projects(scope: OrgScope): JSX.Element {
   useEffect(() => trackEvent('visit-home'), []);
 
   useEffect(() => {
-    const state = location.state as { projectDeleted?: boolean; projectName?: string } | null;
-    if (state?.projectDeleted) {
-      setAlert(state.projectName ? `Project '${state.projectName}' deleted successfully.` : 'Project deleted successfully.');
-      navigate(location.pathname, { replace: true, state: null });
-    }
+    const state = location.state as { projectDeleted?: boolean } | null;
+    if (state?.projectDeleted) navigate(location.pathname, { replace: true, state: null });
   }, [location, navigate]);
+
+  useRemovalNotice(
+    scope.org,
+    projects,
+    (p) => p.name,
+    (name) => setAlert(`Project '${name}' deleted successfully.`),
+  );
 
   if (isLoading) {
     return (
@@ -103,7 +124,7 @@ export default function Projects(scope: OrgScope): JSX.Element {
   const projectsView =
     view === 'list' ? (
       <ListingTable.Container disablePaper>
-        <ListingTable variant="card" density="compact">
+        <ListingTable variant="card" density="compact" sx={{ '& .MuiTableBody-root .MuiTableCell-root': { py: 2 } }}>
           <ListingTable.Head>
             <ListingTable.Row>
               <ListingTable.Cell width={300}>Name</ListingTable.Cell>
@@ -113,39 +134,65 @@ export default function Projects(scope: OrgScope): JSX.Element {
             </ListingTable.Row>
           </ListingTable.Head>
           <ListingTable.Body>
-            {paginated.map((p) => (
-              <ListingTable.Row key={p.id} variant="card" hover clickable onClick={() => navigate(projectHomeUrl(scope.org, p.handler))}>
-                <ListingTable.Cell>
-                  <Stack direction="row" alignItems="center" gap={1.5}>
-                    <Avatar sx={{ width: 32, height: 32, fontSize: 14, bgcolor: 'action.hover', color: 'text.primary' }}>{p.name[0].toUpperCase()}</Avatar>
-                    <Typography variant="body2" fontWeight={600}>
-                      {p.name}
-                    </Typography>
-                  </Stack>
-                </ListingTable.Cell>
-                <ListingTable.Cell>
-                  <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
-                    {p.description || ''}
-                  </Typography>
-                </ListingTable.Cell>
-                <ListingTable.Cell>
-                  <Typography variant="body2" color="text.secondary">
-                    {formatDistanceToNow(p.updatedAt)}
-                  </Typography>
-                </ListingTable.Cell>
-                <ListingTable.Cell>
-                  <IconButton
-                    size="small"
-                    aria-label={`Settings for ${p.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(projectSettingsSectionUrl({ org: scope.org, project: p.handler }, 'project-overview'));
-                    }}>
-                    <Settings size={16} />
-                  </IconButton>
-                </ListingTable.Cell>
-              </ListingTable.Row>
-            ))}
+            {paginated.map((p) => {
+              const deleting = p.deleting === true;
+              return (
+                // followCursor because ListingTable.Row does not forward a ref for the tooltip to anchor to.
+                <Tooltip key={p.id} followCursor title={deleting ? 'This project is being deleted' : ''}>
+                  <ListingTable.Row
+                    variant="card"
+                    hover={!deleting}
+                    clickable={!deleting}
+                    aria-disabled={deleting || undefined}
+                    // The card variant tints its own background on hover; pin both states so a dying row stays inert.
+                    sx={deleting ? { opacity: 0.38, cursor: 'default', backgroundColor: 'background.acrylic', '&:hover': { backgroundColor: 'background.acrylic' } } : undefined}
+                    onClick={deleting ? undefined : () => navigate(projectHomeUrl(scope.org, p.handler))}>
+                    <ListingTable.Cell>
+                      <Stack direction="row" alignItems="center" gap={1.5}>
+                        <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: 1, fontSize: 14, bgcolor: 'action.hover', color: 'text.primary' }}>
+                          {p.name[0].toUpperCase()}
+                        </Avatar>
+                        <Typography variant="body2" fontWeight={600}>
+                          {p.name}
+                        </Typography>
+                      </Stack>
+                    </ListingTable.Cell>
+                    <ListingTable.Cell>
+                      <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
+                        {p.description || ''}
+                      </Typography>
+                    </ListingTable.Cell>
+                    <ListingTable.Cell>
+                      {!deleting && (
+                        <Typography variant="body2" color="text.secondary">
+                          {formatDistanceToNow(p.updatedAt)}
+                        </Typography>
+                      )}
+                    </ListingTable.Cell>
+                    <ListingTable.Cell>
+                      {deleting ? (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <CircularProgress size={12} color="inherit" />
+                          <Typography variant="caption" color="text.secondary" noWrap>
+                            Deleting
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <IconButton
+                          size="small"
+                          aria-label={`Settings for ${p.name}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(projectSettingsSectionUrl({ org: scope.org, project: p.handler }, 'project-overview'));
+                          }}>
+                          <Settings size={16} />
+                        </IconButton>
+                      )}
+                    </ListingTable.Cell>
+                  </ListingTable.Row>
+                </Tooltip>
+              );
+            })}
           </ListingTable.Body>
         </ListingTable>
       </ListingTable.Container>
@@ -182,7 +229,7 @@ export default function Projects(scope: OrgScope): JSX.Element {
         </PageTitle.Actions>
       </PageTitle>
 
-      <Stack direction="row" gap={1} alignItems="center" sx={{ mb: 3 }}>
+      <Stack direction="row" gap={1} alignItems="center" sx={{ mb: 3, ml: 1 }}>
         <SearchField value={query} onChange={setQuery} placeholder="Search projects" fullWidth />
         <Authorized permissions={Permissions.PROJECT_MANAGE}>
           <Button variant="contained" startIcon={<Plus size={20} />} onClick={() => navigate(newProjectUrl(scope))} sx={{ whiteSpace: 'nowrap' }}>
@@ -229,6 +276,8 @@ export default function Projects(scope: OrgScope): JSX.Element {
           )}
         </>
       )}
+
+      <ExploreMore />
     </PageContent>
   );
 }

@@ -20,6 +20,7 @@ import { Autocomplete, Checkbox, Chip, Collapse, FormControlLabel, Stack, Switch
 import type { ReactNode } from 'react';
 import { CORS_METHOD_OPTIONS, DEFAULT_CORS_HEADERS } from '../../constants/policy';
 import type { CorsConfig } from '../../types/policy';
+import { allowsAllOrigins } from '../../utils/policy';
 
 interface CorsSectionProps {
   value: CorsConfig;
@@ -53,14 +54,16 @@ function TagField({ label, placeholder, options, values, onChange, disabled }: {
  * so it can track dirty state and save the whole API in one PUT.
  */
 export default function CorsSection({ value, onChange, disabled }: CorsSectionProps): ReactNode {
+  const wildcardOrigins = allowsAllOrigins(value);
   return (
     <Stack gap={1.5}>
       <FormControlLabel control={<Switch size="small" checked={value.enabled} onChange={(e) => onChange({ ...value, enabled: e.target.checked })} disabled={disabled} />} label={<Typography variant="body2">Enable CORS</Typography>} />
 
       <Collapse in={value.enabled} unmountOnExit>
         <Stack gap={2} sx={{ pl: 0.5 }}>
+          {/* Ticking allow-all clears credentials in the model, not just in the view. */}
           <FormControlLabel
-            control={<Checkbox size="small" checked={value.allowAllOrigins} onChange={(e) => onChange({ ...value, allowAllOrigins: e.target.checked })} disabled={disabled} />}
+            control={<Checkbox size="small" checked={value.allowAllOrigins} onChange={(e) => onChange({ ...value, allowAllOrigins: e.target.checked, allowCredentials: e.target.checked ? false : value.allowCredentials })} disabled={disabled} />}
             label={<Typography variant="body2">Allow all origins (*)</Typography>}
           />
 
@@ -70,9 +73,14 @@ export default function CorsSection({ value, onChange, disabled }: CorsSectionPr
 
           <TagField label="Access control allow methods" placeholder="Add a method" options={CORS_METHOD_OPTIONS} values={value.methods} onChange={(v) => onChange({ ...value, methods: v })} disabled={disabled} />
 
+          {/* Credentials + a wildcard origin makes the gateway 500 every request, so don't offer it. */}
           <FormControlLabel
-            control={<Checkbox size="small" checked={value.allowCredentials} onChange={(e) => onChange({ ...value, allowCredentials: e.target.checked })} disabled={disabled} />}
-            label={<Typography variant="body2">Allow credentials</Typography>}
+            control={<Checkbox size="small" checked={value.allowCredentials && !wildcardOrigins} onChange={(e) => onChange({ ...value, allowCredentials: e.target.checked })} disabled={disabled || wildcardOrigins} />}
+            label={
+              <Typography variant="body2" color={wildcardOrigins ? 'text.disabled' : undefined}>
+                Allow credentials{wildcardOrigins ? ' — unavailable while all origins are allowed' : ''}
+              </Typography>
+            }
           />
         </Stack>
       </Collapse>

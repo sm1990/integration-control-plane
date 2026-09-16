@@ -16,14 +16,17 @@
  * under the License.
  */
 
-import { Box, Button, CircularProgress, IconButton, ListingTable, TablePagination, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Button, CircularProgress, IconButton, ListingTable, TablePagination, Typography } from '@wso2/oxygen-ui';
 import { CheckCircle2, ChevronRight, XCircle } from '@wso2/oxygen-ui-icons-react';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useTaskExecutions } from '../hooks/useExecutions';
+import { useExecutionConfigs, useTaskExecutions } from '../hooks/useExecutions';
+import { nextCronRunMs } from '../utils/cronUtils';
+import { PENDING_EXPIRY_MS, unclaimedDueTimes } from '../utils/pendingExecutions';
 import type { TaskExecution } from '../types/executions';
 import ExecutionDrawer from './EnvironmentCard/ExecutionDrawer';
 import LogsDrawer from './EnvironmentCard/LogsDrawer';
+import DeploymentNotice from './DeploymentNotice';
 
 interface AutomationExecutionsProps {
   releaseId: string;
@@ -35,6 +38,8 @@ interface AutomationExecutionsProps {
   projectHandler: string;
   componentHandler: string;
   envCritical: boolean;
+  /** Raw `deploymentStatusV2`, so the empty state can explain a card with disabled actions. */
+  deploymentStatusV2?: string | null;
   pendingTriggerTime?: number | null;
   pendingTriggerArgs?: string[] | null;
   onTriggerResolved?: () => void;
@@ -42,6 +47,8 @@ interface AutomationExecutionsProps {
 }
 
 const QUEUED_SENTINEL = '__queued__';
+const SCHEDULED_SENTINEL = `${QUEUED_SENTINEL}scheduled`;
+const CRON_TICK_MS = 1000;
 
 function formatTriggeredAt(unixSeconds: string): string {
   if (!unixSeconds) return '—';
@@ -87,6 +94,12 @@ const QUEUED_EXECUTION: TaskExecution = {
   status: 'Queued',
 };
 
+// Same, for a schedule whose due time has passed but whose job the backend has not reported yet.
+// Keyed by due time, so overlapping runs each get their own row.
+function scheduledRow(dueTime: number): TaskExecution {
+  return { ...QUEUED_EXECUTION, id: `${SCHEDULED_SENTINEL}${dueTime}` };
+}
+
 export default function AutomationExecutions({
   releaseId,
   projectId,
@@ -97,6 +110,7 @@ export default function AutomationExecutions({
   projectHandler,
   componentHandler,
   envCritical,
+  deploymentStatusV2,
   pendingTriggerTime,
   pendingTriggerArgs: _pendingTriggerArgs,
   onTriggerResolved,
@@ -108,13 +122,68 @@ export default function AutomationExecutions({
   const [selectedExecution, setSelectedExecution] = useState<TaskExecution | null>(null);
   const [logsExecution, setLogsExecution] = useState<TaskExecution | null>(null);
 
-  const { data: executions = [], isLoading } = useTaskExecutions(releaseId, componentId, environmentId, projectId);
+  const { data: executions = [], isLoading, isError } = useTaskExecutions(releaseId, componentId, environmentId, projectId);
+  const { data: scheduleConfig } = useExecutionConfigs(componentId, releaseId, environmentId);
+  const cronExpression = scheduleConfig?.cronjobFrequency ?? '';
+  const cronTimezone = scheduleConfig?.cronjobTimezone ?? '';
+
+  // A due time that has passed means a run is owed, so its row shows before the backend reports
+  // it. Held as a list: where overlap is allowed, a schedule firing mid-run owes another run.
+  const [dueRunTimes, setDueRunTimes] = useState<number[]>([]);
+  const [expiryTick, setExpiryTick] = useState(() => Date.now());
+  const awaitedDueRef = useRef<number | null>(null);
+  const unresolvedRef = useRef(false);
+
+  // Under `Forbid` Kubernetes skips a due run rather than overlapping it, so no run is owed
+  // while one is still unresolved. Absent policy means Forbid — the ComponentType's default.
+  const allowConcurrency = scheduleConfig?.cronjobAllowConcurrency ?? false;
+
+  const pendingDueTimes = useMemo(() => unclaimedDueTimes(dueRunTimes, executions, expiryTick), [dueRunTimes, executions, expiryTick]);
+
+  useEffect(() => {
+    unresolvedRef.current = pendingDueTimes.length > 0 || executions.some((e) => isInProgress(e.status, e.completionTime));
+  }, [pendingDueTimes, executions]);
+
+  useEffect(() => {
+    awaitedDueRef.current = null;
+    if (!cronExpression) return;
+    const tick = () => {
+      const next = nextCronRunMs(cronExpression, cronTimezone || undefined);
+      const awaited = awaitedDueRef.current;
+      // `nextCronRunMs` always points at a future minute, so it only moves once the minute it
+      // pointed at has arrived — that move is the fire signal.
+      const skipped = !allowConcurrency && unresolvedRef.current;
+      if (awaited !== null && next !== awaited && Date.now() >= awaited && !skipped) {
+        setDueRunTimes((prev) => (prev.includes(awaited) ? prev : [...prev, awaited]));
+      }
+      awaitedDueRef.current = next;
+    };
+    tick();
+    const timer = setInterval(tick, CRON_TICK_MS);
+    return () => clearInterval(timer);
+  }, [cronExpression, cronTimezone, allowConcurrency]);
+
+  // One timer at the oldest row's expiry, rather than a clock tick that would re-render every second.
+  useEffect(() => {
+    if (pendingDueTimes.length === 0) return;
+    const oldest = Math.min(...pendingDueTimes);
+    const timer = setTimeout(() => setExpiryTick(Date.now()), Math.max(0, oldest + PENDING_EXPIRY_MS - Date.now()) + 250);
+    return () => clearTimeout(timer);
+  }, [pendingDueTimes]);
+
+  // Forget claimed and expired due times so the list cannot grow without bound.
+  useEffect(() => {
+    setDueRunTimes((prev) => {
+      const kept = prev.filter((time) => pendingDueTimes.includes(time));
+      return kept.length === prev.length ? prev : kept;
+    });
+  }, [pendingDueTimes]);
 
   // Only poll while there is something to wait for: a pending trigger, an in-progress execution,
   // or an extended-poll window opened after the 60s sentinel timeout fires.
   const hasInProgress = executions.some((e) => isInProgress(e.status, e.completionTime));
   const [extendPoll, setExtendPoll] = useState(false);
-  const shouldPoll = !!pendingTriggerTime || hasInProgress || extendPoll;
+  const shouldPoll = !!pendingTriggerTime || pendingDueTimes.length > 0 || hasInProgress || extendPoll;
 
   useEffect(() => {
     if (!releaseId || !shouldPoll) return;
@@ -158,7 +227,7 @@ export default function AutomationExecutions({
 
   // Show the queued sentinel row at position 0 while pendingTriggerTime is set and no new exec arrived
   const showQueued = !!pendingTriggerTime && (executions.length === 0 || parseInt(executions[0].startTime, 10) * 1000 < pendingTriggerTime - 5000);
-  const allExecutions = showQueued ? [QUEUED_EXECUTION, ...executions] : executions;
+  const allExecutions = [...pendingDueTimes.map(scheduledRow), ...(showQueued ? [QUEUED_EXECUTION] : []), ...executions];
 
   const maxPage = Math.max(0, Math.ceil(allExecutions.length / rowsPerPage) - 1);
   const safePage = Math.min(page, maxPage);
@@ -172,12 +241,17 @@ export default function AutomationExecutions({
     );
   }
 
-  if (allExecutions.length === 0) {
+  // A failed history fetch is not an empty history — do not let it read as one.
+  if (isError && allExecutions.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-        No execution data available. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
-      </Typography>
+      <Alert severity="error" sx={{ my: 2 }}>
+        Could not load the execution history for this environment. Refresh to try again.
+      </Alert>
     );
+  }
+
+  if (allExecutions.length === 0) {
+    return <DeploymentNotice hasDeployment status={deploymentStatusV2} envCritical={envCritical} />;
   }
 
   return (
@@ -225,7 +299,7 @@ export default function AutomationExecutions({
                     )}
                   </ListingTable.Cell>
                   <ListingTable.Cell>
-                    {e.id !== QUEUED_SENTINEL && (
+                    {!e.id.startsWith(QUEUED_SENTINEL) && (
                       <IconButton size="small" aria-label="View execution details" onClick={() => setSelectedExecution(e)}>
                         <ChevronRight size={16} />
                       </IconButton>
@@ -266,7 +340,7 @@ export default function AutomationExecutions({
         environmentId={environmentId}
       />
 
-      <LogsDrawer open={!!logsExecution} onClose={() => setLogsExecution(null)} executionId={logsExecution?.id ?? ''} componentId={componentId} deploymentTrackId={deploymentTrackId} environmentId={environmentId} />
+      <LogsDrawer open={!!logsExecution} onClose={() => setLogsExecution(null)} executionId={logsExecution?.id ?? ''} componentId={componentId} deploymentTrackId={deploymentTrackId} environmentId={environmentId} run={logsExecution ?? undefined} />
     </Fragment>
   );
 }

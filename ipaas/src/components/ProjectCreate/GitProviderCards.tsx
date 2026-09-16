@@ -22,10 +22,12 @@ import { type JSX, type ReactNode } from 'react';
 import GitLogoIcon from '../../assets/icons/GitLogoIcon';
 import GitLabIcon from '../../assets/icons/GitLabIcon';
 import BitbucketIcon from '../../assets/icons/BitbucketIcon';
+import AzureDevOpsIcon from '../../assets/icons/AzureDevOpsIcon';
 import { GitProvider, type GitCredential } from '../../types/credentials';
 import { credentialsForProvider } from '../../utils/gitCredentials';
 import CredentialSelectCard from '../Import/CredentialSelectCard';
 import { IS_CLOUD } from '../../features';
+import { providerComingSoonLabel } from '../../constants/gitProviders';
 
 interface GitProviderCardsProps {
   onGitHubSelect: () => void;
@@ -68,7 +70,8 @@ function InfoCard({ icon, title, subtitle, onClick, disabled = false }: { icon: 
 }
 
 export default function GitProviderCards({ onGitHubSelect, onPublicSelect, credentials, onCredentialSelect, onCreateCredential }: GitProviderCardsProps): JSX.Element {
-  const credentialsEnabled = !!onCredentialSelect;
+  // Cloud has no credential-based import yet, so those cards stay "coming soon" even when a caller wires a handler.
+  const credentialsEnabled = !!onCredentialSelect && !IS_CLOUD;
   // Cloud only: private GitHub needs the platform GitHub App, so environments
   // without a configured client id can only import public repos.
   const gitHubEnabled = !IS_CLOUD || !!window.API_CONFIG.githubAppClientId;
@@ -111,10 +114,21 @@ export default function GitProviderCards({ onGitHubSelect, onPublicSelect, crede
       )}
 
       {/* Bitbucket */}
-      {credentialsEnabled ? <Box sx={{ flex: 1 }}>{credentialCard(GitProvider.BITBUCKET_CLOUD)}</Box> : comingSoonCard(<BitbucketIcon size={30} />, 'Authorize With Bitbucket', 'Connect a Bitbucket repository', 'Bitbucket integration is coming soon')}
+      {credentialsEnabled ? (
+        <Box sx={{ flex: 1 }}>{credentialCard(GitProvider.BITBUCKET_CLOUD)}</Box>
+      ) : (
+        comingSoonCard(<BitbucketIcon size={30} />, 'Authorize With Bitbucket', 'Connect a Bitbucket repository', providerComingSoonLabel(GitProvider.BITBUCKET_CLOUD))
+      )}
 
       {/* GitLab */}
-      {credentialsEnabled ? <Box sx={{ flex: 1 }}>{credentialCard(GitProvider.GITLAB_SELF_MANAGED)}</Box> : comingSoonCard(<GitLabIcon size={30} />, 'Authorize With GitLab', 'Connect a GitLab repository', 'GitLab integration is coming soon')}
+      {credentialsEnabled ? (
+        <Box sx={{ flex: 1 }}>{credentialCard(GitProvider.GITLAB_SELF_MANAGED)}</Box>
+      ) : (
+        comingSoonCard(<GitLabIcon size={30} />, 'Authorize With GitLab', 'Connect a GitLab repository', providerComingSoonLabel(GitProvider.GITLAB_SELF_MANAGED))
+      )}
+
+      {/* Azure DevOps — no import path yet on any product */}
+      {comingSoonCard(<AzureDevOpsIcon size={30} />, 'Authorize With Azure DevOps', 'Connect an Azure DevOps repository', providerComingSoonLabel(GitProvider.AZURE_DEVOPS))}
 
       {/* Public Git Repository */}
       <Box sx={{ flex: 1 }}>

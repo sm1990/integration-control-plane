@@ -26,6 +26,7 @@ import type {
   CreateComponentInput,
   UpdateComponentInput,
   UpdateAutoDeployInput,
+  UpdateEndpointInput,
   GenerateComponentEndpointsInput,
   ComponentNameAvailability,
   DeleteComponentResult,
@@ -47,6 +48,7 @@ export const createComponent = (_input: CreateComponentInput): Promise<Component
 export const deleteComponent = (_input: { orgHandler: string; componentId: string; projectId: string }): Promise<DeleteComponentResult> => ni('deleteComponent');
 export const updateComponent = (_input: UpdateComponentInput): Promise<Component> => ni('updateComponent');
 export const updateAutoDeployEnabled = (_input: UpdateAutoDeployInput): Promise<{ id: string; autoDeployEnabled: boolean }> => ni('updateAutoDeployEnabled');
+export const updateEndpoint = (_input: UpdateEndpointInput): Promise<object> => ni('updateEndpoint');
 export const generateComponentEndpoints = (_input: GenerateComponentEndpointsInput): Promise<EnvEndpoint[]> => ni('generateComponentEndpoints');
 export const fetchComponentNameAvailability = (_projectId: string, _candidate: string): Promise<ComponentNameAvailability> => ni('fetchComponentNameAvailability');
 export const fetchComponentEndpointSpec = (_componentId: string, _versionId: string, _endpointId: string): Promise<string | null> => ni('fetchComponentEndpointSpec');

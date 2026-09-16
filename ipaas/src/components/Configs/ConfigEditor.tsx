@@ -18,6 +18,7 @@
 
 import { Alert, Box, Button, Checkbox, CircularProgress, FormControlLabel, IconButton, Paper, Stack, TextField, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, Trash2, Upload } from '@wso2/oxygen-ui-icons-react';
+import BusyFields from '../common/BusyFields';
 import { useEffect, useRef, useState, type JSX } from 'react';
 import { useConfigMapDetails, useSaveConfig } from '../../hooks/useDevopsConfigs';
 import { parseDotEnv, validateConfigKey, validateDisplayName, validateMountPath } from '../../utils/devopsConfigs';
@@ -159,7 +160,7 @@ export default function ConfigEditor({ ctx, existing, onBack, onSaved, onError }
         mountPath: kind === 'fileMount' ? mountPath.trim() : undefined,
         existing: existing ? { configId, mountId: existing.mount.ID } : undefined,
       },
-      { onSuccess: () => onSaved(isEdit ? 'Configuration updated.' : 'Configuration created.'), onError: (e) => onError(e instanceof Error ? e.message : 'Failed to save the configuration.') },
+      { onSuccess: () => onSaved(isEdit ? 'Configuration updated' : 'Configuration created'), onError: (e) => onError(e instanceof Error ? e.message : 'Failed to save the configuration.') },
     );
   };
 
@@ -177,104 +178,106 @@ export default function ConfigEditor({ ctx, existing, onBack, onSaved, onError }
         </Alert>
       )}
 
-      <Stack direction="row" gap={2} sx={{ mb: 2 }}>
-        <TypeCard title="Environment Variables" description="Inject a set of environment variables into the container" selected={kind === 'envVars'} disabled={isEdit} onSelect={() => setKind('envVars')} />
-        <TypeCard title="File Mount" description="Mount a file at a specified path in the container" selected={kind === 'fileMount'} disabled={isEdit} onSelect={() => setKind('fileMount')} />
-      </Stack>
-
-      <FormControlLabel control={<Checkbox size="small" checked={isSecret} disabled={isEdit} onChange={(e) => setIsSecret(e.target.checked)} />} label="Mark as a Secret" sx={{ mb: 1 }} />
-      <TextField label="Display Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required error={!!name && !!nameErr} helperText={(!!name && nameErr) || ' '} />
-
-      {kind === 'envVars' ? (
-        <Box>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 3, mb: 2 }}>
-            <Typography sx={{ fontWeight: 600 }}>Environment Variables</Typography>
-            <Button size="small" variant="outlined" startIcon={<Upload size={14} />} onClick={() => envImportRef.current?.click()}>
-              Import from .env file
-            </Button>
-            <input
-              ref={envImportRef}
-              type="file"
-              accept=".env,text/plain"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) importEnvFile(f);
-                e.target.value = '';
-              }}
-            />
-          </Stack>
-          {rows.length > 0 && (
-            <Stack gap={1} sx={{ mb: 1 }}>
-              {rows.map((r, i) => (
-                <Stack key={`${r.key}-${i}`} direction="row" gap={1} alignItems="center">
-                  <TextField size="small" value={r.key} disabled fullWidth sx={{ flex: 1 }} />
-                  <TextField
-                    size="small"
-                    type={isSecret ? 'password' : 'text'}
-                    value={r.value}
-                    placeholder={isSecret ? 'Re-enter value' : ''}
-                    error={isSecret && r.value === ''}
-                    onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, value: e.target.value } : row)))}
-                    fullWidth
-                    sx={{ flex: 1 }}
-                  />
-                  <IconButton size="small" color="error" aria-label={`Remove ${r.key}`} onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}>
-                    <Trash2 size={16} />
-                  </IconButton>
-                </Stack>
-              ))}
-            </Stack>
-          )}
-          <Stack direction="row" gap={1} alignItems="flex-start">
-            <TextField size="small" label="Enter a new key" value={draftKey} onChange={(e) => setDraftKey(e.target.value)} error={!!draftKey && !!draftKeyErr} helperText={(!!draftKey && draftKeyErr) || ' '} sx={{ flex: 1 }} />
-            <TextField size="small" label="Enter a value" type={isSecret ? 'password' : 'text'} value={draftValue} onChange={(e) => setDraftValue(e.target.value)} helperText=" " sx={{ flex: 1 }} />
-            <Button variant="outlined" onClick={addRow} disabled={!draftKey.trim() || !!draftKeyErr} sx={{ mt: 0.25 }}>
-              Add
-            </Button>
-          </Stack>
-        </Box>
-      ) : (
-        <Stack gap={3} sx={{ mt: 2 }}>
-          <TextField
-            label="File Mount path"
-            placeholder="/app/configs/config.json"
-            value={mountPath}
-            onChange={(e) => setMountPath(e.target.value)}
-            fullWidth
-            required
-            error={!!mountPath && !!pathErr}
-            helperText={(!!mountPath && pathErr) || 'The file will be mounted to this path inside the container. Use an absolute path including the filename. Eg. /app/configs/config.json'}
-          />
-          <Box>
-            <Button variant="outlined" startIcon={<Upload size={16} />} onClick={() => fileUploadRef.current?.click()}>
-              Upload File
-            </Button>
-            <input
-              ref={fileUploadRef}
-              type="file"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) uploadFile(f);
-                e.target.value = '';
-              }}
-            />
-          </Box>
-          <TextField
-            label="File Content"
-            value={fileContent}
-            onChange={(e) => setFileContent(e.target.value)}
-            fullWidth
-            multiline
-            minRows={8}
-            required
-            helperText=" "
-            placeholder={isEdit && isSecret ? 'Re-enter the secret file content' : 'Upload a file or type the content here'}
-            sx={{ '& textarea': { fontFamily: 'monospace', fontSize: '0.8125rem' } }}
-          />
+      <BusyFields busy={save.isPending}>
+        <Stack direction="row" gap={2} sx={{ mb: 2 }}>
+          <TypeCard title="Environment Variables" description="Inject a set of environment variables into the container" selected={kind === 'envVars'} disabled={isEdit} onSelect={() => setKind('envVars')} />
+          <TypeCard title="File Mount" description="Mount a file at a specified path in the container" selected={kind === 'fileMount'} disabled={isEdit} onSelect={() => setKind('fileMount')} />
         </Stack>
-      )}
+
+        <FormControlLabel control={<Checkbox size="small" checked={isSecret} disabled={isEdit} onChange={(e) => setIsSecret(e.target.checked)} />} label="Mark as a Secret" sx={{ mb: 1 }} />
+        <TextField label="Display Name" value={name} onChange={(e) => setName(e.target.value)} fullWidth required error={!!name && !!nameErr} helperText={(!!name && nameErr) || ' '} />
+
+        {kind === 'envVars' ? (
+          <Box>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 3, mb: 2 }}>
+              <Typography sx={{ fontWeight: 600 }}>Environment Variables</Typography>
+              <Button size="small" variant="outlined" startIcon={<Upload size={14} />} onClick={() => envImportRef.current?.click()}>
+                Import from .env file
+              </Button>
+              <input
+                ref={envImportRef}
+                type="file"
+                accept=".env,text/plain"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) importEnvFile(f);
+                  e.target.value = '';
+                }}
+              />
+            </Stack>
+            {rows.length > 0 && (
+              <Stack gap={1} sx={{ mb: 1 }}>
+                {rows.map((r, i) => (
+                  <Stack key={`${r.key}-${i}`} direction="row" gap={1} alignItems="center">
+                    <TextField size="small" value={r.key} disabled fullWidth sx={{ flex: 1 }} />
+                    <TextField
+                      size="small"
+                      type={isSecret ? 'password' : 'text'}
+                      value={r.value}
+                      placeholder={isSecret ? 'Re-enter value' : ''}
+                      error={isSecret && r.value === ''}
+                      onChange={(e) => setRows((prev) => prev.map((row, idx) => (idx === i ? { ...row, value: e.target.value } : row)))}
+                      fullWidth
+                      sx={{ flex: 1 }}
+                    />
+                    <IconButton size="small" color="error" aria-label={`Remove ${r.key}`} onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}>
+                      <Trash2 size={16} />
+                    </IconButton>
+                  </Stack>
+                ))}
+              </Stack>
+            )}
+            <Stack direction="row" gap={1} alignItems="flex-start">
+              <TextField size="small" label="Enter a new key" value={draftKey} onChange={(e) => setDraftKey(e.target.value)} error={!!draftKey && !!draftKeyErr} helperText={(!!draftKey && draftKeyErr) || ' '} sx={{ flex: 1 }} />
+              <TextField size="small" label="Enter a value" type={isSecret ? 'password' : 'text'} value={draftValue} onChange={(e) => setDraftValue(e.target.value)} helperText=" " sx={{ flex: 1 }} />
+              <Button variant="outlined" onClick={addRow} disabled={!draftKey.trim() || !!draftKeyErr} sx={{ mt: 0.25 }}>
+                Add
+              </Button>
+            </Stack>
+          </Box>
+        ) : (
+          <Stack gap={3} sx={{ mt: 2 }}>
+            <TextField
+              label="File Mount path"
+              placeholder="/app/configs/config.json"
+              value={mountPath}
+              onChange={(e) => setMountPath(e.target.value)}
+              fullWidth
+              required
+              error={!!mountPath && !!pathErr}
+              helperText={(!!mountPath && pathErr) || 'The file will be mounted to this path inside the container. Use an absolute path including the filename. Eg. /app/configs/config.json'}
+            />
+            <Box>
+              <Button variant="outlined" startIcon={<Upload size={16} />} onClick={() => fileUploadRef.current?.click()}>
+                Upload File
+              </Button>
+              <input
+                ref={fileUploadRef}
+                type="file"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) uploadFile(f);
+                  e.target.value = '';
+                }}
+              />
+            </Box>
+            <TextField
+              label="File Content"
+              value={fileContent}
+              onChange={(e) => setFileContent(e.target.value)}
+              fullWidth
+              multiline
+              minRows={8}
+              required
+              helperText=" "
+              placeholder={isEdit && isSecret ? 'Re-enter the secret file content' : 'Upload a file or type the content here'}
+              sx={{ '& textarea': { fontFamily: 'monospace', fontSize: '0.8125rem' } }}
+            />
+          </Stack>
+        )}
+      </BusyFields>
 
       <Box sx={{ mt: 3 }}>
         <Button variant="contained" onClick={handleSave} disabled={!canSave} startIcon={save.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>

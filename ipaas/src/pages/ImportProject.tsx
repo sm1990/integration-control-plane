@@ -23,6 +23,7 @@ import GitProviderCards from '../components/ProjectCreate/GitProviderCards';
 import GitHubAuthArea from '../components/Import/GitHubAuthArea';
 import { useState, useLayoutEffect, type JSX } from 'react';
 import { useAppNavigate } from '../hooks/useAppNavigate';
+import BusyFields from '../components/common/BusyFields';
 import { useCreateMonoRepoProject } from '../hooks/useProjects';
 import { useCreateComponent } from '../hooks/useComponents';
 import { useOrgs, useOrgComponentLimits, useOrgSubscriptions } from '../hooks/useOrg';
@@ -193,12 +194,15 @@ export default function ImportProject(scope: OrgScope): JSX.Element {
   };
 
   const renderHandlerHelperText = () => {
+    // handlerError first: it is a fault in the value itself (reserved, malformed), which
+    // stands regardless of what the availability call says about uniqueness.
+    if (handlerError) return handlerError;
     if (isCheckingAvailability) return 'Checking availability…';
     if (handlerTaken) {
       const alt = availability?.alternateHandlerCandidate;
       return alt ? `This name is already taken. Try "${alt}" instead.` : handlerTaken;
     }
-    return handlerError ?? 'Auto-generated identifier';
+    return 'Auto-generated identifier';
   };
 
   const orgOptions = userRepos?.map((o) => o.orgName) ?? [];
@@ -390,105 +394,107 @@ export default function ImportProject(scope: OrgScope): JSX.Element {
         </Alert>
       )}
 
-      {/* Source Repository — always visible first */}
-      {!providerSelected ? (
-        <Box sx={{ mb: 4 }}>
-          <GitProviderCards
-            onGitHubSelect={() => {
-              handleProviderSelect('github');
-              startGitHubAuth(refetchRepos);
-            }}
-            onPublicSelect={() => handleProviderSelect('public')}
-            credentials={allCredentials}
-            onCredentialSelect={handleCredentialPicked}
-            onCreateCredential={handleCreateCredential}
-          />
-        </Box>
-      ) : (
-        <Box sx={{ mb: 1 }}>
-          {gitProvider === 'github' && <GitHubAuthArea authStatus={authStatus} isCheckingAuth={isCheckingAuth} isAuthenticated={isAuthenticated} onAuthorize={() => startGitHubAuth(refetchRepos)} onInstall={() => startGitHubAppInstall(refetchRepos)} />}
-          {credentialAuthFailed && (
-            <Alert
-              severity="error"
-              sx={{ mb: 3 }}
-              action={
-                <Button color="inherit" size="small" onClick={resetSource}>
-                  Retry
-                </Button>
-              }>
-              Could not access your {providerLabel} repositories. Re-authorize and try again.
-            </Alert>
-          )}
-          {renderRepoPickers()}
-          {pathReady && !isContentsLoading && !isContentsError && !isWorkspace && (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              No Ballerina workspace detected in the selected directory. Select a directory that contains a Ballerina workspace (a root <code>Ballerina.toml</code> with subdirectories that each have their own <code>Ballerina.toml</code>).
-            </Alert>
-          )}
-        </Box>
-      )}
+      <BusyFields busy={isImporting}>
+        {/* Source Repository — always visible first */}
+        {!providerSelected ? (
+          <Box sx={{ mb: 4 }}>
+            <GitProviderCards
+              onGitHubSelect={() => {
+                handleProviderSelect('github');
+                startGitHubAuth(refetchRepos);
+              }}
+              onPublicSelect={() => handleProviderSelect('public')}
+              credentials={allCredentials}
+              onCredentialSelect={handleCredentialPicked}
+              onCreateCredential={handleCreateCredential}
+            />
+          </Box>
+        ) : (
+          <Box sx={{ mb: 1 }}>
+            {gitProvider === 'github' && <GitHubAuthArea authStatus={authStatus} isCheckingAuth={isCheckingAuth} isAuthenticated={isAuthenticated} onAuthorize={() => startGitHubAuth(refetchRepos)} onInstall={() => startGitHubAppInstall(refetchRepos)} />}
+            {credentialAuthFailed && (
+              <Alert
+                severity="error"
+                sx={{ mb: 3 }}
+                action={
+                  <Button color="inherit" size="small" onClick={resetSource}>
+                    Retry
+                  </Button>
+                }>
+                Could not access your {providerLabel} repositories. Re-authorize and try again.
+              </Alert>
+            )}
+            {renderRepoPickers()}
+            {pathReady && !isContentsLoading && !isContentsError && !isWorkspace && (
+              <Alert severity="info" sx={{ mb: 3 }}>
+                No Ballerina workspace detected in the selected directory. Select a directory that contains a Ballerina workspace (a root <code>Ballerina.toml</code> with subdirectories that each have their own <code>Ballerina.toml</code>).
+              </Alert>
+            )}
+          </Box>
+        )}
 
-      {/* Project Details — shown after workspace detection */}
-      {isWorkspace && (
-        <>
-          <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
-            Project Details
-          </Typography>
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                label="Display Name"
-                required
-                placeholder="Enter Project Name"
-                value={displayName}
-                onChange={(e) => {
-                  setDisplayName(e.target.value);
-                  setSubmitError(null);
-                }}
-                fullWidth
-                error={!!nameError}
-                helperText={nameError ?? 'Name of the project'}
-                slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
-              />
+        {/* Project Details — shown after workspace detection */}
+        {isWorkspace && (
+          <>
+            <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+              Project Details
+            </Typography>
+            <Grid container spacing={3} sx={{ mb: 4 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Display Name"
+                  required
+                  placeholder="Enter Project Name"
+                  value={displayName}
+                  onChange={(e) => {
+                    setDisplayName(e.target.value);
+                    setSubmitError(null);
+                  }}
+                  fullWidth
+                  error={!!nameError}
+                  helperText={nameError ?? 'Name of the project'}
+                  slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  label="Name"
+                  value={effectiveHandler}
+                  onChange={(e) => onHandlerChange(e.target.value)}
+                  fullWidth
+                  disabled={!handlerEdited}
+                  error={!!handlerError || !!handlerTaken}
+                  helperText={renderHandlerHelperText()}
+                  slotProps={{
+                    htmlInput: { 'aria-label': 'Name' },
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          {isCheckingAvailability ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <Tooltip title={handlerEdited ? 'Done' : 'Edit name'} placement="top">
+                              <IconButton size="small" aria-label={handlerEdited ? 'Confirm name' : 'Edit name'} onClick={() => (handlerEdited ? stopEditing() : startEditing())} sx={handlerEdited ? { color: 'success.main' } : { color: 'primary.main' }}>
+                                {handlerEdited ? <Check size={16} /> : <Edit size={16} />}
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField label="Description (Optional)" placeholder="Enter description here" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={1} slotProps={{ htmlInput: { 'aria-label': 'Description' } }} />
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                label="Name"
-                value={effectiveHandler}
-                onChange={(e) => onHandlerChange(e.target.value)}
-                fullWidth
-                disabled={!handlerEdited}
-                error={!!handlerError || !!handlerTaken}
-                helperText={renderHandlerHelperText()}
-                slotProps={{
-                  htmlInput: { 'aria-label': 'Name' },
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        {isCheckingAvailability ? (
-                          <CircularProgress size={16} />
-                        ) : (
-                          <Tooltip title={handlerEdited ? 'Done' : 'Edit name'} placement="top">
-                            <IconButton size="small" aria-label={handlerEdited ? 'Confirm name' : 'Edit name'} onClick={() => (handlerEdited ? stopEditing() : startEditing())} sx={handlerEdited ? { color: 'success.main' } : { color: 'primary.main' }}>
-                              {handlerEdited ? <Check size={16} /> : <Edit size={16} />}
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField label="Description (Optional)" placeholder="Enter description here" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={1} slotProps={{ htmlInput: { 'aria-label': 'Description' } }} />
-            </Grid>
-          </Grid>
-        </>
-      )}
+          </>
+        )}
 
-      {/* Configure Integrations — shown after workspace detection */}
-      {isWorkspace && <WorkspaceModuleTable repoName={activeRepo} repoContents={repoContents} modules={workspaceModules} onChange={setWorkspaceModules} quotaRemaining={quotaRemaining} alertWhenEmpty />}
+        {/* Configure Integrations — shown after workspace detection */}
+        {isWorkspace && <WorkspaceModuleTable repoName={activeRepo} repoContents={repoContents} modules={workspaceModules} onChange={setWorkspaceModules} quotaRemaining={quotaRemaining} alertWhenEmpty />}
+      </BusyFields>
 
       <Stack direction="row" gap={2} sx={{ mt: 2 }}>
         <Button variant="outlined" onClick={() => navigate(orgHomeUrl)} disabled={isImporting}>

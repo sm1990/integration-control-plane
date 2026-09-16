@@ -20,6 +20,7 @@ import { Alert, Box, Button, Chip, CircularProgress, Grid, Stack, Typography } f
 import { RotateCw } from '@wso2/oxygen-ui-icons-react';
 import { type JSX } from 'react';
 import CopyField from './CopyField';
+import { IS_CLOUD } from '../../features';
 import { formatDistanceToNow } from '../../utils/time';
 import type { PaletteColor } from '../../config/statusColors';
 
@@ -73,7 +74,7 @@ export default function RuntimeOverview({ componentName, status, lastDeployedAt,
         <Typography variant="body2" color="text.secondary">
           Last deployed {lastDeployedAt ? formatDistanceToNow(lastDeployedAt) : '—'}
         </Typography>
-        {lastDeployedMessage && (
+        {!IS_CLOUD && lastDeployedMessage && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
             {lastDeployedMessage}
           </Typography>

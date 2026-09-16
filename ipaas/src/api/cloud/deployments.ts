@@ -47,12 +47,17 @@ import type { ComponentDeployment, BuildRun, ReleaseMgtDeployment, DeploymentTra
 import type { EnvEndpoint } from '../../types/component';
 import type { DeployComponentInput } from '../../types/build';
 import { bff, items, q, seg, type ListResponse, type MessageResponse } from './_client';
+import { getEndpointLabel } from '../../utils/endpoints';
+import { toVisibilityLabel } from './_visibility';
 
 // Underscored params (_orgHandler, _orgUuid, _projectId, _versionId) are kept
 // on these signatures for devant contract parity; cloud does not use them.
 
+// Empty 200 body (no deployment yet) → ./_client's request() resolves it as
+// `undefined`, not `null`. React Query treats an `undefined` queryFn result as a
+// bug and errors the query, so coalesce here to the declared `| null` contract.
 export const fetchComponentDeployment = (_orgHandler: string, _orgUuid: string, componentId: string, _versionId: string, environmentId: string): Promise<ComponentDeployment | null> =>
-  bff.get<ComponentDeployment | null>(`/components/${seg(componentId)}/deployments${q({ environmentId })}`);
+  bff.get<ComponentDeployment | null>(`/components/${seg(componentId)}/deployments${q({ environmentId })}`).then((d) => d ?? null);
 
 // Shape of GET /components/{name}/releases/{releaseId}/endpoints (BFF
 // APIResourcesResponse): the workload's endpoints with resolved URLs and the
@@ -74,8 +79,6 @@ interface BffEndpointResources {
   schemaContent?: string;
 }
 
-const VISIBILITY_LABEL: Record<string, string> = { external: 'Public', organization: 'Organization', project: 'Project' };
-
 function buildUrl(u?: BffEndpointURL): string {
   if (!u?.host) return '';
   const scheme = u.scheme || 'https';
@@ -84,22 +87,26 @@ function buildUrl(u?: BffEndpointURL): string {
   return `${scheme}://${u.host}${portSuffix}${path}`;
 }
 
-function toEnvEndpoint(ep: BffEndpointResources, releaseId: string): EnvEndpoint {
-  const networkVisibilities = (ep.visibility ?? []).map((v) => VISIBILITY_LABEL[v] ?? v);
+export function toEnvEndpoint(ep: BffEndpointResources, releaseId: string): EnvEndpoint {
+  const networkVisibilities = (ep.visibility ?? []).map(toVisibilityLabel);
   const publicUrl = buildUrl(ep.urls?.external);
-  const organizationUrl = buildUrl(ep.urls?.internal);
+  const internalUrl = buildUrl(ep.urls?.internal);
+  const organizationUrl = networkVisibilities.length === 0 || networkVisibilities.includes('Organization') ? internalUrl : '';
+  const projectUrl = networkVisibilities.includes('Project') ? internalUrl : '';
   return {
     id: ep.name,
     releaseId,
     environmentId: '',
-    displayName: ep.displayName || ep.name,
+    displayName: getEndpointLabel(ep),
     type: ep.type ?? '',
     port: ep.port ?? null,
     visibility: networkVisibilities[0] ?? '',
     networkVisibilities,
     publicUrl,
     organizationUrl,
-    invokeUrl: publicUrl || organizationUrl,
+    projectUrl,
+    // Not organizationUrl: organization visibility needs to be implemented yet.
+    invokeUrl: publicUrl || internalUrl,
     // The swagger view reads activeEndpoint.apimRevisionId; cloud has no APIM, so
     // carry the base64 OpenAPI here for cloud/apim.ts#fetchApimSwagger to decode.
     apimRevisionId: ep.schemaContent ?? null,

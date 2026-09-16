@@ -17,11 +17,11 @@
  */
 
 import { Button, IconButton, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
-import { Play, RefreshCw, Square } from '@wso2/oxygen-ui-icons-react';
+import { Play, RefreshCw, RotateCw, Square } from '@wso2/oxygen-ui-icons-react';
 import type { JSX } from 'react';
 import type { DeployEnvironmentCardHeaderProps } from '../../../types/deploy';
 
-export default function DeployEnvironmentCardHeader({ envName, showStop, stopDisabled, isStopPending, onStop, showStart, isRedeployPending, onStart, onRefresh, isRefreshing }: DeployEnvironmentCardHeaderProps): JSX.Element {
+export default function DeployEnvironmentCardHeader({ envName, showStop, stopDisabled, isStopPending, onStop, showStart, showRedeploy, isRedeployPending, onStart, onRefresh, isRefreshing }: DeployEnvironmentCardHeaderProps): JSX.Element {
   return (
     <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
       <Stack direction="row" alignItems="center" gap={1} sx={{ flexWrap: 'wrap' }}>
@@ -36,6 +36,15 @@ export default function DeployEnvironmentCardHeader({ envName, showStop, stopDis
             <Button variant="outlined" size="small" color="success" startIcon={<Play size={14} />} disabled={isRedeployPending} onClick={onStart}>
               {isRedeployPending ? 'Restarting…' : 'Start'}
             </Button>
+          </Tooltip>
+        )}
+        {showRedeploy && (
+          <Tooltip title={isRedeployPending ? '' : 'Redeploy'}>
+            <span>
+              <Button variant="outlined" size="small" color="error" startIcon={<RotateCw size={14} />} disabled={isRedeployPending} onClick={onStart}>
+                {isRedeployPending ? 'Redeploying…' : 'Redeploy'}
+              </Button>
+            </span>
           </Tooltip>
         )}
         {showStop && (

@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Box, CircularProgress, PageContent } from '@wso2/oxygen-ui';
+import { Box, PageContent } from '@wso2/oxygen-ui';
 import { Fragment, useEffect, useMemo, useRef, useState, type JSX } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useProject, useProjectByHandler, useProjects } from '../hooks/useProjects';
@@ -30,6 +30,8 @@ import { IS_WIP } from '../features';
 import { useDeploymentStatus } from '../hooks/useDeployments';
 import BusinessInfo from '../components/BusinessInfo';
 import NotFound from '../components/NotFound';
+import IntegrationOverviewSkeleton from '../components/IntegrationOverviewSkeleton';
+import { orgHomeUrl } from '../paths';
 import { ArtifactDetail } from '../components/ArtifactDetail';
 import Environment from '../components/EnvironmentCard';
 import PromoteButton from '../components/EnvironmentCard/PromoteButton';
@@ -73,7 +75,7 @@ export default function Component(scope: ComponentScope): JSX.Element {
   // Stop loading as soon as project is resolved from any source; don't block on retrying queries
   const loadingProject = !project && (isUuid ? loadingById : loadingByHandler || loadingProjects);
   const projectId = project?.id ?? '';
-  const { data: component, isLoading: loadingComponent } = useComponentByHandler(projectId, scope.component);
+  const { data: component, isPending: pendingComponent } = useComponentByHandler(projectId, scope.component);
   const { data: environments = [] } = useEnvironments(scope.org, projectId);
   const { data: repository = null, isLoading: loadingRepository } = useComponentRepository(projectId, scope.component);
   const { data: commits = [], isLoading: loadingCommits } = useCommitHistory(component?.id ?? '', repository?.branch ?? '');
@@ -122,13 +124,9 @@ export default function Component(scope: ComponentScope): JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [component?.id]);
 
-  const isLoading = loadingProject || loadingComponent;
-  if (isLoading)
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 120px)' }}>
-        <CircularProgress color="primary" />
-      </Box>
-    );
+  // A disabled query reports isLoading false; isPending stays true until the project resolves too.
+  if (loadingProject || (projectId && pendingComponent)) return <IntegrationOverviewSkeleton />;
+  if (!project) return <NotFound message="Project not found" backTo={orgHomeUrl(scope.org)} backLabel="Back to Projects" />;
   if (!component) return <NotFound message="Component not found" backTo={resourceUrl(broaden(scope)!, 'overview')} backLabel="Back to Project" />;
 
   const displayType = component.displayType ?? '';

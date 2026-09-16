@@ -36,7 +36,7 @@
 import type { AlertComponentType } from '../constants/alerts';
 import type { AlertHistoryResponse, AlertRule, AlertRuleCountUsage } from '../types/alerts';
 import type { ApimApiInfo, GeneratedTestKey, DeploySettingsV2Payload, LifecycleState, LifecycleHistory, MarketplaceService } from '../types/apim';
-import type { ApiExposure, ApiKeyAuthOptions, ApiKeyResult, ApiKeySummary, Consumer, CreateApiKeyInput, CreateConsumerInput, EndpointRef, SecurityConfig, ConsumerCredential } from '../types/consumers';
+import type { ApiExposure, ApiKeyAuthOptions, ApiKeyResult, ApiKeySummary, Consumer, CreateApiKeyInput, CreateConsumerInput, EndpointPolicyConfig, EndpointRef, SecurityConfig, ConsumerCredential } from '../types/consumers';
 import type { ArtifactType, Artifact, ArtifactParam, ArtifactStatusInput, ListenerStateInput, ArtifactToggleStatusInput, ArtifactToggleKind, TriggerTaskInput } from '../types/artifact';
 import type {
   User,
@@ -76,6 +76,7 @@ import type {
   CreateComponentInput,
   UpdateComponentInput,
   UpdateAutoDeployInput,
+  UpdateEndpointInput,
   GenerateComponentEndpointsInput,
   ComponentNameAvailability,
   DeleteComponentResult,
@@ -116,7 +117,7 @@ import type { Cluster, PdpManagerPdp } from '../types/dataPlanes';
 import type { ClusterPod as RuntimeClusterPod, PodEvent as RuntimePodEvent, PodLogOptions as RuntimePodLogOptions, RuntimeMetrics, RuntimeReleaseDetails } from '../types/runtime';
 import type { CreateGitCredentialInput, CredentialDeleteEligibility, GitCredential } from '../types/credentials';
 import type { Environment, CloudDataPlane, EnvironmentInput, EnvironmentTemplate, CreateEnvironmentData, EnvDeletionEligibility } from '../types/environment';
-import type { ExecutionConfigs, TaskExecution, ExecutionLogEntry, ExecutionArgument, UpdateJobConfigsInput, TriggerComponentInput, TriggerRunResult, RuntimeArgument } from '../types/executions';
+import type { StopScheduleInput, ExecutionConfigs, TaskExecution, ExecutionLogEntry, ExecutionLogWindow, ExecutionArgument, UpdateJobConfigsInput, TriggerComponentInput, TriggerRunResult, RuntimeArgument } from '../types/executions';
 import type { SubscriptionList, ComponentLimits } from '../types/subscription';
 import type { ConfigGroup, ConfigGroupNameAvailability, ConfigGroupUsage, CreateConfigGroupRequest, EditConfigGroupRequest } from '../types/configGroups';
 import type { Certificate, CreateCertificateInput } from '../types/certificates';
@@ -265,6 +266,10 @@ export interface ConsumersApi {
   /** Set the single active auth mode (none/api-key/jwt); the BFF clears the other + redeploys. */
   setEndpointSecurity(ref: EndpointRef, cfg: SecurityConfig): Promise<SecurityConfig>;
 
+  // Endpoint policies — CORS and rate limiting, written independently of the auth mode above.
+  getEndpointPolicies(ref: EndpointRef): Promise<EndpointPolicyConfig>;
+  setEndpointPolicies(ref: EndpointRef, cfg: EndpointPolicyConfig): Promise<EndpointPolicyConfig>;
+
   // Consumers — a consumer application holding an api-key on the exposed endpoint (no
   // subscription-token flow; the BFF implements /applications but no /subscriptions).
   /** One row per consumer application of the API exposed for `ref`, revoked ones included. */
@@ -359,6 +364,8 @@ export interface BuildsApi {
 export interface CloudEditorApi {
   getOrCreateSampleRegistry(orgUuid: string): Promise<ContainerRegistry>;
   callCreateCodeServer(params: { userId: string; organizationId: string; projectId: string; componentId: string; orgHandle: string; imageUrl: string; registryId: string; sourceCommitHash?: string }): Promise<CodeServerInstance>;
+  /** One reading of an existing editor; null when none exists yet. Used to wait for readiness after the address is known. */
+  getCodeServer(params: { userId: string; projectId: string; componentId: string }): Promise<CodeServerInstance | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -373,6 +380,7 @@ export interface ComponentsApi {
   deleteComponent(input: { orgHandler: string; componentId: string; projectId: string }): Promise<DeleteComponentResult>;
   updateComponent(input: UpdateComponentInput): Promise<Component>;
   updateAutoDeployEnabled(input: UpdateAutoDeployInput): Promise<{ id: string; autoDeployEnabled: boolean }>;
+  updateEndpoint(input: UpdateEndpointInput): Promise<object>;
   generateComponentEndpoints(input: GenerateComponentEndpointsInput): Promise<EnvEndpoint[]>;
   fetchComponentNameAvailability(projectId: string, componentNameCandidate: string): Promise<ComponentNameAvailability>;
   fetchComponentEndpointSpec(componentId: string, versionId: string, endpointId: string): Promise<string | null>;
@@ -570,10 +578,10 @@ export interface DevopsConfigsApi {
 }
 
 export interface HealthChecksApi {
-  getHealthChecks(orgUuid: string, projectId: string, componentId: string, releaseId: string): Promise<HealthCheck[]>;
-  createHealthCheck(orgUuid: string, projectId: string, componentId: string, releaseId: string, containerId: string, data: HealthCheckWriteData): Promise<HealthCheck>;
-  updateHealthCheck(orgUuid: string, projectId: string, componentId: string, releaseId: string, containerId: string, healthCheckId: string, data: HealthCheckWriteData): Promise<HealthCheck>;
-  deleteHealthCheck(orgUuid: string, projectId: string, componentId: string, releaseId: string, containerId: string, healthCheckId: string): Promise<void>;
+  getHealthChecks(orgUuid: string, projectId: string, componentId: string, releaseId: string, environmentId: string): Promise<HealthCheck[]>;
+  createHealthCheck(orgUuid: string, projectId: string, componentId: string, releaseId: string, environmentId: string, containerId: string, data: HealthCheckWriteData): Promise<HealthCheck>;
+  updateHealthCheck(orgUuid: string, projectId: string, componentId: string, releaseId: string, environmentId: string, containerId: string, healthCheckId: string, data: HealthCheckWriteData): Promise<HealthCheck>;
+  deleteHealthCheck(orgUuid: string, projectId: string, componentId: string, releaseId: string, environmentId: string, containerId: string, healthCheckId: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -612,9 +620,17 @@ export interface ExecutionsApi {
   fetchTaskExecutions(releaseId: string): Promise<TaskExecution[]>;
   fetchRuntimeArguments(componentId: string, deploymentTrackId: string, commitHash: string): Promise<RuntimeArgument[]>;
   fetchExecutionArguments(runId: string, componentId: string, releaseId: string): Promise<ExecutionArgument[]>;
-  fetchExecutionLogs(componentId: string, deploymentTrackId: string, executionId: string, environmentId: string): Promise<ExecutionLogEntry[]>;
+  /**
+   * `run` carries the execution's bounds for backends that cannot filter logs
+   * by run — cloud queries the observability proxy, whose log search scope
+   * reaches only component + environment. Optional because backends addressing
+   * a run directly have no use for it.
+   */
+  fetchExecutionLogs(componentId: string, deploymentTrackId: string, executionId: string, environmentId: string, run?: ExecutionLogWindow): Promise<ExecutionLogEntry[]>;
   fetchTaskExecutionCount(releaseId: string): Promise<number | null>;
   updateJobConfigs(input: UpdateJobConfigsInput): Promise<boolean>;
+  /** Stops the CronJob's schedule. Cloud leaves the deployment untouched; wip clears the cron via its stop mutation. */
+  stopSchedule(input: StopScheduleInput): Promise<void>;
   triggerTask(input: TriggerTaskInput): Promise<{ status: string; message: string; successCount: number; failedCount: number; details: string[] }>;
   triggerComponentRun(input: TriggerComponentInput): Promise<TriggerRunResult>;
 }

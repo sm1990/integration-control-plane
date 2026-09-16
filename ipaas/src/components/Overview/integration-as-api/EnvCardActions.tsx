@@ -24,6 +24,7 @@ import { useAppNavigate } from '../../../hooks/useAppNavigate';
 import { useRedeployDeployment, useStopDeployment } from '../../../hooks/useDeployments';
 import { IS_CLOUD } from '../../../features';
 import type { EnvCardActionsProps } from '../../../types/integration';
+import { isDeploymentHealthy } from '../../../utils/deploymentStatus';
 import ServiceLogsDrawer from './ServiceLogsDrawer';
 
 /**
@@ -58,6 +59,8 @@ export default function EnvCardActions({
   const hasError = deploymentStatusV2 === 'ERROR';
   const isInProgress = deploymentStatusV2 === 'IN_PROGRESS';
   const buildDisabled = !!isBuildInProgress && !hasDeployment;
+  // Testing sends a live request, so only a running workload qualifies.
+  const canTest = isDeploymentHealthy(deploymentStatusV2);
 
   const handleStop = () => {
     stopMutation.mutate(
@@ -94,7 +97,7 @@ export default function EnvCardActions({
           size="small"
           startIcon={<FlaskConical size={14} />}
           onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/test/console`)}
-          disabled={buildDisabled || isInProgress}
+          disabled={buildDisabled || !canTest}
           sx={{ textTransform: 'none' }}>
           Test
         </Button>

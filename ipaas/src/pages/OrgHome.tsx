@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { useParams } from 'react-router';
 import { useAppNavigate } from '../hooks/useAppNavigate';
+import { useAuth } from '../auth/AuthContext';
 // ButtonBase, Stack (below) and ArrowRight, Settings, Users (icons) are only used by the
 // persona-selection step, which is commented out below — restore these imports alongside it.
 import { Alert, Box, Button, Card, CardContent, CircularProgress, FormControl, MenuItem, Select, Typography } from '@wso2/oxygen-ui';
@@ -28,10 +29,11 @@ import { useCreateDefaultProject, useFetchProjectsByOrgId, useInitOrg } from '..
 import { useCreateProject } from '../hooks/useProjects';
 import { fetchProjects as fetchProjectsApi } from '#api/projects';
 import { projectHomeUrl } from '../paths';
+import { newComponentUrl } from '../nav';
 import { IS_CLOUD } from '../features';
+import { DEFAULT_PROJECT_HANDLER } from '../constants/project';
 import Projects from './Projects';
 
-const PERSONA_KEY = 'persona';
 const REGION_KEY = 'region';
 
 // Disabled along with the persona-selection step below — we aren't saving this anywhere yet.
@@ -54,8 +56,6 @@ const REGIONS = [
   { value: 'US', label: '🇺🇸 US' },
   { value: 'EU', label: '🇪🇺 EU' },
 ];
-
-const DEFAULT_PROJECT_HANDLER = 'default';
 
 function OnboardingShell({ children }: { children: React.ReactNode }) {
   return (
@@ -82,8 +82,17 @@ function OnboardingShell({ children }: { children: React.ReactNode }) {
 export default function OrgHome(): JSX.Element {
   const { orgHandler } = useParams<{ orgHandler: string }>();
   const navigate = useAppNavigate();
+  const { userId } = useAuth();
 
-  const [step, setStep] = useState<'checking' | 'persona' | 'region' | 'provisioning-error' | 'done'>(() => (localStorage.getItem(PERSONA_KEY) ? 'done' : 'checking'));
+  // Unscoped, a second org — or a second user on this browser — read as already-onboarded.
+  const onboardedKey = `persona:${userId}:${orgHandler ?? ''}`;
+  const [step, setStep] = useState<'checking' | 'persona' | 'region' | 'provisioning-error' | 'done'>(() => (localStorage.getItem(onboardedKey) ? 'done' : 'checking'));
+
+  // The route reuses this component across orgs, so a switch must re-check against the new key
+  // rather than keep the previous org's 'done'.
+  useEffect(() => {
+    setStep(localStorage.getItem(onboardedKey) ? 'done' : 'checking');
+  }, [onboardedKey]);
   // setPersona is unused while the persona-selection step below is commented out — restore it there.
   const [persona] = useState<string>('developer');
   const [region, setRegion] = useState<string>('US');
@@ -118,15 +127,18 @@ export default function OrgHome(): JSX.Element {
           const usable = projects.filter((p) => p.handler);
           if (usable.length > 0) {
             const recent = usable.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-            localStorage.setItem(PERSONA_KEY, 'developer');
+            localStorage.setItem(onboardedKey, 'developer');
             navigate(projectHomeUrl(orgHandler!, recent.handler), { replace: true });
             return undefined;
           }
           // Cloud has no region-scoped data planes, so region selection doesn't apply here —
           // provision the default project directly instead of showing that step.
           return createCloudProjectMutation.mutateAsync({ name: 'Default', handler: DEFAULT_PROJECT_HANDLER, description: '', orgHandler: orgHandler! }).then(() => {
-            localStorage.setItem(PERSONA_KEY, 'developer');
-            navigate(projectHomeUrl(orgHandler!, DEFAULT_PROJECT_HANDLER), { replace: true });
+            localStorage.setItem(onboardedKey, 'developer');
+            // freshDefaultProject tells AppLayout it can hide the left nav immediately, without
+            // waiting on the components/projects queries — we already know this project is empty
+            // and the org has no other projects, since we just created it.
+            navigate(newComponentUrl({ org: orgHandler!, project: DEFAULT_PROJECT_HANDLER }), { replace: true });
           });
         })
         .catch((err) => {
@@ -140,7 +152,7 @@ export default function OrgHome(): JSX.Element {
     fetchProjects(orgNumericId)
       .then((projects) => {
         if (projects.some((p) => p.handler)) {
-          localStorage.setItem(PERSONA_KEY, 'developer');
+          localStorage.setItem(onboardedKey, 'developer');
           setStep('done');
         } else {
           // Persona selection is disabled (see the commented-out step below) — go straight to region.
@@ -213,9 +225,12 @@ export default function OrgHome(): JSX.Element {
         }
 
         // Only mark onboarding complete and navigate on success
-        localStorage.setItem(PERSONA_KEY, persona);
+        localStorage.setItem(onboardedKey, persona);
         localStorage.setItem(REGION_KEY, region);
-        navigate(projectHomeUrl(orgHandler!, DEFAULT_PROJECT_HANDLER), { replace: true });
+        // freshDefaultProject tells AppLayout it can hide the left nav immediately, without
+        // waiting on the components/projects queries — we already know this project is empty and
+        // the org has no other projects, since we just created it.
+        navigate(newComponentUrl({ org: orgHandler!, project: DEFAULT_PROJECT_HANDLER }), { replace: true });
       } catch (err) {
         setSubmitError(err instanceof Error ? err.message : 'Setup failed. Please try again.');
         setIsSubmitting(false);

@@ -32,10 +32,9 @@ export const BALLERINA_CENTRAL_TOKEN_INSTRUCTIONS = {
 };
 
 export const BALLERINA_CENTRAL_TOKEN_PANEL_COPY = {
-  heading: 'Ballerina Central access token',
+  heading: 'Configure Ballerina Central access',
   optionalTag: 'Optional',
-  warningPrefix:
-    "Required only if this repository uses private packages and the build will fail without a token in that case. If it does not apply to you, please ignore this. You can also add a token later by going to Settings > Package Registries from your organization's home view.",
+  infoMessage: "Once configured, this token is applied automatically to all future builds in this organization, so you won't need to set it up again. You can update it anytime from Settings > Package Registries in your organization's home view.",
   accessTokenLabel: 'Access token',
   tokenPlaceholder: 'Paste your token here',
   saveLabel: 'Save token',

@@ -103,6 +103,41 @@ export interface SecurityConfig {
   publicUrl?: string;
 }
 
+/** The non-auth gateway behaviour of an exposed endpoint API (GET/PUT `.../policies`). */
+export interface EndpointPolicyConfig {
+  cors?: EndpointCorsPolicy;
+  rateLimit?: EndpointRateLimitPolicy;
+  /** Routes the exposed API has — what a per-operation limit attaches to. Read-only: ignored on PUT. */
+  operations?: EndpointPolicyOperation[];
+}
+
+export interface EndpointPolicyOperation {
+  /** `"<METHOD> <path>"` — the identity `EndpointRateLimitPolicy.operations` is keyed by. */
+  key: string;
+  method: string;
+  path: string;
+}
+
+export interface EndpointCorsPolicy {
+  enabled: boolean;
+  /** Exact origins, a wildcard subdomain, or `['*']` for any. */
+  allowOrigins?: string[];
+  allowMethods?: string[];
+  allowHeaders?: string[];
+  allowCredentials: boolean;
+}
+
+/** `api` = one allowance for the whole API; `resource` = one per operation. */
+export type EndpointRateLimitLevel = 'unlimited' | 'api' | 'resource';
+
+export interface EndpointRateLimitPolicy {
+  level: EndpointRateLimitLevel;
+  requestCount?: number;
+  timeUnit?: 'MINUTE' | 'HOUR' | 'DAY';
+  /** Per-operation limits, keyed by `"<METHOD> <path>"`. Absent operations stay unlimited. */
+  operations?: Record<string, { requestCount: number; timeUnit: 'MINUTE' | 'HOUR' | 'DAY' }>;
+}
+
 /** Normalised from the credential's raw status. A revoked consumer keeps its row. */
 export type ConsumerStatus = 'active' | 'revoked';
 

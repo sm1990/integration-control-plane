@@ -31,10 +31,6 @@ import type { LogsRequest, ComponentLogsRequest, LogRow } from '../../types/logs
 
 const LOGS_QUERY_PATH = '/wso2cloud-obs/api/v1/logs/query';
 
-// Levels the proxy indexes; sent when the caller does not filter, since the
-// proxy treats an empty logLevels list as "match nothing".
-export const DEFAULT_LOG_LEVELS = ['INFO', 'DEBUG', 'ERROR', 'WARN'];
-
 // Scope fields are independent label filters — any subset narrows the query
 // (e.g. build logs filter on workflowRunName alone).
 export interface ObsLogsScope {
@@ -44,22 +40,46 @@ export interface ObsLogsScope {
   workflowRunName?: string;
 }
 
+// The proxy's logLevels filter matches a level parsed out of the log line, not
+// the level the response carries — unlabelled stdout comes back as INFO yet
+// matches no level. Any value for it therefore hides plain container output,
+// which for a cron task is its entire output. Level filtering belongs on the
+// returned rows, matched against the level actually displayed, so this query
+// deliberately cannot narrow by level.
 export interface ObsLogsQuery {
   searchScope: ObsLogsScope;
   startTime: string;
   endTime: string;
   limit: number;
   sortOrder: 'asc' | 'desc';
-  logLevels: string[];
   searchPhrase: string;
 }
 
-// Proxy log entry: timestamp/level/log plus whatever extended metadata fields
-// the ingestion pipeline attached (same names as LogRow).
-interface ObsLogEntry extends Partial<Omit<LogRow, 'timestamp' | 'level' | 'logLine'>> {
+// Kubernetes provenance the observer attaches to every component log entry.
+// podName is the only handle on which workload produced a line: the log search
+// scope stops at component + environment, so anything finer — a single cron
+// run, say — has to be resolved from here.
+export interface ObsLogMetadata {
+  componentName?: string;
+  projectName?: string;
+  environmentName?: string;
+  namespaceName?: string;
+  componentUid?: string;
+  projectUid?: string;
+  environmentUid?: string;
+  containerName?: string;
+  podName?: string;
+  podNamespace?: string;
+}
+
+// Proxy log entry: timestamp/level/log, the nested Kubernetes metadata block,
+// plus whatever extended metadata fields the ingestion pipeline attached (same
+// names as LogRow).
+export interface ObsLogEntry extends Partial<Omit<LogRow, 'timestamp' | 'level' | 'logLine' | 'componentName' | 'containerName' | 'podName'>> {
   timestamp?: string;
   level?: string;
   log?: string;
+  metadata?: ObsLogMetadata;
 }
 
 // LogRow has non-optional metadata fields the proxy may omit; fill explicit
@@ -83,25 +103,32 @@ const toLogRow = (e: ObsLogEntry): LogRow => ({
   componentVersionId: e.componentVersionId ?? '',
   gatewayCode: e.gatewayCode ?? null,
   statusCode: e.statusCode ?? null,
+  // Provenance lives only in the nested metadata block; there is no top-level copy.
+  componentName: e.metadata?.componentName ?? null,
+  containerName: e.metadata?.containerName ?? null,
+  podName: e.metadata?.podName ?? null,
 });
 
-export async function queryObsLogs(query: ObsLogsQuery): Promise<LogRow[]> {
-  const body: ObsLogsQuery = {
-    ...query,
-    logLevels: query.logLevels.length > 0 ? query.logLevels : DEFAULT_LOG_LEVELS,
-  };
-  const json = await obsClient.post<{ logs?: ObsLogEntry[] }>(LOGS_QUERY_PATH, body);
-  return (json?.logs ?? []).map(toLogRow);
+// Raw entries, metadata intact. LogRow keeps only a flattened subset of the
+// Kubernetes block, so callers needing the whole of it read the query here.
+export async function queryObsLogEntries(query: ObsLogsQuery): Promise<ObsLogEntry[]> {
+  const json = await obsClient.post<{ logs?: ObsLogEntry[] }>(LOGS_QUERY_PATH, query);
+  return json?.logs ?? [];
 }
 
-// Runtime-log queries must carry the owning project, but ComponentLogsRequest
-// has no project field. The BFF surfaces it as WorkflowRun metadata
-// (build.projectName), so resolve it from the component's latest build and
-// memoize — runtime logs poll on an interval and the value is stable per
+export async function queryObsLogs(query: ObsLogsQuery): Promise<LogRow[]> {
+  const entries = await queryObsLogEntries(query);
+  return entries.map(toLogRow);
+}
+
+// Component-scoped log queries must carry the owning project, but the console
+// addresses components by id alone. The BFF surfaces the project as WorkflowRun
+// metadata (build.projectName), so resolve it from the component's latest build
+// and memoize — runtime logs poll on an interval and the value is stable per
 // component.
 const projectByComponent = new Map<string, Promise<string | undefined>>();
 
-async function resolveProject(componentId: string): Promise<string | undefined> {
+export async function resolveComponentProject(componentId: string): Promise<string | undefined> {
   let pending = projectByComponent.get(componentId);
   if (!pending) {
     pending = bff
@@ -130,18 +157,16 @@ export function fetchLogs(req: LogsRequest, _logsApiUrl: string): Promise<LogRow
     endTime: req.endTime,
     limit: req.limit,
     sortOrder: req.sort,
-    logLevels: req.logLevels,
     searchPhrase: req.searchPhrase,
   });
 }
 
 export async function fetchComponentLogs(req: ComponentLogsRequest, _logsApiUrl: string): Promise<LogRow[]> {
-  // ComponentLogsRequest carries no project field, but the proxy requires it;
-  // resolve the owning project from the component's builds.
-  const project = await resolveProject(req.componentId);
+  const project = await resolveComponentProject(req.componentId);
+  if (!project) return [];
   return queryObsLogs({
     searchScope: {
-      ...(project ? { project } : {}),
+      project,
       component: req.componentId,
       environment: req.environmentId.toLowerCase(),
     },
@@ -149,7 +174,6 @@ export async function fetchComponentLogs(req: ComponentLogsRequest, _logsApiUrl:
     endTime: req.endTime,
     limit: req.limit,
     sortOrder: req.sort,
-    logLevels: req.logLevels,
     searchPhrase: req.searchPhrase,
   });
 }

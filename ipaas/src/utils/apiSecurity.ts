@@ -16,6 +16,8 @@
  * under the License.
  */
 
+import { httpStatusOf } from './apiErrors';
+
 /** Helpers for the cloud API security & consumption surface. */
 
 /** `Error.name` marking a message that is already written for the user. */
@@ -48,7 +50,7 @@ export function friendlyApiError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.name === USER_FACING_ERROR) return error.message;
 
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  const status = Number(/^HTTP (\d{3})/.exec(raw)?.[1]);
+  const status = httpStatusOf(error);
 
   switch (status) {
     case 400:
@@ -71,4 +73,21 @@ export function friendlyApiError(error: unknown, fallback: string): string {
   // fetch() rejects with a TypeError before any status exists.
   if (/failed to fetch|networkerror|load failed/i.test(raw)) return 'Could not reach the server. Check your connection and try again.';
   return fallback;
+}
+
+/**
+ * The notice an endpoint drawer shows when its configuration cannot be read. 409 (not exposed as
+ * an API yet) and 503 (not configured in this environment) are states rather than failures, so
+ * each gets copy saying what to do; anything else falls back to `friendlyApiError`.
+ */
+export function endpointLoadNotice(error: unknown, copy: { notExposed: string; unavailable: string; readFailed: string }): { text: string; severity: 'info' | 'warning' } | null {
+  if (!error) return null;
+  switch (httpStatusOf(error)) {
+    case 409:
+      return { text: copy.notExposed, severity: 'info' };
+    case 503:
+      return { text: copy.unavailable, severity: 'warning' };
+    default:
+      return { text: friendlyApiError(error, copy.readFailed), severity: 'warning' };
+  }
 }

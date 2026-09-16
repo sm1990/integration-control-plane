@@ -31,7 +31,7 @@ export function validateProjectHandler(handler: string): string | null {
   if (handler.length > PROJECT_HANDLER_MAX_LENGTH) return `Maximum ${PROJECT_HANDLER_MAX_LENGTH} characters allowed.`;
   if (!PROJECT_HANDLER_CHARS_REGEX.test(handler)) return 'Only lowercase letters, numbers, and hyphens allowed.';
   if (handler.length >= 2 && !PROJECT_HANDLER_FULL_REGEX.test(handler)) return 'Must start and end with a letter or number.';
-  if (DENIED_HANDLERS.has(handler)) return 'This name is reserved. Please choose a different one.';
+  if (DENIED_HANDLERS.has(handler)) return `"${handler}" is a reserved name in the console. Please choose a different one.`;
   return null;
 }
 

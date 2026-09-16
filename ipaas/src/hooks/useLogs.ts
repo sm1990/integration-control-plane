@@ -17,39 +17,67 @@
  */
 
 import { useInfiniteQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import type { InfiniteData } from '@tanstack/react-query';
 import { fetchLogs, fetchComponentLogs } from '#api/logs';
-import type { LogsRequest, ComponentLogsRequest } from '../types/logs';
+import { IS_CLOUD } from '../features';
+import { filterLogRows, type LogRowFilter } from '../utils/logs';
+import type { LogsRequest, ComponentLogsRequest, LogRow } from '../types/logs';
+
+// The cloud log source cannot narrow by level, so leaving levels out of its
+// request keeps the query key — and the pages already loaded — stable while the
+// user retoggles the level control. Sources that do filter server-side must keep
+// sending them.
+function sourceRequest<T extends { logLevels: string[] }>(req: T | null): T | null {
+  return req && IS_CLOUD ? { ...req, logLevels: [] } : req;
+}
+
+/**
+ * The rows a panel renders: the loaded pages flattened, then narrowed by filters
+ * the log source could not apply itself.
+ */
+export function useVisibleLogs(data: InfiniteData<LogRow[]> | undefined, filter: LogRowFilter = {}): LogRow[] {
+  const levelsKey = filter.levels?.join(',') ?? '';
+  const componentsKey = filter.componentIds?.join(',') ?? '';
+  return useMemo(() => {
+    const rows = data?.pages.flat() ?? [];
+    return IS_CLOUD ? filterLogRows(rows, filter) : rows;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, levelsKey, componentsKey]);
+}
 
 export function useInfiniteLogs(req: LogsRequest | null, refetchInterval: number | false = false, logsApiUrl?: string) {
+  const query = useMemo(() => sourceRequest(req), [req]);
   return useInfiniteQuery({
-    queryKey: ['logs', req, logsApiUrl],
+    queryKey: ['logs', query, logsApiUrl],
     queryFn: async ({ pageParam }) => {
-      const pageReq = pageParam ? { ...req!, ...(req!.sort === 'desc' ? { endTime: pageParam } : { startTime: pageParam }) } : req!;
+      const pageReq = pageParam ? { ...query!, ...(query!.sort === 'desc' ? { endTime: pageParam } : { startTime: pageParam }) } : query!;
       return fetchLogs(pageReq, logsApiUrl!);
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
-      if (!req || lastPage.length < req.limit) return undefined;
+      if (!query || lastPage.length < query.limit) return undefined;
       return lastPage[lastPage.length - 1]?.timestamp;
     },
-    enabled: !!req && !!logsApiUrl,
+    enabled: !!query && !!logsApiUrl,
     refetchInterval,
   });
 }
 
 export function useInfiniteComponentLogs(req: ComponentLogsRequest | null, refetchInterval: number | false = false, logsApiUrl?: string) {
+  const query = useMemo(() => sourceRequest(req), [req]);
   return useInfiniteQuery({
-    queryKey: ['component-logs', req, logsApiUrl],
+    queryKey: ['component-logs', query, logsApiUrl],
     queryFn: async ({ pageParam }) => {
-      const pageReq = pageParam ? { ...req!, ...(req!.sort === 'desc' ? { endTime: pageParam } : { startTime: pageParam }) } : req!;
+      const pageReq = pageParam ? { ...query!, ...(query!.sort === 'desc' ? { endTime: pageParam } : { startTime: pageParam }) } : query!;
       return fetchComponentLogs(pageReq, logsApiUrl!);
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
-      if (!req || lastPage.length < req.limit) return undefined;
+      if (!query || lastPage.length < query.limit) return undefined;
       return lastPage[lastPage.length - 1]?.timestamp;
     },
-    enabled: !!req && !!logsApiUrl,
+    enabled: !!query && !!logsApiUrl,
     refetchInterval,
   });
 }

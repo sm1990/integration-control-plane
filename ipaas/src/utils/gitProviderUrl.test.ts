@@ -17,8 +17,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildRepoUrl } from './gitProviderUrl';
+import { buildRepoUrl, buildRepoBrowseUrl } from './gitProviderUrl';
 import { GitProvider } from '../types/credentials';
+import type { Repository } from '../types/repository';
+
+const repo = (over: Partial<Repository>): Repository => ({ gitProvider: 'github', organizationApp: 'acme', nameApp: 'svc', branch: 'main', appSubPath: '', ...over }) as Repository;
 
 describe('buildRepoUrl', () => {
   it('builds a GitHub URL', () => {
@@ -38,5 +41,51 @@ describe('buildRepoUrl', () => {
   });
   it('builds an Azure DevOps _git URL', () => {
     expect(buildRepoUrl(GitProvider.AZURE_DEVOPS, 'acme', 'svc')).toBe('https://dev.azure.com/acme/_git/svc');
+  });
+});
+
+describe('buildRepoBrowseUrl', () => {
+  it('builds a GitHub tree URL with the sub-path', () => {
+    expect(buildRepoBrowseUrl(repo({ appSubPath: 'samples/json-to-xml' }))).toBe('https://github.com/acme/svc/tree/main/samples/json-to-xml');
+  });
+
+  it('omits the trailing slash when the component sits at the repo root', () => {
+    expect(buildRepoBrowseUrl(repo({}))).toBe('https://github.com/acme/svc/tree/main');
+  });
+
+  it('does not double up when nameApp carries a trailing slash', () => {
+    expect(buildRepoBrowseUrl(repo({ nameApp: 'svc/', appSubPath: 'samples/json-to-xml' }))).toBe('https://github.com/acme/svc/tree/main/samples/json-to-xml');
+  });
+
+  it('encodes a branch containing a slash', () => {
+    expect(buildRepoBrowseUrl(repo({ branch: 'feature/new-ui' }))).toBe('https://github.com/acme/svc/tree/feature%2Fnew-ui');
+  });
+
+  it('builds a Bitbucket cloud URL with the branch as a query param', () => {
+    expect(buildRepoBrowseUrl(repo({ gitProvider: 'bitbucket', appSubPath: 'svc' }))).toBe('https://bitbucket.org/acme/svc/src/HEAD/svc?at=main');
+  });
+
+  it('builds a Bitbucket server URL from the server URL (trailing slash trimmed)', () => {
+    expect(buildRepoBrowseUrl(repo({ gitProvider: 'bitbucket_server', bitbucketServerUrl: 'https://bitbucket.acme.io/', appSubPath: 'svc' }))).toBe('https://bitbucket.acme.io/projects/acme/repos/svc/browse/svc?at=main');
+  });
+
+  it('falls back to a plain GitHub URL for an unknown provider', () => {
+    expect(buildRepoBrowseUrl(repo({ gitProvider: 'gitlab' }))).toBe('https://github.com/acme/svc');
+  });
+
+  describe('Azure DevOps path handling', () => {
+    const azure = (appSubPath: string) => buildRepoBrowseUrl(repo({ gitProvider: 'azure_devops', projectApp: 'proj', appSubPath }));
+
+    it('uses the repo root when appSubPath is empty', () => {
+      expect(azure('')).toBe('https://dev.azure.com/acme/proj/_git/svc?path=%2F&version=GBmain');
+    });
+
+    it('keeps a single leading slash when appSubPath is already slash-prefixed', () => {
+      expect(azure('/src/foo')).toBe('https://dev.azure.com/acme/proj/_git/svc?path=%2Fsrc%2Ffoo&version=GBmain');
+    });
+
+    it('adds the leading slash and drops a trailing one', () => {
+      expect(azure('src/foo/')).toBe('https://dev.azure.com/acme/proj/_git/svc?path=%2Fsrc%2Ffoo&version=GBmain');
+    });
   });
 });

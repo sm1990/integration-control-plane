@@ -16,9 +16,10 @@
  * under the License.
  */
 
-import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, MenuItem, PageContent, PageTitle, Select, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, AlertTitle, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton, ListingTable, PageContent, PageTitle, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { KeyRound, Pencil, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useState, type JSX } from 'react';
+import EnvironmentSelect from '../components/common/EnvironmentSelect';
 import Authorized from '../components/Authorized';
 import EmptyListing from '../components/EmptyListing';
 import DeploymentTrackBar from '../components/DeploymentTrackBar';
@@ -66,7 +67,7 @@ export default function ComponentConfigs({ org, project, component }: ComponentS
   const del = useDeleteConfig(projectId);
   const [view, setView] = useState<View>({ kind: 'list' });
   const [deleting, setDeleting] = useState<ConfigRow | null>(null);
-  const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string; detail?: string } | null>(null);
 
   // Switching track/environment changes the editor's context (release/container/env);
   // drop any open create/edit view so ConfigEditor can't operate on a stale row.
@@ -91,31 +92,54 @@ export default function ComponentConfigs({ org, project, component }: ComponentS
     );
   };
 
-  const envSelect = (
-    <Select
-      size="small"
-      value={environments.some((e) => e.id === envId) ? envId : ''}
-      onChange={(e) => setEnvId(e.target.value as string)}
-      inputProps={{ 'aria-label': 'Environment' }}
-      sx={{ fontSize: '0.8125rem', '& .MuiSelect-select': { py: 0.5, px: 1.5 }, minWidth: 140 }}>
-      {environments.map((e) => (
-        <MenuItem key={e.id} value={e.id}>
-          {e.name}
-        </MenuItem>
-      ))}
-    </Select>
-  );
+  const envSelect = environments.length > 1 && <EnvironmentSelect environments={environments} value={envId} onChange={setEnvId} deployment={{ orgHandler: org, orgUuid: orgUuid ?? '', componentId: comp?.id ?? '', versionId: trackId }} />;
+
+  // Manually closable, but self-clears so a stale confirmation doesn't sit on the page.
+  useEffect(() => {
+    if (!alert) return;
+    const timer = setTimeout(() => setAlert(null), alert.detail ? 10_000 : 6_000);
+    return () => clearTimeout(timer);
+  }, [alert]);
 
   const ctx: EditorContext = { projectId, componentId: comp?.id ?? '', releaseId, containerId, envId };
   const onEditorDone = (message: string) => {
     setView({ kind: 'list' });
-    setAlert({ type: 'success', message });
+    // Config writes go out with deploy_changes set, so a redeploy always follows a save.
+    setAlert({ type: 'success', message, detail: 'A redeployment has been initiated so the integration picks up the new configuration.' });
   };
 
   return (
     <>
       {tracks.length > 0 && <DeploymentTrackBar tracks={tracks} selectedId={trackId} onChange={setTrackId} orgHandler={org} projectHandler={project} componentHandler={component} extra={envSelect} />}
       <PageContent>
+        {/* The heading stays put through every state — loading, not-deployed, editor — so the
+            page never reads as just a floating notice. Only the action is state-dependent. */}
+        <PageTitle>
+          <PageTitle.Header>Configs &amp; Secrets</PageTitle.Header>
+          {!isLoading && comp && releaseId && containerId && view.kind === 'list' && (
+            <PageTitle.Actions>
+              <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
+                <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setView({ kind: 'create' })}>
+                  Create
+                </Button>
+              </Authorized>
+            </PageTitle.Actions>
+          )}
+        </PageTitle>
+
+        {alert && (
+          <Alert severity={alert.type} onClose={() => setAlert(null)} sx={{ mb: 2 }}>
+            {alert.detail ? (
+              <>
+                <AlertTitle>{alert.message}</AlertTitle>
+                {alert.detail}
+              </>
+            ) : (
+              alert.message
+            )}
+          </Alert>
+        )}
+
         {isLoading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 120px)' }}>
             <CircularProgress />
@@ -130,23 +154,6 @@ export default function ComponentConfigs({ org, project, component }: ComponentS
           <ConfigEditor ctx={ctx} existing={view.row} onBack={() => setView({ kind: 'list' })} onSaved={onEditorDone} onError={(message) => setAlert({ type: 'error', message })} />
         ) : (
           <>
-            <PageTitle>
-              <PageTitle.Header>Configs &amp; Secrets</PageTitle.Header>
-              <PageTitle.Actions>
-                <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
-                  <Button variant="contained" startIcon={<Plus size={16} />} onClick={() => setView({ kind: 'create' })}>
-                    Create
-                  </Button>
-                </Authorized>
-              </PageTitle.Actions>
-            </PageTitle>
-
-            {alert && (
-              <Alert severity={alert.type} onClose={() => setAlert(null)} sx={{ mb: 2 }}>
-                {alert.message}
-              </Alert>
-            )}
-
             {loadingMounts ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                 <CircularProgress />

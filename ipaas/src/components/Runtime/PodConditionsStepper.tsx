@@ -58,7 +58,7 @@ export default function PodConditionsStepper({ pod }: { pod: ClusterPod | null }
             </Stack>
 
             <Typography variant="body2" color="text.secondary" align="center" sx={styles.time}>
-              {condition.lastTransitionTime ? formatDistanceToNow(condition.lastTransitionTime) : '—'}
+              {met && condition.lastTransitionTime ? formatDistanceToNow(condition.lastTransitionTime) : '—'}
             </Typography>
 
             {condition.message && (

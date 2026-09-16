@@ -21,15 +21,7 @@ import { Building2, Check, Copy, Download, Folder, Globe } from '@wso2/oxygen-ui
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFetchComponentEndpointSpec } from '../../../hooks/useComponents';
 import type { EnvEndpoint } from '../../../types/component';
-
-function trimEndpointName(name: string) {
-  return (
-    name
-      .replace(/^\s*Endpoint\b\s*/i, '')
-      .replace(/\s+/g, ' ')
-      .trim() || name
-  );
-}
+import { trimEndpointName } from '../../../utils/endpoints';
 
 function CopyButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);

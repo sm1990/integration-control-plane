@@ -69,3 +69,17 @@ const PHASE_RANK: Record<PodPhase, number> = { scheduling: 0, starting: 1, openi
 export function highestPodPhase(pods: ClusterPod[]): PodPhase {
   return pods.map(derivePodPhase).reduce<PodPhase>((a, b) => (PHASE_RANK[a] >= PHASE_RANK[b] ? a : b), 'scheduling');
 }
+
+/**
+ * The editor URL with its connection token removed, for showing on screen.
+ * Navigation keeps using the full URL; an unparseable value is returned unchanged.
+ */
+export function displayableEditorUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.searchParams.delete('tkn');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}

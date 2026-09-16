@@ -28,5 +28,6 @@ export const fetchExecutionArguments = (..._args: unknown[]): never => ni('fetch
 export const fetchExecutionLogs = (..._args: unknown[]): never => ni('fetchExecutionLogs');
 export const fetchTaskExecutionCount = (..._args: unknown[]): never => ni('fetchTaskExecutionCount');
 export const updateJobConfigs = (..._args: unknown[]): never => ni('updateJobConfigs');
+export const stopSchedule = (..._args: unknown[]): never => ni('stopSchedule');
 export const triggerTask = (..._args: unknown[]): never => ni('triggerTask');
 export const triggerComponentRun = (..._args: unknown[]): never => ni('triggerComponentRun');

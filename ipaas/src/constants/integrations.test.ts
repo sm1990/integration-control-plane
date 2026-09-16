@@ -37,3 +37,18 @@ describe('project listing — RAG components', () => {
     expect(isSupportedIntegration('byoiService', 'rag-service')).toBe(true);
   });
 });
+
+describe('project listing — foreign runtimes', () => {
+  it('keeps the displayType verdict when no buildpack is reported', () => {
+    // Only cloud sends buildpackType; absent must not exclude every wip component.
+    expect(isSupportedIntegration('ballerinaService', null, undefined)).toBe(true);
+    expect(isSupportedIntegration('ballerinaService', null, 'BI')).toBe(true);
+    expect(isSupportedIntegration('miApiService', null, 'MI')).toBe(true);
+  });
+
+  it("excludes another platform's runtime whatever its displayType looks like", () => {
+    expect(isSupportedIntegration('ballerinaService', null, 'other')).toBe(false);
+    // MCP short-circuits the displayType allowlist, so the buildpack has to win over it.
+    expect(isSupportedIntegration('otherService', 'MCP', 'other')).toBe(false);
+  });
+});

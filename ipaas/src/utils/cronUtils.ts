@@ -120,7 +120,66 @@ function expandCronField(field: string, min: number, max: number): Set<number> {
   return values;
 }
 
-export function nextCronRunMs(cron: string): number | null {
+/**
+ * Reusing one formatter per zone matters: resolving a cron over a year of candidate minutes
+ * would otherwise construct thousands of them.
+ */
+const zonedFormatters = new Map<string, Intl.DateTimeFormat | null>();
+
+function zonedFormatter(timeZone: string): Intl.DateTimeFormat | null {
+  if (zonedFormatters.has(timeZone)) return zonedFormatters.get(timeZone) ?? null;
+  let formatter: Intl.DateTimeFormat | null = null;
+  try {
+    formatter = new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    // An unknown zone leaves the caller on browser-local time rather than failing the countdown.
+    formatter = null;
+  }
+  zonedFormatters.set(timeZone, formatter);
+  return formatter;
+}
+
+/**
+ * The wall clock in `timeZone` at `ms`, encoded as though those fields were UTC. That encoding
+ * lets the candidate scan below compare cron fields with the cheap getUTC* accessors instead of
+ * formatting every minute it steps over.
+ */
+function wallClockAsUtc(ms: number, timeZone?: string): number {
+  const formatter = timeZone ? zonedFormatter(timeZone) : null;
+  if (!formatter) {
+    const local = new Date(ms);
+    return Date.UTC(local.getFullYear(), local.getMonth(), local.getDate(), local.getHours(), local.getMinutes());
+  }
+  const fields: Record<string, number> = {};
+  for (const part of formatter.formatToParts(ms)) {
+    if (part.type !== 'literal') fields[part.type] = parseInt(part.value, 10);
+  }
+  return Date.UTC(fields.year, fields.month - 1, fields.day, fields.hour, fields.minute);
+}
+
+/** Inverse of `wallClockAsUtc`: the instant at which `timeZone` reads that wall clock. */
+function instantForWallClock(wallAsUtc: number, timeZone?: string): number {
+  if (!timeZone || !zonedFormatter(timeZone)) {
+    const wall = new Date(wallAsUtc);
+    return new Date(wall.getUTCFullYear(), wall.getUTCMonth(), wall.getUTCDate(), wall.getUTCHours(), wall.getUTCMinutes()).getTime();
+  }
+  // Correct by the offset seen at the guess. Two passes, so a guess that lands on the far side
+  // of a DST transition is re-measured against the offset that actually applies.
+  let instant = wallAsUtc;
+  for (let pass = 0; pass < 2; pass++) {
+    instant += wallAsUtc - wallClockAsUtc(instant, timeZone);
+  }
+  return instant;
+}
+
+/**
+ * The next instant the cron fires, or null if it never does within a year.
+ *
+ * Cron fields name a wall clock, not an instant, so the scan runs over `timeZone`'s clock and
+ * only the match is converted back. Omitting `timeZone` reads the browser's clock, which is
+ * wrong whenever the schedule was saved against a different zone.
+ */
+export function nextCronRunMs(cron: string, timeZone?: string): number | null {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== 5) return null;
   const [minF, hourF, domF, monthF, dowF] = parts;
@@ -131,18 +190,17 @@ export function nextCronRunMs(cron: string): number | null {
   const validMonths = expandCronField(monthF, 1, 12);
   const validDows = expandCronField(dowF, 0, 6);
 
-  // Advance to the start of the next minute
-  const candidate = new Date();
-  candidate.setSeconds(0, 0);
-  candidate.setMinutes(candidate.getMinutes() + 1);
+  // Start at the next whole wall minute; the current one has already begun.
+  let cursor = wallClockAsUtc(Date.now(), timeZone) + 60_000;
+  const limit = cursor + 366 * 24 * 60 * 60 * 1000;
+  const candidate = new Date(cursor);
 
-  const limit = new Date(candidate.getTime() + 366 * 24 * 60 * 60 * 1000);
-
-  while (candidate <= limit) {
-    if (validMonths.has(candidate.getMonth() + 1) && validDoms.has(candidate.getDate()) && validDows.has(candidate.getDay()) && validHours.has(candidate.getHours()) && validMins.has(candidate.getMinutes())) {
-      return candidate.getTime();
+  while (cursor <= limit) {
+    candidate.setTime(cursor);
+    if (validMonths.has(candidate.getUTCMonth() + 1) && validDoms.has(candidate.getUTCDate()) && validDows.has(candidate.getUTCDay()) && validHours.has(candidate.getUTCHours()) && validMins.has(candidate.getUTCMinutes())) {
+      return instantForWallClock(cursor, timeZone);
     }
-    candidate.setMinutes(candidate.getMinutes() + 1);
+    cursor += 60_000;
   }
 
   return null;

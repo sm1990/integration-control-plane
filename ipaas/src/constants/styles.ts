@@ -45,3 +45,34 @@ export const GITHUB_ICON_SX = {
 
 /** Colors a required TextField's asterisk red. */
 export const REQUIRED_FIELD_SX = { '& .MuiFormLabel-asterisk': { color: 'error.main' } } as const;
+
+/** Label sitting above a card, outside it — the option's name in the create flows. */
+export const SECTION_LABEL_SX = {
+  color: 'text.secondary',
+  fontWeight: 500,
+} as const;
+
+/**
+ * Compact pill-shaped Select used in page headers and toolbars (environment picker,
+ * deployment track, API/endpoint pickers).
+ *
+ * `borderRadius` is set on the root as well as the outline: oxygen's theme gives
+ * MuiOutlinedInput a `background.acrylic` fill at radius 8, so rounding only the
+ * notched outline leaves the root's square corners showing past the border.
+ */
+export const PILL_SELECT_SX = {
+  fontSize: '0.8125rem',
+  borderRadius: 5,
+  '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 },
+  '& .MuiSelect-select': { py: 0.5, px: 1.5 },
+} as const;
+
+/**
+ * Cancels oxygen's `top: -7px` nudge on a resting select label. That correction is
+ * calibrated for size="medium" (MUI rests those at translate(14px, 16px) versus
+ * small's 9px), so on a small select it double-corrects and the label floats above
+ * centre. Apply to any small Select/TextField that carries a label.
+ */
+export const SMALL_SELECT_LABEL_SX = {
+  '& .MuiInputLabel-root:not(.MuiInputLabel-shrink)': { top: 0 },
+} as const;

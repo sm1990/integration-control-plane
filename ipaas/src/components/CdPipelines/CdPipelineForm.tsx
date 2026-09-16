@@ -17,6 +17,7 @@
  */
 
 import { Alert, Button, CircularProgress, FormControlLabel, PageContent, PageTitle, Stack, Switch, TextField } from '@wso2/oxygen-ui';
+import BusyFields from '../common/BusyFields';
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
 import { useMemo, useState, type JSX } from 'react';
 import { useAppNavigate } from '../../hooks/useAppNavigate';
@@ -97,25 +98,27 @@ export default function CdPipelineForm({ orgHandler, envTemplates, existingPipel
       </PageTitle>
 
       <Stack gap={3} sx={{ maxWidth: 640, mt: 1 }}>
-        <Stack direction="row" alignItems="center" gap={2}>
-          <TextField
-            label="Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setNameTouched(true)}
-            fullWidth
-            required
-            placeholder="e.g. US Production Pipeline"
-            error={showNameError}
-            helperText={showNameError ? nameError : ' '}
-            sx={{ flex: 1, ...REQUIRED_SX }}
-          />
-          <FormControlLabel control={<Switch checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />} label="Mark as default" sx={{ flexShrink: 0, whiteSpace: 'nowrap', mr: 0 }} />
-        </Stack>
+        <BusyFields busy={saving}>
+          <Stack direction="row" alignItems="center" gap={2}>
+            <TextField
+              label="Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={() => setNameTouched(true)}
+              fullWidth
+              required
+              placeholder="e.g. US Production Pipeline"
+              error={showNameError}
+              helperText={showNameError ? nameError : ' '}
+              sx={{ flex: 1, ...REQUIRED_SX }}
+            />
+            <FormControlLabel control={<Switch checked={isDefault} onChange={(e) => setIsDefault(e.target.checked)} />} label="Mark as default" sx={{ flexShrink: 0, whiteSpace: 'nowrap', mr: 0 }} />
+          </Stack>
 
-        <PromotionChainBuilder envTemplates={envTemplates} value={chain} onChange={setChain} disabled={saving} />
+          <PromotionChainBuilder envTemplates={envTemplates} value={chain} onChange={setChain} disabled={saving} />
 
-        {error && <Alert severity="error">{error}</Alert>}
+          {error && <Alert severity="error">{error}</Alert>}
+        </BusyFields>
 
         <Stack direction="row" gap={1} sx={{ mt: 2 }}>
           <Button variant="contained" onClick={handleSave} disabled={!canSave} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>

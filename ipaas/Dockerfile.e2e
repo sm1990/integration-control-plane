@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1.7
+#
+# Playwright runner for the cloud E2E suite, run against an already-deployed console.
+#
+#   docker build -f Dockerfile.e2e -t ipaas-e2e:local .
+#   docker run --rm --env-file .env.test --shm-size=1g ipaas-e2e:local
+FROM node:22-bookworm-slim
+
+# Browsers outside the per-user cache, so the path survives the USER switches below.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
+    DEBIAN_FRONTEND=noninteractive \
+    CI=true
+
+# Pinned, not corepack: corepack resolves per user and pnpm 11 ignores pnpm.patchedDependencies.
+# Writable dirs are handed over here — a later `chown -R` would copy node_modules into a new layer.
+RUN npm install -g pnpm@10.23.0 && \
+    mkdir -p /app /ms-playwright && chown node:node /app /ms-playwright
+
+USER node
+WORKDIR /app
+
+# Manifests first so this layer caches; patches/ must exist before install resolves them.
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --chown=node:node patches/ ./patches/
+RUN pnpm install --frozen-lockfile && rm -rf "$(pnpm store path)"
+
+# Only the apt step needs root; the browser download stays with the user that launches it.
+USER root
+RUN pnpm exec playwright install-deps chromium && rm -rf /var/lib/apt/lists/*
+USER node
+
+# Headless shell only; drop --only-shell and add xvfb if GitHub starts challenging headless.
+RUN pnpm exec playwright install --only-shell chromium
+
+# Just the suite: copying the whole tree would pull in src/ and any stray local secret.
+COPY --chown=node:node playwright.config.ts ./
+COPY --chown=node:node tests/ ./tests/
+
+# No entrypoint wrapper, so the test process is PID 1 and its exit code is the container's.
+CMD ["pnpm", "exec", "playwright", "test", "--project=cloud-anon", "--project=cloud"]

@@ -18,14 +18,7 @@
 
 import { Box, Stack, Typography } from '@wso2/oxygen-ui';
 import type { ReactNode } from 'react';
-
-const STATUS_DOT_MAP: Record<string, { label: string; dotColor: string }> = {
-  ACTIVE: { label: 'Active', dotColor: 'success.main' },
-  ERROR: { label: 'Error', dotColor: 'error.main' },
-  IN_PROGRESS: { label: 'In Progress', dotColor: 'warning.main' },
-  SUSPENDED: { label: 'Suspended', dotColor: 'text.disabled' },
-  NOT_DEPLOYED: { label: 'Not Deployed', dotColor: 'text.disabled' },
-};
+import { DEPLOYMENT_STATUS_DOT } from '../../../constants/deploymentStatusDot';
 
 /**
  * Presentational deployment-status dot + label. Renders nothing for an unknown
@@ -33,7 +26,7 @@ const STATUS_DOT_MAP: Record<string, { label: string; dotColor: string }> = {
  * (e.g. integration-as-api); types without a status concept simply don't use it.
  */
 export default function StatusDot({ status }: { status?: string | null }): ReactNode {
-  const dot = status ? STATUS_DOT_MAP[status] : null;
+  const dot = status ? DEPLOYMENT_STATUS_DOT[status] : null;
   if (!dot) return null;
   return (
     <Stack direction="row" alignItems="center" gap={0.75} sx={{ flexShrink: 0 }}>

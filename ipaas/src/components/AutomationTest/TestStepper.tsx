@@ -17,7 +17,8 @@
  */
 
 import type { JSX } from 'react';
-import HorizontalStepper, { type Step, type StepStatus } from '../HorizontalStepper';
+import type { Step, StepStatus } from '../../types/stepper';
+import HorizontalStepper from '../HorizontalStepper';
 import { executionPhase } from '../../utils/executionStatus';
 
 interface TestStepperProps {

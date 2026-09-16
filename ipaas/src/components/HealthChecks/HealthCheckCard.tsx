@@ -32,13 +32,14 @@ interface HealthCheckCardProps {
   projectId: string;
   componentId: string;
   releaseId: string;
+  environmentId: string;
   canManage: boolean;
   onNotify: (type: 'success' | 'error', message: string) => void;
 }
 
 const cardSx = { p: 3, mb: 2 } as const;
 
-export default function HealthCheckCard({ healthCheck: hc, container, projectId, componentId, releaseId, canManage, onNotify }: HealthCheckCardProps): JSX.Element {
+export default function HealthCheckCard({ healthCheck: hc, container, projectId, componentId, releaseId, environmentId, canManage, onNotify }: HealthCheckCardProps): JSX.Element {
   const [formKind, setFormKind] = useState<ProbeKind | null>(null);
   const update = useUpdateHealthCheck(projectId);
   const del = useDeleteHealthCheck(projectId);
@@ -58,6 +59,7 @@ export default function HealthCheckCard({ healthCheck: hc, container, projectId,
         projectId={projectId}
         componentId={componentId}
         releaseId={releaseId}
+        environmentId={environmentId}
         onClose={() => setFormKind(null)}
         onSaved={(m) => {
           setFormKind(null);
@@ -76,6 +78,7 @@ export default function HealthCheckCard({ healthCheck: hc, container, projectId,
         {
           componentId,
           releaseId,
+          environmentId,
           containerId: container.ID,
           healthCheckId: hc.ID,
           data: {
@@ -89,7 +92,7 @@ export default function HealthCheckCard({ healthCheck: hc, container, projectId,
       );
     } else {
       // Last probe: delete the whole health check.
-      del.mutate({ componentId, releaseId, containerId: container.ID, healthCheckId: hc.ID }, done);
+      del.mutate({ componentId, releaseId, environmentId, containerId: container.ID, healthCheckId: hc.ID }, done);
     }
   };
 

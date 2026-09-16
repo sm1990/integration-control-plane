@@ -38,6 +38,7 @@ import { useProjectId } from '../hooks/useProjects';
 import { mainContainer } from '../utils/devopsConfigs';
 import { ScalingMethod, type ScalingPath } from '../types/scaling';
 import type { ComponentScope } from '../nav';
+import { IS_CLOUD } from '../features';
 
 export default function ComponentScaling({ org, project, component }: ComponentScope): JSX.Element {
   const orgUuid = useOrgUuid();
@@ -107,7 +108,7 @@ export default function ComponentScaling({ org, project, component }: ComponentS
     );
   };
 
-  const envSelect = (
+  const envSelect = !IS_CLOUD && environments.length > 1 && (
     <Select
       size="small"
       value={environments.some((e) => e.id === envId) ? envId : ''}

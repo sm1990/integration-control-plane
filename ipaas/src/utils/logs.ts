@@ -17,6 +17,7 @@
  */
 
 import type { LogRow } from '../types/logs';
+import type { ExecutionLogEntry } from '../types/executions';
 
 export const LOG_LEVELS = ['INFO', 'WARN', 'ERROR', 'DEBUG'] as const;
 
@@ -60,6 +61,9 @@ export const DISPLAY_FIELDS: { key: keyof LogRow; label: string }[] = [
   { key: 'logContext', label: 'Log Context' },
   { key: 'componentVersion', label: 'Component Version' },
   { key: 'componentVersionId', label: 'Component Version ID' },
+  { key: 'componentName', label: 'Integration' },
+  { key: 'containerName', label: 'Container' },
+  { key: 'podName', label: 'Pod' },
 ];
 
 export function levelColor(level: string): { bg: string; text: string } {
@@ -113,4 +117,48 @@ export function filterLogLines(logs: string, keyword: string, filterMode: boolea
   if (!filterMode || !keyword.trim()) return lines;
   const lower = keyword.toLowerCase();
   return lines.filter((line) => line.toLowerCase().includes(lower));
+}
+
+/**
+ * True when the entries come from more than one container, which is what makes
+ * a per-line container tag worth showing — an init container's output is
+ * otherwise indistinguishable from the task's own.
+ */
+export function spansMultipleContainers(entries: ExecutionLogEntry[]): boolean {
+  const first = entries.find((e) => e.container)?.container;
+  if (!first) return false;
+  return entries.some((e) => e.container && e.container !== first);
+}
+
+/** Renders one execution log entry as the single line the drawers display and search over. */
+export function formatExecutionLogLine(entry: ExecutionLogEntry, showContainer: boolean): string {
+  const parts: string[] = [];
+  if (entry.timestamp) parts.push(entry.timestamp);
+  if (showContainer && entry.container) parts.push(`[${entry.container}]`);
+  if (entry.level) parts.push(entry.level);
+  parts.push(entry.message);
+  return parts.join(' ');
+}
+
+/** Which rows a log list should show, for narrowing a source cannot do itself. */
+export interface LogRowFilter {
+  /** Display levels to keep. Absent or empty keeps every row. */
+  levels?: string[];
+  /** Component ids whose rows belong in this list. Absent or empty keeps every row. */
+  componentIds?: string[];
+}
+
+/**
+ * Narrows fetched rows to what the filters admit.
+ */
+export function filterLogRows(rows: LogRow[], { levels, componentIds }: LogRowFilter): LogRow[] {
+  const wantedLevels = levels?.length ? new Set(levels.map((l) => l.toUpperCase())) : null;
+  const ownedComponents = componentIds?.length ? new Set(componentIds) : null;
+  // Returning the same array keeps a caller's memoized identity stable.
+  if (!wantedLevels && !ownedComponents) return rows;
+  return rows.filter((r) => {
+    if (wantedLevels && !wantedLevels.has((r.level ?? '').toUpperCase())) return false;
+    if (ownedComponents && r.componentName && !ownedComponents.has(r.componentName)) return false;
+    return true;
+  });
 }

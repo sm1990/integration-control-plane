@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { buildCloudEditorUrl, derivePodPhase, highestPodPhase } from './cloudEditor';
+import { buildCloudEditorUrl, derivePodPhase, displayableEditorUrl, highestPodPhase } from './cloudEditor';
 import type { ClusterPod } from '../types/runtime';
 
 const base = {
@@ -92,5 +92,25 @@ describe('highestPodPhase', () => {
       { type: 'Ready', status: 'True' },
     ]);
     expect(highestPodPhase([scheduling, opening])).toBe('opening');
+  });
+});
+
+describe('displayableEditorUrl', () => {
+  // The address is on screen for the whole of a cold start; the token must not be.
+  it('strips the connection token', () => {
+    expect(displayableEditorUrl('https://editor-abc.gateway.example.com/?tkn=deadbeef')).toBe('https://editor-abc.gateway.example.com/');
+  });
+
+  it('keeps every other query parameter', () => {
+    expect(displayableEditorUrl('https://editor-abc.example.com/?folder=%2Fworkspace&tkn=deadbeef')).toBe('https://editor-abc.example.com/?folder=%2Fworkspace');
+  });
+
+  it('is a no-op for a URL with no token', () => {
+    expect(displayableEditorUrl('https://editor-abc.example.com/')).toBe('https://editor-abc.example.com/');
+  });
+
+  // Display only — navigation uses the URL held in state.
+  it('returns an unparseable value unchanged', () => {
+    expect(displayableEditorUrl('not a url')).toBe('not a url');
   });
 });

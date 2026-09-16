@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Box, Button, Card, CircularProgress, Divider, MenuItem, PageTitle, Select, Skeleton, Stack, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Button, Card, CircularProgress, Divider, PageTitle, Skeleton, Stack, Typography } from '@wso2/oxygen-ui';
 import { Activity, Play, RefreshCw } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,8 +27,11 @@ import ExecutionForm from '../components/AutomationTest/ExecutionForm';
 import ExecutionLogsPanel from '../components/AutomationTest/ExecutionLogsPanel';
 import ExecutionsDrawer from '../components/AutomationTest/ExecutionsDrawer';
 import DraftTestDialog, { type DraftDialogIntent, type DraftDialogMode } from '../components/AutomationTest/DraftTestDialog';
+import ExecutionHistoryHeader from '../components/AutomationTest/ExecutionHistoryHeader';
 import FormExecutionSummary from '../components/AutomationTest/FormExecutionSummary';
 import TestStepper from '../components/AutomationTest/TestStepper';
+import EnvironmentSelect from '../components/common/EnvironmentSelect';
+import NotDeployedAlert from '../components/NotDeployedAlert';
 import { useComponentByHandler } from '../hooks/useComponents';
 import { useComponentDeployment } from '../hooks/useDeployments';
 import { useEnvironments } from '../hooks/useEnvironments';
@@ -36,15 +39,10 @@ import { useExecutionArguments, useRuntimeArguments, useTaskExecutionCount, useT
 import { useOrgUuid } from '../hooks/useOrgUuid';
 import { useProjectId } from '../hooks/useProjects';
 import { buildExecutionArgumentsFromForm, formDataEqual, hasAnyFormData, parseArgumentsToFormData, parseRuntimeArgumentsToFormFields, validateRequiredFields } from '../utils/runtimeArguments';
+import { isNotFoundError, isUnsupportedError } from '../utils/apiErrors';
 import { isTerminalStatus } from '../utils/executionStatus';
 import type { DynamicFormData, DynamicFormFieldValue, DynamicFormValidationErrors, TaskExecution } from '../types/executions';
 import type { ComponentScope } from '../nav';
-
-/** A GraphQL/HTTP 404 from the runtime-args query means "no schema" → trigger-only, not an error. */
-// A GraphQL/HTTP 404 from the runtime-args query means "no schema" → trigger-only, not an error.
-function isNotFoundError(error: unknown): boolean {
-  return /HTTP 404\b/.test(error instanceof Error ? error.message : '');
-}
 
 /**
  * Automation "Test" page — mirrors Devant's "Test Your Automation" console layout:
@@ -241,7 +239,10 @@ export default function AutomationTest({ org, project, component }: ComponentSco
     );
   };
 
-  const hardArgsError = argsError && !isNotFoundError(argsErr);
+  // A 404 means "no schema" and a not-implemented stub means the product has no
+  // runtime-arguments API at all. Neither is a failure — both mean trigger-only.
+  const argsUnavailable = argsError && (isNotFoundError(argsErr) || isUnsupportedError(argsErr));
+  const hardArgsError = argsError && !argsUnavailable;
   const hasFormData = hasAnyFormData(formData);
   const hasArgs = runtimeArguments.length > 0;
   // Critical (e.g. Production) environments phrase the action as Run rather than Test.
@@ -249,28 +250,29 @@ export default function AutomationTest({ org, project, component }: ComponentSco
   const runLabel = envCritical ? 'Run' : 'Test';
   const runningLabel = envCritical ? 'Running…' : 'Testing…';
 
-  const envSelect = (
-    <Select
-      size="small"
-      value={environments.some((e) => e.id === envId) ? envId : ''}
-      onChange={(e) => setEnvId(e.target.value as string)}
-      inputProps={{ 'aria-label': 'Environment' }}
-      sx={{ fontSize: '0.8125rem', '& .MuiSelect-select': { py: 0.5, px: 1.5 }, minWidth: 140 }}>
-      {environments.map((e) => (
-        <MenuItem key={e.id} value={e.id}>
-          {e.name}
-        </MenuItem>
-      ))}
-    </Select>
+  const envSelect = environments.length > 1 && <EnvironmentSelect environments={environments} value={envId} onChange={setEnvId} deployment={{ orgHandler: org, orgUuid: orgUuid ?? '', componentId: comp?.id ?? '', versionId: trackId }} />;
+
+  /** The page heading, kept identical across every state so it never disappears. The
+   *  environment selector lives in the sticky track bar below, which shares PageTitle's box. */
+  const pageTitle = (
+    <PageTitle>
+      <PageTitle.Header>Test Your Automation</PageTitle.Header>
+    </PageTitle>
+  );
+
+  /** Any state that cannot show the console still shows the title, with the reason under it. */
+  const renderNotice = (notice: JSX.Element): JSX.Element => (
+    <Box>
+      {pageTitle}
+      {notice}
+    </Box>
   );
 
   // No runtime arguments → the executions view: a "Total Executions" summary with a
   // direct Test trigger, plus the executions table. Mirrors Devant's no-args layout.
   const renderExecutionsView = (): JSX.Element => (
     <Box>
-      <PageTitle>
-        <PageTitle.Header>Test Your Automation</PageTitle.Header>
-      </PageTitle>
+      {pageTitle}
       <Card sx={{ mb: 4 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ m: 3 }}>
           <Stack direction="row" alignItems="center" gap={2}>
@@ -310,6 +312,8 @@ export default function AutomationTest({ org, project, component }: ComponentSco
         </Alert>
       )}
 
+      <ExecutionHistoryHeader componentId={comp?.id ?? ''} releaseId={releaseId} environmentId={envId} />
+
       <AutomationExecutions
         releaseId={releaseId}
         projectId={projectId}
@@ -329,6 +333,7 @@ export default function AutomationTest({ org, project, component }: ComponentSco
   // Runtime arguments present → the "Test Your Automation" form view (two panels).
   const renderFormView = (): JSX.Element => (
     <Box>
+      {pageTitle}
       <FormExecutionSummary
         commitSha={commitHash}
         buildDate={buildDate}
@@ -369,7 +374,16 @@ export default function AutomationTest({ org, project, component }: ComponentSco
           <Stack gap={4}>
             <ExecutionArgsView execArgs={executionArgs} />
             <TestStepper hasTriggered={!!currentRunId} status={execution?.status} />
-            <ExecutionLogsPanel componentId={comp?.id ?? ''} deploymentTrackId={trackId} environmentId={envId} executionId={execution?.id ?? ''} isRunning={!!currentRunId && !isTerminal} expanded={logsOpen} onToggle={setLogsOpen} />
+            <ExecutionLogsPanel
+              componentId={comp?.id ?? ''}
+              deploymentTrackId={trackId}
+              environmentId={envId}
+              executionId={execution?.id ?? ''}
+              run={execution ?? undefined}
+              isRunning={!!currentRunId && !isTerminal}
+              expanded={logsOpen}
+              onToggle={setLogsOpen}
+            />
           </Stack>
         </Box>
       </Box>
@@ -381,21 +395,18 @@ export default function AutomationTest({ org, project, component }: ComponentSco
   );
 
   const renderBody = (): JSX.Element => {
-    if (isLoading)
+    if (isLoading || argsLoading)
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 120px)' }}>
           <CircularProgress />
         </Box>
       );
-    if (!comp) return <Typography>Integration not found</Typography>;
-    if (!releaseId) return <Alert severity="info">Deploy this integration to the selected environment to test it.</Alert>;
-    if (argsLoading)
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 120px)' }}>
-          <CircularProgress />
-        </Box>
-      );
-    if (hardArgsError) return <Alert severity="error">Failed to load the runtime arguments for this automation.</Alert>;
+    if (!comp) return renderNotice(<Alert severity="error">Integration not found.</Alert>);
+    if (!deployment || !releaseId) return renderNotice(<NotDeployedAlert status={deployment?.deploymentStatusV2} />);
+    if (hardArgsError) return renderNotice(<Alert severity="error">Could not load this automation&apos;s runtime arguments. Retry in a moment; if it persists, the automation can still be triggered from its environment card.</Alert>);
+    // Deployed but not usable yet — say so instead of offering a Run button with
+    // no workload behind it.
+    if (deployment.deploymentStatusV2 !== 'ACTIVE') return renderNotice(<NotDeployedAlert status={deployment.deploymentStatusV2} />);
     return hasArgs ? renderFormView() : renderExecutionsView();
   };
 

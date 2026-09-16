@@ -69,6 +69,7 @@ import type { Artifact } from '../types/artifact';
 import { type SelectedArtifact, ENTRY_POINT_CONFIG, ENTRY_POINT_DETAIL_TABS } from './artifact-config';
 import { ArtifactApiDefinition, ServiceResources, ProxyApiReference } from './ArtifactTabs';
 
+import DeploymentNotice from './DeploymentNotice';
 function EntryPointDetail({ selected, onOpenDrawerTab }: { selected: SelectedArtifact; onOpenDrawerTab: (tab: string) => void }) {
   const [tracingEnabled, setTracingEnabled] = useState(false);
   const [statisticsEnabled, setStatisticsEnabled] = useState(false);
@@ -1221,15 +1222,12 @@ secret = "${secret || '<generating…>'}"\n# icp_url = "https://icp-server:9443"
             projectHandler={projectHandler}
             componentHandler={componentHandler}
             envCritical={env.critical ?? false}
+            deploymentStatusV2={envDeployment?.deploymentStatusV2}
             pendingTriggerTime={pendingTriggerTime}
             onTriggerResolved={() => setPendingTriggerTime(null)}
           />
         )}
-        {isAutomation && !loadingEnvDeployment && !envDeployment && (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-            No execution data available. Click &apos;{env.critical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
-          </Typography>
-        )}
+        {isAutomation && !loadingEnvDeployment && !envDeployment && <DeploymentNotice hasDeployment={false} envCritical={!!env.critical} />}
       </CardContent>
       <Snackbar open={triggerMessage !== null} autoHideDuration={4000} onClose={() => setTriggerMessage(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert onClose={() => setTriggerMessage(null)} severity="success" sx={{ width: '100%' }}>

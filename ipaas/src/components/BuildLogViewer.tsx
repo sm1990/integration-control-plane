@@ -23,7 +23,7 @@ import type { BuildRunLogs } from '../types/build';
 import { buildLogText } from '../utils/build';
 
 export interface BuildLogViewerProps {
-  logs: BuildRunLogs | null;
+  logs: BuildRunLogs | null | undefined;
   logsLoading: boolean;
   showLogs: boolean;
 }

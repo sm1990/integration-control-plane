@@ -41,6 +41,8 @@ export interface ChoreoSampleImage {
 /** Result of createCodeServer — the editor URL plus the cluster coordinates needed to poll the pod. */
 export interface CodeServerInstance {
   url: string;
+  /** Whether the editor is serving at `url`. Never redirect unless this is true. */
+  ready: boolean;
   clusterId: string;
   releaseId: string;
   namespace: string;

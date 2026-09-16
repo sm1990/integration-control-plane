@@ -71,7 +71,7 @@ export default function ComponentContainers({ org, project, component }: Compone
 
   const containers = release?.containers ?? [];
 
-  const envSelect = <EnvironmentSelect environments={environments} value={envId} onChange={setEnvId} />;
+  const envSelect = environments.length > 1 ? <EnvironmentSelect environments={environments} value={envId} onChange={setEnvId} deployment={{ orgHandler: org, orgUuid: orgUuid ?? '', componentId: comp?.id ?? '', versionId: trackId }} /> : null;
 
   return (
     <Box>

@@ -17,8 +17,8 @@
  */
 
 import { CircularProgress, IconButton, TextField, Tooltip } from '@wso2/oxygen-ui';
-import { Pencil } from '@wso2/oxygen-ui-icons-react';
-import { useEffect, useState, type JSX } from 'react';
+import { Check, Pencil } from '@wso2/oxygen-ui-icons-react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 
 export interface InlineEditFieldProps {
   label: string;
@@ -30,37 +30,30 @@ export interface InlineEditFieldProps {
   onSave: (value: string) => Promise<void>;
 }
 
-/** A read-only field that becomes editable via a pencil icon and saves on Enter/blur (no separate Save button). */
+/** An editable field: type straight into it, then save with the done icon, Enter, or by clicking away. */
 export default function InlineEditField({ label, value, placeholder, multiline, editable, validate, onSave }: InlineEditFieldProps): JSX.Element {
-  const [editing, setEditing] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState(value);
   const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Keep the draft in sync when the underlying value changes (e.g. after a save).
+  const dirty = draft.trim() !== value.trim();
+
+  // Adopt an external value change, but never over an edit in flight: a rejected save leaves the
+  // field blurred and dirty, and resyncing there would discard what the user typed.
   useEffect(() => {
-    if (!editing) setDraft(value);
-  }, [value, editing]);
+    if (!focused && !dirty) setDraft(value);
+  }, [value, focused, dirty]);
 
-  const error = editing ? (validate?.(draft) ?? '') : '';
-
-  const cancel = () => {
-    setDraft(value);
-    setEditing(false);
-  };
+  const error = dirty ? (validate?.(draft) ?? '') : '';
 
   const commit = async () => {
-    const trimmed = draft.trim();
-    if (trimmed === value.trim()) {
-      cancel();
-      return;
-    }
-    if (validate?.(draft)) return; // stay in edit mode while invalid
+    if (saving || !dirty || error) return;
     setSaving(true);
     try {
-      await onSave(trimmed);
-      setEditing(false);
+      await onSave(draft.trim());
     } catch {
-      // Failure is surfaced by the caller's alert; keep edit mode open for a retry.
+      // Failure is surfaced by the caller's alert; keep the edit so it can be retried.
     } finally {
       setSaving(false);
     }
@@ -68,17 +61,22 @@ export default function InlineEditField({ label, value, placeholder, multiline, 
 
   return (
     <TextField
+      inputRef={inputRef}
       label={label}
       value={draft}
       placeholder={placeholder}
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => editing && void commit()}
+      onFocus={() => setFocused(true)}
+      onBlur={async () => {
+        await commit();
+        setFocused(false);
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !multiline) {
           e.preventDefault();
           void commit();
         } else if (e.key === 'Escape') {
-          cancel();
+          setDraft(value);
         }
       }}
       fullWidth
@@ -88,12 +86,21 @@ export default function InlineEditField({ label, value, placeholder, multiline, 
       helperText={error || ' '}
       slotProps={{
         input: {
-          readOnly: !editing,
+          readOnly: !editable,
           endAdornment: !editable ? undefined : saving ? (
             <CircularProgress size={16} />
-          ) : editing ? null : (
+          ) : dirty ? (
+            <Tooltip title={error || `Save ${label.toLowerCase()}`}>
+              <span>
+                {/* Mouse-down default is suppressed so the field keeps focus and blur doesn't save first. */}
+                <IconButton size="small" edge="end" aria-label={`Save ${label.toLowerCase()}`} disabled={!!error} onMouseDown={(e) => e.preventDefault()} onClick={() => void commit()}>
+                  <Check size={16} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          ) : focused ? null : (
             <Tooltip title={`Edit ${label.toLowerCase()}`}>
-              <IconButton size="small" edge="end" aria-label={`Edit ${label.toLowerCase()}`} onClick={() => setEditing(true)}>
+              <IconButton size="small" edge="end" aria-label={`Edit ${label.toLowerCase()}`} onClick={() => inputRef.current?.focus()}>
                 <Pencil size={16} />
               </IconButton>
             </Tooltip>

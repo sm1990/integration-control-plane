@@ -18,9 +18,10 @@
 
 import { Alert, Box, Button, CircularProgress, Divider, FormControlLabel, Grid, Radio, RadioGroup, Slider, Stack, Switch, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
-import { useState, type JSX } from 'react';
+import { useRef, useState, type JSX } from 'react';
 import ResourceRangeSlider from '../common/ResourceRangeSlider';
 import StringArrayInput from '../common/StringArrayInput';
+import { IS_CLOUD } from '../../features';
 import { useUpdateContainer } from '../../hooks/useDevopsConfigs';
 import { CPU_MAX, CPU_MIN, CPU_STEP, MEMORY_MAX, MEMORY_MIN, MEMORY_STEP, MIN_GAP_CPU, MIN_GAP_MEMORY, containerToForm, formToWriteData } from '../../utils/containers';
 import { IMAGE_PULL_POLICY, type ImagePullPolicy, type ReleaseContainer } from '../../types/devopsConfigs';
@@ -42,6 +43,8 @@ const memFmt = (v: number): string => String(Math.round(v));
 
 export default function ContainerEditForm({ container, projectId, componentId, releaseId, isPaidOrPdpUser, onClose, onSaved, onError }: ContainerEditFormProps): JSX.Element {
   const [form, setForm] = useState(() => containerToForm(container));
+  const initialForm = useRef(form).current;
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initialForm);
   const update = useUpdateContainer(projectId, componentId, releaseId);
 
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]): void => setForm((prev) => ({ ...prev, [key]: value }));
@@ -70,7 +73,8 @@ export default function ContainerEditForm({ container, projectId, componentId, r
         </Alert>
       )}
 
-      {isPaidOrPdpUser && (
+      {/* Toggling limits on/off isn't supported for cloud; */}
+      {isPaidOrPdpUser && !IS_CLOUD && (
         <FormControlLabel
           labelPlacement="start"
           sx={{ ml: 0, mb: 2 }}
@@ -142,18 +146,22 @@ export default function ContainerEditForm({ container, projectId, componentId, r
         </Grid>
       </Grid>
 
-      <Divider sx={{ my: 3 }} />
-
-      <Stack gap={3}>
-        <StringArrayInput label="Command" value={form.command} onChange={(v) => set('command', v)} addLabel="Add Command" />
-        <StringArrayInput label="Arguments" value={form.args} onChange={(v) => set('args', v)} addLabel="Add Arguments" />
-      </Stack>
+      {/* Command/Args editing isn't supported for cloud */}
+      {!IS_CLOUD && (
+        <>
+          <Divider sx={{ my: 3 }} />
+          <Stack gap={3}>
+            <StringArrayInput label="Command" value={form.command} onChange={(v) => set('command', v)} addLabel="Add Command" />
+            <StringArrayInput label="Arguments" value={form.args} onChange={(v) => set('args', v)} addLabel="Add Arguments" />
+          </Stack>
+        </>
+      )}
 
       <Stack direction="row" gap={1.5} sx={{ mt: 4 }}>
         <Button variant="outlined" onClick={onClose} disabled={update.isPending}>
           Cancel
         </Button>
-        <Button variant="contained" onClick={onSubmit} disabled={update.isPending} startIcon={update.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
+        <Button variant="contained" onClick={onSubmit} disabled={update.isPending || !isDirty} startIcon={update.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
           Save Changes
         </Button>
       </Stack>

@@ -23,7 +23,7 @@ import { useOrgs } from '../hooks/useOrg';
 import { useProjectsByOrg } from '../hooks/useProjects';
 import { useComponents } from '../hooks/useComponents';
 import { useEnvironments, useAllEnvironments, useCloudDataPlanes } from '../hooks/useEnvironments';
-import { useInfiniteLogs } from '../hooks/useLogs';
+import { useInfiniteLogs, useVisibleLogs } from '../hooks/useLogs';
 import type { LogsRequest } from '../types/logs';
 import { choreologgingProjectLogsApiUrl } from '../config/runtimeConfig';
 import { IS_CLOUD } from '../features';
@@ -97,7 +97,7 @@ export default function RuntimeLogsProject(scope: ProjectScope): JSX.Element {
 
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteLogs(logsRequest, autoFetch ? AUTO_FETCH_INTERVAL : false, logsApiUrl);
 
-  const logs = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const logs = useVisibleLogs(data, { levels: levelFilter, componentIds });
 
   if (loadingProject || loadingComponents || loadingEnvironments || loadingCdps) {
     return (

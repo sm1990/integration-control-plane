@@ -28,6 +28,7 @@ import DeploymentTrackBar from '../components/DeploymentTrackBar';
 import NotFound from '../components/NotFound';
 import AgentChat from '../components/AgentChat';
 import { broaden, resourceUrl, type ComponentScope } from '../nav';
+import { IS_CLOUD } from '../features';
 
 /**
  * Full-page Test surface for AI Agent integrations (`test/agent-chat`).
@@ -94,7 +95,7 @@ export default function AgentChatConsole(scope: ComponentScope): JSX.Element {
               </Stack>
             )}
           </Stack>
-          {testableEnvs.length > 0 && (
+          {!IS_CLOUD && testableEnvs.length > 1 && (
             <Select size="small" value={selectedEnvId} onChange={(e) => setSelectedEnvId(e.target.value as string)} sx={{ minWidth: 160 }}>
               {testableEnvs.map((env) => (
                 <MenuItem key={env.id} value={env.id} sx={{ textTransform: 'capitalize' }}>

@@ -18,9 +18,7 @@
 
 import { Box, Button, CircularProgress, Drawer, IconButton, Stack, Typography } from '@wso2/oxygen-ui';
 import { X } from '@wso2/oxygen-ui-icons-react';
-import { useComponentDeployment } from '../../../hooks/useDeployments';
 import { useExecutionConfigs } from '../../../hooks/useExecutions';
-import { useOrgUuid } from '../../../hooks/useOrgUuid';
 import { useDeployDeploymentTrack } from '../../../hooks/useDeployments';
 import ScheduleFields from './ScheduleFields';
 import { buildScheduleDeployInput, useScheduleForm } from './useScheduleForm';
@@ -33,27 +31,24 @@ interface ScheduleDialogProps {
   envId: string;
   envName: string;
   componentId: string;
-  orgHandler: string;
+  releaseId: string;
+  buildId?: string;
   versionId: string;
   deploymentPipelineId: string;
 }
 
-export default function ScheduleDialog({ open, onClose, onSaveSuccess, onSaveError, envId, envName: _envName, componentId, orgHandler, versionId, deploymentPipelineId }: ScheduleDialogProps) {
+export default function ScheduleDialog({ open, onClose, onSaveSuccess, onSaveError, envId, envName: _envName, componentId, releaseId, buildId, versionId, deploymentPipelineId }: ScheduleDialogProps) {
   const handleClose = () => {
     (document.activeElement as HTMLElement)?.blur();
     onClose();
   };
 
-  const orgUuid = useOrgUuid() ?? '';
-  const { data: deployment, isLoading: loadingDeployment } = useComponentDeployment(orgHandler, orgUuid, componentId, versionId, envId);
-  const releaseId = deployment?.releaseId ?? '';
-  const { data: existingConfigs, isLoading: loadingExecConfigs } = useExecutionConfigs(componentId, releaseId, envId);
-  const loadingConfigs = loadingDeployment || loadingExecConfigs;
+  const { data: existingConfigs, isLoading: loadingConfigs } = useExecutionConfigs(componentId, releaseId, envId);
   const deployTrack = useDeployDeploymentTrack();
   const form = useScheduleForm(existingConfigs);
 
   const handleSave = () => {
-    deployTrack.mutate(buildScheduleDeployInput(form, { componentId, versionId, imageId: deployment?.build?.buildId ?? '', envId, deploymentPipelineId }), {
+    deployTrack.mutate(buildScheduleDeployInput(form, { componentId, versionId, imageId: buildId ?? '', envId, deploymentPipelineId }), {
       onSuccess: () => {
         onClose();
         onSaveSuccess?.();
@@ -100,7 +95,7 @@ export default function ScheduleDialog({ open, onClose, onSaveSuccess, onSaveErr
 
       <Stack direction="row" justifyContent="flex-end" gap={1} sx={{ px: 2, py: 1.5, borderTop: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
         <Button onClick={onClose}>Back</Button>
-        <Button variant="contained" onClick={handleSave} disabled={deployTrack.isPending || !deployment?.build?.buildId} startIcon={deployTrack.isPending ? <CircularProgress color="inherit" size={16} /> : undefined}>
+        <Button variant="contained" onClick={handleSave} disabled={deployTrack.isPending || !buildId} startIcon={deployTrack.isPending ? <CircularProgress color="inherit" size={16} /> : undefined}>
           {deployTrack.isPending ? 'Updating…' : 'Update'}
         </Button>
       </Stack>

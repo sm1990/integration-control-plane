@@ -27,10 +27,6 @@ import { useBallerinaCentralToken } from '../hooks/useBallerinaCentralToken';
 import type { PackageRegistryCatalogEntry } from '../types/packageRegistries';
 import type { OrgScope } from '../nav';
 
-const PAGE_COPY = {
-  subtitle: 'Connect package registries so builds in this organization can pull private dependencies.',
-};
-
 const SERVICE_ICONS: Record<PackageRegistryCatalogEntry['iconType'], string> = {
   ballerina: ballerinaIcon,
 };
@@ -49,10 +45,6 @@ export default function OrgPackageRegistries(_scope: OrgScope): JSX.Element {
         <BallerinaCentralPanel onBack={() => setView({ kind: 'list' })} />
       ) : (
         <>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {PAGE_COPY.subtitle}
-          </Typography>
-
           <Grid container spacing={3}>
             {PACKAGE_REGISTRIES.map((service) => {
               const connected = service.id === BALLERINA_CENTRAL_ID ? !!tokenStatus?.configured : false;

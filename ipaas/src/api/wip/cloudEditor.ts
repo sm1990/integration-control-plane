@@ -69,5 +69,12 @@ export async function callCreateCodeServer(params: { userId: string; organizatio
   );
   const created = result.createCodeServer;
   if (!created?.url) throw new Error('No editor URL returned from server');
-  return { url: created.url, clusterId: created.clusterId ?? '', releaseId: created.releaseId ?? '', namespace: created.namespace ?? '' };
+  // ready: true — this path reports readiness via pod polling, not the BFF.
+  return { url: created.url, ready: true, clusterId: created.clusterId ?? '', releaseId: created.releaseId ?? '', namespace: created.namespace ?? '' };
+}
+
+/** Not available here: this product polls pod status instead. Throws rather than
+ * returning null, which would read as "no editor". */
+export function getCodeServer(_params: { userId: string; projectId: string; componentId: string }): Promise<CodeServerInstance | null> {
+  return Promise.reject(new Error('[wip] cloudEditor.getCodeServer: not supported — this product polls pod status instead'));
 }

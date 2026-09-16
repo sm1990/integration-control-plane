@@ -17,8 +17,8 @@
  */
 
 import { useEffect } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { callCreateCodeServer, getOrCreateSampleRegistry } from '#api/cloudEditor';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { callCreateCodeServer, getCodeServer, getOrCreateSampleRegistry } from '#api/cloudEditor';
 import { CLOUD_EDITOR_POLL_MS } from '../constants/cloudEditor';
 
 export function useGetOrCreateSampleRegistry() {
@@ -30,6 +30,24 @@ export function useGetOrCreateSampleRegistry() {
 export function useCreateCodeServer() {
   return useMutation({
     mutationFn: (params: { userId: string; organizationId: string; projectId: string; componentId: string; orgHandle: string; imageUrl: string; registryId: string; sourceCommitHash?: string }) => callCreateCodeServer(params),
+  });
+}
+
+/**
+ * Polls the BFF until the editor at a known address is serving. Readiness comes
+ * from the BFF, not the editor origin: a `mode: 'no-cors'` probe resolves opaque
+ * whether the origin answered 200 or the gateway answered 503.
+ */
+export function useEditorReady(params: { userId: string; projectId: string; componentId: string }, enabled: boolean) {
+  return useQuery({
+    queryKey: ['cloud-editor-ready', params.userId, params.projectId, params.componentId],
+    queryFn: () => getCodeServer(params),
+    enabled,
+    refetchInterval: CLOUD_EDITOR_POLL_MS,
+    // Finite: refetchInterval already re-fires after a blip, and retrying forever
+    // would keep a real failure (an expired token, a 500) out of `error`.
+    retry: 2,
+    gcTime: 0,
   });
 }
 

@@ -48,3 +48,11 @@ export function gitProviderIcon(provider: string, size = 16): JSX.Element | null
       return null;
   }
 }
+
+/** Providers cloud cannot import from yet — their entry points render disabled. */
+export const CLOUD_COMING_SOON_PROVIDERS = new Set<string>([GitProvider.BITBUCKET_CLOUD, GitProvider.BITBUCKET_SERVER, GitProvider.GITLAB_SELF_MANAGED, GitProvider.AZURE_DEVOPS]);
+
+/** Tooltip for a provider that is visible but not yet usable, e.g. "Import from GitLab Coming Soon". */
+export function providerComingSoonLabel(provider: string): string {
+  return `Import from ${GIT_PROVIDER_LABEL[provider] ?? provider} Coming Soon`;
+}

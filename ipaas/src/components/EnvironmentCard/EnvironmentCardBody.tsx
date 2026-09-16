@@ -26,17 +26,8 @@ import SwaggerOperationsList from '../Overview/integration-as-api/SwaggerOperati
 import { useFetchComponentEndpointSpec } from '../../hooks/useComponents';
 import { useApiDefinition } from '../../hooks/useDeployments';
 import type { EnvEndpoint } from '../../types/component';
-
-// ---------- helpers ----------
-
-function trimEndpointName(name: string) {
-  return (
-    name
-      .replace(/^\s*Endpoint\b\s*/i, '')
-      .replace(/\s+/g, ' ')
-      .trim() || name
-  );
-}
+import { trimEndpointName } from '../../utils/endpoints';
+import DeploymentNotice from '../DeploymentNotice';
 
 // ---------- CopyButton ----------
 
@@ -367,17 +358,14 @@ export default function EnvironmentCardBody({
           projectHandler={projectHandler}
           componentHandler={componentHandler}
           envCritical={envCritical}
+          deploymentStatusV2={deploymentStatusV2}
           pendingTriggerTime={pendingTriggerTime}
           pendingTriggerArgs={pendingTriggerArgs}
           onTriggerResolved={onTriggerResolved}
           onRunSuccess={onRunSuccess}
         />
       )}
-      {isAutomation && !loadingEnvDeployment && !hasDeployment && (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-          No deployments yet. Click &apos;{envCritical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
-        </Typography>
-      )}
+      {isAutomation && !loadingEnvDeployment && !hasDeployment && <DeploymentNotice hasDeployment={false} envCritical={!!envCritical} />}
       {showServiceInsights && <EnvCardInsights envName={envName!} envId={envId!} apimEnvId={apimEnvId} projectId={projectId!} apiId={insightsApiId} />}
       {showAutomationInsights && <EnvCardAutomationInsights releaseId={releaseId} executionScope={{ componentId, envId: environmentId, projectId }} />}
     </>

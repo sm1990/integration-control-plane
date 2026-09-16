@@ -21,7 +21,11 @@ import { ArrowLeft, CheckCircle2, Copy, Plus, RefreshCcw, Search, Trash2, X, XCi
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useExecutionArguments, useExecutionLogs } from '../../hooks/useExecutions';
+import { IS_CLOUD } from '../../features';
+import { AUTOMATION_SCHEDULE_DOC_URL } from '../../constants/docs';
 import type { TaskExecution } from '../../types/executions';
+import { executionIdTail } from '../../utils/executionStatus';
+import { formatExecutionLogLine, spansMultipleContainers } from '../../utils/logs';
 import { useTriggerComponent } from '../../hooks/useExecutions';
 
 interface ExecutionDrawerProps {
@@ -88,9 +92,12 @@ function highlightText(text: string, keyword: string): React.ReactNode {
   );
 }
 
+// Cloud hides the Attempts tab, so Arguments is the only valid starting tab there.
+const INITIAL_TAB = IS_CLOUD ? 1 : 0;
+
 const drawerSx = {
   '& .MuiDrawer-paper': {
-    width: 480,
+    width: 680,
     position: 'fixed',
     top: 64,
     height: 'calc(100% - 64px)',
@@ -107,8 +114,9 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
   };
 
   const [view, setView] = useState<'execution' | 'logs'>('execution');
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(INITIAL_TAB);
   const [copied, setCopied] = useState(false);
+  const [titleCopied, setTitleCopied] = useState(false);
   const [args, setArgs] = useState<string[]>(['']);
   const [runError, setRunError] = useState<string | null>(null);
 
@@ -120,13 +128,18 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
 
   const { data: fetchedArgs, isLoading: argsLoading } = useExecutionArguments(execution?.runId ?? '', componentId, releaseId, open && tab === 1 && !!execution?.runId);
 
-  const { data: logs = [], isLoading: logsLoading } = useExecutionLogs(componentId, deploymentTrackId, execution?.id ?? '', environmentId, open && view === 'logs' && !!execution?.id);
+  const { data: logs = [], isLoading: logsLoading } = useExecutionLogs(componentId, deploymentTrackId, execution?.id ?? '', environmentId, open && view === 'logs' && !!execution?.id, execution ?? undefined);
+
+  const logLines = useMemo(() => {
+    const showContainer = spansMultipleContainers(logs);
+    return logs.map((e) => formatExecutionLogLine(e, showContainer));
+  }, [logs]);
 
   const filteredLogs = useMemo(() => {
-    if (!logFilterMode || !logSearch.trim()) return logs;
+    if (!logFilterMode || !logSearch.trim()) return logLines;
     const lower = logSearch.toLowerCase();
-    return logs.filter((e) => `${e.timestamp} ${e.message}`.toLowerCase().includes(lower));
-  }, [logs, logSearch, logFilterMode]);
+    return logLines.filter((line) => line.toLowerCase().includes(lower));
+  }, [logLines, logSearch, logFilterMode]);
 
   // Populate editable args from fetched data
   useEffect(() => {
@@ -138,7 +151,7 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
   // Reset state when drawer closes
   useEffect(() => {
     if (!open) {
-      setTab(0);
+      setTab(INITIAL_TAB);
       setArgs(['']);
       setRunError(null);
       setView('execution');
@@ -152,6 +165,15 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
     navigator.clipboard.writeText(execution.revisionId).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  // Copies the untrimmed name — the header shows only the identifying tail.
+  const handleCopyTitle = () => {
+    if (!execution) return;
+    navigator.clipboard.writeText(`Execution: ${execution.id}`).then(() => {
+      setTitleCopied(true);
+      setTimeout(() => setTitleCopied(false), 1500);
     });
   };
 
@@ -178,7 +200,18 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
     <Drawer anchor="right" open={open} onClose={handleClose} variant="temporary" sx={drawerSx}>
       {/* Header */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 3, py: 2, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
-        <Typography variant="h5">{view === 'logs' ? 'Attempt: 1' : execution ? `Execution: ${execution.id}` : 'Execution'}</Typography>
+        <Stack direction="row" alignItems="center" gap={0.5}>
+          <Typography variant="h5" sx={{ fontWeight: 600 }}>
+            {view === 'logs' ? 'Attempt: 1' : execution ? `Execution: ${executionIdTail(execution.id)}` : 'Execution'}
+          </Typography>
+          {view === 'execution' && execution && (
+            <Tooltip title={titleCopied ? 'Copied!' : 'Copy execution name'}>
+              <IconButton size="small" onClick={handleCopyTitle} aria-label="Copy execution name">
+                <Copy size={12} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Stack>
         <IconButton size="small" aria-label="close" onClick={handleClose}>
           <X size={16} />
         </IconButton>
@@ -252,14 +285,11 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
               </Box>
             ) : (
               <Box component="pre" sx={{ m: 0, fontFamily: 'monospace', fontSize: '0.75rem', lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                {filteredLogs.map((entry, i) => {
-                  const line = entry.timestamp ? `${entry.timestamp} ${entry.message}` : entry.message;
-                  return (
-                    <Box key={i} component="span" sx={{ display: 'block' }}>
-                      {logSearch && !logFilterMode ? highlightText(line, logSearch) : line}
-                    </Box>
-                  );
-                })}
+                {filteredLogs.map((line, i) => (
+                  <Box key={i} component="span" sx={{ display: 'block' }}>
+                    {logSearch && !logFilterMode ? highlightText(line, logSearch) : line}
+                  </Box>
+                ))}
               </Box>
             )}
           </Box>
@@ -307,14 +337,14 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
             {/* Tabs */}
             <Box sx={{ px: 2, mt: 2 }}>
               <Tabs value={tab} onChange={(_, v) => setTab(v)}>
-                <Tab label="Attempts" />
-                <Tab label="Arguments" />
+                {!IS_CLOUD && <Tab label="Attempts" value={0} />}
+                <Tab label="Arguments" value={1} />
               </Tabs>
               <Divider />
             </Box>
 
             {/* Attempts tab */}
-            {tab === 0 && (
+            {!IS_CLOUD && tab === 0 && (
               <Box sx={{ px: 2, py: 2 }}>
                 <Stack direction="row" sx={{ pb: 1, borderBottom: '1px solid', borderColor: 'divider', mb: 1 }}>
                   <Typography variant="caption" sx={{ fontWeight: 700, flex: '0 0 100px' }}>
@@ -351,15 +381,18 @@ export default function ExecutionDrawer({ execution, open, onClose, onRunSuccess
             {/* Arguments tab */}
             {tab === 1 && (
               <Box sx={{ px: 2, py: 2 }}>
-                <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
-                  <Typography variant="body2">
-                    To learn more about runtime arguments, see the{' '}
-                    <Link href="https://wso2.com/ballerina/icp/docs/" target="_blank" rel="noopener noreferrer" variant="body2">
-                      WSO2 Integration Platform Documentation
-                    </Link>
-                    .
-                  </Typography>
-                </Alert>
+                {/* Cloud has no runtime-arguments documentation to point at yet. */}
+                {!IS_CLOUD && (
+                  <Alert severity="info" variant="outlined" sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                      To learn more about runtime arguments, see the{' '}
+                      <Link href={AUTOMATION_SCHEDULE_DOC_URL} target="_blank" rel="noopener noreferrer" variant="body2">
+                        WSO2 Integration Platform Documentation
+                      </Link>
+                      .
+                    </Typography>
+                  </Alert>
+                )}
 
                 {argsLoading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 4 }}>

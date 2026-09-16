@@ -23,7 +23,8 @@ const ni = (name: string): never => {
   throw new Error(`[icp] healthChecks.${name}: not implemented`);
 };
 
-export const getHealthChecks = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string): Promise<HealthCheck[]> => ni('getHealthChecks');
-export const createHealthCheck = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _containerId: string, _data: HealthCheckWriteData): Promise<HealthCheck> => ni('createHealthCheck');
-export const updateHealthCheck = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _containerId: string, _healthCheckId: string, _data: HealthCheckWriteData): Promise<HealthCheck> => ni('updateHealthCheck');
-export const deleteHealthCheck = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _containerId: string, _healthCheckId: string): Promise<void> => ni('deleteHealthCheck');
+export const getHealthChecks = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _environmentId: string): Promise<HealthCheck[]> => ni('getHealthChecks');
+export const createHealthCheck = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _environmentId: string, _containerId: string, _data: HealthCheckWriteData): Promise<HealthCheck> => ni('createHealthCheck');
+export const updateHealthCheck = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _environmentId: string, _containerId: string, _healthCheckId: string, _data: HealthCheckWriteData): Promise<HealthCheck> =>
+  ni('updateHealthCheck');
+export const deleteHealthCheck = (_orgUuid: string, _projectId: string, _componentId: string, _releaseId: string, _environmentId: string, _containerId: string, _healthCheckId: string): Promise<void> => ni('deleteHealthCheck');

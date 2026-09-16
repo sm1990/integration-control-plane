@@ -16,21 +16,10 @@
  * under the License.
  */
 
-import { Step, StepLabel, Stepper, stepConnectorClasses } from '@wso2/oxygen-ui';
+import { Step as OxyStep, StepLabel, Stepper, stepConnectorClasses } from '@wso2/oxygen-ui';
 import type { JSX, ReactNode } from 'react';
-import { FailedIcon, InProgressIcon, QueuedIcon, SuccessIcon } from './StatusIcons';
-
-/** Lifecycle state of a single step, mirroring the shared Devant stepper. */
-export type StepStatus = 'queued' | 'pending' | 'inProgress' | 'success' | 'skipped' | 'failed' | 'terminated' | 'notStarted';
-
-export interface Step {
-  id: string;
-  label: string;
-  status: StepStatus;
-}
-
-/** Drives icon size, label font, and connector spacing — the "resizable" axis. */
-export type StepperSize = 'xs' | 's' | 'm' | 'l';
+import type { Step, StepperSize, StepStatus } from '../types/stepper';
+import { FailedIcon, InProgressIcon, QueuedIcon, SkippedIcon, SuccessIcon } from './StatusIcons';
 
 interface HorizontalStepperProps {
   steps: Step[];
@@ -62,6 +51,8 @@ function statusIcon(status: StepStatus, size: number): ReactNode {
     case 'failed':
     case 'terminated':
       return <FailedIcon size={size} />;
+    case 'skipped':
+      return <SkippedIcon size={size} />;
     case 'inProgress':
     case 'queued':
       return <InProgressIcon size={size} />;
@@ -100,11 +91,11 @@ export default function HorizontalStepper({ steps, currentStepIndex, size = 'm',
         '& .MuiStepLabel-label': { fontSize: `${cfg.label}px`, color: 'text.primary', '&.Mui-active': { fontWeight: 500 } },
       }}>
       {steps.map((step, index) => (
-        <Step key={step.id}>
+        <OxyStep key={step.id}>
           <StepLabel StepIconComponent={CustomStepIcon} icon={statusIcon(step.status, cfg.icon)} sx={{ transition: 'transform 0.3s ease', transform: index === currentStepIndex ? 'scale(1.05)' : 'none' }}>
             {step.label}
           </StepLabel>
-        </Step>
+        </OxyStep>
       ))}
     </Stepper>
   );

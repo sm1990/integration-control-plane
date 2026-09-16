@@ -16,7 +16,6 @@
  * under the License.
  */
 
-import { encodeArrayItems } from './containers';
 import { PROBE_TYPE, type HCProbe, type HttpHeader, type ProbeType, type WriteProbe } from '../types/healthChecks';
 
 // Slider presets mirror Devant's HCSliderValuesForm marks.
@@ -117,11 +116,7 @@ export function probeToForm(p: HCProbe, fallbackPort = DEFAULT_PORT): ProbeFormS
   };
 }
 
-/**
- * Build the wire probe from form state (Devant's refineHCProbePayload). All three
- * mechanism sub-objects are always present with irrelevant ones zeroed; `exec`
- * commands are base64-encoded on write.
- */
+/** Build the wire probe from form state; all three mechanism sub-objects are present, irrelevant ones zeroed. */
 export function formToProbe(form: ProbeFormState): HCProbe {
   const isHttp = form.type === PROBE_TYPE.HTTP_GET;
   const isTcp = form.type === PROBE_TYPE.TCP;
@@ -136,7 +131,7 @@ export function formToProbe(form: ProbeFormState): HCProbe {
       timeoutSeconds: form.timeoutSeconds,
       httpGet: { path: form.path, port: isHttp ? Number(form.port) : 0, httpHeaders: form.httpHeaders },
       tcpSocket: { port: isTcp ? Number(form.port) : 0 },
-      exec: { command: isExec ? encodeArrayItems(form.command) : [] },
+      exec: { command: isExec ? form.command : [] },
     },
   };
 }
@@ -148,14 +143,10 @@ export function isProbeFormValid(form: ProbeFormState): boolean {
     return form.httpHeaders.every((h) => h.name.trim() !== '' && h.value.trim() !== '');
   }
   if (form.type === PROBE_TYPE.TCP) return !validatePort(form.port);
-  return true;
+  return form.command.some((c) => c.trim() !== '');
 }
 
-/**
- * Serialise an existing (read) probe back into a write probe. An unset probe
- * becomes `{}`; a set one round-trips through the form so its `exec` command is
- * re-encoded (the API returns it decoded but expects base64 on write).
- */
+/** Serialise an existing (read) probe back into a write probe; an unset probe becomes `{}`. */
 export function serializeProbeForWrite(p: HCProbe | undefined, fallbackPort = DEFAULT_PORT): WriteProbe {
   if (!hasProbe(p)) return {};
   return formToProbe(probeToForm(p!, fallbackPort));

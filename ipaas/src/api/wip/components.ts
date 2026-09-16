@@ -32,7 +32,7 @@ import type {
   DeleteTrackResult,
   CheckDeletableResult,
 } from '../../types/component';
-import type { ComponentNameAvailability } from '../../types/component';
+import type { ComponentNameAvailability, UpdateEndpointInput } from '../../types/component';
 import type { CreateMcpProxyComponentInput } from '../../types/mcpProxy';
 
 function gqlStr(value: string): string {
@@ -402,7 +402,7 @@ export async function updateComponent(input: UpdateComponentInput): Promise<Comp
   }).then((d) => d.updateComponent);
 }
 
-export async function updateEndpoint(input: { componentId: string; versionId: string; releaseId: string; endpointId: string; displayName: string; networkVisibilities: string[] }): Promise<object> {
+export async function updateEndpoint(input: UpdateEndpointInput): Promise<object> {
   const networkVisibilitiesGql = `[${input.networkVisibilities.map(gqlStr).join(', ')}]`;
   const query = `mutation Update {
     updateComponentEndpoint(

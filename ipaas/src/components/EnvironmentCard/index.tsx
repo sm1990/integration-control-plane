@@ -111,7 +111,7 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
   const prevEnvReleaseId = prevEnvDeployment?.releaseId ?? '';
   const { data: prevEnvEndpoints = [] } = useEnvEndpoints(prevEnvEnabled && !!prevEnvReleaseId ? componentId : '', prevEnvEnabled && !!prevEnvReleaseId ? versionId : '', prevEnvEnabled && !!prevEnvReleaseId ? prevEnvReleaseId : '');
 
-  const { data: scheduleConfig } = useExecutionConfigs(isAutomation ? componentId : '', isAutomation ? envReleaseId : '', isAutomation ? env.id : '', isAutomation ? projectId : '');
+  const { data: scheduleConfig } = useExecutionConfigs(isAutomation ? componentId : '', isAutomation ? envReleaseId : '', isAutomation ? env.id : '');
   const scheduleDescription = scheduleConfig?.cronjobFrequency ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}` : null;
 
   const envTemplateId = env.templateId ?? env.id;
@@ -133,13 +133,14 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
 
   const [nextRunLabel, setNextRunLabel] = useState<string | null>(null);
   const cronFreq = scheduleConfig?.cronjobFrequency ?? null;
+  const cronTimezone = scheduleConfig?.cronjobTimezone ?? '';
   const lastScheduledTriggerRef = useRef<number>(0);
   const updateNextRun = useCallback(() => {
     if (!cronFreq) {
       setNextRunLabel(null);
       return;
     }
-    const ms = nextCronRunMs(cronFreq);
+    const ms = nextCronRunMs(cronFreq, cronTimezone || undefined);
     if (ms !== null) {
       const diff = ms - Date.now();
       if (diff < 1000 && Date.now() - lastScheduledTriggerRef.current > 30000) {
@@ -151,7 +152,7 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
     } else {
       setNextRunLabel(null);
     }
-  }, [cronFreq, queryClient]);
+  }, [cronFreq, cronTimezone, queryClient]);
   useEffect(() => {
     updateNextRun();
     const timer = setInterval(updateNextRun, 1000);
@@ -256,6 +257,7 @@ export default function Environment({ env, prevEnv, componentId, projectId, comp
                   componentId,
                   orgHandler,
                   releaseId: envReleaseId,
+                  buildId: envDeployment?.build?.buildId,
                   versionId,
                   deploymentPipelineId,
                   hasSchedule: !!scheduleConfig?.cronjobFrequency,

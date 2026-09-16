@@ -87,34 +87,40 @@ export default function OverviewHeaderActions({ component, apimId, orgHandler, p
         {!IS_CLOUD && <ConfigureActionRow Icon={ShieldCheck} label="Configure Security" onClick={() => setSecurityDrawerOpen(true)} />}
         {extraConfigureRows}
         {/* Lifecycle Status row */}
-        <Stack direction="row" alignItems="center" gap={1}>
-          <Button
-            variant="text"
-            size="small"
-            onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/manage/lifecycle`)}
-            startIcon={<Recycle size={14} />}
-            sx={{ color: 'text.secondary', textTransform: 'none', p: 0, minWidth: 0, '&:hover': { background: 'none', textDecoration: 'underline' } }}>
-            Lifecycle Status
-          </Button>
-          {lifecycleStatus && <Chip label={LIFECYCLE_LABEL[lifecycleStatus] ?? lifecycleStatus} size="small" color={lifecycleColor} variant="outlined" sx={{ height: 22, fontSize: '0.7rem' }} />}
-        </Stack>
-        {/* Developer Portal + type-specific actions (e.g. Generate MCP) */}
-        <Stack direction="row" alignItems="center" gap={1}>
-          <Tooltip title={isPublished ? 'Go to Developer Portal' : 'Publish API to access Developer Portal'}>
-            <IconButton
+        {!IS_CLOUD && (
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Button
+              variant="text"
               size="small"
-              component="a"
-              href={devPortalUrl ?? '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              disabled={!isPublished || !devPortalUrl}
-              onClick={() => trackEvent('component-manage-dev-portal')}
-              sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, color: isPublished && devPortalUrl ? 'text.secondary' : 'text.disabled', pointerEvents: 'auto' }}>
-              <CodeXml size={16} />
-            </IconButton>
-          </Tooltip>
-          {extra}
-        </Stack>
+              onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/manage/lifecycle`)}
+              startIcon={<Recycle size={14} />}
+              sx={{ color: 'text.secondary', textTransform: 'none', p: 0, minWidth: 0, '&:hover': { background: 'none', textDecoration: 'underline' } }}>
+              Lifecycle Status
+            </Button>
+            {lifecycleStatus && <Chip label={LIFECYCLE_LABEL[lifecycleStatus] ?? lifecycleStatus} size="small" color={lifecycleColor} variant="outlined" sx={{ height: 22, fontSize: '0.7rem' }} />}
+          </Stack>
+        )}
+        {/* Guarded as a whole so cloud, showing neither, contributes no empty row to the gap. */}
+        {(!IS_CLOUD || extra) && (
+          <Stack direction="row" alignItems="center" gap={1}>
+            {!IS_CLOUD && (
+              <Tooltip title={isPublished ? 'Go to Developer Portal' : 'Publish API to access Developer Portal'}>
+                <IconButton
+                  size="small"
+                  component="a"
+                  href={devPortalUrl ?? '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  disabled={!isPublished || !devPortalUrl}
+                  onClick={() => trackEvent('component-manage-dev-portal')}
+                  sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, color: isPublished && devPortalUrl ? 'text.secondary' : 'text.disabled', pointerEvents: 'auto' }}>
+                  <CodeXml size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+            {extra}
+          </Stack>
+        )}
       </Stack>
       {!IS_CLOUD && <SecurityDrawer open={securityDrawerOpen} onClose={() => setSecurityDrawerOpen(false)} apimId={apimId} componentId={componentId} versionId={versionId} />}
     </>

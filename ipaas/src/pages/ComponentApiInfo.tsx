@@ -30,6 +30,7 @@ import { broaden, resourceUrl, type ComponentScope } from '../nav';
 import { UUID_RE } from '../utils/string';
 import type { ApimApiInfo } from '../types/apim';
 import type { DeploymentTrack } from '../types/component';
+import { PILL_SELECT_SX } from '../constants/styles';
 
 function getMajorVersion(apiVersion: string): string {
   return apiVersion.replace(/^v/i, '').split('.')[0];
@@ -84,18 +85,7 @@ export default function ComponentApiInfo(scope: ComponentScope): JSX.Element {
 
   const endpointPicker =
     apimEndpoints.length > 0 ? (
-      <Select
-        size="small"
-        value={selectedApimId ?? ''}
-        onChange={(e) => setSelectedApimId(e.target.value as string)}
-        disabled={apimEndpoints.length === 1}
-        inputProps={{ 'aria-label': 'Endpoint' }}
-        sx={{
-          fontSize: '0.8125rem',
-          '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 },
-          '& .MuiSelect-select': { py: 0.5, px: 1.5 },
-          minWidth: 160,
-        }}>
+      <Select size="small" value={selectedApimId ?? ''} onChange={(e) => setSelectedApimId(e.target.value as string)} disabled={apimEndpoints.length === 1} inputProps={{ 'aria-label': 'Endpoint' }} sx={{ ...PILL_SELECT_SX, minWidth: 160 }}>
         {apimEndpoints.map((ep) => (
           <MenuItem key={ep.apimId} value={ep.apimId!}>
             {ep.displayName}

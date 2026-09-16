@@ -70,6 +70,10 @@ describe('buildLogText', () => {
     expect(buildLogText(null)).toBe('');
   });
 
+  it('returns an empty string for logs that have not loaded yet', () => {
+    expect(buildLogText(undefined)).toBe('');
+  });
+
   it('joins decoded stage logs with the stage label', () => {
     const logs = makeLogs({ init: makeStage({ log: btoa('starting up'), status: 'completed' }) });
     expect(buildLogText(logs)).toBe('▶ Initialization\nstarting up');

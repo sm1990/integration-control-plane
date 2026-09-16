@@ -130,7 +130,7 @@ export default function ComponentMetrics(scope: ComponentScope): JSX.Element {
       </PageTitle>
 
       <MetricsHeader range={range} onRangeChange={setRange} refreshSeconds={refreshSeconds} onRefreshSecondsChange={setRefreshSeconds} onRefresh={handleRefresh} isRefreshing={http.isFetching || usage.isFetching}>
-        {environments.length > 0 && (
+        {environments.length > 1 && (
           <TextField select size="small" label="Environment" value={envId} onChange={(e) => setEnvId(e.target.value)} sx={{ minWidth: 150 }}>
             {environments.map((e) => (
               <MenuItem key={e.id} value={e.id}>

@@ -16,11 +16,13 @@
  * under the License.
  */
 
-import { Alert, Box, Button, CircularProgress, FormHelperText, Grid, IconButton, InputAdornment, MenuItem, PageContent, Skeleton, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Button, CircularProgress, FormHelperText, Grid, IconButton, InputAdornment, Link, MenuItem, PageContent, Skeleton, Stack, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ArrowLeft, GitBranch, RefreshCw, GitHub } from '@wso2/oxygen-ui-icons-react';
+import { MENU_SEARCH_THRESHOLD } from '../components/MenuSearchField';
 import { useState, useEffect, useMemo, useRef, type JSX } from 'react';
 import { useLocation } from 'react-router';
 import { useAppNavigate } from '../hooks/useAppNavigate';
+import BusyFields from '../components/common/BusyFields';
 import { useCreateComponent } from '../hooks/useComponents';
 import type { DisplayType } from '../types/component';
 import { useGitHubUserRepos, useRepoBranches, useRepoContents, useRepoMetadata, useComponentNameAvailability } from '../hooks/useRepository';
@@ -29,12 +31,13 @@ import DirectoryPickerField from '../components/DirectoryPicker';
 import IntegrationTypeSelector from '../components/IntegrationCreate/IntegrationTypeSelector';
 import TechnologySelector from '../components/IntegrationCreate/TechnologySelector';
 import TechDetectionIcon from '../components/IntegrationCreate/TechDetectionIcon';
-import BallerinaCentralTokenPanel from '../components/IntegrationCreate/BallerinaCentralTokenPanel';
+import BallerinaCentralTokenDrawer from '../components/IntegrationCreate/BallerinaCentralTokenDrawer';
+import { useBallerinaCentralToken } from '../hooks/useBallerinaCentralToken';
 import IntegrationCreationLoader from '../components/IntegrationCreationLoader';
 import type { IntegrationType, SourceMode, LocationState } from '../types/import';
 import { SAMPLE_REPO_URL } from '../constants/github';
 import { external } from '../paths';
-import { GH_SELECT_ACTION, organizationActionItems, repositoryActionItems } from '../components/Import/gitHubSelectActions';
+import { GH_SELECT_ACTION, organizationActionItems, repositoryActionItems, selectMenuHeader } from '../components/Import/gitHubSelectActions';
 import { GitProvider, type GitCredential } from '../types/credentials';
 import AddCredentialDialog from '../components/Settings/Credentials/AddCredentialDialog';
 import { IS_CLOUD } from '../features';
@@ -50,17 +53,6 @@ import { toHandler, formatRepoNameToDisplayName } from '../utils/string';
 import { parseGitHubUrl } from '../utils/github';
 import { detectTechnology } from '../utils/technologyDetection';
 import { useProjectId } from '../hooks/useProjects';
-
-// Refresh icon sits beside the select (inside the same row), so the native dropdown
-// arrow stays clickable — nothing overlaps it. The helper/error text renders below
-// the row (see FIELD_HELPER_SX), so the icon centres on the input box.
-const FIELD_REFRESH_WRAP_SX = {
-  display: 'inline-flex',
-} as const;
-
-const FIELD_REFRESH_ICON_SX = {
-  color: 'primary.main',
-} as const;
 
 // Helper/error text rendered below the field+refresh row (not inside the field),
 // so the refresh icon stays centred on the input box. Matches MUI's default
@@ -119,6 +111,8 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
   const [parsedRepo, setParsedRepo] = useState('');
 
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [repoSearch, setRepoSearch] = useState('');
+  const [branchSearch, setBranchSearch] = useState('');
   const [subPath, setSubPath] = useState('/');
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -126,6 +120,8 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
   const [selectedTechnology, setSelectedTechnology] = useState<'MI' | 'BI' | null>(null);
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<IntegrationType | null>(null);
   const [ballerinaTokenInput, setBallerinaTokenInput] = useState('');
+  const [ballerinaDrawerOpen, setBallerinaDrawerOpen] = useState(false);
+  const { data: ballerinaTokenStatus } = useBallerinaCentralToken();
 
   const activeOrg = isPublicRepo ? parsedOrg : selectedOrg;
   const activeRepo = isPublicRepo ? parsedRepo : selectedRepo;
@@ -577,22 +573,13 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
                     ),
                   },
                 }}>
-                {!isCredentialMode && organizationActionItems(!!githubInstallUrl)}
+                {!isCredentialMode && organizationActionItems(!!githubInstallUrl, isAuthenticated ? { label: 'Reconnect GitHub', onClick: () => startGitHubAuth(refetchRepos) } : undefined)}
                 {orgOptions.map((org) => (
                   <MenuItem key={org} value={org}>
                     {org}
                   </MenuItem>
                 ))}
               </TextField>
-              {isAuthenticated && !isCredentialMode && (
-                <Tooltip title="Reconnect" placement="top">
-                  <Box component="span" sx={FIELD_REFRESH_WRAP_SX}>
-                    <IconButton size="small" aria-label="Reconnect GitHub" onClick={() => startGitHubAuth(refetchRepos)} sx={FIELD_REFRESH_ICON_SX}>
-                      <RefreshCw size={14} />
-                    </IconButton>
-                  </Box>
-                </Tooltip>
-              )}
             </Stack>
             <FormHelperText error={authStatus === 'failed' || credentialAuthFailed} sx={FIELD_HELPER_SX}>
               {isCredentialMode ? `${providerLabel} organization` : 'GitHub organization'}
@@ -621,6 +608,7 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
                 fullWidth
                 disabled={!selectedOrg || isReposLoading}
                 slotProps={{
+                  select: { onClose: () => setRepoSearch('') },
                   input: {
                     startAdornment: (
                       <InputAdornment position="start">
@@ -629,22 +617,19 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
                     ),
                   },
                 }}>
+                {selectMenuHeader(
+                  { key: 'repo-search', value: repoSearch, onChange: setRepoSearch, placeholder: 'Search repositories', show: reposForOrg.length > MENU_SEARCH_THRESHOLD },
+                  isAuthenticated ? { label: 'Refresh repositories', onClick: () => refetchRepos(), loading: isReposLoading } : undefined,
+                )}
                 {!isCredentialMode && repositoryActionItems(!!githubInstallUrl)}
-                {reposForOrg.map((repo) => (
-                  <MenuItem key={repo} value={repo}>
-                    {repo}
-                  </MenuItem>
-                ))}
+                {reposForOrg
+                  .filter((repo) => repo.toLowerCase().includes(repoSearch.trim().toLowerCase()))
+                  .map((repo) => (
+                    <MenuItem key={repo} value={repo}>
+                      {repo}
+                    </MenuItem>
+                  ))}
               </TextField>
-              {isAuthenticated && !isCredentialMode && (
-                <Tooltip title="Refresh repositories" placement="top">
-                  <Box component="span" sx={FIELD_REFRESH_WRAP_SX}>
-                    <IconButton size="small" aria-label="Refresh repositories" disabled={isReposLoading} onClick={() => refetchRepos()} sx={FIELD_REFRESH_ICON_SX}>
-                      {isReposLoading ? <CircularProgress size={14} /> : <RefreshCw size={14} />}
-                    </IconButton>
-                  </Box>
-                </Tooltip>
-              )}
             </Stack>
             <FormHelperText sx={FIELD_HELPER_SX}>Select repository</FormHelperText>
           </Grid>
@@ -663,6 +648,7 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
               fullWidth
               disabled={!activeRepo || isBranchesLoading}
               slotProps={{
+                select: { onClose: () => setBranchSearch('') },
                 input: {
                   startAdornment: (
                     <InputAdornment position="start">
@@ -671,20 +657,19 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
                   ),
                 },
               }}>
-              {(branches ?? []).map((b) => (
-                <MenuItem key={b.name} value={b.name}>
-                  {b.name}
-                  {b.isDefault ? ' (default)' : ''}
-                </MenuItem>
-              ))}
+              {selectMenuHeader(
+                { key: 'branch-search', value: branchSearch, onChange: setBranchSearch, placeholder: 'Search branches', show: (branches ?? []).length > MENU_SEARCH_THRESHOLD },
+                { label: 'Refresh branches', onClick: () => refetchBranches(), loading: isBranchesLoading },
+              )}
+              {(branches ?? [])
+                .filter((b) => b.name.toLowerCase().includes(branchSearch.trim().toLowerCase()))
+                .map((b) => (
+                  <MenuItem key={b.name} value={b.name}>
+                    {b.name}
+                    {b.isDefault ? ' (default)' : ''}
+                  </MenuItem>
+                ))}
             </TextField>
-            <Tooltip title="Refresh branches" placement="top">
-              <Box component="span" sx={FIELD_REFRESH_WRAP_SX}>
-                <IconButton size="small" aria-label="Refresh branches" disabled={!activeRepo || isBranchesLoading} onClick={() => refetchBranches()} sx={FIELD_REFRESH_ICON_SX}>
-                  {isBranchesLoading ? <CircularProgress size={14} /> : <RefreshCw size={14} />}
-                </IconButton>
-              </Box>
-            </Tooltip>
           </Stack>
           <FormHelperText sx={FIELD_HELPER_SX}>Select branch</FormHelperText>
         </Grid>
@@ -838,76 +823,88 @@ export default function ImportIntegration(scope: ProjectScope): JSX.Element {
       )}
 
       <Box sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>
-        {/* Row 1 — source pickers (mode-aware) + Branch + Directory */}
-        {renderRepoPickers()}
+        <BusyFields busy={createComponent.isPending}>
+          {/* Row 1 — source pickers (mode-aware) + Branch + Directory */}
+          {renderRepoPickers()}
 
-        {/* Row 2 — Display Name + auto-generated Name */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Display Name"
-              required
-              value={displayName}
-              onChange={(e) => {
-                setDisplayName(e.target.value);
-                displayNameAutoRef.current = false;
-              }}
-              fullWidth
-              error={!!displayName.trim() && !handlerValid}
-              helperText={displayName.trim() && !handlerValid ? 'Must be 3–64 chars' : 'Display Name of the Integration'}
-            />
+          {/* Row 2 — Display Name + auto-generated Name */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                label="Display Name"
+                required
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  displayNameAutoRef.current = false;
+                }}
+                fullWidth
+                error={!!displayName.trim() && !handlerValid}
+                helperText={displayName.trim() && !handlerValid ? 'Must be 3–64 chars' : 'Display Name of the Integration'}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 3 }}>
+              <TextField
+                label="Name"
+                value={effectiveHandler}
+                fullWidth
+                disabled
+                helperText={isCheckingName ? 'Checking availability…' : 'Auto-generated identifier'}
+                slotProps={{
+                  input: {
+                    endAdornment: isCheckingName ? (
+                      <InputAdornment position="end">
+                        <CircularProgress size={16} />
+                      </InputAdornment>
+                    ) : undefined,
+                  },
+                }}
+              />
+            </Grid>
           </Grid>
 
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              label="Name"
-              value={effectiveHandler}
-              fullWidth
-              disabled
-              helperText={isCheckingName ? 'Checking availability…' : 'Auto-generated identifier'}
-              slotProps={{
-                input: {
-                  endAdornment: isCheckingName ? (
-                    <InputAdornment position="end">
-                      <CircularProgress size={16} />
-                    </InputAdornment>
-                  ) : undefined,
-                },
-              }}
-            />
+          {/* Row 3 — Description */}
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={1} helperText="Brief description" />
+            </Grid>
           </Grid>
-        </Grid>
 
-        {/* Row 3 — Description */}
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          <Grid size={{ xs: 12, md: 6 }}>
-            <TextField label="Description" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={1} helperText="Brief description" />
-          </Grid>
-        </Grid>
+          {/* Technology */}
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h5" sx={{ mb: 2, mt: 5 }}>
+              Technology
+            </Typography>
+            <TechnologySelector selected={selectedTechnology} detectedMode={detectedMode} enabled={showBranchAndSubPath} onSelect={setSelectedTechnology} />
+            {IS_CLOUD && selectedTechnology === 'BI' && (
+              <>
+                {!ballerinaTokenStatus?.configured && (
+                  <Stack direction="row" alignItems="center" gap={1} sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Depend on private packages?
+                    </Typography>
+                    <Link component="button" type="button" variant="body2" underline="hover" onClick={() => setBallerinaDrawerOpen(true)} sx={{ fontWeight: 600 }}>
+                      Add a Ballerina Central token
+                    </Link>
+                  </Stack>
+                )}
+                <BallerinaCentralTokenDrawer open={ballerinaDrawerOpen} onClose={() => setBallerinaDrawerOpen(false)} tokenInput={ballerinaTokenInput} onTokenInputChange={setBallerinaTokenInput} />
+              </>
+            )}
+          </Box>
 
-        {/* Technology */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h5" sx={{ mb: 2, mt: 5 }}>
-            Technology
-          </Typography>
-          <TechnologySelector selected={selectedTechnology} detectedMode={detectedMode} enabled={showBranchAndSubPath} onSelect={setSelectedTechnology} />
-          {IS_CLOUD && selectedTechnology === 'BI' && (
-            <Box sx={{ mt: 3, width: { xs: '100%', md: 'calc(75% + 32px)' } }}>
-              <BallerinaCentralTokenPanel tokenInput={ballerinaTokenInput} onTokenInputChange={setBallerinaTokenInput} />
-            </Box>
-          )}
-        </Box>
-
-        {/* Integration Type */}
-        <Box sx={{ mb: 5 }}>
-          <Typography variant="h5" sx={{ mb: 2, mt: 5 }}>
-            Integration Type
-          </Typography>
-          <IntegrationTypeSelector selected={selectedIntegrationType} onSelect={setSelectedIntegrationType} />
-        </Box>
+          {/* Integration Type */}
+          <Box sx={{ mb: 5 }}>
+            <Typography variant="h5" sx={{ mb: 2, mt: 5 }}>
+              Integration Type
+            </Typography>
+            <IntegrationTypeSelector selected={selectedIntegrationType} onSelect={setSelectedIntegrationType} />
+          </Box>
+        </BusyFields>
 
         <Stack direction="row" gap={2} sx={{ mt: 2 }}>
-          <Button variant="outlined" onClick={() => navigate(backUrl)}>
+          <Button variant="outlined" onClick={() => navigate(backUrl)} disabled={createComponent.isPending}>
             Cancel
           </Button>
           <Button variant="contained" onClick={handleSubmit} disabled={!canSubmit || createComponent.isPending}>

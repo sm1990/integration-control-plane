@@ -39,6 +39,10 @@ export function termsOfUseUrl(): string {
   return 'https://wso2.com/integration-platform/terms-of-use';
 }
 
+export function documentationUrl(): string {
+  return 'https://wso2.com/integration-platform/docs/';
+}
+
 export function forceChangePasswordUrl(): string {
   return '/change-password';
 }

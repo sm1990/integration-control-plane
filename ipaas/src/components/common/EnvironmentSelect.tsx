@@ -16,28 +16,61 @@
  * under the License.
  */
 
-import { MenuItem, Select } from '@wso2/oxygen-ui';
+import { MenuItem, Select, Stack } from '@wso2/oxygen-ui';
 import type { JSX } from 'react';
+import EnvStatusDot from './EnvStatusDot';
+import { PILL_SELECT_SX } from '../../constants/styles';
 
 interface EnvironmentSelectProps {
   environments: { id: string; name: string }[];
   /** The selected environment id. */
   value: string;
   onChange: (environmentId: string) => void;
+  /**
+   * Identifies the deployment to read each environment's status from. Supply it to get
+   * status dots beside the environment names; omit it and the picker stays plain, for
+   * callers with no deployment in scope.
+   */
+  deployment?: {
+    orgHandler: string;
+    orgUuid: string;
+    componentId: string;
+    /** Deployment track id — `versionId` in the deployments API. */
+    versionId: string;
+  };
 }
 
 /** Compact environment picker used in the deployment-track bar of ComponentScope pages. */
-export default function EnvironmentSelect({ environments, value, onChange }: EnvironmentSelectProps): JSX.Element {
+export default function EnvironmentSelect({ environments, value, onChange, deployment }: EnvironmentSelectProps): JSX.Element {
+  const selected = environments.some((e) => e.id === value) ? value : '';
+  const label = (envId: string, name: string): JSX.Element =>
+    deployment ? (
+      <Stack direction="row" alignItems="center" gap={0.75}>
+        <EnvStatusDot {...deployment} envId={envId} />
+        {name}
+      </Stack>
+    ) : (
+      <>{name}</>
+    );
+
   return (
     <Select
       size="small"
-      value={environments.some((e) => e.id === value) ? value : ''}
+      value={selected}
       onChange={(e) => onChange(e.target.value as string)}
+      renderValue={
+        deployment
+          ? (v) => {
+              const env = environments.find((e) => e.id === v);
+              return env ? label(env.id, env.name) : null;
+            }
+          : undefined
+      }
       inputProps={{ 'aria-label': 'Environment' }}
-      sx={{ fontSize: '0.8125rem', '& .MuiSelect-select': { py: 0.5, px: 1.5 }, minWidth: 140 }}>
+      sx={{ ...PILL_SELECT_SX, minWidth: 60 }}>
       {environments.map((e) => (
         <MenuItem key={e.id} value={e.id}>
-          {e.name}
+          {label(e.id, e.name)}
         </MenuItem>
       ))}
     </Select>

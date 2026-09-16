@@ -80,8 +80,11 @@ export default function EnvironmentCardHeader({
 }: EnvironmentCardHeaderProps) {
   const buildDisabled = isBuildInProgress && (!hasDeployment || isAutomation);
   const statusDot = isGenericService && deploymentStatusV2 ? STATUS_DOT_MAP[deploymentStatusV2] : null;
-  const canStop = isGenericService && (deploymentStatusV2 === 'ACTIVE' || deploymentStatusV2 === 'ERROR');
+  const canStop = isGenericService && deploymentStatusV2 === 'ACTIVE';
   const canStart = isGenericService && deploymentStatusV2 === 'SUSPENDED';
+  // A failed deployment is already not serving, so stopping it achieves nothing —
+  // offer the recovery action instead.
+  const hasError = isGenericService && deploymentStatusV2 === 'ERROR';
   const isInProgress = isGenericService && deploymentStatusV2 === 'IN_PROGRESS';
 
   return (
@@ -149,12 +152,21 @@ export default function EnvironmentCardHeader({
                 </span>
               </Tooltip>
             )}
+            {hasError && (
+              <Tooltip title="Redeploy">
+                <span>
+                  <Button variant="outlined" size="small" color="error" startIcon={<RotateCw size={14} />} onClick={onRedeploy} disabled={isActionPending}>
+                    Redeploy
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
           </>
         )}
         {isAutomation && (
           <>
             {nextRunLabel && (
-              <Stack direction="row" alignItems="center" gap={0.5} sx={{ mr: 0.5 }}>
+              <Stack direction="row" alignItems="center" gap={0.5} sx={{ mr: 0.5, color: 'success.main' }}>
                 <Clock size={14} />
                 <Typography variant="body2" color="text.secondary">
                   {nextRunLabel}

@@ -47,7 +47,7 @@ export function safeAtob(encoded: string): string {
   }
 }
 
-export function buildLogText(logs: BuildRunLogs | null): string | null {
+export function buildLogText(logs: BuildRunLogs | null | undefined): string | null {
   if (!logs) return '';
 
   const parts: string[] = [];

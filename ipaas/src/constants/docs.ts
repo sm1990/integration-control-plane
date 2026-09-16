@@ -18,3 +18,6 @@
 
 /** Documentation link for automation runtime arguments (Test page + form empty state). */
 export const RUNTIME_ARGS_DOC_URL = 'https://wso2.com/ballerina/icp/docs/';
+
+/** Documentation link for automation schedules (execution drawer). */
+export const AUTOMATION_SCHEDULE_DOC_URL = 'https://wso2.com/integration-platform/docs/get-started/build-automation';

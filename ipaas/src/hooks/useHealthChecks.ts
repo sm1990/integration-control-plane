@@ -18,29 +18,30 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createHealthCheck, deleteHealthCheck, getHealthChecks, updateHealthCheck } from '#api/healthChecks';
-import { IS_WIP } from '../features';
+import { IS_CLOUD, IS_WIP } from '../features';
 import type { HealthCheck, HealthCheckWriteData } from '../types/healthChecks';
 import { useOrgUuid } from './useOrgUuid';
 
 const ROOT = 'healthChecks';
 
-/** Health checks are a WIP-only devops surface (cloud/icp API stubs throw). */
+/** ICP has no devops backend for probes; its API functions still stub. */
 export function isHealthChecksEnabled(): boolean {
-  return IS_WIP;
+  return IS_WIP || IS_CLOUD;
 }
 
-export function useHealthChecks(projectId: string, componentId: string | undefined, releaseId: string | undefined) {
+export function useHealthChecks(projectId: string, componentId: string | undefined, releaseId: string | undefined, environmentId: string | undefined) {
   const orgUuid = useOrgUuid();
   return useQuery<HealthCheck[]>({
-    queryKey: [ROOT, orgUuid, projectId, componentId, releaseId],
-    queryFn: () => getHealthChecks(orgUuid!, projectId, componentId!, releaseId!),
-    enabled: !!orgUuid && !!projectId && !!componentId && !!releaseId,
+    queryKey: [ROOT, orgUuid, projectId, componentId, releaseId, environmentId],
+    queryFn: () => getHealthChecks(orgUuid!, projectId, componentId!, releaseId!, environmentId!),
+    enabled: !!orgUuid && !!projectId && !!componentId && !!releaseId && !!environmentId,
   });
 }
 
 interface WritePath {
   componentId: string;
   releaseId: string;
+  environmentId: string;
   containerId: string;
 }
 
@@ -48,9 +49,9 @@ export function useCreateHealthCheck(projectId: string) {
   const orgUuid = useOrgUuid();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ componentId, releaseId, containerId, data }: WritePath & { data: HealthCheckWriteData }) => {
+    mutationFn: ({ componentId, releaseId, environmentId, containerId, data }: WritePath & { data: HealthCheckWriteData }) => {
       if (!orgUuid) throw new Error('Organization is not available.');
-      return createHealthCheck(orgUuid, projectId, componentId, releaseId, containerId, data);
+      return createHealthCheck(orgUuid, projectId, componentId, releaseId, environmentId, containerId, data);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [ROOT] }),
   });
@@ -60,9 +61,9 @@ export function useUpdateHealthCheck(projectId: string) {
   const orgUuid = useOrgUuid();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ componentId, releaseId, containerId, healthCheckId, data }: WritePath & { healthCheckId: string; data: HealthCheckWriteData }) => {
+    mutationFn: ({ componentId, releaseId, environmentId, containerId, healthCheckId, data }: WritePath & { healthCheckId: string; data: HealthCheckWriteData }) => {
       if (!orgUuid) throw new Error('Organization is not available.');
-      return updateHealthCheck(orgUuid, projectId, componentId, releaseId, containerId, healthCheckId, data);
+      return updateHealthCheck(orgUuid, projectId, componentId, releaseId, environmentId, containerId, healthCheckId, data);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [ROOT] }),
   });
@@ -72,9 +73,9 @@ export function useDeleteHealthCheck(projectId: string) {
   const orgUuid = useOrgUuid();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ componentId, releaseId, containerId, healthCheckId }: WritePath & { healthCheckId: string }) => {
+    mutationFn: ({ componentId, releaseId, environmentId, containerId, healthCheckId }: WritePath & { healthCheckId: string }) => {
       if (!orgUuid) throw new Error('Organization is not available.');
-      return deleteHealthCheck(orgUuid, projectId, componentId, releaseId, containerId, healthCheckId);
+      return deleteHealthCheck(orgUuid, projectId, componentId, releaseId, environmentId, containerId, healthCheckId);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [ROOT] }),
   });

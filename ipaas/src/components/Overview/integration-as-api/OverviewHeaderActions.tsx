@@ -20,6 +20,7 @@ import type { ReactNode } from 'react';
 import type { OverviewHeaderActionsProps } from '../../../types/integration';
 import SharedOverviewHeaderActions from '../_shared/OverviewHeaderActions';
 import GenerateMcpButton from './GenerateMcpButton';
+import { IS_CLOUD } from '../../../features';
 
 /**
  * Integration-as-API's Overview-header actions slot: the shared default block
@@ -35,7 +36,7 @@ export default function OverviewHeaderActions({ component, apimId, orgHandler, p
       apimId={apimId}
       orgHandler={orgHandler}
       projectHandler={projectHandler}
-      extra={<GenerateMcpButton apimId={apimId} sourceHandler={component.handler} orgHandler={orgHandler} projectHandler={projectHandler} />}
+      extra={IS_CLOUD ? undefined : <GenerateMcpButton apimId={apimId} sourceHandler={component.handler} orgHandler={orgHandler} projectHandler={projectHandler} />}
     />
   );
 }

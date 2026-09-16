@@ -18,6 +18,9 @@
 
 import { GitProvider } from '../types/credentials';
 import { gitProviderBase } from '../paths';
+import type { Repository } from '../types/repository';
+
+const trimSlashes = (s: string): string => s.replace(/^\/+|\/+$/g, '');
 
 /**
  * Source repo URL for the create-component payload. `org`/`repo` come from the
@@ -36,5 +39,40 @@ export function buildRepoUrl(provider: GitProvider, org: string, repo: string, s
       return `${gitProviderBase.azure}/${org}/_git/${repo}`;
     default:
       return `${gitProviderBase.github}/${org}/${repo}`;
+  }
+}
+
+/**
+ * Browsable URL to a component's source at its branch and sub-path, unlike
+ * `buildRepoUrl` above which builds the bare clone URL. Segments are trimmed
+ * because the cloud BFF derives them by splitting the stored clone URL, so a
+ * repo registered with a trailing slash leaves one behind.
+ */
+export function buildRepoBrowseUrl(repo: Repository): string {
+  const { gitProvider, branch, bitbucketServerUrl, projectApp } = repo;
+  const organizationApp = trimSlashes(repo.organizationApp);
+  const nameApp = trimSlashes(repo.nameApp);
+  const serverUrl = trimSlashes(repo.serverUrl || '');
+  const subPath = trimSlashes(repo.appSubPath || '');
+  const suffix = subPath ? `/${subPath}` : '';
+  const encodedBranch = encodeURIComponent(branch);
+  switch (gitProvider) {
+    case 'github':
+      return `${gitProviderBase.github}/${organizationApp}/${nameApp}/tree/${encodedBranch}${suffix}`;
+    case 'bitbucket':
+      return `${gitProviderBase.bitbucket}/${organizationApp}/${nameApp}/src/HEAD${suffix}?at=${encodedBranch}`;
+    case 'bitbucket_server': {
+      const base = trimSlashes(bitbucketServerUrl || '') || serverUrl;
+      return `${base}/projects/${organizationApp}/repos/${nameApp}/browse${suffix}?at=${encodedBranch}`;
+    }
+    case 'gitlab_self_managed':
+      return `${serverUrl}/${organizationApp}/${nameApp}`;
+    case 'azure_devops': {
+      // Azure resolves `path` against the repo root, so it always needs a leading slash.
+      const azurePath = `/${subPath}`;
+      return `${gitProviderBase.azure}/${organizationApp}/${projectApp}/_git/${nameApp}?path=${encodeURIComponent(azurePath)}&version=GB${encodedBranch}`;
+    }
+    default:
+      return `${gitProviderBase.github}/${organizationApp}/${nameApp}`;
   }
 }

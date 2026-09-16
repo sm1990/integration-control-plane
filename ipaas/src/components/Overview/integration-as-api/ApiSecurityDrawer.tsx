@@ -18,11 +18,12 @@
 
 import { Alert, Box, Button, Checkbox, CircularProgress, Drawer, FormControlLabel, IconButton, MenuItem, Radio, RadioGroup, Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { X } from '@wso2/oxygen-ui-icons-react';
-import { useEffect, useMemo, useRef, useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { API_KEY_SCHEME_DESCRIPTION, COMING_SOON_OAUTH, COMING_SOON_UPSTREAM_ATTRS, DEFAULT_API_KEY_HEADER, OAUTH_HEADER, OAUTH_SCHEME_DESCRIPTION } from '../../../constants/apiConsumption';
 import { useEndpointSecurity, useSetEndpointSecurity } from '../../../hooks/useConsumers';
-import type { EndpointOption, EndpointRef, SecurityConfig, SecurityMode } from '../../../types/consumers';
-import { friendlyApiError } from '../../../utils/apiSecurity';
+import type { EndpointOption, SecurityConfig, SecurityMode } from '../../../types/consumers';
+import { endpointLoadNotice, friendlyApiError } from '../../../utils/apiSecurity';
+import { useEndpointDrawer } from './useEndpointDrawer';
 import * as styles from './apiConsumption.styles';
 
 interface ApiSecurityDrawerProps {
@@ -44,33 +45,17 @@ interface ApiSecurityDrawerProps {
  * minus the Resources section, which has no cloud equivalent.
  */
 export default function ApiSecurityDrawer({ open, onClose, componentName, envName, endpoints, activeEndpointName }: ApiSecurityDrawerProps): JSX.Element {
-  const [userSelectedIdx, setUserSelectedIdx] = useState<number | null>(null);
   const [mode, setMode] = useState<SecurityMode>('none');
   const [apiKeyHeader, setApiKeyHeader] = useState(DEFAULT_API_KEY_HEADER);
   const [error, setError] = useState<string | null>(null);
 
-  // Drop the endpoint override when the drawer closes, so reopening derives the endpoint from
-  // activeEndpointName instead of a stale prior selection.
-  useEffect(() => {
-    if (!open) setUserSelectedIdx(null);
-  }, [open]);
-
-  const matchedIdx = useMemo(() => {
-    const i = endpoints.findIndex((ep) => ep.name === activeEndpointName);
-    return i >= 0 ? i : 0;
-  }, [endpoints, activeEndpointName]);
-  const selectedEndpointIdx = userSelectedIdx ?? matchedIdx;
-  const selectedEndpoint = endpoints[selectedEndpointIdx] ?? null;
-
-  const endpointRef: EndpointRef | null = useMemo(() => (selectedEndpoint ? { componentName, environmentName: envName, endpointName: selectedEndpoint.name } : null), [componentName, envName, selectedEndpoint]);
+  const { selectedIdx, selectEndpoint, selectedEndpoint, endpointRef, syncKey } = useEndpointDrawer({ open, componentName, envName, endpoints, activeEndpointName });
 
   const { data: security, isLoading: loadingSecurity, error: securityError } = useEndpointSecurity(endpointRef, open);
   const setSecurityMutation = useSetEndpointSecurity(endpointRef);
   const saving = setSecurityMutation.isPending;
 
-  // Seed the local selection from the fetched state once per (endpoint, open) — later user edits
-  // stick even if the query re-settles.
-  const syncKey = JSON.stringify({ componentName, environmentName: envName, endpointName: selectedEndpoint?.name ?? '', open });
+  // Seed the form once per (endpoint, open), so later edits survive a refetch.
   const syncedRef = useRef('');
   useEffect(() => {
     if (!open) {
@@ -85,6 +70,12 @@ export default function ApiSecurityDrawer({ open, onClose, componentName, envNam
     }
   }, [open, security, syncKey]);
 
+  const notice = endpointLoadNotice(securityError, {
+    notExposed: 'This endpoint isn’t exposed as an API yet. Set its visibility to Public and deploy, then come back to configure security.',
+    unavailable: 'API security isn’t available in this environment.',
+    readFailed: 'Could not read the current security configuration.',
+  });
+
   const isApiKey = mode === 'api-key';
   const isOAuth = mode === 'jwt';
 
@@ -94,7 +85,8 @@ export default function ApiSecurityDrawer({ open, onClose, componentName, envNam
   const handleApply = async () => {
     if (!endpointRef) return;
     setError(null);
-    const cfg: SecurityConfig = mode === 'api-key' ? { mode, apiKey: { header: apiKeyHeader.trim() || DEFAULT_API_KEY_HEADER } } : mode === 'jwt' ? { mode, jwt: {} } : { mode: 'none' };
+    // jwt mode is fetched, never chosen here — carry its issuers/audiences back unchanged.
+    const cfg: SecurityConfig = mode === 'api-key' ? { mode, apiKey: { header: apiKeyHeader.trim() || DEFAULT_API_KEY_HEADER } } : mode === 'jwt' ? { mode, jwt: security?.jwt ?? {} } : { mode: 'none' };
     try {
       await setSecurityMutation.mutateAsync(cfg);
       onClose();
@@ -126,13 +118,13 @@ export default function ApiSecurityDrawer({ open, onClose, componentName, envNam
           ) : (
             <Stack gap={2.5}>
               {error && <Alert severity="error">{error}</Alert>}
-              {securityError && !error && <Alert severity="warning">{friendlyApiError(securityError, 'Could not read the current security configuration.')}</Alert>}
+              {notice && !error && <Alert severity={notice.severity}>{notice.text}</Alert>}
 
               <Stack direction="row" alignItems="center" gap={2}>
                 <Typography variant="body2" fontWeight={500}>
                   Endpoints:
                 </Typography>
-                <Select size="small" value={selectedEndpointIdx} onChange={(e) => setUserSelectedIdx(Number(e.target.value))} disabled={endpoints.length <= 1} sx={styles.endpointSelect}>
+                <Select size="small" value={selectedIdx} onChange={(e) => selectEndpoint(Number(e.target.value))} disabled={endpoints.length <= 1} sx={styles.endpointSelect}>
                   {endpoints.map((ep, i) => (
                     <MenuItem key={ep.name} value={i}>
                       {ep.displayName}

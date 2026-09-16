@@ -26,6 +26,7 @@ import type {
   CreateComponentInput,
   UpdateComponentInput,
   UpdateAutoDeployInput,
+  UpdateEndpointInput,
   GenerateComponentEndpointsInput,
   ComponentNameAvailability,
   DisplayType,
@@ -38,6 +39,8 @@ import type {
 import type { CreateMcpProxyComponentInput } from '../../types/mcpProxy';
 import { bff, items, q, seg, type ListResponse } from './_client';
 import { parseGitHubUrl } from '../../utils/github';
+import { toVisibilityWire } from './_visibility';
+import { OTHER_BUILDPACK } from '../../constants/integrations';
 
 // Underscored params (_orgHandler, _versionId, _releaseId) are kept on exported
 // signatures so cloud matches the devant contract that tsconfig type-checks
@@ -71,24 +74,25 @@ const ANN_DESCRIPTION = 'openchoreo.dev/description';
 // component.isPrebuilt and to deploy the supplied image instead of building.
 const ANN_PREBUILT = 'openchoreo.dev/prebuilt';
 
-// Frontend DisplayType -> OpenChoreo ComponentType reference + ClusterWorkflow
+// Frontend DisplayType -> OpenChoreo ComponentType reference + Workflow
 // (buildpack builder). `componentType` is the {workloadType}/{componentTypeName}
 // pair required by the Component CRD; `workflow` must appear in that
 // ComponentType's spec.allowedWorkflows.
 //
+// Service components use deployment/integration-as-api, the integration platform
+// fronts every endpoint with the WSO2 API Platform gateway (apip)
+//
 // The Ballerina (BI) entries resolve against real cluster resources: every
-// ComponentType referenced here (deployment/service, cronjob/scheduled-task,
-// deployment/event-integration) is provisioned with ballerina-buildpack-builder
-// in its allowedWorkflows. The MI entries are placeholders — mi-buildpack-builder
-// is not in any ComponentType's allowedWorkflows yet, so creating MI components
-// will 400 until the control plane provisions that ClusterWorkflow.
+// ComponentType referenced here (deployment/integration-as-api,
+// cronjob/scheduled-task, deployment/event-integration) is provisioned with
+// ballerina-buildpack-builder in its allowedWorkflows.
 const DISPLAY_TYPE_MAP: Record<DisplayType, { componentType: string; workflow: string }> = {
-  ballerinaService: { componentType: 'deployment/service', workflow: 'ballerina-buildpack-builder' },
+  ballerinaService: { componentType: 'deployment/integration-as-api', workflow: 'ballerina-buildpack-builder' },
   scheduledTask: { componentType: 'cronjob/scheduled-task', workflow: 'ballerina-buildpack-builder' },
   manualTrigger: { componentType: 'cronjob/scheduled-task', workflow: 'ballerina-buildpack-builder' },
   webhook: { componentType: 'deployment/event-integration', workflow: 'ballerina-buildpack-builder' },
   ballerinaEventHandler: { componentType: 'deployment/event-integration', workflow: 'ballerina-buildpack-builder' },
-  miApiService: { componentType: 'deployment/service', workflow: 'mi-buildpack-builder' },
+  miApiService: { componentType: 'deployment/integration-as-api', workflow: 'mi-buildpack-builder' },
   miCronjob: { componentType: 'cronjob/scheduled-task', workflow: 'mi-buildpack-builder' },
   miJob: { componentType: 'cronjob/scheduled-task', workflow: 'mi-buildpack-builder' },
   miWebhook: { componentType: 'deployment/event-integration', workflow: 'mi-buildpack-builder' },
@@ -108,6 +112,8 @@ const LOGICAL_TYPE_TO_DISPLAY_TYPE: Record<string, { bi: string; mi: string }> =
 };
 
 function withFrontendDisplayType<T extends Component>(c: T): T {
+  // Rewriting a foreign runtime to a BI/MI displayType would make it read as one of ours.
+  if (c.buildpackType === OTHER_BUILDPACK) return c;
   const isMI = (c.displayType ?? '').toLowerCase().startsWith('mi');
   // File integrations reuse the BI/MI service build runtime, so the app
   // distinguishes them by componentSubType — not displayType (identifyIntegration,
@@ -134,7 +140,9 @@ function resolveCreateMapping(input: CreateComponentInput): { componentType: str
   const mapping = DISPLAY_TYPE_MAP[input.displayType] ?? DISPLAY_TYPE_MAP.ballerinaService;
   const isFileIntegration = input.componentSubType === 'ballerinaFileIntegration' || input.componentSubType === 'miFileIntegration';
   if (isFileIntegration) return { ...mapping, componentType: 'deployment/file-integration' };
-  if (input.componentSubType === 'aiAgent') return { ...mapping, componentType: 'deployment/ai-agent' };
+  // The BFF routes create, build, deploy and delete to agent-manager on this type.
+  // 'deployment/ai-agent' names the agents created before that move.
+  if (input.componentSubType === 'aiAgent') return { ...mapping, componentType: 'proxy/agent-api' };
   if (input.componentSubType === 'MCP') return { ...mapping, componentType: 'deployment/mcp-server' };
   return mapping;
 }
@@ -279,8 +287,11 @@ export const generateComponentEnvironmentJwtSecret = (componentId: string, envir
 export const rotateComponentEnvironmentJwtSecret = (componentId: string, environmentId: string): Promise<string> =>
   bff.put<{ secret: string }>(`/components/${seg(componentId)}/environments/${seg(environmentId)}/jwt-secret/rotate`).then((r) => r?.secret ?? '');
 
-export const updateEndpoint = (input: { componentId: string; versionId: string; releaseId: string; endpointId: string; displayName: string; networkVisibilities: string[] }): Promise<object> =>
-  bff.put<object>(`/components/${seg(input.componentId)}/endpoints/${seg(input.endpointId)}/visibility`, input);
+// Sends visibility only; projectName resolves the component's release bindings.
+export const updateEndpoint = (input: UpdateEndpointInput): Promise<object> =>
+  bff.put<object>(`/components/${seg(input.componentId)}/endpoints/${seg(input.endpointId)}/visibility${q({ projectName: input.projectId })}`, {
+    visibility: input.networkVisibilities.map(toVisibilityWire),
+  });
 
 // MCP proxy (convert from an existing HTTP API) is a wip/APIM-only flow.
 export const createMcpProxyComponent = (_input: CreateMcpProxyComponentInput): Promise<Component> => {

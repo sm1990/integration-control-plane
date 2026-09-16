@@ -19,7 +19,9 @@
 /**
  * Billing surface.
  *
- * billingApiBaseUrl is empty when the deployment has not wired the billing
+ * billingApiBaseUrl is the versioned root of the billing user API (…/api/v1),
+ * matching BILLING_SERVICE_URL — callers append only the
+ * resource path. It is empty when the deployment has not wired the billing
  * endpoint — fetchBillingOrg then throws a clear error so callers can treat
  * billing as disabled rather than hitting a malformed URL.
  */
@@ -38,7 +40,7 @@ export async function fetchBillingOrg(product: string): Promise<BillingOrg> {
   const base = billingBaseUrl();
   if (!base) throw new Error('billingApiBaseUrl is not configured');
 
-  const res = await authenticatedFetch(`${base}/api/v1/organization${q({ product })}`, {
+  const res = await authenticatedFetch(`${base}/organization${q({ product })}`, {
     headers: { Accept: 'application/json' },
   });
   const text = await res.text().catch(() => '');

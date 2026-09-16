@@ -24,6 +24,7 @@ import { useDataPlanes } from '../hooks/useDataPlanes';
 import { useAddEnvironment } from '../hooks/useEnvironments';
 import { useOrgUuid } from '../hooks/useOrgUuid';
 import { IS_CLOUD } from '../features';
+import BusyFields from '../components/common/BusyFields';
 import { buildEnvironmentVhost, EnvironmentValidationError } from '../utils/environment';
 import { resourceUrl, type OrgScope } from '../nav';
 
@@ -101,51 +102,53 @@ export default function CreateEnvironment(scope: OrgScope): JSX.Element {
         </Alert>
       )}
 
-      <Stack gap={3} sx={{ maxWidth: 600, mb: 4 }}>
-        <TextField label="Name" required placeholder="e.g., staging" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
-        <Box>
-          <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.75 }}>
-            Data Plane
-          </Typography>
-          {loadingDataPlanes ? (
-            <CircularProgress size={20} />
-          ) : dataPlanesError ? (
-            <Alert
-              severity="error"
-              action={
-                <Button color="inherit" size="small" onClick={() => refetchDataPlanes()}>
-                  Retry
-                </Button>
-              }>
-              Failed to load data planes.
-            </Alert>
-          ) : (
-            <Select fullWidth size="small" displayEmpty value={dataplaneId} onChange={(e) => setDataplaneId(String(e.target.value))}>
-              <MenuItem value="" disabled>
-                Select a data plane
-              </MenuItem>
-              {dataPlanes.map((dp) => (
-                <MenuItem key={dp.id} value={dp.id}>
-                  {dp.name}
-                </MenuItem>
-              ))}
-            </Select>
-          )}
-        </Box>
-        {IS_CLOUD ? (
-          <TextField label="Description" placeholder="What this environment is for" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={2} />
-        ) : (
+      <BusyFields busy={create.isPending}>
+        <Stack gap={3} sx={{ maxWidth: 600, mb: 4 }}>
+          <TextField label="Name" required placeholder="e.g., staging" value={name} onChange={(e) => setName(e.target.value)} fullWidth />
           <Box>
-            <TextField label="DNS Prefix" required placeholder="e.g., staging" value={dnsPrefix} onChange={(e) => setDnsPrefix(e.target.value)} fullWidth />
-            {vhostPreview && (
-              <Alert severity="info" sx={{ mt: 1.5 }}>
-                DNS for the environment will be created as {vhostPreview}. URL customization will be enabled for the new environment after provisioning, which can take about 5 minutes.
+            <Typography variant="body2" sx={{ fontWeight: 500, mb: 0.75 }}>
+              Data Plane
+            </Typography>
+            {loadingDataPlanes ? (
+              <CircularProgress size={20} />
+            ) : dataPlanesError ? (
+              <Alert
+                severity="error"
+                action={
+                  <Button color="inherit" size="small" onClick={() => refetchDataPlanes()}>
+                    Retry
+                  </Button>
+                }>
+                Failed to load data planes.
               </Alert>
+            ) : (
+              <Select fullWidth size="small" displayEmpty value={dataplaneId} onChange={(e) => setDataplaneId(String(e.target.value))}>
+                <MenuItem value="" disabled>
+                  Select a data plane
+                </MenuItem>
+                {dataPlanes.map((dp) => (
+                  <MenuItem key={dp.id} value={dp.id}>
+                    {dp.name}
+                  </MenuItem>
+                ))}
+              </Select>
             )}
           </Box>
-        )}
-        <FormControlLabel control={<Checkbox checked={critical} onChange={(_, v) => setCritical(v)} />} label="Mark as Critical Environment" />
-      </Stack>
+          {IS_CLOUD ? (
+            <TextField label="Description" placeholder="What this environment is for" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={2} />
+          ) : (
+            <Box>
+              <TextField label="DNS Prefix" required placeholder="e.g., staging" value={dnsPrefix} onChange={(e) => setDnsPrefix(e.target.value)} fullWidth />
+              {vhostPreview && (
+                <Alert severity="info" sx={{ mt: 1.5 }}>
+                  DNS for the environment will be created as {vhostPreview}. URL customization will be enabled for the new environment after provisioning, which can take about 5 minutes.
+                </Alert>
+              )}
+            </Box>
+          )}
+          <FormControlLabel control={<Checkbox checked={critical} onChange={(_, v) => setCritical(v)} />} label="Mark as Critical Environment" />
+        </Stack>
+      </BusyFields>
 
       <Stack direction="row" gap={2}>
         <Button variant="outlined" onClick={() => navigate(listUrl)} disabled={create.isPending}>

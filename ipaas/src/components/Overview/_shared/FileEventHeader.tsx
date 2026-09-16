@@ -125,6 +125,7 @@ export default function FileEventHeader({
           <>
             <ConfigureButton onClick={() => setConfigureOpen(true)} hasMissingConfigs={missingConfigs} />
             <ConfigureDrawer
+              onSaved={() => onNotify({ text: 'Configuration saved', severity: 'success', detail: 'A redeployment has been initiated so the integration picks up the new configuration.' })}
               open={configureOpen}
               onClose={() => setConfigureOpen(false)}
               orgHandler={orgHandler}

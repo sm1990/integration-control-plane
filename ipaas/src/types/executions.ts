@@ -38,7 +38,17 @@ export interface TaskExecution {
 export interface ExecutionLogEntry {
   timestamp: string;
   message: string;
+  level?: string;
+  container?: string;
 }
+
+/**
+ * The bounds of a single run, as the executions table holds them: unix seconds
+ * in string form (see toTaskExecution). An empty completionTime means the run
+ * has not finished. Log backends that can only filter by component and time
+ * need this to isolate one execution.
+ */
+export type ExecutionLogWindow = Pick<TaskExecution, 'startTime' | 'completionTime'>;
 
 export interface ExecutionArgument {
   argumentName: string;
@@ -55,6 +65,14 @@ export interface UpdateJobConfigsInput {
   jobTimeoutSeconds?: number;
   cronJobAllowConcurrency?: boolean;
   jobRetryCount?: number;
+}
+
+/** Identifies the schedule to stop. `orgHandler`/`releaseId` are unused by cloud. */
+export interface StopScheduleInput {
+  componentId: string;
+  envId: string;
+  orgHandler: string;
+  releaseId: string;
 }
 
 export interface TriggerComponentInput {

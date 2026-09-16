@@ -79,6 +79,8 @@ export interface DeployEnvironmentCardHeaderProps {
   isStopPending: boolean;
   onStop: () => void;
   showStart: boolean;
+  /** Recovery action shown in place of Stop when the deployment has failed. */
+  showRedeploy: boolean;
   isRedeployPending: boolean;
   onStart: () => void;
   onRefresh: () => void;

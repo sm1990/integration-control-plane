@@ -27,7 +27,7 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'tests/e2e/helpers/*.test.ts'],
   },
   resolve: {
     alias: {

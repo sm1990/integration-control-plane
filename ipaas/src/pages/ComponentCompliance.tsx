@@ -35,6 +35,7 @@ import CompliancePie from '../components/Compliance/CompliancePie';
 import ExpandableComplianceTable from '../components/Compliance/ExpandableComplianceTable';
 import RuleViolationsTabs from '../components/Compliance/RuleViolationsTabs';
 import RulesetsAdherenceSummaryCard from '../components/Compliance/RulesetsAdherenceSummaryCard';
+import { PILL_SELECT_SX } from '../constants/styles';
 
 export default function ComponentCompliance(scope: ComponentScope): JSX.Element {
   const navigate = useAppNavigate();
@@ -97,12 +98,7 @@ export default function ComponentCompliance(scope: ComponentScope): JSX.Element 
         versionView
         extra={
           endpointsWithApim.length > 0 && (
-            <Select
-              size="small"
-              value={selectedApimId ?? ''}
-              onChange={(e) => setSelectedApimId(e.target.value as string)}
-              disabled={endpointsWithApim.length <= 1}
-              sx={{ minWidth: 140, fontSize: '0.8125rem', '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 }, '& .MuiSelect-select': { py: 0.5, px: 1.5 } }}>
+            <Select size="small" value={selectedApimId ?? ''} onChange={(e) => setSelectedApimId(e.target.value as string)} disabled={endpointsWithApim.length <= 1} sx={{ ...PILL_SELECT_SX, minWidth: 140 }}>
               {endpointsWithApim.map((ep) => (
                 <MenuItem key={ep.apimId!} value={ep.apimId!}>
                   {ep.displayName}

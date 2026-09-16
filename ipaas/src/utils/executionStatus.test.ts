@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { executionPhase, isInProgressStatus, isTerminalStatus } from './executionStatus';
+import { executionIdTail, executionPhase, isInProgressStatus, isTerminalStatus } from './executionStatus';
 
 describe('executionPhase', () => {
   it('maps succeeded and success to succeeded', () => {
@@ -85,5 +85,16 @@ describe('isInProgressStatus', () => {
 
   it('is true for undefined', () => {
     expect(isInProgressStatus(undefined)).toBe(true);
+  });
+});
+
+describe('executionIdTail', () => {
+  it('keeps the trailing hash and run segments', () => {
+    expect(executionIdTail('scheduled-logger-development-28ec91fb-29812664')).toBe('28ec91fb-29812664');
+  });
+
+  it('leaves a name with nothing to trim alone', () => {
+    expect(executionIdTail('run-1')).toBe('run-1');
+    expect(executionIdTail('run')).toBe('run');
   });
 });

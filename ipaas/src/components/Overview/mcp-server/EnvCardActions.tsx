@@ -24,6 +24,7 @@ import { useAppNavigate } from '../../../hooks/useAppNavigate';
 import { useRedeployDeployment, useStopDeployment } from '../../../hooks/useDeployments';
 import { IS_CLOUD } from '../../../features';
 import type { EnvCardActionsProps } from '../../../types/integration';
+import { isDeploymentHealthy } from '../../../utils/deploymentStatus';
 import ServiceLogsDrawer from '../integration-as-api/ServiceLogsDrawer';
 
 /**
@@ -56,6 +57,9 @@ export default function EnvCardActions({
   const canStart = deploymentStatusV2 === 'SUSPENDED';
   const hasError = deploymentStatusV2 === 'ERROR';
   const isInProgress = deploymentStatusV2 === 'IN_PROGRESS';
+  // The playground connects to the running server, so only a running workload
+  // qualifies.
+  const canTest = isDeploymentHealthy(deploymentStatusV2);
 
   const handleStop = () => {
     stopMutation.mutate(
@@ -87,15 +91,9 @@ export default function EnvCardActions({
   return (
     <>
       {hasDeployment && (
-        <Tooltip title={isInProgress ? 'Available once the deployment completes' : ''}>
+        <Tooltip title={canTest ? 'Test' : 'Available once the deployment is active'}>
           <span>
-            <Button
-              variant="text"
-              size="small"
-              startIcon={<FlaskConical size={14} />}
-              disabled={isInProgress}
-              onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/test`)}
-              sx={{ textTransform: 'none' }}>
+            <Button variant="text" size="small" startIcon={<FlaskConical size={14} />} disabled={!canTest} onClick={() => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/test`)} sx={{ textTransform: 'none' }}>
               Test
             </Button>
           </span>

@@ -43,30 +43,32 @@ export default function LogsFilters({ filters, environments, logs, logsRequest, 
     <>
       {/* Filter toolbar */}
       <Stack direction="row" gap={1.5} sx={{ mb: 1 }} flexWrap="wrap" alignItems="center">
-        {/* Environment filter */}
-        <Select
-          multiple
-          value={envFilter}
-          onChange={(e) => setEnvFilter(e.target.value as string[])}
-          displayEmpty
-          renderValue={(selected) => {
-            const sel = selected as string[];
-            if (sel.length === 0) return 'All Environments';
-            return environments
-              .filter((env) => sel.includes(env.id))
-              .map((env) => env.name)
-              .join(', ');
-          }}
-          size="small"
-          sx={{ minWidth: 160 }}
-          inputProps={{ 'aria-label': 'Environment' }}>
-          {environments.map((e) => (
-            <MenuItem key={e.id} value={e.id}>
-              <Checkbox checked={envFilter.includes(e.id)} size="small" sx={{ p: 0, mr: 1 }} />
-              <ListItemText primary={e.name} />
-            </MenuItem>
-          ))}
-        </Select>
+        {/* Environment filter — nothing to narrow when there is one environment. */}
+        {environments.length > 1 && (
+          <Select
+            multiple
+            value={envFilter}
+            onChange={(e) => setEnvFilter(e.target.value as string[])}
+            displayEmpty
+            renderValue={(selected) => {
+              const sel = selected as string[];
+              if (sel.length === 0) return 'All Environments';
+              return environments
+                .filter((env) => sel.includes(env.id))
+                .map((env) => env.name)
+                .join(', ');
+            }}
+            size="small"
+            sx={{ minWidth: 160 }}
+            inputProps={{ 'aria-label': 'Environment' }}>
+            {environments.map((e) => (
+              <MenuItem key={e.id} value={e.id}>
+                <Checkbox checked={envFilter.includes(e.id)} size="small" sx={{ p: 0, mr: 1 }} />
+                <ListItemText primary={e.name} />
+              </MenuItem>
+            ))}
+          </Select>
+        )}
 
         {/* Log level filter */}
         <Select

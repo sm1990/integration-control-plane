@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Card, CardContent } from '@wso2/oxygen-ui';
+import { Alert, AlertTitle, Card, CardContent } from '@wso2/oxygen-ui';
 import { useCallback, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -83,7 +83,8 @@ export default function EnvCardShell({ component, env, prevEnv, versionId, proje
   const [notification, setNotification] = useState<EnvCardNotification | null>(null);
   useEffect(() => {
     if (!notification) return;
-    const timeout = notification.severity === 'error' ? 6000 : 4000;
+    // A two-line notice needs longer to read; errors sit longer than plain confirmations.
+    const timeout = notification.detail ? 10000 : notification.severity === 'error' ? 6000 : 4000;
     const timer = setTimeout(() => setNotification(null), timeout);
     return () => clearTimeout(timer);
   }, [notification]);
@@ -149,18 +150,27 @@ export default function EnvCardShell({ component, env, prevEnv, versionId, proje
         ) : (
           <EnvCardHeader
             envName={env.name}
-            latestCommit={latestCommit}
+            deployedCommit={envDeployment?.build?.commit}
             hasDeployment={!!envDeployment}
             isRefreshing={isRefreshing}
             onRefresh={handleRefresh}
-            status={HeaderStatus ? <HeaderStatus {...slotProps} /> : undefined}
-            actions={EnvCardActions ? <EnvCardActions {...slotProps} /> : undefined}
+            // Held back while loading so the card settles in one go: the bodies
+            // already skeleton, and these would otherwise render off a null status.
+            status={HeaderStatus && !loadingDeployment ? <HeaderStatus {...slotProps} /> : undefined}
+            actions={EnvCardActions && !loadingDeployment ? <EnvCardActions {...slotProps} /> : undefined}
           />
         )}
 
         {notification && (
-          <Alert severity={notification.severity} sx={{ mt: 2 }}>
-            {notification.text}
+          <Alert severity={notification.severity} onClose={() => setNotification(null)} sx={{ mt: 2 }}>
+            {notification.detail ? (
+              <>
+                <AlertTitle>{notification.text}</AlertTitle>
+                {notification.detail}
+              </>
+            ) : (
+              notification.text
+            )}
           </Alert>
         )}
 

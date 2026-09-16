@@ -29,6 +29,7 @@ import { ACTION_LABEL, CONFIRM_ACTIONS, HIDDEN_ACTIONS, PUBLISH_ACTIONS, SUCCESS
 import { useProjectId } from '../hooks/useProjects';
 import type { ComponentScope } from '../nav';
 import DeploymentTrackBar from '../components/DeploymentTrackBar';
+import { PILL_SELECT_SX } from '../constants/styles';
 import { trackEvent } from '../utils/tracking';
 
 export default function Lifecycle(scope: ComponentScope): JSX.Element {
@@ -125,12 +126,7 @@ export default function Lifecycle(scope: ComponentScope): JSX.Element {
         extra={
           <>
             {endpointsWithApim.length > 0 && (
-              <Select
-                size="small"
-                value={selectedApimId ?? ''}
-                onChange={(e) => setSelectedApimId(e.target.value as string)}
-                disabled={endpointsWithApim.length <= 1}
-                sx={{ minWidth: 140, fontSize: '0.8125rem', '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 }, '& .MuiSelect-select': { py: 0.5, px: 1.5 } }}>
+              <Select size="small" value={selectedApimId ?? ''} onChange={(e) => setSelectedApimId(e.target.value as string)} disabled={endpointsWithApim.length <= 1} sx={{ ...PILL_SELECT_SX, minWidth: 140 }}>
                 {endpointsWithApim.map((ep) => (
                   <MenuItem key={ep.apimId!} value={ep.apimId!}>
                     {ep.displayName}

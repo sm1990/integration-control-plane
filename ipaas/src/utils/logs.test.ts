@@ -17,7 +17,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { copyLog, downloadLogs, filterLogLines, formatValue, LEVEL_COLORS, levelColor, statusCodeColor, toLocalInput } from './logs';
+import { copyLog, DISPLAY_FIELDS, downloadLogs, filterLogLines, filterLogRows, formatValue, LEVEL_COLORS, levelColor, statusCodeColor, toLocalInput } from './logs';
 import type { LogRow } from '../types/logs';
 
 const makeLogRow = (overrides: Partial<LogRow> = {}): LogRow => ({
@@ -39,6 +39,9 @@ const makeLogRow = (overrides: Partial<LogRow> = {}): LogRow => ({
   componentVersionId: 'cv1',
   gatewayCode: null,
   statusCode: null,
+  componentName: null,
+  containerName: null,
+  podName: null,
   ...overrides,
 });
 
@@ -176,5 +179,59 @@ describe('filterLogLines', () => {
   it('keeps only matching lines, case-insensitively, when filtering', () => {
     expect(filterLogLines('INFO ready\nERROR boom', 'error', true)).toEqual(['ERROR boom']);
     expect(filterLogLines('INFO ready\nERROR boom', '   ', true)).toEqual(['INFO ready', 'ERROR boom']);
+  });
+});
+
+describe('filterLogRows', () => {
+  const info = makeLogRow({ level: 'INFO', componentName: 'scheduled-logger' });
+  const error = makeLogRow({ level: 'ERROR', componentName: 'scheduled-logger' });
+  const editor = makeLogRow({ level: 'INFO', componentName: 'code-server-c904c59240' });
+  const unattributed = makeLogRow({ level: 'INFO', componentName: null });
+
+  // The default state of the Runtime Logs pages: no level picked, everything shown.
+  it('keeps every row when neither filter is set', () => {
+    const rows = [info, error, editor];
+    expect(filterLogRows(rows, {})).toBe(rows);
+    expect(filterLogRows(rows, { levels: [], componentIds: [] })).toBe(rows);
+  });
+
+  it('keeps only the selected levels', () => {
+    expect(filterLogRows([info, error], { levels: ['ERROR'] })).toEqual([error]);
+  });
+
+  // Level values come from a backend, so their casing is not ours to trust.
+  it('matches levels case-insensitively', () => {
+    expect(filterLogRows([makeLogRow({ level: 'info' })], { levels: ['INFO'] })).toHaveLength(1);
+  });
+
+  it('drops a row with no level once a level is selected', () => {
+    const blank = makeLogRow({ level: '' });
+    expect(filterLogRows([blank], {})).toEqual([blank]);
+    expect(filterLogRows([blank], { levels: ['INFO'] })).toEqual([]);
+  });
+
+  // A project-scoped query returns the project's editor pods too; those are
+  // workloads the console does not list.
+  it('drops rows from components outside the allowlist', () => {
+    expect(filterLogRows([info, editor], { componentIds: ['scheduled-logger'] })).toEqual([info]);
+  });
+
+  // An unplaceable row must not be silently discarded.
+  it('keeps a row that reports no component', () => {
+    expect(filterLogRows([unattributed], { componentIds: ['scheduled-logger'] })).toEqual([unattributed]);
+  });
+
+  it('applies both filters together', () => {
+    expect(filterLogRows([info, error, editor], { levels: ['INFO'], componentIds: ['scheduled-logger'] })).toEqual([info]);
+  });
+});
+
+describe('DISPLAY_FIELDS', () => {
+  // A new LogRow field is invisible in the expanded row until it is listed here.
+  it('exposes the Kubernetes provenance fields', () => {
+    const keys = DISPLAY_FIELDS.map((f) => f.key);
+    expect(keys).toContain('componentName');
+    expect(keys).toContain('containerName');
+    expect(keys).toContain('podName');
   });
 });

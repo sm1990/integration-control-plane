@@ -64,7 +64,12 @@ export const SUPPORTED_DISPLAY_TYPES = new Set([
  * `componentSubType: MCP`) is supported, while a plain HTTP REST API proxy
  * (same displayType, no/`HTTP` subtype) stays unsupported.
  */
-export function isSupportedIntegration(displayType: string, componentSubType: string | null): boolean {
+/** Buildpack of a component built by neither the Ballerina nor the MI runtime. */
+export const OTHER_BUILDPACK = 'other';
+
+// buildpackType is cloud-only; absent means unknown, so the displayType verdict stands.
+export function isSupportedIntegration(displayType: string, componentSubType: string | null, buildpackType?: string): boolean {
+  if (buildpackType === OTHER_BUILDPACK) return false;
   return SUPPORTED_DISPLAY_TYPES.has(displayType) || componentSubType === 'MCP' || RAG_NO_SOURCE_SUBTYPES.has(componentSubType ?? '');
 }
 

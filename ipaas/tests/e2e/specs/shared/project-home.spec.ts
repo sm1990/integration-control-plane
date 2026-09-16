@@ -1,3 +1,21 @@
+/**
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { expect, test } from '@playwright/test';
 import { getAuthContext } from '../../helpers/auth-context.js';
 
@@ -34,20 +52,22 @@ test.describe('project home @smoke', () => {
 
   // -------------------------------------------------------------------------
   // Page content
+  //
+  // Only what holds whichever branch the project renders. The empty state's cards
+  // live in project-home-empty.spec.ts and the table in specs/cloud's populated
+  // spec, because a project has one of those two shapes and never both.
   // -------------------------------------------------------------------------
 
-  test('Create an Integration card is visible', async ({ page }) => {
-    await expect(page.getByText('Create an Integration')).toBeVisible({ timeout: 30_000 });
+  test('shows the project name as the page heading', async ({ page }) => {
+    // The display name is the backend's, not the handle in the auth context, so the
+    // assertion is that the heading carries one rather than what it says.
+    const heading = page.getByRole('heading', { level: 1 });
+    await expect(heading).toBeVisible({ timeout: 30_000 });
+    await expect(heading).not.toHaveText('');
   });
 
-  test('Import an Integration card is visible', async ({ page }) => {
-    await expect(page.getByText('Import an Integration')).toBeVisible({ timeout: 30_000 });
-  });
-
-  test('Get Started Quickly panel shows Prebuilt Integrations and Samples tabs', async ({ page }) => {
-    await expect(page.getByText('Get Started Quickly')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByRole('tab', { name: 'Prebuilt Integrations' })).toBeVisible();
-    await expect(page.getByRole('tab', { name: 'Samples' })).toBeVisible();
+  test('offers to link a repository', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Link a Repository' })).toBeVisible({ timeout: 30_000 });
   });
 
   // -------------------------------------------------------------------------

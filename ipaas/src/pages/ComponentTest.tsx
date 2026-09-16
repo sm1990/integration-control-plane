@@ -26,7 +26,9 @@ import TestConsole from './TestConsole';
 import { useComponentByHandler } from '../hooks/useComponents';
 import { useIntegrationIdentity } from '../hooks/useIntegrationIdentity';
 import { useProjectId } from '../hooks/useProjects';
+import { Navigate } from 'react-router';
 import type { ComponentScope } from '../nav';
+import { componentUrl } from '../paths';
 import { trackEvent } from '../utils/tracking';
 
 /**
@@ -71,4 +73,29 @@ export default function ComponentTest(scope: ComponentScope): JSX.Element {
   if (identity?.type === 'integration-as-api') return <TestConsole {...scope} />;
   if (identity?.type === 'ai-agent') return <AgentChatConsole {...scope} />;
   return <ComingSoon title="Coming Soon" description="Testing tools are currently under development." />;
+}
+
+/**
+ * Route guard for `test/agent-chat`: a scope switch preserves the resource key, so a
+ * non-agent would otherwise keep rendering the chat. Bouncing to `test` re-dispatches.
+ */
+export function AgentChatTestRoute(scope: ComponentScope): JSX.Element {
+  const { projectId } = useProjectId(scope.project);
+  const { data: comp, isPending } = useComponentByHandler(projectId, scope.component);
+  const identity = useIntegrationIdentity(comp ?? undefined);
+
+  if (projectId && isPending) {
+    return (
+      <PageContent>
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 120px)' }}>
+          <CircularProgress />
+        </Box>
+      </PageContent>
+    );
+  }
+
+  // A missing component is AgentChatConsole's own not-found case, not a wrong-type case.
+  if (comp && identity?.type !== 'ai-agent') return <Navigate to={`${componentUrl(scope.org, scope.project, scope.component)}/test`} replace />;
+
+  return <AgentChatConsole {...scope} />;
 }

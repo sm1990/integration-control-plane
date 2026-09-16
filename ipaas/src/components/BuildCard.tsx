@@ -16,14 +16,18 @@
  * under the License.
  */
 
-import { Box, Button, CircularProgress, Collapse, Divider, IconButton, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
+import { Alert, Box, Button, CircularProgress, Collapse, Divider, IconButton, Stack, Tooltip, Typography } from '@wso2/oxygen-ui';
 import { ChevronDown, ChevronUp, GitCommit, List } from '@wso2/oxygen-ui-icons-react';
-import HorizontalStepper, { type Step, type StepStatus } from './HorizontalStepper';
 import { useEffect, useRef, useState } from 'react';
-import type { BuildRunLogs } from '../types/build';
+import { BUILD_STAGES } from '../constants/build';
 import { useDeploymentStatus } from '../hooks/useDeployments';
 import { useBuildLogs } from '../hooks/useBuilds';
+import { useStableStepperState } from '../hooks/useStableStepperState';
+import { buildStepperSteps, failedStepPhrase, getBuildStatus, humanizeConclusion, isFailedConclusion } from '../utils/buildProgress';
 import type { Commit } from '../types/repository';
+import BuildLogViewer from './BuildLogViewer';
+import HorizontalStepper from './HorizontalStepper';
+import * as styles from './BuildCard.styles';
 
 interface BuildCardProps {
   componentId: string;
@@ -31,170 +35,91 @@ interface BuildCardProps {
   latestCommit?: Commit | null;
 }
 
-const STAGES = [
-  { key: 'init' as const, label: 'Initialization' },
-  { key: 'build' as const, label: 'Build Source & Test' },
-  { key: 'deploy' as const, label: 'Finalization' },
-];
-
-function getStepStatus(logs: BuildRunLogs | null | undefined, key: 'init' | 'build' | 'deploy', conclusion?: string): 'success' | 'error' | 'active' | 'pending' {
-  if (logs === undefined || logs === null) {
-    // Logs not loaded yet, or unavailable (expired/error) — infer from the overall
-    // build conclusion so a finished build never briefly reads as pending.
-    if (conclusion === 'success') return 'success';
-    if (conclusion === 'failure' || conclusion === 'failed') return 'error';
-    return 'pending';
-  }
-  const stage = logs[key];
-  if (!stage) return 'pending';
-  if (stage.status === 'in_progress') return 'active';
-  if (stage.status === 'completed') {
-    const hasFailed = stage.steps.some((s) => s.conclusion === 'failure' || s.conclusion === 'failed');
-    return hasFailed ? 'error' : 'success';
-  }
-  return 'pending';
-}
-
-function activeStepIndex(logs: BuildRunLogs | null | undefined, conclusion?: string): number {
-  if (logs === undefined || logs === null) {
-    // A finished successful build has no in-progress step; STAGES.length signals "done".
-    if (conclusion === 'success') return STAGES.length;
-    return 0;
-  }
-  const init = getStepStatus(logs, 'init');
-  const build = getStepStatus(logs, 'build');
-  if (init === 'active') return 0;
-  if (build === 'active') return 1;
-  if (getStepStatus(logs, 'deploy') === 'active') return 2;
-  if (init === 'success' && build === 'success') return 3;
-  if (init === 'success') return 1;
-  return 0;
-}
-
-// Map the build-stage status vocabulary onto the shared stepper's StepStatus.
-const STEP_STATUS_MAP: Record<'success' | 'error' | 'active' | 'pending', StepStatus> = {
-  success: 'success',
-  error: 'failed',
-  active: 'inProgress',
-  pending: 'pending',
-};
-
-function buildSteps(logs: BuildRunLogs | null | undefined, conclusion?: string): Step[] {
-  return STAGES.map(({ key, label }) => ({ id: key, label, status: STEP_STATUS_MAP[getStepStatus(logs, key, conclusion)] }));
-}
-
-function safeAtob(encoded: string): string {
-  try {
-    return atob(encoded);
-  } catch {
-    return '';
-  }
-}
-
-// Returns null = no logs available (expired), '' = still loading, string = actual content
-function buildLogText(logs: BuildRunLogs | null | undefined): string | null {
-  if (logs === undefined) return ''; // not yet loaded → "Waiting..."
-  if (logs === null) return null; // explicitly unavailable (410/error) → "No log data available"
-
-  const parts: string[] = [];
-  let anyLogFieldPresent = false;
-
-  for (const { key, label } of STAGES) {
-    const stage = logs[key];
-    if (!stage) continue;
-    if (stage.log !== null) anyLogFieldPresent = true;
-    const decoded = stage.log ? safeAtob(stage.log).trim() : '';
-    if (decoded && decoded !== 'No log data available') {
-      parts.push(`\u25b6 ${label}\n${decoded}`);
-    }
-  }
-
-  if (parts.length > 0) return parts.join('\n\n');
-
-  // All log fields present but all say "No log data available" → logs expired
-  if (anyLogFieldPresent) return null;
-
-  // log fields are null → build in progress, show step names as live progress
-  const lines: string[] = [];
-  for (const { key, label } of STAGES) {
-    const stage = logs[key];
-    if (!stage || stage.steps.length === 0) continue;
-    lines.push(`\u25b6 ${label}`);
-    for (const step of stage.steps) {
-      let icon = '○';
-      if (step.conclusion === 'success') icon = '✓';
-      else if (step.conclusion === 'failure' || step.conclusion === 'failed') icon = '✗';
-      else if (step.conclusion === 'skipped') icon = '-';
-      else if (step.status === 'in_progress') icon = '⟳';
-      lines.push(`  ${icon} ${step.name}`);
-    }
-    lines.push('');
-  }
-  return lines.join('\n') || '';
-}
-
 export default function BuildCard({ componentId, versionId, latestCommit }: BuildCardProps) {
-  const { data: deployments = [] } = useDeploymentStatus(componentId, versionId);
-  const lastBuild = deployments[0] ?? null;
+  const { data: deployments, isPending: loadingBuilds } = useDeploymentStatus(componentId, versionId);
+  const lastBuild = deployments?.[0] ?? null;
 
   const [showLogs, setShowLogs] = useState(false);
-  const logsRef = useRef<HTMLPreElement>(null);
 
-  // Collapse when build is successfully completed; expand for failed or in-progress. User can override.
-  const isSuccess = !!lastBuild && lastBuild.status === 'completed' && lastBuild.conclusion === 'success';
+  // The card must not unfurl as the first build data lands — right after a
+  // deploy the page is already settling, and an animating card reads as a
+  // glitch. Skip the transition until we have rendered real data once.
+  const seenBuildRef = useRef(false);
+  const animateBody = seenBuildRef.current;
+  if (lastBuild) seenBuildRef.current = true;
+
+  const status = lastBuild?.status;
+  const conclusion = lastBuild?.conclusion ?? '';
+  const isInProgress = status === 'in_progress';
+
+  // Open while the build is running, or once it has ended badly and wants
+  // reading. Stay shut while it is merely queued — there is no progress to show
+  // yet — and after it has succeeded. The user can still override either way.
+  const autoExpanded = isInProgress || (status === 'completed' && conclusion !== 'success');
   const [expandedOverride, setExpandedOverride] = useState<boolean | null>(null);
 
-  // Reset override whenever the build changes so auto-behavior applies to each new build
+  // Drop the manual override whenever the build moves on, so the auto state
+  // applies to each new build and to each status change within one — a queued
+  // build opens by itself the moment it starts running.
   useEffect(() => {
     setExpandedOverride(null);
-  }, [lastBuild?.id]);
-
-  const expanded = expandedOverride !== null ? expandedOverride : !isSuccess;
-  const toggleExpanded = () => setExpandedOverride(!expanded);
-
-  // Reset log view when build changes
-  useEffect(() => {
     setShowLogs(false);
-  }, [lastBuild?.id]);
+  }, [lastBuild?.id, status, conclusion]);
+
+  const expanded = expandedOverride !== null ? expandedOverride : autoExpanded;
+  const toggleExpanded = () => {
+    // Collapsing takes the log panel with it, so re-expanding comes back to the
+    // stepper rather than silently reopening logs.
+    if (expanded) setShowLogs(false);
+    setExpandedOverride(!expanded);
+  };
+
+  // The log panel lives inside the collapsible body, so a collapsed card is
+  // never showing logs — whatever `showLogs` says. Drives the button label so
+  // an auto-collapse (build succeeded) can't leave it reading "Hide Logs".
+  const logsVisible = expanded && showLogs;
 
   const workflowName = lastBuild?.buildRef ?? String(lastBuild?.id ?? '');
-  const isInProgress = lastBuild?.status === 'in_progress';
+  const { data: logs, isLoading: queryLoading } = useBuildLogs(componentId, versionId, workflowName, expanded, { status, conclusion, keepFresh: logsVisible });
 
-  // Fetch logs when expanded (for stepper + log view), poll every 5s while in progress
-  const { data: logs, isLoading: queryLoading } = useBuildLogs(componentId, versionId, workflowName, isInProgress, expanded);
-  const logsLoading = showLogs && logs === undefined && queryLoading;
+  // Never feed the raw per-poll state straight to the stepper — ratchet it so it
+  // only moves forward and holds its error state.
+  const { state: stepperState, isReadyToShow } = useStableStepperState(lastBuild?.id ?? null, getBuildStatus(status, conclusion, logs), status, conclusion, logs != null);
 
-  // Scroll logs to bottom on update
-  useEffect(() => {
-    if (showLogs && logsRef.current) {
-      logsRef.current.scrollTop = logsRef.current.scrollHeight;
-    }
-  }, [logs, showLogs]);
-
+  // While the build list is still in flight the card stays collapsed and says
+  // nothing — claiming "No builds yet." is wrong the instant after a deploy,
+  // when a build exists and is simply not fetched yet.
   if (!lastBuild) {
     return (
-      <Box sx={{ mt: 2, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
-        <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize', mb: 1 }}>
+      <Box sx={styles.cardSx}>
+        <Typography variant="h5" component="h2" sx={styles.placeholderTitleSx(!loadingBuilds)}>
           Latest Build
         </Typography>
-        <Typography variant="body2" color="text.secondary">
-          No builds yet.
-        </Typography>
+        {!loadingBuilds && (
+          <Typography variant="body2" color="text.secondary">
+            No builds yet.
+          </Typography>
+        )}
       </Box>
     );
   }
 
-  const commitSha = latestCommit?.sha?.slice(0, 7) ?? lastBuild.sourceCommitId?.slice(0, 7) ?? '';
-  const commitMessage = latestCommit?.message ?? '';
+  // The card names the commit this build was made from, not the repo's newest. The build record
+  // carries no message, and `latestCommit`'s belongs to HEAD — so it is only shown when the two
+  // are the same commit, rather than captioning one SHA with another's message.
+  const buildSha = lastBuild.sourceCommitId || '';
+  const commitSha = (buildSha || latestCommit?.sha || '').slice(0, 7);
+  const isHeadBuild = !buildSha || (!!latestCommit?.sha && latestCommit.sha.slice(0, 7) === buildSha.slice(0, 7));
+  const commitMessage = isHeadBuild ? (latestCommit?.message ?? '') : '';
   const commitTooltip = commitMessage ? `"${commitMessage}"${latestCommit?.author?.name ? ` by ${latestCommit.author.name}` : ''}` : commitSha;
-
-  const status = lastBuild.status;
-  const conclusion = lastBuild.conclusion ?? '';
 
   // A finished build resolves past the last step; clamp that to -1 so the shared
   // stepper highlights nothing (it only supports indices 0..steps-1 or -1).
-  const rawStepIndex = activeStepIndex(logs, conclusion);
-  const currentStepIndex = rawStepIndex >= STAGES.length ? -1 : rawStepIndex;
+  const currentStepIndex = stepperState.activeIndex >= BUILD_STAGES.length ? -1 : stepperState.activeIndex;
+
+  // Name the step that broke when we can resolve it: "Failed while building the image".
+  const failedPhrase = failedStepPhrase(logs);
+  const failedLabel = failedPhrase ? `Failed while ${failedPhrase}` : 'Failed';
 
   let statusLabel = 'Unknown';
   let statusDotColor = 'text.disabled';
@@ -202,44 +127,59 @@ export default function BuildCard({ componentId, versionId, latestCommit }: Buil
     statusLabel = 'Queued';
     statusDotColor = 'text.secondary';
   } else if (status === 'in_progress') {
-    statusLabel = 'In Progress';
-    statusDotColor = 'warning.main';
+    // A stage can fail before the build itself is marked complete; surface that
+    // straight away instead of reading "In Progress" until the run wraps up.
+    const failedEarly = stepperState.failedStages.size > 0;
+    statusLabel = failedEarly ? failedLabel : 'In Progress';
+    statusDotColor = failedEarly ? 'error.main' : 'warning.main';
   } else if (status === 'completed' && conclusion === 'success') {
     statusLabel = 'Completed';
     statusDotColor = 'success.main';
-  } else if (status === 'completed' && (conclusion === 'failure' || conclusion === 'failed')) {
-    statusLabel = 'Failed';
+  } else if (status === 'completed' && isFailedConclusion(conclusion)) {
+    statusLabel = failedLabel;
     statusDotColor = 'error.main';
+  } else if (status === 'completed') {
+    // Terminal, but neither success nor failure — cancelled, timed out, neutral.
+    // Name the verdict rather than leaving the card reading "Unknown".
+    statusLabel = humanizeConclusion(conclusion);
+    statusDotColor = 'text.secondary';
   }
 
-  const logText = buildLogText(logs);
+  // A finished build whose real stage state is still unknown gets a placeholder
+  // rather than a stepper built from guesses.
+  function renderStepper() {
+    if (isReadyToShow) return <HorizontalStepper steps={buildStepperSteps(stepperState)} currentStepIndex={currentStepIndex} size="s" />;
+    if (logs === null) {
+      return (
+        <Alert severity="warning" sx={styles.alertSx}>
+          Build logs cannot be fetched. Trigger a new build to continue.
+        </Alert>
+      );
+    }
+    return (
+      <Box sx={styles.centeredRowSx}>
+        <CircularProgress size={24} />
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ mt: 2, mb: 3, border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 2 }}>
-      {/* Header */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: expanded ? 1.5 : 0 }}>
-        <Stack direction="row" alignItems="center" gap={1.5} sx={{ minWidth: 0 }}>
-          <Typography variant="h5" component="h2" sx={{ fontWeight: 600, textTransform: 'capitalize', flexShrink: 0 }}>
+    <Box sx={styles.cardSx}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={styles.headerRowSx(expanded)}>
+        <Stack direction="row" alignItems="center" gap={1.5} sx={styles.minWidthZeroSx}>
+          <Typography variant="h5" component="h2" sx={styles.titleSx}>
             Latest Build
           </Typography>
 
           {commitSha && (
             <Tooltip title={commitTooltip} placement="bottom">
-              <Stack direction="row" alignItems="center" gap={0.5} sx={{ minWidth: 0, cursor: 'default' }}>
+              <Stack direction="row" alignItems="center" gap={0.5} sx={styles.commitRowSx}>
                 <GitCommit size={14} style={{ opacity: 0.55, flexShrink: 0 }} />
-                <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', flexShrink: 0 }}>
+                <Typography variant="body2" color="text.secondary" sx={styles.commitShaSx}>
                   {commitSha}
                 </Typography>
                 {commitMessage && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      maxWidth: 260,
-                    }}>
+                  <Typography variant="body2" color="text.secondary" sx={styles.commitMessageSx}>
                     {commitMessage}
                   </Typography>
                 )}
@@ -247,25 +187,30 @@ export default function BuildCard({ componentId, versionId, latestCommit }: Buil
             </Tooltip>
           )}
 
-          <Stack direction="row" alignItems="center" gap={0.75} sx={{ flexShrink: 0 }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: statusDotColor, flexShrink: 0 }} />
+          <Stack direction="row" alignItems="center" gap={0.75} sx={styles.noShrinkSx}>
+            <Box sx={styles.statusDotSx(statusDotColor)} />
             <Typography variant="body2" color="text.secondary">
               {statusLabel}
             </Typography>
           </Stack>
         </Stack>
 
-        <Stack direction="row" alignItems="center" gap={0.5} sx={{ flexShrink: 0 }}>
+        <Stack direction="row" alignItems="center" gap={0.5} sx={styles.noShrinkSx}>
           <Button
             variant="text"
             size="small"
             startIcon={<List size={14} />}
             onClick={() => {
+              if (logsVisible) {
+                setShowLogs(false);
+                return;
+              }
+              // Asking for logs on a collapsed card opens the body too.
               if (!expanded) setExpandedOverride(true);
-              setShowLogs((v) => !v);
+              setShowLogs(true);
             }}
-            sx={{ textTransform: 'none', fontSize: '0.75rem' }}>
-            {showLogs ? 'Hide Logs' : 'View Logs'}
+            sx={styles.logsButtonSx}>
+            {logsVisible ? 'Hide Logs' : 'View Logs'}
           </Button>
           <Tooltip title={expanded ? 'Collapse' : 'Expand'}>
             <IconButton size="small" onClick={toggleExpanded}>
@@ -275,44 +220,14 @@ export default function BuildCard({ componentId, versionId, latestCommit }: Buil
         </Stack>
       </Stack>
 
-      {/* Collapsible body */}
-      <Collapse in={expanded}>
+      <Collapse in={expanded} timeout={animateBody ? undefined : 0}>
         <Divider sx={{ mb: 2 }} />
 
-        {/* Horizontal stepper (shared resizable component) */}
-        <Box sx={{ mb: showLogs ? 2 : 0 }}>
-          <HorizontalStepper steps={buildSteps(logs, conclusion)} currentStepIndex={currentStepIndex} size="s" />
-        </Box>
+        <Box sx={styles.stepperWrapSx(logsVisible)}>{renderStepper()}</Box>
 
-        {/* Log viewer */}
-        {showLogs && (
+        {logsVisible && (
           <>
-            <Divider sx={{ mb: 1.5 }} />
-            {logsLoading && logs === undefined ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : (
-              <Box
-                component="pre"
-                ref={logsRef}
-                sx={{
-                  m: 0,
-                  p: 2,
-                  bgcolor: '#1a1a1a',
-                  borderRadius: 1,
-                  fontFamily: 'monospace',
-                  fontSize: '0.75rem',
-                  lineHeight: 1.6,
-                  overflowY: 'auto',
-                  maxHeight: 360,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-all',
-                  color: '#e0e0e0',
-                }}>
-                {logText === null ? 'No log data available' : logText || 'Waiting for build logs...'}
-              </Box>
-            )}
+            <BuildLogViewer logs={logs} logsLoading={queryLoading} showLogs />
           </>
         )}
       </Collapse>

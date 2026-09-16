@@ -36,7 +36,7 @@ export default function EnvCardBody({ component, env, versionId, releaseId, hasD
   // The enforcing API Platform gateway URL for the selected endpoint (cloud-only; the hook is
   // disabled elsewhere). Shown in place of the raw OpenChoreo external route, as the
   // integration-as-api card does.
-  const securityRef = IS_CLOUD && selectedEndpoint ? { componentName: component.id, environmentName: env.name, endpointName: selectedEndpoint.id } : null;
+  const securityRef = IS_CLOUD && selectedEndpoint ? { componentName: component.id, environmentName: env.id, endpointName: selectedEndpoint.id } : null;
   const { data: apiSecurity } = useEndpointSecurity(securityRef, IS_CLOUD && !!selectedEndpoint);
 
   if (!hasDeployment) {

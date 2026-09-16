@@ -22,6 +22,8 @@ import type { ReactNode } from 'react';
 import { useAppNavigate } from '../hooks/useAppNavigate';
 import type { DeploymentTrack } from '../types/component';
 import { IS_CLOUD } from '../features';
+import { PILL_SELECT_SX } from '../constants/styles';
+import { apiVersionChipSx, bandSx, barCaptionSx, barSx, menuActionButtonSx, menuActionsRowSx, tooltipAnchorSx, trackLabelSx } from './DeploymentTrackBar.styles';
 
 interface DeploymentTrackBarProps {
   tracks: DeploymentTrack[];
@@ -44,7 +46,7 @@ function normalizeVersion(v: string): string {
 function TrackLabel({ track, versionView }: { track: DeploymentTrack; versionView?: boolean }) {
   if (versionView) {
     return (
-      <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+      <Typography variant="body2" sx={trackLabelSx}>
         {track.apiVersion ? normalizeVersion(track.apiVersion) : track.id}
       </Typography>
     );
@@ -52,10 +54,10 @@ function TrackLabel({ track, versionView }: { track: DeploymentTrack; versionVie
   return (
     <Stack direction="row" alignItems="center" gap={0.75}>
       {track.branch && <GitBranch size={13} />}
-      <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+      <Typography variant="body2" sx={trackLabelSx}>
         {track.branch || 'None'}
       </Typography>
-      {track.apiVersion && <Chip label={`API ${normalizeVersion(track.apiVersion)}`} size="small" variant="outlined" color="primary" sx={{ height: 20, fontSize: '0.68rem', fontWeight: 500 }} />}
+      {track.apiVersion && <Chip label={`API ${normalizeVersion(track.apiVersion)}`} size="small" variant="outlined" color="primary" sx={apiVersionChipSx} />}
     </Stack>
   );
 }
@@ -63,83 +65,75 @@ function TrackLabel({ track, versionView }: { track: DeploymentTrack; versionVie
 export default function DeploymentTrackBar({ tracks, selectedId, onChange, orgHandler, projectHandler, componentHandler, versionView, extra }: DeploymentTrackBarProps) {
   const navigate = useAppNavigate();
 
-  // Cloud has no deployment tracks yet.
-  if (IS_CLOUD) return null;
+  // Cloud has one implicit track, so the track picker has nothing to offer — but this bar is
+  // where every ComponentScope page puts its environment selector, so keep it for that alone.
+  if (IS_CLOUD)
+    return extra ? (
+      <Box sx={bandSx}>
+        <Box sx={barSx}>{extra}</Box>
+      </Box>
+    ) : null;
 
   const basePath = `/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/settings/deployment-tracks`;
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
-        px: 3,
-        minHeight: 48,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.acrylic',
-        backdropFilter: 'blur(3px)',
-      }}>
-      {/* Label + tooltip */}
-      <Stack direction="row" alignItems="center" gap={0.5}>
-        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.8125rem' }}>
-          Deployment Track
-        </Typography>
-        <Tooltip title={TOOLTIP_TEXT} placement="right">
-          <Box role="img" aria-label={TOOLTIP_TEXT} sx={{ display: 'flex', alignItems: 'center', color: 'text.disabled', cursor: 'help' }}>
-            <HelpCircle size={13} aria-hidden="true" />
-          </Box>
-        </Tooltip>
-      </Stack>
+    <Box sx={bandSx}>
+      <Box sx={barSx}>
+        {/* Label + tooltip */}
+        <Stack direction="row" alignItems="center" gap={0.5}>
+          <Typography variant="body2" color="text.secondary" sx={barCaptionSx}>
+            Deployment Track
+          </Typography>
+          <Tooltip title={TOOLTIP_TEXT} placement="right">
+            <Box role="img" aria-label={TOOLTIP_TEXT} sx={tooltipAnchorSx}>
+              <HelpCircle size={13} aria-hidden="true" />
+            </Box>
+          </Tooltip>
+        </Stack>
 
-      {/* Track selector */}
-      <Select
-        size="small"
-        value={selectedId}
-        onChange={(e) => onChange(e.target.value as string)}
-        renderValue={(value) => {
-          const track = tracks.find((t) => t.id === value);
-          if (!track) return null;
-          return <TrackLabel track={track} versionView={versionView} />;
-        }}
-        inputProps={{ 'aria-label': 'Deployment Track' }}
-        sx={{
-          fontSize: '0.8125rem',
-          '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 },
-          '& .MuiSelect-select': { py: 0.5, px: 1.5 },
-          minWidth: 160,
-        }}>
-        {/* Create New / View All actions */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 1.5, py: 0.5 }} onKeyDown={(e) => e.stopPropagation()}>
-          <Button
-            size="small"
-            startIcon={<Plus size={13} />}
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`${basePath}/new`);
-            }}
-            sx={{ fontSize: '0.75rem', textTransform: 'none', px: 0.5 }}>
-            Create New
-          </Button>
-          <Button
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(basePath);
-            }}
-            sx={{ fontSize: '0.75rem', textTransform: 'none', px: 0.5 }}>
-            View All
-          </Button>
-        </Box>
-        <Divider sx={{ my: 0.5 }} />
-        {tracks.map((track) => (
-          <MenuItem key={track.id} value={track.id}>
-            <TrackLabel track={track} versionView={versionView} />
-          </MenuItem>
-        ))}
-      </Select>
-      {extra}
+        {/* Track selector */}
+        <Select
+          size="small"
+          value={selectedId}
+          onChange={(e) => onChange(e.target.value as string)}
+          renderValue={(value) => {
+            const track = tracks.find((t) => t.id === value);
+            if (!track) return null;
+            return <TrackLabel track={track} versionView={versionView} />;
+          }}
+          inputProps={{ 'aria-label': 'Deployment Track' }}
+          sx={{ ...PILL_SELECT_SX, minWidth: 160 }}>
+          {/* Create New / View All actions */}
+          <Box sx={menuActionsRowSx} onKeyDown={(e) => e.stopPropagation()}>
+            <Button
+              size="small"
+              startIcon={<Plus size={13} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`${basePath}/new`);
+              }}
+              sx={menuActionButtonSx}>
+              Create New
+            </Button>
+            <Button
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(basePath);
+              }}
+              sx={menuActionButtonSx}>
+              View All
+            </Button>
+          </Box>
+          <Divider sx={{ my: 0.5 }} />
+          {tracks.map((track) => (
+            <MenuItem key={track.id} value={track.id}>
+              <TrackLabel track={track} versionView={versionView} />
+            </MenuItem>
+          ))}
+        </Select>
+        {extra}
+      </Box>
     </Box>
   );
 }

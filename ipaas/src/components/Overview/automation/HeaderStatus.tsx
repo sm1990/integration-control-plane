@@ -16,7 +16,8 @@
  * under the License.
  */
 
-import { useMemo, useState } from 'react';
+import { CircularProgress, Stack, Typography } from '@wso2/oxygen-ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useSchemaConfig } from '../../../hooks/useConfiguration';
 import type { HeaderStatusProps } from '../../../types/integration';
@@ -28,9 +29,7 @@ import ConfigureDrawer from '../../EnvironmentCard/ConfigureDrawer';
 import { hasMissingRequiredConfigs } from '../_shared/configStatus';
 
 /**
- * Automation's left-header slot: a Configure entry point (no status dot — an
- * automation has no deployment-status indicator in the overview). Owns the
- * Configure drawer's open state and the missing-config computation.
+ * Automation's left-header slot: a Configure entry point.
  */
 export default function HeaderStatus({
   component,
@@ -47,17 +46,36 @@ export default function HeaderStatus({
   releaseMgtReleaseId,
   releaseMgtDeploymentId,
   buildId,
+  deploymentStatusV2,
+  onNotify,
 }: HeaderStatusProps): ReactNode {
   const [configureOpen, setConfigureOpen] = useState(false);
   const { data: schemaConfig } = useSchemaConfig(projectId, component.id, envTemplateId, versionId, deployedCommitSha);
   const missingConfigs = useMemo(() => hasMissingRequiredConfigs(schemaConfig), [schemaConfig]);
 
-  if (!hasDeployment) return null;
+  const deploying = deploymentStatusV2 === 'IN_PROGRESS';
+  // A rollout over a workload this card has already seen running is a re-deploy (config change);
+  // anything else — a first deploy, a promotion into this environment — is the initial one.
+  const settledBefore = useRef(false);
+  useEffect(() => {
+    if (deploymentStatusV2 && deploymentStatusV2 !== 'IN_PROGRESS' && deploymentStatusV2 !== 'NOT_DEPLOYED') settledBefore.current = true;
+  }, [deploymentStatusV2]);
+
+  if (!hasDeployment && !deploying) return null;
 
   return (
     <>
-      <ConfigureButton onClick={() => setConfigureOpen(true)} hasMissingConfigs={missingConfigs} />
+      {deploying && (
+        <Stack direction="row" alignItems="center" gap={0.75} sx={{ flexShrink: 0 }}>
+          <CircularProgress size={14} sx={{ color: 'warning.main' }} />
+          <Typography variant="body2" color="text.secondary">
+            {settledBefore.current ? 'Re-deploying' : 'Deploying'}
+          </Typography>
+        </Stack>
+      )}
+      {hasDeployment && <ConfigureButton onClick={() => setConfigureOpen(true)} hasMissingConfigs={missingConfigs} />}
       <ConfigureDrawer
+        onSaved={() => onNotify({ text: 'Configuration saved', severity: 'success', detail: 'A redeployment has been initiated so the integration picks up the new configuration.' })}
         open={configureOpen}
         onClose={() => setConfigureOpen(false)}
         orgHandler={orgHandler}

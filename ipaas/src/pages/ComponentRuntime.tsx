@@ -132,7 +132,7 @@ export default function ComponentRuntime({ org, project, component }: ComponentS
     );
   }
 
-  const envSelect = (
+  const envSelect = !IS_CLOUD && environments.length > 1 && (
     <Select
       size="small"
       value={environments.some((e) => e.id === envId) ? envId : ''}

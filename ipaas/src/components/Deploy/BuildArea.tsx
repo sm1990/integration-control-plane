@@ -314,7 +314,9 @@ export default function BuildArea({
       </Card>
 
       {/* Endpoint configuration drawer */}
-      {!flags.isAutomation && !hideEndpoints && !!firstEnvReleaseId && <EndpointConfigDrawer open={endpointConfigOpen} onClose={() => setEndpointConfigOpen(false)} componentId={componentId} versionId={versionId} firstEnvReleaseId={firstEnvReleaseId} />}
+      {!flags.isAutomation && !hideEndpoints && !!firstEnvReleaseId && (
+        <EndpointConfigDrawer open={endpointConfigOpen} onClose={() => setEndpointConfigOpen(false)} componentId={componentId} versionId={versionId} firstEnvReleaseId={firstEnvReleaseId} firstEnvId={firstEnvId} />
+      )}
 
       {/* Image selection drawer */}
       <BuildAreaImageDrawer open={imageDrawerOpen} onClose={() => setImageDrawerOpen(false)} images={images} isLoading={imagesLoading} selectedImageId={selectedImage?.imageId ?? null} onSelect={setSelectedImage} />

@@ -17,8 +17,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createConsumer, createEndpointTestKey, deleteConsumer, fetchConsumers, getEndpointSecurity, regenerateConsumerToken, revokeConsumer, setEndpointSecurity } from '#api/consumers';
-import type { ApiKeyResult, Consumer, CreateConsumerInput, EndpointRef, SecurityConfig, ConsumerCredential } from '../types/consumers';
+import { createConsumer, createEndpointTestKey, deleteConsumer, fetchConsumers, getEndpointPolicies, getEndpointSecurity, regenerateConsumerToken, revokeConsumer, setEndpointPolicies, setEndpointSecurity } from '#api/consumers';
+import type { ApiKeyResult, Consumer, CreateConsumerInput, EndpointPolicyConfig, EndpointRef, SecurityConfig, ConsumerCredential } from '../types/consumers';
 
 /** Endpoint refs are only usable once every segment is known. */
 const isCompleteRef = (ref: EndpointRef | null | undefined): ref is EndpointRef => !!ref?.componentName && !!ref.environmentName && !!ref.endpointName;
@@ -111,7 +111,35 @@ export function useSetEndpointSecurity(ref: EndpointRef | null | undefined) {
   return useMutation<SecurityConfig, Error, SecurityConfig>({
     mutationFn: (cfg) => setEndpointSecurity(ref!, cfg),
     onSuccess: (data) => {
-      qc.setQueryData(securityKey(ref), data);
+      qc.setQueryData<SecurityConfig>(securityKey(ref), (prev) => ({ ...prev, ...data }));
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint policies — CORS and rate limiting
+// ---------------------------------------------------------------------------
+
+const policiesKey = (ref: EndpointRef | null | undefined) => ['endpoint-policies', ...refKey(ref)] as const;
+
+/** Read the exposed API's CORS and rate-limit configuration. */
+export function useEndpointPolicies(ref: EndpointRef | null | undefined, enabled = true) {
+  return useQuery<EndpointPolicyConfig>({
+    queryKey: policiesKey(ref),
+    queryFn: () => getEndpointPolicies(ref!),
+    enabled: enabled && isCompleteRef(ref),
+    staleTime: 30_000,
+    retry: false,
+  });
+}
+
+/** Replace the exposed API's CORS and rate-limit configuration. */
+export function useSetEndpointPolicies(ref: EndpointRef | null | undefined) {
+  const qc = useQueryClient();
+  return useMutation<EndpointPolicyConfig, Error, EndpointPolicyConfig>({
+    mutationFn: (cfg) => setEndpointPolicies(ref!, cfg),
+    onSuccess: (data) => {
+      qc.setQueryData(policiesKey(ref), data);
     },
   });
 }

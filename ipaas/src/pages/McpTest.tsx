@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Box, MenuItem, PageContent, Select } from '@wso2/oxygen-ui';
+import { Box, MenuItem, PageContent, PageTitle, Select, Stack } from '@wso2/oxygen-ui';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import ComingSoon from './ComingSoon';
 import McpPlayground from '../components/McpPlayground/McpPlayground';
@@ -30,6 +30,8 @@ import { useProjectId } from '../hooks/useProjects';
 import type { ComponentScope } from '../nav';
 import type { EnvEndpoint } from '../types/component';
 
+import NotDeployedAlert from '../components/NotDeployedAlert';
+import { PILL_SELECT_SX } from '../constants/styles';
 const TEST_KEY_HEADER = 'test-key';
 
 /** Network-visibility URL resolvers (mirrors the endpoint URLs panel). */
@@ -84,7 +86,8 @@ export default function McpTest(scope: ComponentScope): JSX.Element {
   const baseUrl = visibilityOptions.find((v) => v.value === activeVisibility)?.getUrl(activeEndpoint!) ?? '';
   const mcpUrl = baseUrl ? `${baseUrl}/mcp` : '';
   const apimId = activeEndpoint?.apimId ?? null;
-  const isDeploymentInProgress = deployment?.deploymentStatusV2 === 'IN_PROGRESS';
+  // Only a live deployment can answer MCP calls; every other state explains itself.
+  const isActive = deployment?.deploymentStatusV2 === 'ACTIVE';
 
   const endpointSwitcher = { options: testableEndpoints.map((e) => ({ label: e.displayName, value: e.id })), value: activeEndpointId, onChange: setSelectedEndpointId };
   const visibilitySwitcher = { options: visibilityOptions.map((v) => ({ label: v.label, value: v.value })), value: activeVisibility, onChange: setSelectedVisibility };
@@ -96,13 +99,8 @@ export default function McpTest(scope: ComponentScope): JSX.Element {
     return <ComingSoon title="Coming Soon" description="Testing tools are currently under development." />;
   }
 
-  const envSelector = environments.length > 0 && (
-    <Select
-      size="small"
-      value={selectedEnvId}
-      onChange={(e) => setSelectedEnvId(e.target.value as string)}
-      inputProps={{ 'aria-label': 'Environment' }}
-      sx={{ fontSize: '0.8125rem', '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 }, '& .MuiSelect-select': { py: 0.5, px: 1.5 }, minWidth: 140 }}>
+  const envSelector = environments.length > 1 && (
+    <Select size="small" value={selectedEnvId} onChange={(e) => setSelectedEnvId(e.target.value as string)} inputProps={{ 'aria-label': 'Environment' }} sx={{ ...PILL_SELECT_SX, minWidth: 140 }}>
       {environments.map((env) => (
         <MenuItem key={env.id} value={env.id}>
           {env.name}
@@ -113,15 +111,19 @@ export default function McpTest(scope: ComponentScope): JSX.Element {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      {tracks.length > 0 && <DeploymentTrackBar tracks={tracks} selectedId={selectedTrackId} onChange={setSelectedTrackId} orgHandler={scope.org} projectHandler={project?.handler ?? scope.project} componentHandler={scope.component} extra={envSelector} />}
+      {tracks.length > 0 && <DeploymentTrackBar tracks={tracks} selectedId={selectedTrackId} onChange={setSelectedTrackId} orgHandler={scope.org} projectHandler={project?.handler ?? scope.project} componentHandler={scope.component} />}
 
       <PageContent sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        {isDeploymentInProgress ? (
-          <Alert severity="info">Integration deployment is still in progress. You can start testing when the deployment is complete.</Alert>
-        ) : mcpUrl ? (
-          <McpPlayground url={mcpUrl} token={token || null} headerName={TEST_KEY_HEADER} isTokenFetching={tokenFetching} onTokenRegenerate={regenerate} endpointSwitcher={endpointSwitcher} visibilitySwitcher={visibilitySwitcher} />
+        <Stack direction="row" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
+          <PageTitle>
+            <PageTitle.Header>Test</PageTitle.Header>
+          </PageTitle>
+          {envSelector}
+        </Stack>
+        {!isActive || !mcpUrl ? (
+          <NotDeployedAlert status={deployment?.deploymentStatusV2} />
         ) : (
-          <Alert severity="warning">The integration is still not deployed. You must deploy the integration to test it.</Alert>
+          <McpPlayground url={mcpUrl} token={token || null} headerName={TEST_KEY_HEADER} isTokenFetching={tokenFetching} onTokenRegenerate={regenerate} endpointSwitcher={endpointSwitcher} visibilitySwitcher={visibilitySwitcher} />
         )}
       </PageContent>
     </Box>

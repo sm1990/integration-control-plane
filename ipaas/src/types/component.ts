@@ -37,6 +37,10 @@ export interface Component {
   apiId?: string;
   serviceAccessMode?: string | null;
   isPrebuilt?: boolean;
+  /** Set while the integration's delete is accepted but its finalizers have not cleared yet. */
+  deleting?: boolean;
+  /** 'BI' | 'MI' | 'other' — 'other' is another platform's runtime. Cloud only. */
+  buildpackType?: string;
 }
 
 export interface DeploymentTrack {
@@ -130,6 +134,19 @@ export interface EnvEndpoint {
   signature?: string | null;
   isScopeAdded?: boolean | null;
   generationSource?: string | null;
+}
+
+/** Input for updating an endpoint's network visibility. */
+export interface UpdateEndpointInput {
+  componentId: string;
+  /** Cloud only — resolves the component's release bindings. wip carries the project in the id. */
+  projectId?: string;
+  versionId: string;
+  releaseId: string;
+  endpointId: string;
+  displayName: string;
+  /** UI labels — 'Public' | 'Organization' | 'Project'; each product maps them to its own wire values. */
+  networkVisibilities: string[];
 }
 
 export interface ComponentNameAvailability {

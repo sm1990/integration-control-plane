@@ -56,7 +56,7 @@ export default function EnvCardBody({ component, env, prevEnv, projectId, versio
   // The enforcing API Platform gateway URL for the selected endpoint (cloud-only; the hook throws in
   // wip/icp). Passed to EndpointUrlsPanel so an exposed external endpoint shows the apip URL instead
   // of the raw OpenChoreo external route.
-  const securityRef = IS_CLOUD && activeEndpoint ? { componentName: component.id, environmentName: env.name, endpointName: activeEndpoint.id } : null;
+  const securityRef = IS_CLOUD && activeEndpoint ? { componentName: component.id, environmentName: env.id, endpointName: activeEndpoint.id } : null;
   const { data: apiSecurity } = useEndpointSecurity(securityRef, IS_CLOUD && !!activeEndpoint);
 
   // GraphQL is introspected live (GraphqlOperationsList) — the swagger/contract path is REST-only.
@@ -131,7 +131,7 @@ export default function EnvCardBody({ component, env, prevEnv, projectId, versio
           component/environment/endpoint triple — in cloud the component name is
           the component id and the endpoint name is the endpoint id. */}
       {IS_CLOUD && showEndpointPanel && deploymentStatusV2 !== 'IN_PROGRESS' && !!activeEndpoint && (
-        <ConsumersPanel componentName={component.id} projectName={projectId} envName={env.name} envLabel={env.name} endpointName={activeEndpoint.id} endpoints={envEndpoints.map((ep) => ({ name: ep.id, displayName: ep.displayName || ep.id }))} />
+        <ConsumersPanel componentName={component.id} projectName={projectId} envName={env.id} envLabel={env.name} endpointName={activeEndpoint.id} endpoints={envEndpoints.map((ep) => ({ name: ep.id, displayName: ep.displayName || ep.id }))} />
       )}
 
       {showInsights && <ServiceInsights envName={env.name} envId={env.id} apimEnvId={env.apimEnvId} projectId={projectId} apiId={insightsApiId} />}

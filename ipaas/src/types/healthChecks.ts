@@ -70,6 +70,9 @@ export interface HealthCheck {
     liveness_probe: HCProbe;
     readiness_probe: HCProbe;
   };
+  /** Set when the platform rejected the last render; the write itself still succeeded. */
+  sync_status?: string;
+  sync_message?: string;
 }
 
 /** An unset probe serialises to `{}` in write payloads. */

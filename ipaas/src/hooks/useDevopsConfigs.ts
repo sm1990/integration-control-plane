@@ -19,14 +19,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createConfigMap, createSecret, getConfigMapDetails, getConfigMaps, getContainerConfigMounts, getReleaseById, getSecrets, mountConfig, removeConfigMount, updateConfigMapData, updateConfigMount, updateContainer, updateSecret } from '#api/devopsConfigs';
 import type { ConfigMapWriteData, ConfigMountPath, ConfigMountWriteData, ContainerWriteData, DevopsConfigMap, DevopsConfigMapDetails, DevopsConfigMount, DevopsSecret, ReleaseDetails, SaveConfigInput, SecretWriteData } from '../types/devopsConfigs';
-import { IS_WIP } from '../features';
+import { IS_CLOUD, IS_WIP } from '../features';
 import { useOrgUuid } from './useOrgUuid';
 
 const ROOT = 'devopsConfigs';
 
-/** Container management is a WIP-only devops surface (cloud/icp API stubs throw). */
+/** Container management is enabled for WIP and cloud (icp API stubs throw). */
 export function isContainersEnabled(): boolean {
-  return IS_WIP;
+  return IS_WIP || IS_CLOUD;
 }
 
 // ── reads ─────────────────────────────────────────────────────────────────────

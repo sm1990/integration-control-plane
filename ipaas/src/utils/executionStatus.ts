@@ -19,6 +19,12 @@
 export type ExecutionPhase = 'queued' | 'inProgress' | 'succeeded' | 'failed' | 'terminated';
 
 /** Collapse the backend's status casings/synonyms into one canonical phase. */
+/** Identifying tail of an execution name: "…-development-28ec91fb-29812664" → "28ec91fb-29812664". */
+export function executionIdTail(id: string): string {
+  const parts = id.split('-');
+  return parts.length > 2 ? parts.slice(-2).join('-') : id;
+}
+
 export function executionPhase(status: string | undefined): ExecutionPhase {
   const val = (status ?? '').toLowerCase();
   if (val === 'succeeded' || val === 'success') return 'succeeded';

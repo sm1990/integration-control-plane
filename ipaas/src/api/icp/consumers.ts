@@ -20,7 +20,7 @@
 // owns it); the icp UI is gated on IS_CLOUD and never reaches these. They throw
 // via ni() so an unsupported call can never look successful.
 // TODO: implement using icp APIs
-import type { ApiExposure, ApiKeyAuthOptions, ApiKeyResult, ApiKeySummary, Consumer, CreateApiKeyInput, CreateConsumerInput, EndpointRef, SecurityConfig, ConsumerCredential } from '../../types/consumers';
+import type { ApiExposure, ApiKeyAuthOptions, ApiKeyResult, ApiKeySummary, Consumer, CreateApiKeyInput, CreateConsumerInput, EndpointPolicyConfig, EndpointRef, SecurityConfig, ConsumerCredential } from '../../types/consumers';
 
 const ni = (name: string): never => {
   throw new Error(`[icp] consumers.${name}: not implemented`);
@@ -38,6 +38,8 @@ export const setEndpointApiKeyAuth = (_ref: EndpointRef, _enabled: boolean, _opt
 export const setEndpointJwtAuth = (_ref: EndpointRef, _enabled: boolean): Promise<boolean> => ni('setEndpointJwtAuth');
 export const getEndpointSecurity = (_ref: EndpointRef): Promise<SecurityConfig> => ni('getEndpointSecurity');
 export const setEndpointSecurity = (_ref: EndpointRef, _cfg: SecurityConfig): Promise<SecurityConfig> => ni('setEndpointSecurity');
+export const getEndpointPolicies = (_ref: EndpointRef): Promise<EndpointPolicyConfig> => ni('getEndpointPolicies');
+export const setEndpointPolicies = (_ref: EndpointRef, _cfg: EndpointPolicyConfig): Promise<EndpointPolicyConfig> => ni('setEndpointPolicies');
 
 export const fetchConsumers = (_ref: EndpointRef, _projectName?: string): Promise<Consumer[]> => ni('fetchConsumers');
 export const createConsumer = (_input: CreateConsumerInput): Promise<Consumer> => ni('createConsumer');

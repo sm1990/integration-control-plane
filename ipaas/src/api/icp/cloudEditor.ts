@@ -23,3 +23,4 @@ const ni = (name: string): never => {
 
 export const getOrCreateSampleRegistry = (..._args: unknown[]): never => ni('getOrCreateSampleRegistry');
 export const callCreateCodeServer = (..._args: unknown[]): never => ni('callCreateCodeServer');
+export const getCodeServer = (..._args: unknown[]): never => ni('getCodeServer');

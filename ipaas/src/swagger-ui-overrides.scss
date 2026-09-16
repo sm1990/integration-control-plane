@@ -50,6 +50,12 @@
   background: none !important;
 }
 
+// Swagger leaves light-mode inputs inheriting a colour the app root sets to white under a dark scheme.
+.swagger-ui input,
+.swagger-ui textarea {
+  color: #1d2028;
+}
+
 // Swagger Select input related CSS
 .swagger-ui select {
   min-width: 200px !important;

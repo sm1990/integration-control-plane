@@ -44,6 +44,8 @@ import McpProxyCanvas from '../components/Policies/McpProxyCanvas';
  * tool editor. Edits are staged and committed to the APIM API in one PUT.
  * MCP-only: any other component is redirected to its overview.
  */
+const RATE_LIMIT_DESCRIPTION = 'Limit how many requests this MCP server accepts. Resource-level limits are managed per environment from the deployment settings.';
+
 export default function McpPolicies(scope: ComponentScope): JSX.Element {
   const navigate = useAppNavigate();
   const { projectId, isLoading: loadingProject } = useProjectId(scope.project);
@@ -217,7 +219,7 @@ export default function McpPolicies(scope: ComponentScope): JSX.Element {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
                     Rate Limiting
                   </Typography>
-                  <RateLimitingSection value={rateLimit} onChange={setRateLimit} disabled={saving} />
+                  <RateLimitingSection value={rateLimit} onChange={setRateLimit} disabled={saving} description={RATE_LIMIT_DESCRIPTION} />
                 </Box>
 
                 <Divider />

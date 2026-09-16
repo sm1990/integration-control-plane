@@ -19,7 +19,7 @@
 import { Box, Checkbox, Drawer, FormControlLabel, IconButton, MenuItem, Select, Stack, TextField, Tooltip, Typography, Button } from '@wso2/oxygen-ui';
 import { Download, RefreshCw, X } from '@wso2/oxygen-ui-icons-react';
 import { useMemo } from 'react';
-import { useInfiniteComponentLogs } from '../../../hooks/useLogs';
+import { useInfiniteComponentLogs, useVisibleLogs } from '../../../hooks/useLogs';
 import type { ComponentLogsRequest } from '../../../types/logs';
 import { choreologgingComponentGatewayLogsApiUrl } from '../../../config/runtimeConfig';
 import { useLogsFilters } from '../../../hooks/useLogsFilters';
@@ -80,7 +80,7 @@ export default function ServiceLogsDrawer({ open, onClose, componentId, environm
 
   const { data, isLoading, error, refetch, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteComponentLogs(logsRequest, autoFetch ? AUTO_FETCH_INTERVAL : false, logsApiUrl);
 
-  const logs = useMemo(() => data?.pages.flat() ?? [], [data]);
+  const logs = useVisibleLogs(data, { levels: levelFilter });
 
   const handleClose = () => {
     (document.activeElement as HTMLElement)?.blur();

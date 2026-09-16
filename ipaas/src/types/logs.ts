@@ -64,4 +64,7 @@ export interface LogRow {
   componentVersionId: string;
   gatewayCode: string | null;
   statusCode: string | null;
+  componentName: string | null;
+  containerName: string | null;
+  podName: string | null;
 }

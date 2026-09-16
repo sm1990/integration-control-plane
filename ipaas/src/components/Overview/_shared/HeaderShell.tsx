@@ -20,6 +20,8 @@ import { Avatar, Box, Button, ButtonGroup, Chip, CircularProgress, ClickAwayList
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Tag, Cloud, GitCommitHorizontal, Copy, Check, ChevronDown, Code2, Pencil, Globe, Lock } from '@wso2/oxygen-ui-icons-react';
 import type { ComponentDetail } from '../../../types/component';
+import { identifyIntegration } from '../../../utils/identifyIntegration';
+import IntegrationIcon from '../../IntegrationIcon';
 import type { Project } from '../../../types/project';
 import type { Repository, Commit } from '../../../types/repository';
 import { useUpdateComponent } from '../../../hooks/useComponents';
@@ -27,34 +29,13 @@ import { useChoreoSampleImages } from '../../../hooks/useRepository';
 import LabelDialog from '../../LabelDialog';
 import { formatDistanceToNow } from '../../../utils/time';
 import { getGitProviderIcon } from '../../../utils/build';
+import { buildRepoBrowseUrl } from '../../../utils/gitProviderUrl';
 import { useAuth } from '../../../auth/AuthContext';
 import { useOrgUuid } from '../../../hooks/useOrgUuid';
 import { getDisplayLabel } from '../../../constants/integrations';
 import SetupInstructionsButton from './SetupInstructionsButton';
 import type { IntegrationModule } from '../../../types/integration';
 import { IS_CLOUD } from '../../../features';
-
-function buildRepoUrl(repo: Repository): string {
-  const { gitProvider, organizationApp, nameApp, branch, appSubPath, bitbucketServerUrl, serverUrl, projectApp } = repo;
-  const subPath = appSubPath || '';
-  const encodedBranch = encodeURIComponent(branch);
-  switch (gitProvider) {
-    case 'github':
-      return `https://github.com/${organizationApp}/${nameApp}/tree/${encodedBranch}/${subPath}`;
-    case 'bitbucket':
-      return `https://bitbucket.org/${organizationApp}/${nameApp}/src/HEAD/${subPath}?at=${encodedBranch}`;
-    case 'bitbucket_server': {
-      const base = (bitbucketServerUrl || serverUrl || '').replace(/\/$/, '');
-      return `${base}/projects/${organizationApp}/repos/${nameApp}/browse/${subPath}?at=${encodedBranch}`;
-    }
-    case 'gitlab_self_managed':
-      return `${serverUrl || ''}/${organizationApp}/${nameApp}`;
-    case 'azure_devops':
-      return `https://dev.azure.com/${organizationApp}/${projectApp}/_git/${nameApp}?path=${subPath}&version=GB${branch}`;
-    default:
-      return `https://github.com/${organizationApp}/${nameApp}`;
-  }
-}
 
 const REST_API_TYPES = new Set(['restApi', 'byocRestApi', 'miRestApi', 'buildRestApi', 'miApiService', 'ballerinaService', 'byocService', 'byoiService', 'graphql', 'buildpackService']);
 
@@ -219,15 +200,13 @@ export default function ComponentHeader({ component, project, repository, latest
   const HeaderActions = module?.OverviewHeaderActions;
   // Open-in-Cloud/VS Code editor entry: only for components with a source repo
   // and types that don't opt out of it (e.g. MCP sets `hideOpenInEditor`).
-  // cloud: opening an existing component in an editor is not wired yet — the
-  // BFF injects no git credentials into the cloud editor (it would open an
-  // empty workspace) and the VS Code extension deep-link has no cloud support.
-  // Only the new-integration editor flow (Project/CreateIntegrationOptions) is
-  // available.
-  // TODO: Remove the gate once the BFF injects GIT_* for source components.
-  const showOpenInEditor = hasSource && !module?.hideOpenInEditor && !IS_CLOUD;
+  const showOpenInEditor = hasSource && !module?.hideOpenInEditor;
+  // Cloud offers the cloud editor alone: the VS Code deep link addresses an
+  // extension installed on the reader's own machine, which is not where a
+  // cloud integration is edited. One destination needs no menu to choose it.
+  const showEditorMenu = !IS_CLOUD;
 
-  const repoUrl = repository ? buildRepoUrl(repository) : null;
+  const repoUrl = repository ? buildRepoBrowseUrl(repository) : null;
   const ProviderIcon = getGitProviderIcon(repository?.gitProvider);
 
   const orgUuidFromToken = useOrgUuid() ?? '';
@@ -273,12 +252,12 @@ export default function ComponentHeader({ component, project, repository, latest
         {/* LEFT COLUMN */}
         <Stack gap={1} sx={{ flex: 1, minWidth: 0, maxWidth: '60%', [NARROW_HEADER_QUERY]: { maxWidth: '100%' } }}>
           <Stack direction="row" alignItems="center" gap={2}>
-            <Avatar sx={{ width: 48, height: 48, fontSize: 22, bgcolor: 'text.primary', color: 'background.paper' }}>{nameValue?.[0]?.toUpperCase() ?? 'C'}</Avatar>
+            <IntegrationIcon type={identifyIntegration(displayType, component.componentSubType ?? null).type} size={48} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Stack direction="row" alignItems="center" gap={0.5} sx={{ mb: 0.25, cursor: 'text', columnGap: nameEditing ? 1.5 : 0.5, '&:hover .pencil-btn': { opacity: 1 } }} onClick={() => !nameEditing && setNameEditing(true)}>
                 {/* The Typography always stays in the DOM and determines the layout size.
                   The InputBase is absolutely overlaid on top when editing — zero layout shift. */}
-                <Box sx={{ position: 'relative', display: 'flex', flex: 1, minWidth: 200 }}>
+                <Box sx={{ position: 'relative', display: 'flex', flex: '0 1 auto', minWidth: nameEditing ? 200 : 0, maxWidth: '100%' }}>
                   <Typography
                     ref={titleRef}
                     variant="h1"
@@ -368,7 +347,7 @@ export default function ComponentHeader({ component, project, repository, latest
               )}
             </Box>
           </Stack>
-          <Stack direction="row" alignItems="flex-start" gap={1} sx={{ pt: 1 }} onMouseEnter={() => setDescHovered(true)} onMouseLeave={() => setDescHovered(false)}>
+          <Stack direction="row" alignItems="flex-start" gap={1} sx={{ mt: '20px' }} onMouseEnter={() => setDescHovered(true)} onMouseLeave={() => setDescHovered(false)}>
             <Box sx={{ position: 'relative', flex: 1, minWidth: 0, cursor: descEditing ? 'text' : descValue ? 'text' : 'pointer' }} onClick={() => !descEditing && setDescEditing(true)}>
               {/* Ghost text determines height; pencil sits inline after last word */}
               <Typography
@@ -562,40 +541,48 @@ export default function ComponentHeader({ component, project, repository, latest
           {/* Open in Cloud / VS Code — hidden for repo-less / MCP components */}
           {showOpenInEditor && (
             <Box sx={{ position: 'relative' }}>
-              <ButtonGroup variant="outlined" size="small" ref={splitButtonRef}>
-                <Button startIcon={<Cloud size={14} />} onClick={handleOpenInCloud} disabled={!codeServerSample} sx={{ whiteSpace: 'nowrap' }}>
-                  Open in Cloud&nbsp;
-                  <Chip label="Beta" size="small" sx={{ height: 16, fontSize: 10, cursor: 'pointer' }} />
+              {showEditorMenu ? (
+                <ButtonGroup variant="outlined" size="small" ref={splitButtonRef}>
+                  <Button startIcon={<Cloud size={14} />} onClick={handleOpenInCloud} disabled={!codeServerSample} sx={{ whiteSpace: 'nowrap' }}>
+                    Open in Cloud&nbsp;
+                    <Chip label="Beta" size="small" sx={{ height: 16, fontSize: 10, cursor: 'pointer' }} />
+                  </Button>
+                  <Button size="small" sx={{ px: 0.5 }} aria-label="More options" aria-expanded={splitOpen} onClick={() => setSplitOpen((prev) => !prev)}>
+                    <ChevronDown size={14} />
+                  </Button>
+                </ButtonGroup>
+              ) : (
+                <Button variant="outlined" size="small" startIcon={<Cloud size={14} />} onClick={handleOpenInCloud} disabled={!codeServerSample} sx={{ whiteSpace: 'nowrap' }}>
+                  Open in Cloud Editor
                 </Button>
-                <Button size="small" sx={{ px: 0.5 }} aria-label="More options" aria-expanded={splitOpen} onClick={() => setSplitOpen((prev) => !prev)}>
-                  <ChevronDown size={14} />
-                </Button>
-              </ButtonGroup>
-              <Popper open={splitOpen} anchorEl={splitButtonRef.current} placement="bottom-end" transition disablePortal style={{ zIndex: 1300 }}>
-                {({ TransitionProps }) => (
-                  <Grow {...TransitionProps}>
-                    <Paper elevation={3}>
-                      <ClickAwayListener onClickAway={() => setSplitOpen(false)}>
-                        <MenuList dense sx={{ minWidth: 200 }}>
-                          <MenuItem onClick={handleOpenInCloud} selected disabled={!codeServerSample}>
-                            <Stack direction="row" alignItems="center" gap={1}>
-                              <Cloud size={14} />
-                              <Typography variant="body2">Open in Cloud</Typography>
-                              <Chip label="Beta" size="small" sx={{ height: 16, fontSize: 10 }} />
-                            </Stack>
-                          </MenuItem>
-                          <MenuItem onClick={handleOpenInVSCode}>
-                            <Stack direction="row" alignItems="center" gap={1}>
-                              <Code2 size={14} />
-                              <Typography variant="body2">Open in VS Code</Typography>
-                            </Stack>
-                          </MenuItem>
-                        </MenuList>
-                      </ClickAwayListener>
-                    </Paper>
-                  </Grow>
-                )}
-              </Popper>
+              )}
+              {showEditorMenu && (
+                <Popper open={splitOpen} anchorEl={splitButtonRef.current} placement="bottom-end" transition disablePortal style={{ zIndex: 1300 }}>
+                  {({ TransitionProps }) => (
+                    <Grow {...TransitionProps}>
+                      <Paper elevation={3}>
+                        <ClickAwayListener onClickAway={() => setSplitOpen(false)}>
+                          <MenuList dense sx={{ minWidth: 200 }}>
+                            <MenuItem onClick={handleOpenInCloud} selected disabled={!codeServerSample}>
+                              <Stack direction="row" alignItems="center" gap={1}>
+                                <Cloud size={14} />
+                                <Typography variant="body2">Open in Cloud</Typography>
+                                <Chip label="Beta" size="small" sx={{ height: 16, fontSize: 10 }} />
+                              </Stack>
+                            </MenuItem>
+                            <MenuItem onClick={handleOpenInVSCode}>
+                              <Stack direction="row" alignItems="center" gap={1}>
+                                <Code2 size={14} />
+                                <Typography variant="body2">Open in VS Code</Typography>
+                              </Stack>
+                            </MenuItem>
+                          </MenuList>
+                        </ClickAwayListener>
+                      </Paper>
+                    </Grow>
+                  )}
+                </Popper>
+              )}
             </Box>
           )}
 

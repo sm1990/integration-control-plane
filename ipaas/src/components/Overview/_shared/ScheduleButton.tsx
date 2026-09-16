@@ -16,14 +16,13 @@
  * under the License.
  */
 
-import { Button, ButtonGroup, ClickAwayListener, Grow, MenuItem, MenuList, Paper, Popper } from '@wso2/oxygen-ui';
+import { Button, ButtonGroup, ClickAwayListener, Grow, MenuItem, MenuList, Paper, Popper, Tooltip } from '@wso2/oxygen-ui';
 import { CalendarClock, ChevronDown } from '@wso2/oxygen-ui-icons-react';
 import { useRef, useState } from 'react';
 import Authorized from '../../Authorized';
 import { Permissions } from '../../../constants/permissions';
-import { useStopDeployment } from '../../../hooks/useDeployments';
+import { useStopSchedule } from '../../../hooks/useExecutions';
 import ScheduleDialog from './ScheduleDialog';
-import { IS_CLOUD } from '../../../features';
 
 export interface ScheduleButtonProps {
   envId: string;
@@ -31,60 +30,73 @@ export interface ScheduleButtonProps {
   componentId: string;
   orgHandler: string;
   releaseId: string;
+  buildId?: string;
   versionId: string;
   deploymentPipelineId: string;
   hasSchedule: boolean;
   disabled?: boolean;
+  /** Why the action is unavailable — shown as a tooltip while `disabled`. */
+  disabledReason?: string;
   onSaveSuccess?: () => void;
   onSaveError?: (msg: string) => void;
   onStopSuccess?: () => void;
 }
 
-export default function ScheduleButton({ hasSchedule, disabled, onSaveSuccess, onSaveError, onStopSuccess, ...dialogProps }: ScheduleButtonProps) {
+export default function ScheduleButton({ hasSchedule, disabled, disabledReason, onSaveSuccess, onSaveError, onStopSuccess, ...dialogProps }: ScheduleButtonProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [splitOpen, setSplitOpen] = useState(false);
   const splitButtonRef = useRef<HTMLDivElement>(null);
-  const stopDeployment = useStopDeployment();
+  const stopSchedule = useStopSchedule();
 
+  // Suspends the CronJob only — the deployment has its own Stop/Start control.
   const handleStopSchedule = () => {
     setSplitOpen(false);
-    // cloud: OpenChoreo's stop endpoint is per-environment; wip ignores it.
-    stopDeployment.mutate({ orgHandler: dialogProps.orgHandler, componentId: dialogProps.componentId, releaseId: dialogProps.releaseId, ...(IS_CLOUD ? { environment: dialogProps.envId } : {}) }, { onSuccess: () => onStopSuccess?.() });
+    stopSchedule.mutate({ componentId: dialogProps.componentId, envId: dialogProps.envId, orgHandler: dialogProps.orgHandler, releaseId: dialogProps.releaseId }, { onSuccess: () => onStopSuccess?.() });
   };
 
   return (
     <>
       <Authorized permissions={Permissions.INTEGRATION_MANAGE}>
         {hasSchedule ? (
-          <>
-            <ButtonGroup variant="contained" size="small" ref={splitButtonRef} disabled={disabled}>
-              <Button startIcon={<CalendarClock size={14} />} onClick={() => setDialogOpen(true)}>
-                Edit Schedule
-              </Button>
-              <Button size="small" sx={{ px: 0.5 }} onClick={() => setSplitOpen((prev) => !prev)}>
-                <ChevronDown size={14} />
-              </Button>
-            </ButtonGroup>
-            <Popper open={splitOpen} anchorEl={splitButtonRef.current} placement="bottom-end" transition disablePortal style={{ zIndex: 1300 }}>
-              {({ TransitionProps }) => (
-                <Grow {...TransitionProps}>
-                  <Paper elevation={3}>
-                    <ClickAwayListener onClickAway={() => setSplitOpen(false)}>
-                      <MenuList dense sx={{ minWidth: 160 }}>
-                        <MenuItem onClick={handleStopSchedule} disabled={stopDeployment.isPending}>
-                          Stop Schedule
-                        </MenuItem>
-                      </MenuList>
-                    </ClickAwayListener>
-                  </Paper>
-                </Grow>
-              )}
-            </Popper>
-          </>
+          <Tooltip title={disabled ? (disabledReason ?? '') : ''} placement="top">
+            <span>
+              <ButtonGroup variant="contained" size="small" ref={splitButtonRef} disabled={disabled || stopSchedule.isPending}>
+                <Button startIcon={<CalendarClock size={14} />} onClick={handleStopSchedule}>
+                  Stop Schedule
+                </Button>
+                <Button size="small" sx={{ px: 0.5 }} onClick={() => setSplitOpen((prev) => !prev)}>
+                  <ChevronDown size={14} />
+                </Button>
+              </ButtonGroup>
+              <Popper open={splitOpen} anchorEl={splitButtonRef.current} placement="bottom-end" transition disablePortal style={{ zIndex: 1300 }}>
+                {({ TransitionProps }) => (
+                  <Grow {...TransitionProps}>
+                    <Paper elevation={3}>
+                      <ClickAwayListener onClickAway={() => setSplitOpen(false)}>
+                        <MenuList dense sx={{ minWidth: 160 }}>
+                          <MenuItem
+                            onClick={() => {
+                              setSplitOpen(false);
+                              setDialogOpen(true);
+                            }}>
+                            Edit Schedule
+                          </MenuItem>
+                        </MenuList>
+                      </ClickAwayListener>
+                    </Paper>
+                  </Grow>
+                )}
+              </Popper>
+            </span>
+          </Tooltip>
         ) : (
-          <Button variant="contained" size="small" startIcon={<CalendarClock size={14} />} disabled={disabled} onClick={() => setDialogOpen(true)}>
-            Schedule
-          </Button>
+          <Tooltip title={disabled ? (disabledReason ?? '') : ''} placement="top">
+            <span>
+              <Button variant="contained" size="small" startIcon={<CalendarClock size={14} />} disabled={disabled} onClick={() => setDialogOpen(true)}>
+                Schedule
+              </Button>
+            </span>
+          </Tooltip>
         )}
       </Authorized>
       <ScheduleDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onSaveSuccess={onSaveSuccess} onSaveError={onSaveError} {...dialogProps} />

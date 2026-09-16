@@ -18,7 +18,8 @@
 
 import { choreoClient, systemClient, withScopeRetry } from './httpClients';
 import { gql } from './graphql';
-import type { ExecutionConfigs, TaskExecution, ExecutionLogEntry, UpdateJobConfigsInput, TriggerComponentInput, TriggerRunResult, ExecutionArgument, RuntimeArgument } from '../../types/executions';
+import type { StopScheduleInput, ExecutionConfigs, TaskExecution, ExecutionLogEntry, UpdateJobConfigsInput, TriggerComponentInput, TriggerRunResult, ExecutionArgument, RuntimeArgument } from '../../types/executions';
+import { stopDeployment } from './deployments';
 import type { TriggerTaskInput } from '../../types/artifact';
 
 const EXECUTION_CONFIGS_QUERY = `
@@ -102,6 +103,11 @@ export async function fetchTaskExecutionCount(releaseId: string): Promise<number
   from.setDate(to.getDate() - 30);
   const data = await systemClient.get<{ count: number }>(`/systemapis/choreoobsapi/0.3.0/tasks/executions/count?releaseId=${encodeURIComponent(releaseId)}&from=${from.toISOString()}&to=${to.toISOString()}`);
   return data.count ?? null;
+}
+
+// wip has no schedule-only endpoint: clearCron on the stop mutation is how a schedule is stopped there.
+export async function stopSchedule(input: StopScheduleInput): Promise<void> {
+  await stopDeployment({ orgHandler: input.orgHandler, componentId: input.componentId, releaseId: input.releaseId, type: 'scheduledTask', clearCron: true });
 }
 
 export async function updateJobConfigs(input: UpdateJobConfigsInput): Promise<boolean> {

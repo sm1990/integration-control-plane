@@ -19,11 +19,14 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:unit:ui": "vitest --ui",
-    "test:e2e": "dotenv -e .env.test -- playwright test",
+    "test:e2e": "dotenv -e .env.test -- playwright test --project=wip",
+    "test:e2e:cloud": "dotenv -e .env.test -- playwright test --project=cloud-anon --project=cloud --workers=2",
+    "test:e2e:cloud:ci": "playwright test --project=cloud-anon --project=cloud",
+    "test:e2e:cloud:anon": "dotenv -e .env.test -- playwright test --project=cloud-anon --workers=2",
     "test:e2e:ui": "dotenv -e .env.test -- playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "test:e2e:get-gmail-token": "dotenv -e .env.test -- tsx tests/e2e/get-gmail-token.ts",
-    "test:e2e:save-google-auth": "dotenv -e .env.test -- playwright test --project=save-google-session"
+    "test:e2e:save-google-auth": "dotenv -e .env.test -- playwright test --project=save-google-session --headed"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
@@ -72,6 +75,7 @@
     "globals": "16.4.0",
     "googleapis": "^173.0.0",
     "happy-dom": "^20.10.6",
+    "otpauth": "^9.5.1",
     "prettier": "^3.8.1",
     "rollup-plugin-visualizer": "6.0.5",
     "sass": "^1.99.0",

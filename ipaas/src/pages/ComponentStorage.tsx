@@ -39,6 +39,7 @@ import { mainContainer } from '../utils/devopsConfigs';
 import { combineVolumesAndMounts } from '../utils/storage';
 import type { Volume, VolumeRow } from '../types/storage';
 import type { ComponentScope } from '../nav';
+import { IS_CLOUD } from '../features';
 
 type View = { kind: 'list' } | { kind: 'create' } | { kind: 'edit'; row: VolumeRow };
 
@@ -92,7 +93,7 @@ export default function ComponentStorage({ org, project, component }: ComponentS
     setAlert({ type: 'success', message });
   };
 
-  const envSelect = (
+  const envSelect = !IS_CLOUD && environments.length > 1 && (
     <Select
       size="small"
       value={environments.some((e) => e.id === envId) ? envId : ''}

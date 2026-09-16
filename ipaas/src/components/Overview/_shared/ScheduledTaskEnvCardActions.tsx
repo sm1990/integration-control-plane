@@ -16,25 +16,23 @@
  * under the License.
  */
 
-import { Button, Stack, Typography } from '@wso2/oxygen-ui';
-import { Clock, Play } from '@wso2/oxygen-ui-icons-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Button, Tooltip } from '@wso2/oxygen-ui';
+import { Play } from '@wso2/oxygen-ui-icons-react';
+import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useAppNavigate } from '../../../hooks/useAppNavigate';
 import { useQueryClient } from '@tanstack/react-query';
-import { useExecutionConfigs } from '../../../hooks/useExecutions';
+import { useExecutionConfigs, useRuntimeArguments, useTriggerComponent } from '../../../hooks/useExecutions';
 import { useSchemaConfig } from '../../../hooks/useConfiguration';
-import { formatTimeUntil, nextCronRunMs } from '../../../utils/cronUtils';
 import type { EnvCardActionsProps } from '../../../types/integration';
-import ScheduleButton from './ScheduleButton';
+import { isDeploymentHealthy } from '../../../utils/deploymentStatus';
+import { IS_CLOUD } from '../../../features';
 import { hasMissingRequiredConfigs } from './configStatus';
+import NextRunLabel from '../../NextRunLabel';
+import ScheduleButton from './ScheduleButton';
 
 /**
- * Automation's right-header slot: the next-run label (with cron auto-fire
- * detection), Schedule controls, and a Test button that navigates to the
- * dedicated Test page. Owns the schedule config; reports schedule outcomes via
- * `onNotify` and records optimistic cron auto-fires via `onTrigger` (the shell
- * relays those to the body's table).
+ * Automation's right-header slot. Test only leaves the card when the task takes runtime arguments.
  */
 export default function EnvCardActions({
   component,
@@ -45,82 +43,92 @@ export default function EnvCardActions({
   projectHandler,
   componentHandler,
   releaseId,
+  buildId,
   deploymentPipelineId,
   envTemplateId,
   deployedCommitSha,
   isBuildInProgress,
+  deploymentStatusV2,
   onNotify,
   onTrigger,
 }: EnvCardActionsProps): ReactNode {
   const queryClient = useQueryClient();
   const navigate = useAppNavigate();
 
-  const { data: scheduleConfig } = useExecutionConfigs(component.id, releaseId, env.id, projectId);
+  const { data: scheduleConfig } = useExecutionConfigs(component.id, releaseId, env.id);
   const { data: schemaConfig } = useSchemaConfig(projectId, component.id, envTemplateId, versionId, deployedCommitSha);
   const missingConfigs = useMemo(() => hasMissingRequiredConfigs(schemaConfig), [schemaConfig]);
 
   // Automation's Run/Schedule are always disabled while a build is in progress.
   const buildDisabled = !!isBuildInProgress;
+  const deploymentActive = isDeploymentHealthy(deploymentStatusV2);
+  const deploying = deploymentStatusV2 === 'IN_PROGRESS';
 
-  // Next-run countdown + cron auto-fire detection: when a scheduled run is about
-  // to fire, optimistically record a trigger so the executions table updates.
-  const [nextRunLabel, setNextRunLabel] = useState<string | null>(null);
-  const cronFreq = scheduleConfig?.cronjobFrequency ?? null;
-  const lastScheduledTriggerRef = useRef<number>(0);
-  const updateNextRun = useCallback(() => {
-    if (!cronFreq) {
-      setNextRunLabel(null);
+  // Both actions need a live workload: Run triggers one, and a schedule written against a
+  // workload that is still rolling out fires against the previous revision. First match wins,
+  // so the list is ordered from the most actionable cause to the least.
+  const blockers: [boolean, string][] = [
+    [missingConfigs, 'Set the required configuration values first.'],
+    [buildDisabled, 'A build is in progress.'],
+    [!releaseId, 'This integration has not been deployed to this environment yet.'],
+    [deploying, 'The deployment is still in progress.'],
+    [!deploymentActive, 'The deployment is not active in this environment.'],
+  ];
+  const blockedReason = blockers.find(([blocked]) => blocked)?.[1] ?? '';
+  const actionsDisabled = !!blockedReason;
+
+  // Cloud has no runtime-arguments endpoint, so the query stays disabled rather than always failing.
+  const { data: runtimeArgs, isLoading: runtimeArgsLoading } = useRuntimeArguments(component.id, versionId, deployedCommitSha ?? '', !IS_CLOUD);
+  const hasRuntimeArgs = (runtimeArgs?.length ?? 0) > 0;
+  const triggerRun = useTriggerComponent();
+
+  const goToTestPage = () => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/test`);
+
+  const handleTest = () => {
+    if (hasRuntimeArgs) {
+      goToTestPage();
       return;
     }
-    const ms = nextCronRunMs(cronFreq);
-    if (ms !== null) {
-      const diff = ms - Date.now();
-      if (diff < 1000 && Date.now() - lastScheduledTriggerRef.current > 30000) {
-        lastScheduledTriggerRef.current = Date.now();
-        onTrigger(Date.now());
-        queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
-      }
-      setNextRunLabel(`Next run in ${formatTimeUntil(ms)}`);
-    } else {
-      setNextRunLabel(null);
-    }
-  }, [cronFreq, queryClient, onTrigger]);
-  useEffect(() => {
-    updateNextRun();
-    const timer = setInterval(updateNextRun, 1000);
-    return () => clearInterval(timer);
-  }, [updateNextRun]);
-
-  // Testing now lives on the dedicated Test page; this just navigates there.
-  const goToTestPage = () => navigate(`/organizations/${orgHandler}/projects/${projectHandler}/components/${componentHandler}/test`);
+    triggerRun.mutate(
+      { orgHandler, projectId, componentId: component.id, releaseId, args: [] },
+      {
+        onSuccess: () => {
+          onNotify({ text: 'Execution triggered successfully', severity: 'success' });
+          // Surfaces the run in this card's executions table before the list refetches.
+          onTrigger(Date.now());
+          queryClient.invalidateQueries({ queryKey: ['taskExecutions'] });
+        },
+        onError: (err) => onNotify({ text: err instanceof Error ? err.message : 'Failed to trigger execution', severity: 'error' }),
+      },
+    );
+  };
 
   return (
     <>
-      {nextRunLabel && (
-        <Stack direction="row" alignItems="center" gap={0.5} sx={{ mr: 0.5 }}>
-          <Clock size={14} />
-          <Typography variant="body2" color="text.secondary">
-            {nextRunLabel}
-          </Typography>
-        </Stack>
-      )}
+      <NextRunLabel cron={scheduleConfig?.cronjobFrequency ?? ''} timeZone={scheduleConfig?.cronjobTimezone ?? ''} sx={{ mr: 0.5 }} />
       <ScheduleButton
         envId={env.id}
         envName={env.name}
         componentId={component.id}
         orgHandler={orgHandler}
         releaseId={releaseId}
+        buildId={buildId}
         versionId={versionId}
         deploymentPipelineId={deploymentPipelineId}
         hasSchedule={!!scheduleConfig?.cronjobFrequency}
-        disabled={missingConfigs || buildDisabled}
+        disabled={actionsDisabled}
+        disabledReason={blockedReason}
         onSaveSuccess={() => onNotify({ text: 'Schedule updated successfully', severity: 'success' })}
         onSaveError={() => onNotify({ text: 'Failed to save schedule. Please try again.', severity: 'error' })}
         onStopSuccess={() => onNotify({ text: 'Schedule stopped successfully', severity: 'success' })}
       />
-      <Button variant="contained" size="small" startIcon={<Play size={14} />} disabled={missingConfigs || buildDisabled} onClick={goToTestPage}>
-        Test
-      </Button>
+      <Tooltip title={blockedReason} placement="top">
+        <span>
+          <Button variant="contained" size="small" startIcon={<Play size={14} />} disabled={actionsDisabled || triggerRun.isPending || runtimeArgsLoading} onClick={handleTest}>
+            Test
+          </Button>
+        </span>
+      </Tooltip>
     </>
   );
 }

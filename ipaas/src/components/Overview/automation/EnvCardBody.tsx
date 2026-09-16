@@ -17,13 +17,15 @@
  */
 
 import { Box, Divider, Typography } from '@wso2/oxygen-ui';
-import type { ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useExecutionConfigs } from '../../../hooks/useExecutions';
 import { describeCron } from '../../../utils/cronUtils';
+import * as styles from './EnvCardBody.styles';
 import type { EnvCardBodyProps } from '../../../types/integration';
 import EnvCardSkeleton from '../_shared/EnvCardSkeleton';
 import AutomationExecutions from '../../AutomationExecutions';
+import DeploymentNotice from '../../DeploymentNotice';
 import AutomationInsights from './AutomationInsights';
 
 /**
@@ -42,6 +44,7 @@ export default function EnvCardBody({
   componentHandler,
   hasDeployment,
   loadingDeployment,
+  deploymentStatusV2,
   pendingTriggerTime,
   pendingTriggerArgs,
   onTriggerResolved,
@@ -49,9 +52,9 @@ export default function EnvCardBody({
   onNotify,
 }: EnvCardBodyProps): ReactNode {
   const queryClient = useQueryClient();
-  const { data: scheduleConfig } = useExecutionConfigs(component.id, releaseId, env.id, projectId);
-  const scheduleDescription = scheduleConfig?.cronjobFrequency ? `${describeCron(scheduleConfig.cronjobFrequency)}, in time zone ${scheduleConfig.cronjobTimezone || 'UTC'}` : null;
-
+  const { data: scheduleConfig } = useExecutionConfigs(component.id, releaseId, env.id);
+  const hasSchedule = !!scheduleConfig?.cronjobFrequency;
+  const scheduleDescription = hasSchedule ? `${describeCron(scheduleConfig!.cronjobFrequency!)}, in time zone ${scheduleConfig?.cronjobTimezone || 'UTC'}` : 'This automation doesn’t have an active schedule. Add one to run it automatically.';
   const showInsights = !!env.critical && !!releaseId;
 
   if (loadingDeployment) return <EnvCardSkeleton />;
@@ -60,8 +63,8 @@ export default function EnvCardBody({
     <>
       <Divider sx={{ my: 2 }} />
 
-      {hasDeployment && scheduleDescription && (
-        <Box sx={{ bgcolor: 'action.selected', borderRadius: 1, px: 2, py: 1, mb: 2 }}>
+      {hasDeployment && (
+        <Box sx={styles.scheduleDescription}>
           <Typography variant="body2">{scheduleDescription}</Typography>
         </Box>
       )}
@@ -77,6 +80,7 @@ export default function EnvCardBody({
           projectHandler={projectHandler}
           componentHandler={componentHandler}
           envCritical={env.critical ?? false}
+          deploymentStatusV2={deploymentStatusV2}
           pendingTriggerTime={pendingTriggerTime}
           pendingTriggerArgs={pendingTriggerArgs}
           onTriggerResolved={onTriggerResolved}
@@ -88,11 +92,7 @@ export default function EnvCardBody({
         />
       )}
 
-      {!loadingDeployment && !hasDeployment && (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-          No deployments yet. Click &apos;{env.critical ? 'Run' : 'Test'}&apos; or use &apos;Schedule&apos; to trigger an execution.
-        </Typography>
-      )}
+      {!loadingDeployment && !hasDeployment && <DeploymentNotice hasDeployment={false} envCritical={!!env.critical} />}
 
       {showInsights && <AutomationInsights releaseId={releaseId} executionScope={{ componentId: component.id, envId: env.id, projectId }} />}
     </>

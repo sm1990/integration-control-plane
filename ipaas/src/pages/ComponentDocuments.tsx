@@ -32,6 +32,7 @@ import { PUBLISH_ACTIONS, SUCCESS_TEXT } from '../constants/lifecycle';
 import { broaden, resourceUrl, type ComponentScope } from '../nav';
 import type { ApiDocument } from '../types/marketplace';
 import { typeLabel, aggregateByMajorVersion, stripLeadingTitle } from '../utils/documents';
+import { PILL_SELECT_SX } from '../constants/styles';
 
 type View = 'list' | 'create' | 'edit';
 
@@ -270,17 +271,7 @@ export default function ComponentDocuments(scope: ComponentScope): JSX.Element {
 
   const endpointPicker =
     apimEndpoints.length > 1 ? (
-      <Select
-        size="small"
-        value={selectedApimId ?? ''}
-        onChange={(e) => setSelectedApimId(e.target.value as string)}
-        inputProps={{ 'aria-label': 'Endpoint' }}
-        sx={{
-          fontSize: '0.8125rem',
-          '& .MuiOutlinedInput-notchedOutline': { borderRadius: 5 },
-          '& .MuiSelect-select': { py: 0.5, px: 1.5 },
-          minWidth: 160,
-        }}>
+      <Select size="small" value={selectedApimId ?? ''} onChange={(e) => setSelectedApimId(e.target.value as string)} inputProps={{ 'aria-label': 'Endpoint' }} sx={{ ...PILL_SELECT_SX, minWidth: 160 }}>
         {apimEndpoints.map((ep) => (
           <MenuItem key={ep.apimId} value={ep.apimId!}>
             {ep.displayName}

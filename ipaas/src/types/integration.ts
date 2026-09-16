@@ -52,6 +52,8 @@ export interface IntegrationIdentity {
 export interface EnvCardNotification {
   text: string;
   severity: 'success' | 'error';
+  /** Optional second line; `text` is promoted to a heading when present. */
+  detail?: string;
 }
 
 /**

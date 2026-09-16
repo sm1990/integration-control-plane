@@ -17,8 +17,8 @@
  */
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchExecutionConfigs, fetchTaskExecutions, fetchRuntimeArguments, fetchExecutionArguments, fetchExecutionLogs, fetchTaskExecutionCount, updateJobConfigs, triggerTask, triggerComponentRun } from '#api/executions';
-import type { ExecutionConfigs, TaskExecution, UpdateJobConfigsInput, TriggerComponentInput, RuntimeArgument } from '../types/executions';
+import { fetchExecutionConfigs, fetchTaskExecutions, fetchRuntimeArguments, fetchExecutionArguments, fetchExecutionLogs, fetchTaskExecutionCount, updateJobConfigs, stopSchedule, triggerTask, triggerComponentRun } from '#api/executions';
+import type { StopScheduleInput, ExecutionConfigs, TaskExecution, ExecutionLogEntry, ExecutionLogWindow, UpdateJobConfigsInput, TriggerComponentInput, RuntimeArgument } from '../types/executions';
 import type { TriggerTaskInput } from '../types/artifact';
 import { IS_CLOUD } from '../features';
 
@@ -28,18 +28,19 @@ import { IS_CLOUD } from '../features';
 // contract function is assignable to the wider signature, and the extra args are
 // only ever supplied from the IS_CLOUD branch below (where the cloud build wires
 // the wide implementation).
-const fetchExecutionConfigsScoped: (componentId: string, releaseId: string, envId: string, projectId: string) => Promise<ExecutionConfigs | null> = fetchExecutionConfigs;
+const fetchExecutionConfigsScoped: (componentId: string, releaseId: string, envId: string) => Promise<ExecutionConfigs | null> = fetchExecutionConfigs;
 const fetchTaskExecutionsScoped: (releaseId: string, componentId: string, envId: string, projectId: string) => Promise<TaskExecution[]> = fetchTaskExecutions;
 const fetchTaskExecutionCountScoped: (releaseId: string, componentId: string, envId: string, projectId: string) => Promise<number | null> = fetchTaskExecutionCount;
+const fetchExecutionLogsScoped: (componentId: string, deploymentTrackId: string, executionId: string, environmentId: string, run?: ExecutionLogWindow) => Promise<ExecutionLogEntry[]> = fetchExecutionLogs;
 
 // The cloud product keys schedules per environment and has no systemapis base URL,
 // whereas wip keys by releaseId and reaches the observability API through
 // systemApisBaseUrl. The cache key, fetcher, and enable guard co-vary per product,
 // so each hook selects them as one `wiring` block; the rest of the query config is
 // shared.
-export function useExecutionConfigs(componentId: string, releaseId: string, envId = '', projectId = '') {
+export function useExecutionConfigs(componentId: string, releaseId: string, envId = '') {
   const wiring = IS_CLOUD
-    ? { queryKey: ['executionConfigs', componentId, releaseId, envId, projectId], queryFn: () => fetchExecutionConfigsScoped(componentId, releaseId, envId, projectId), enabled: !!componentId && !!envId }
+    ? { queryKey: ['executionConfigs', componentId, releaseId, envId], queryFn: () => fetchExecutionConfigsScoped(componentId, releaseId, envId), enabled: !!componentId && !!envId && !!releaseId }
     : { queryKey: ['executionConfigs', componentId, releaseId], queryFn: () => fetchExecutionConfigs(componentId, releaseId), enabled: !!componentId && !!releaseId };
   return useQuery({ ...wiring, retry: false });
 }
@@ -78,12 +79,30 @@ export function useExecutionArguments(runId: string, componentId: string, releas
   });
 }
 
-export function useExecutionLogs(componentId: string, deploymentTrackId: string, executionId: string, environmentId: string, enabled: boolean) {
+// `run` bounds the query to the execution; cloud needs it because the
+// observability proxy filters logs by component and time, not by run.
+//
+// The cloud branch drops the systemApisBaseUrl and deploymentTrackId guards:
+// neither exists in this deployment (SYSTEM_APIS_BASE_URL is empty), so keeping
+// them would leave the query permanently disabled. The run's completionTime is
+// appended last so it participates in the cache key — a run still in flight
+// refetches as it finishes — while leaving the leading key parts intact for
+// callers that invalidate by prefix.
+export function useExecutionLogs(componentId: string, deploymentTrackId: string, executionId: string, environmentId: string, enabled: boolean, run?: ExecutionLogWindow) {
   const baseUrl = window.API_CONFIG?.systemApisBaseUrl ?? '';
+  const wiring = IS_CLOUD
+    ? {
+        queryKey: ['executionLogs', componentId, deploymentTrackId, executionId, environmentId, run?.completionTime ?? ''],
+        queryFn: () => fetchExecutionLogsScoped(componentId, deploymentTrackId, executionId, environmentId, run),
+        enabled: enabled && !!componentId && !!executionId && !!environmentId,
+      }
+    : {
+        queryKey: ['executionLogs', componentId, deploymentTrackId, executionId, environmentId, baseUrl],
+        queryFn: () => fetchExecutionLogs(componentId, deploymentTrackId, executionId, environmentId),
+        enabled: enabled && !!baseUrl && !!componentId && !!deploymentTrackId && !!executionId && !!environmentId,
+      };
   return useQuery({
-    queryKey: ['executionLogs', componentId, deploymentTrackId, executionId, environmentId, baseUrl],
-    queryFn: () => fetchExecutionLogs(componentId, deploymentTrackId, executionId, environmentId),
-    enabled: enabled && !!baseUrl && !!componentId && !!deploymentTrackId && !!executionId && !!environmentId,
+    ...wiring,
     retry: false,
     staleTime: 30000,
   });
@@ -106,6 +125,14 @@ export function useUpdateJobConfigs() {
     onSuccess: (_data, input) => {
       qc.invalidateQueries({ queryKey: ['executionConfigs', input.componentId] });
     },
+  });
+}
+
+export function useStopSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: StopScheduleInput) => stopSchedule(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['executionConfigs'] }),
   });
 }
 

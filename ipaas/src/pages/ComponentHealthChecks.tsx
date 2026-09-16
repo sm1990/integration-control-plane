@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { Alert, Box, CircularProgress, PageContent, PageTitle } from '@wso2/oxygen-ui';
+import { Alert, Box, PageContent, PageTitle, Skeleton, Stack } from '@wso2/oxygen-ui';
 import { Activity } from '@wso2/oxygen-ui-icons-react';
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import DeploymentTrackBar from '../components/DeploymentTrackBar';
@@ -50,19 +50,24 @@ export default function ComponentHealthChecks({ org, project, component }: Compo
     if (tracks.length) setTrackId((prev) => (prev && tracks.some((t) => t.id === prev) ? prev : (tracks.find((t) => t.latest)?.id ?? tracks[0].id)));
   }, [tracks]);
 
-  const { data: environments = [] } = useEnvironments(org, projectId);
+  const { data: environments = [], isLoading: loadingEnvs } = useEnvironments(org, projectId);
   const [envId, setEnvId] = useState('');
   useEffect(() => {
     if (environments.length) setEnvId((prev) => (prev && environments.some((e) => e.id === prev) ? prev : environments[0].id));
   }, [environments]);
 
-  const { data: deployment } = useComponentDeployment(org, orgUuid ?? '', comp?.id ?? '', trackId, envId);
+  const { data: deployment, isLoading: loadingDeployment } = useComponentDeployment(org, orgUuid ?? '', comp?.id ?? '', trackId, envId);
   const releaseId = deployment?.releaseId ?? '';
-  const { data: release } = useRelease(projectId, comp?.id, releaseId);
+  const { data: release, isLoading: loadingRelease } = useRelease(projectId, comp?.id, releaseId);
   const containers = useMemo(() => release?.containers ?? [], [release]);
   const mainC = useMemo(() => mainContainer(containers), [containers]);
 
-  const { data: healthChecks = [], isLoading: loadingHc } = useHealthChecks(projectId, comp?.id, releaseId);
+  const { data: healthChecks = [], isLoading: loadingHc } = useHealthChecks(projectId, comp?.id, releaseId, envId);
+
+  const syncError = healthChecks.find((hc) => hc.sync_status)?.sync_message;
+
+  // trackId/envId are picked in an effect, so their queries are briefly disabled rather than loading.
+  const resolving = isLoading || loadingEnvs || (tracks.length > 0 && !trackId) || (environments.length > 0 && !envId) || loadingDeployment || loadingRelease || loadingHc;
 
   const [creating, setCreating] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -75,7 +80,7 @@ export default function ComponentHealthChecks({ org, project, component }: Compo
     return <ComingSoon title="Coming Soon" description="Health Checks configuration is currently under development." />;
   }
 
-  const envSelect = <EnvironmentSelect environments={environments} value={envId} onChange={setEnvId} />;
+  const envSelect = environments.length > 1 ? <EnvironmentSelect environments={environments} value={envId} onChange={setEnvId} deployment={{ orgHandler: org, orgUuid: orgUuid ?? '', componentId: comp?.id ?? '', versionId: trackId }} /> : null;
 
   const notify = (type: 'success' | 'error', message: string): void => setAlert({ type, message });
 
@@ -93,10 +98,18 @@ export default function ComponentHealthChecks({ org, project, component }: Compo
           </Alert>
         )}
 
-        {isLoading || (loadingHc && !!releaseId) ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 120px)' }}>
-            <CircularProgress />
-          </Box>
+        {/* The platform validates probe values when it renders the release, so a saved change can still be rejected. */}
+        {syncError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {syncError}
+          </Alert>
+        )}
+
+        {resolving ? (
+          <Stack gap={2}>
+            <Skeleton variant="rounded" height={180} />
+            <Skeleton variant="rounded" height={180} />
+          </Stack>
         ) : !comp ? (
           <Alert severity="error">Integration not found</Alert>
         ) : !mainC ? (
@@ -107,6 +120,7 @@ export default function ComponentHealthChecks({ org, project, component }: Compo
             projectId={projectId}
             componentId={comp.id}
             releaseId={releaseId}
+            environmentId={envId}
             onClose={() => setCreating(false)}
             onSaved={(m) => {
               setCreating(false);
@@ -127,7 +141,7 @@ export default function ComponentHealthChecks({ org, project, component }: Compo
           healthChecks.map((hc) => {
             const container = containers.find((c) => c.ID === hc.container_id);
             if (!container) return null;
-            return <HealthCheckCard key={hc.ID} healthCheck={hc} container={container} projectId={projectId} componentId={comp.id} releaseId={releaseId} canManage={canManage} onNotify={notify} />;
+            return <HealthCheckCard key={hc.ID} healthCheck={hc} container={container} projectId={projectId} componentId={comp.id} releaseId={releaseId} environmentId={envId} canManage={canManage} onNotify={notify} />;
           })
         )}
       </PageContent>

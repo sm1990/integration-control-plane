@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { intervalToCron, cronToInterval, parseCronParts, buildCronFromParts, formatTimeUntil, describeCron } from './cronUtils';
+import { intervalToCron, cronToInterval, parseCronParts, buildCronFromParts, formatTimeUntil, describeCron, nextCronRunMs } from './cronUtils';
 
 describe('intervalToCron', () => {
   it('Minute', () => {
@@ -159,5 +159,52 @@ describe('describeCron', () => {
   it('returns raw cron for unrecognised expressions', () => {
     const raw = 'bad expression';
     expect(describeCron(raw)).toBe(raw);
+  });
+});
+
+describe('nextCronRunMs', () => {
+  const wallClockIn = (ms: number, timeZone: string): string => new Intl.DateTimeFormat('en-US', { timeZone, hourCycle: 'h23', hour: '2-digit', minute: '2-digit' }).format(ms);
+
+  it('resolves the due time against the configured zone, whatever the browser zone is', () => {
+    const ms = nextCronRunMs('0 3 * * *', 'Asia/Tokyo');
+    expect(ms).not.toBeNull();
+    expect(wallClockIn(ms!, 'Asia/Tokyo')).toBe('03:00');
+  });
+
+  it('lands on a different instant for the same expression in a different zone', () => {
+    const tokyo = nextCronRunMs('30 4 * * *', 'Asia/Tokyo');
+    const utc = nextCronRunMs('30 4 * * *', 'UTC');
+    expect(tokyo).not.toBeNull();
+    expect(utc).not.toBeNull();
+    expect(tokyo).not.toBe(utc);
+    expect(wallClockIn(tokyo!, 'Asia/Tokyo')).toBe('04:30');
+    expect(wallClockIn(utc!, 'UTC')).toBe('04:30');
+  });
+
+  it('reads a zone whose offset is not a whole hour', () => {
+    const ms = nextCronRunMs('15 9 * * *', 'Asia/Kolkata');
+    expect(wallClockIn(ms!, 'Asia/Kolkata')).toBe('09:15');
+  });
+
+  it('falls back to browser-local time for an unusable zone', () => {
+    const ms = nextCronRunMs('0 3 * * *', 'Not/AZone');
+    expect(ms).not.toBeNull();
+    expect(new Date(ms!).getHours()).toBe(3);
+    expect(new Date(ms!).getMinutes()).toBe(0);
+  });
+
+  it('stays on browser-local time when no zone is given', () => {
+    const ms = nextCronRunMs('45 7 * * *');
+    expect(new Date(ms!).getHours()).toBe(7);
+    expect(new Date(ms!).getMinutes()).toBe(45);
+  });
+
+  it('returns a future instant', () => {
+    const ms = nextCronRunMs('* * * * *', 'UTC');
+    expect(ms).toBeGreaterThan(Date.now());
+  });
+
+  it('returns null for a malformed expression', () => {
+    expect(nextCronRunMs('0 3 * *', 'UTC')).toBeNull();
   });
 });

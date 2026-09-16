@@ -91,6 +91,20 @@ export function clearTokens(): void {
   localStorage.removeItem(REFRESH_TOKEN_EXPIRES_AT_KEY);
 }
 
+/**
+ * An expired, revoked, or already-rotated refresh token comes back as
+ * `400 invalid_grant`
+ */
+async function isInvalidGrant(res: Response): Promise<boolean> {
+  try {
+    const body = (await res.json()) as { error?: string };
+    return body?.error === 'invalid_grant';
+  } catch {
+    // Non-JSON or empty body — can't confirm, so don't end the session on a guess.
+    return false;
+  }
+}
+
 // Shared single-flight WSO2 Identity Platform token refresh — ensures refreshOidcAccessToken and
 // getOrRefreshAsgardeoToken never race on the same refresh token.
 async function doAsgardeoRefresh(): Promise<AsgardeoTokenData | null> {
@@ -117,6 +131,9 @@ async function doAsgardeoRefresh(): Promise<AsgardeoTokenData | null> {
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
           throw new Error(`Asgardeo refresh auth failure: ${res.status}`);
+        }
+        if (res.status === 400 && (await isInvalidGrant(res))) {
+          throw new Error(`Asgardeo refresh auth failure: 400 invalid_grant`);
         }
         console.warn('[tokenManager] WSO2 Identity Platform token refresh transient error:', res.status);
         return null;
@@ -253,7 +270,7 @@ async function refreshOidcAccessToken(refreshToken: string): Promise<void> {
     });
 
     if (!stsRes.ok) {
-      if (stsRes.status === 401 || stsRes.status === 403) {
+      if (stsRes.status === 401 || stsRes.status === 403 || (stsRes.status === 400 && (await isInvalidGrant(stsRes)))) {
         clearTokens();
         onAuthFailure?.();
       }

@@ -17,7 +17,7 @@
  */
 
 import { Box, Button, CircularProgress, Divider, Grid, Step, StepLabel, Stepper, Stack, Typography } from '@wso2/oxygen-ui';
-import { ArrowLeft } from '@wso2/oxygen-ui-icons-react';
+import { ArrowLeft, ArrowRight } from '@wso2/oxygen-ui-icons-react';
 import { useState, type JSX } from 'react';
 import ProbeConfigFields from './ProbeConfigFields';
 import ProbeSliderGroup, { type ProbeSliderValues } from './ProbeSliderGroup';
@@ -31,6 +31,7 @@ interface CreateHealthCheckStepperProps {
   projectId: string;
   componentId: string;
   releaseId: string;
+  environmentId: string;
   onClose: () => void;
   onSaved: (message: string) => void;
   onError: (message: string) => void;
@@ -38,7 +39,7 @@ interface CreateHealthCheckStepperProps {
 
 const STEPS = ['Configure Liveness Probe', 'Configure Readiness Probe'];
 
-export default function CreateHealthCheckStepper({ container, projectId, componentId, releaseId, onClose, onSaved, onError }: CreateHealthCheckStepperProps): JSX.Element {
+export default function CreateHealthCheckStepper({ container, projectId, componentId, releaseId, environmentId, onClose, onSaved, onError }: CreateHealthCheckStepperProps): JSX.Element {
   const fallbackPort = container.ports?.[0]?.port ?? 8080;
   const [activeStep, setActiveStep] = useState(0);
   const [liveness, setLiveness] = useState<ProbeFormState>(() => defaultProbeForm(fallbackPort));
@@ -54,7 +55,7 @@ export default function CreateHealthCheckStepper({ container, projectId, compone
   const submit = (includeReadiness: boolean): void => {
     const readinessProbe: WriteProbe = includeReadiness ? formToProbe(readiness) : {};
     create.mutate(
-      { componentId, releaseId, containerId: container.ID, data: { probes: { liveness_probe: formToProbe(liveness), readiness_probe: readinessProbe } } },
+      { componentId, releaseId, environmentId, containerId: container.ID, data: { probes: { liveness_probe: formToProbe(liveness), readiness_probe: readinessProbe } } },
       {
         onSuccess: () => onSaved('Health check created.'),
         onError: (e) => onError(e instanceof Error ? e.message : 'Failed to create the health check.'),
@@ -114,11 +115,11 @@ export default function CreateHealthCheckStepper({ container, projectId, compone
                 <Button variant="outlined" onClick={() => setActiveStep(0)} disabled={create.isPending}>
                   Back
                 </Button>
-                <Button variant="outlined" onClick={() => submit(false)} disabled={create.isPending || !isProbeFormValid(liveness)} startIcon={create.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
-                  Skip
-                </Button>
                 <Button variant="contained" onClick={() => submit(true)} disabled={create.isPending || !isProbeFormValid(liveness) || !isProbeFormValid(readiness)} startIcon={create.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}>
                   Save
+                </Button>
+                <Button variant="text" endIcon={create.isPending ? <CircularProgress size={16} color="inherit" /> : <ArrowRight size={16} />} onClick={() => submit(false)} disabled={create.isPending || !isProbeFormValid(liveness)}>
+                  Skip
                 </Button>
               </>
             )}

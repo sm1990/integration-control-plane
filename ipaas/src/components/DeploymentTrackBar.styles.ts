@@ -1,0 +1,76 @@
+/**
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+/** Full-bleed band: the rule and tint span the viewport, like the page header above it. */
+export const bandSx = {
+  borderBottom: '1px solid',
+  borderColor: 'divider',
+  bgcolor: 'background.acrylic',
+  backdropFilter: 'blur(3px)',
+} as const;
+
+/**
+ * Inner row, matching PageContent's centred 1400px box so the environment selector's
+ * left edge lands on the PageTitle's start point at every viewport width.
+ */
+export const barSx = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 2,
+  width: '100%',
+  maxWidth: 1400,
+  mx: 'auto',
+  px: 8,
+  minHeight: 48,
+} as const;
+
+export const trackLabelSx = {
+  fontSize: '0.8125rem',
+} as const;
+
+export const apiVersionChipSx = {
+  height: 20,
+  fontSize: '0.68rem',
+  fontWeight: 500,
+} as const;
+
+export const barCaptionSx = {
+  fontWeight: 500,
+  fontSize: '0.8125rem',
+} as const;
+
+export const tooltipAnchorSx = {
+  display: 'flex',
+  alignItems: 'center',
+  color: 'text.disabled',
+  cursor: 'help',
+} as const;
+
+export const menuActionsRowSx = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  px: 1.5,
+  py: 0.5,
+} as const;
+
+export const menuActionButtonSx = {
+  fontSize: '0.75rem',
+  textTransform: 'none',
+  px: 0.5,
+} as const;

@@ -51,14 +51,27 @@ export function applyRateLimit(api: ApimApiInfo, value: RateLimitConfig): ApimAp
   };
 }
 
-/** True when the rate limit is internally valid (a positive request count when limited). */
-export function isRateLimitValid(value: RateLimitConfig): boolean {
-  if (value.level !== 'API_LEVEL') return true;
-  const count = Number(value.requestCount);
+/** True when a single limit is a positive whole number of requests. */
+export function isRuleValid(rule: { requestCount: string }): boolean {
+  const count = Number(rule.requestCount);
   return Number.isInteger(count) && count > 0;
 }
 
+/** True when the rate limit is internally valid. A blank per-operation row is valid — it means unlimited. */
+export function isRateLimitValid(value: RateLimitConfig): boolean {
+  if (value.level === 'RESOURCE_LEVEL') {
+    return Object.values(value.operations ?? {}).every((rule) => rule.requestCount === '' || isRuleValid(rule));
+  }
+  if (value.level !== 'API_LEVEL') return true;
+  return isRuleValid(value);
+}
+
 // ── CORS ──────────────────────────────────────────────────────────────────────
+
+/** True when every origin is allowed — from the checkbox, or from a literal "*" typed as an origin. */
+export function allowsAllOrigins(value: Pick<CorsConfig, 'allowAllOrigins' | 'origins'>): boolean {
+  return value.allowAllOrigins || value.origins.some((o) => o.trim() === '*');
+}
 
 /** Derive the CORS view-model from an APIM API. */
 export function corsFromApi(api: ApimApiInfo | null | undefined): CorsConfig {
@@ -76,10 +89,12 @@ export function corsFromApi(api: ApimApiInfo | null | undefined): CorsConfig {
 
 /** Apply the CORS view-model onto an APIM API, returning a new object to PUT. */
 export function applyCors(api: ApimApiInfo, value: CorsConfig): ApimApiInfo {
+  // Credentials against a wildcard origin is rejected by the gateway, so it must never be saved.
+  const wildcard = allowsAllOrigins(value);
   const corsConfiguration: CorsConfiguration = {
     corsConfigurationEnabled: value.enabled,
-    accessControlAllowOrigins: value.enabled ? (value.allowAllOrigins ? ['*'] : value.origins) : [],
-    accessControlAllowCredentials: value.enabled ? value.allowCredentials : false,
+    accessControlAllowOrigins: value.enabled ? (wildcard ? ['*'] : value.origins) : [],
+    accessControlAllowCredentials: value.enabled && !wildcard ? value.allowCredentials : false,
     accessControlAllowHeaders: value.enabled ? value.headers : [],
     accessControlAllowMethods: value.enabled ? value.methods : [],
   };

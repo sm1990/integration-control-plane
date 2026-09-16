@@ -30,6 +30,15 @@ HOUSE_RULES.md
 README.md
 RUNTIME_CONFIG.md
 
-# The Dockerfile itself doesn't need to be in the build context's COPY
+# The Dockerfiles themselves don't need to be in the build context's COPY
 .dockerignore
 Dockerfile
+Dockerfile.e2e
+
+# Secrets and live sessions must never enter a build context
+.env.test
+.env.local
+.auth
+playwright-report
+test-results
+blob-report

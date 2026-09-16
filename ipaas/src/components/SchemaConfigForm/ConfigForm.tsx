@@ -19,9 +19,13 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { Box, Collapse, Stack, Switch, Typography } from '@wso2/oxygen-ui';
 import { ChevronDown, ChevronUp } from '@wso2/oxygen-ui-icons-react';
+import { IS_CLOUD } from '../../features';
 import type { BaseType, JSONSchema } from '../../types/schema';
 import { type LinkingInfo, type SchemaAtLevel, getSchemasAtLevel } from './schemaUtils';
 import { ConfigElement } from './FormElements/ConfigElement';
+
+// Cloud has no configuration groups, so neither the toggle nor the per-field link affordance applies.
+const LINKING_SUPPORTED = !IS_CLOUD;
 
 interface ConfigGroup {
   groupUuid: string;
@@ -95,7 +99,7 @@ export function ConfigForm({ schema, valueMap, handleValueChange, validationMap,
   }, [schema]);
 
   useEffect(() => {
-    if (!autoEnabledRef.current && linkingMap && linkingMap.size > 0) {
+    if (LINKING_SUPPORTED && !autoEnabledRef.current && linkingMap && linkingMap.size > 0) {
       setAllowLinking(true);
       autoEnabledRef.current = true;
     }
@@ -129,7 +133,7 @@ export function ConfigForm({ schema, valueMap, handleValueChange, validationMap,
           handleValidationChange={handleValidationChange}
           isRequired={isKeyRequired}
           isRequiredAtRequiredLevel={requiredOnly && targetLevel === 1}
-          allowLinking={allowLinking}
+          allowLinking={LINKING_SUPPORTED && allowLinking}
           configGroups={configGroups}
           linkingMap={linkingMap}
           setLinkingMap={setLinkingMap}
@@ -163,7 +167,7 @@ export function ConfigForm({ schema, valueMap, handleValueChange, validationMap,
 
   return (
     <Box>
-      {showLinking && (
+      {showLinking && LINKING_SUPPORTED && (
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
           <Typography variant="body2">Allow Linking Configuration Groups</Typography>
           <Switch size="small" checked={allowLinking} onChange={(e) => setAllowLinking((e.target as HTMLInputElement).checked)} />

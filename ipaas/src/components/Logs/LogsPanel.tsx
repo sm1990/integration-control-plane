@@ -92,6 +92,10 @@ export default function LogsPanel<T>({
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll, paginated]);
 
+  useEffect(() => {
+    if (paginated && items.length === 0 && hasNextPage && !isFetchingNextPage) onFetchNextPage?.();
+  }, [paginated, items.length, hasNextPage, isFetchingNextPage, onFetchNextPage]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', my: 6 }}>

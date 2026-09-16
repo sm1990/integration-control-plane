@@ -20,8 +20,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { UUID_RE } from '../utils/string';
 import { trackEvent } from '../utils/tracking';
 import { fetchProjects, fetchProject, fetchProjectContributors, fetchProjectComponentLabels, fetchProjectHandlerAvailability, createProject, createMonoRepoProject, linkProjectRepository, updateProject, deleteProject } from '#api/projects';
-import type { CreateProjectInput, CreateMonoRepoProjectInput, LinkProjectRepositoryInput, UpdateProjectInput } from '../types/project';
+import type { Project, CreateProjectInput, CreateMonoRepoProjectInput, LinkProjectRepositoryInput, UpdateProjectInput } from '../types/project';
 import { useOrgs } from './useOrg';
+import { pollWhileDeleting } from '../utils/deletionPolling';
 import { IS_CLOUD } from '../features';
 
 function orgId(): number {
@@ -34,13 +35,34 @@ function orgId(): number {
 // ignores the numericId argument — we just need to let the queries fire.
 const isOrgScopeReady = (id: number): boolean => IS_CLOUD || id > 0;
 
+/**
+ * Whether the queries in this file are actually enabled yet (WIP only — cloud is always ready).
+ * Right after fresh onboarding, `asgardeoOrgNumericId` isn't recovered immediately (see
+ * AppLayout.tsx's ID-recovery effect), so `orgId()` reads 0 for a beat. A caller that treats
+ * "not loading" as "definitely doesn't exist" during that gap — instead of "we haven't been able
+ * to check yet" — can flash a false not-found state. Use this to extend a loading condition
+ * through that window instead.
+ */
+export function useIsOrgScopeReady(): boolean {
+  return isOrgScopeReady(orgId());
+}
+
+const projectsQuery = (id: number) => ({
+  queryKey: ['projects', id],
+  queryFn: () => fetchProjects(id),
+  enabled: isOrgScopeReady(id),
+  refetchInterval: pollWhileDeleting,
+});
+
 export function useProjects() {
-  const id = orgId();
-  return useQuery({
-    queryKey: ['projects', id],
-    queryFn: () => fetchProjects(id),
-    enabled: isOrgScopeReady(id),
-  });
+  return useQuery(projectsQuery(orgId()));
+}
+
+/**
+ * Projects for pickers and navigation targets; `useProjects` keeps the finalizing ones that scope resolution and name-uniqueness checks need.
+ */
+export function useActiveProjects() {
+  return useQuery({ ...projectsQuery(orgId()), select: (list: Project[]) => list.filter((p) => !p.deleting) });
 }
 
 export function useProjectsByOrg(orgHandle: string) {
@@ -50,6 +72,7 @@ export function useProjectsByOrg(orgHandle: string) {
     queryKey: ['projects', numericId],
     queryFn: () => fetchProjects(numericId),
     enabled: isOrgScopeReady(numericId),
+    refetchInterval: pollWhileDeleting,
   });
 }
 
@@ -128,7 +151,13 @@ export function useDeleteProject() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (projectId: string) => deleteProject(projectId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: async (_result, projectId) => {
+      // An in-flight fetch would resolve after the mark below and overwrite it.
+      await qc.cancelQueries({ queryKey: ['projects'] });
+      // The delete is only accepted here, so mark the row rather than dropping it.
+      qc.setQueriesData<Project[]>({ queryKey: ['projects'] }, (list) => list?.map((p) => (p.id === projectId ? { ...p, deleting: true } : p)));
+      qc.invalidateQueries({ queryKey: ['projects'], refetchType: 'none' });
+    },
   });
 }
 

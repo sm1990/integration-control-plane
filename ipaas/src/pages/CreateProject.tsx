@@ -24,6 +24,7 @@ import GitHubAuthArea from '../components/Import/GitHubAuthArea';
 import { useGitRepoSource } from '../hooks/useGitRepoSource';
 import { useState, useEffect, useLayoutEffect, type JSX } from 'react';
 import { useAppNavigate } from '../hooks/useAppNavigate';
+import BusyFields from '../components/common/BusyFields';
 import { useCreateProject, useCreateMonoRepoProject } from '../hooks/useProjects';
 import { useCreateComponent } from '../hooks/useComponents';
 import { useOrgs, useOrgComponentLimits, useOrgSubscriptions } from '../hooks/useOrg';
@@ -211,12 +212,15 @@ export default function CreateProject(scope: OrgScope): JSX.Element {
   };
 
   const renderHandlerHelperText = () => {
+    // handlerError first: it is a fault in the value itself (reserved, malformed), which
+    // stands regardless of what the availability call says about uniqueness.
+    if (handlerError) return handlerError;
     if (isCheckingAvailability) return 'Checking availability…';
     if (handlerTaken) {
       const alt = availability?.alternateHandlerCandidate;
       return alt ? `This name is already taken. Try "${alt}" instead.` : handlerTaken;
     }
-    return handlerError ?? 'Auto-generated identifier';
+    return 'Auto-generated identifier';
   };
 
   const renderCredentialAuthArea = () => {
@@ -406,138 +410,140 @@ export default function CreateProject(scope: OrgScope): JSX.Element {
         </Alert>
       )}
 
-      {/* Project details */}
-      <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
-        Project Details
-      </Typography>
-
-      <Grid container spacing={3} sx={{ mb: 5 }}>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            label="Display Name"
-            required
-            placeholder="Enter Project Name"
-            value={displayName}
-            onChange={(e) => {
-              setDisplayName(e.target.value);
-              setSubmitError(null);
-            }}
-            fullWidth
-            error={!!nameError}
-            helperText={nameError ?? 'Name of the project'}
-            slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            label="Name"
-            value={effectiveHandler}
-            onChange={(e) => onHandlerChange(e.target.value)}
-            fullWidth
-            disabled={!handlerEdited}
-            error={!!handlerError || !!handlerTaken}
-            helperText={renderHandlerHelperText()}
-            slotProps={{
-              htmlInput: { 'aria-label': 'Name' },
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    {isCheckingAvailability ? (
-                      <CircularProgress size={16} />
-                    ) : (
-                      <Tooltip title={handlerEdited ? 'Done' : 'Edit name'} placement="top">
-                        <IconButton size="small" aria-label={handlerEdited ? 'Confirm name' : 'Edit name'} onClick={() => (handlerEdited ? stopEditing() : startEditing())} sx={handlerEdited ? { color: 'success.main' } : { color: 'primary.main' }}>
-                          {handlerEdited ? <Check size={16} /> : <Edit size={16} />}
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
-          <TextField label="Description (Optional)" placeholder="Enter description here" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={1} slotProps={{ htmlInput: { 'aria-label': 'Description' } }} />
-        </Grid>
-      </Grid>
-
-      {/* Connect Repository — collapsible optional section */}
-      <Stack
-        direction="row"
-        alignItems="center"
-        gap={1.5}
-        role="button"
-        tabIndex={0}
-        aria-expanded={gitSectionOpen}
-        onClick={handleGitSectionToggle}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleGitSectionToggle();
-          }
-        }}
-        sx={{ cursor: 'pointer', mb: gitSectionOpen ? 3 : 6, userSelect: 'none' }}>
-        <Typography variant="h5" component="h2">
-          Connect Your Repository (Optional)
+      <BusyFields busy={isCreating}>
+        {/* Project details */}
+        <Typography variant="h5" component="h2" sx={{ mb: 2 }}>
+          Project Details
         </Typography>
-        <Box sx={{ color: 'primary.main', display: 'flex' }}>{gitSectionOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</Box>
-      </Stack>
 
-      {gitSectionOpen && (
-        <>
-          {!attachGit ? (
-            <Box sx={{ mb: 5 }}>
-              <GitProviderCards
-                onGitHubSelect={() => {
-                  handleProviderSelect('github');
-                  startGitHubAuth(refetchRepos);
-                }}
-                onPublicSelect={() => handleProviderSelect('public')}
-                credentials={allCredentials}
-                onCredentialSelect={handleCredentialPicked}
-                onCreateCredential={handleCreateCredential}
-              />
-            </Box>
-          ) : (
-            <Box sx={{ mt: 4 }}>
-              {gitProvider === 'github' && <GitHubAuthArea authStatus={authStatus} isCheckingAuth={isCheckingAuth} isAuthenticated={isAuthenticated} onAuthorize={() => startGitHubAuth(refetchRepos)} onInstall={() => startGitHubAppInstall(refetchRepos)} />}
-              {isCredentialMode && renderCredentialAuthArea()}
-              {renderRepoPickers()}
-            </Box>
-          )}
-        </>
-      )}
+        <Grid container spacing={3} sx={{ mb: 5 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Display Name"
+              required
+              placeholder="Enter Project Name"
+              value={displayName}
+              onChange={(e) => {
+                setDisplayName(e.target.value);
+                setSubmitError(null);
+              }}
+              fullWidth
+              error={!!nameError}
+              helperText={nameError ?? 'Name of the project'}
+              slotProps={{ htmlInput: { 'aria-label': 'Display Name' } }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Name"
+              value={effectiveHandler}
+              onChange={(e) => onHandlerChange(e.target.value)}
+              fullWidth
+              disabled={!handlerEdited}
+              error={!!handlerError || !!handlerTaken}
+              helperText={renderHandlerHelperText()}
+              slotProps={{
+                htmlInput: { 'aria-label': 'Name' },
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      {isCheckingAvailability ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <Tooltip title={handlerEdited ? 'Done' : 'Edit name'} placement="top">
+                          <IconButton size="small" aria-label={handlerEdited ? 'Confirm name' : 'Edit name'} onClick={() => (handlerEdited ? stopEditing() : startEditing())} sx={handlerEdited ? { color: 'success.main' } : { color: 'primary.main' }}>
+                            {handlerEdited ? <Check size={16} /> : <Edit size={16} />}
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField label="Description (Optional)" placeholder="Enter description here" value={description} onChange={(e) => setDescription(e.target.value)} fullWidth multiline minRows={1} slotProps={{ htmlInput: { 'aria-label': 'Description' } }} />
+          </Grid>
+        </Grid>
 
-      {/* Workspace detected — prompt user to configure integrations */}
-      {isWorkspace && !showWorkspaceConfig && (
-        <Box sx={{ mb: 5, mt: -1 }}>
-          <Typography variant="body2" color="text.secondary">
-            WSO2 Integrator project detected. Do you want to import its integrations?
+        {/* Connect Repository — collapsible optional section */}
+        <Stack
+          direction="row"
+          alignItems="center"
+          gap={1.5}
+          role="button"
+          tabIndex={0}
+          aria-expanded={gitSectionOpen}
+          onClick={handleGitSectionToggle}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleGitSectionToggle();
+            }
+          }}
+          sx={{ cursor: 'pointer', mb: gitSectionOpen ? 3 : 6, userSelect: 'none' }}>
+          <Typography variant="h5" component="h2">
+            Connect Your Repository (Optional)
           </Typography>
-          <Button
-            variant="text"
-            size="small"
-            sx={{
-              p: 0,
-              minWidth: 0,
-              mt: 0.5,
-              '&:hover': {
-                backgroundColor: 'transparent',
-                textDecoration: 'underline',
-              },
-            }}
-            onClick={() => setShowWorkspaceConfig(true)}>
-            Import Project Integrations
-          </Button>
-        </Box>
-      )}
-      {isWorkspace && showWorkspaceConfig && (
-        <>
-          <WorkspaceModuleTable repoName={activeRepo} repoContents={repoContents} modules={workspaceModules} onChange={setWorkspaceModules} quotaRemaining={quotaRemaining} />
-          <Box sx={{ mb: 2 }} />
-        </>
-      )}
+          <Box sx={{ color: 'primary.main', display: 'flex' }}>{gitSectionOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</Box>
+        </Stack>
+
+        {gitSectionOpen && (
+          <>
+            {!attachGit ? (
+              <Box sx={{ mb: 5 }}>
+                <GitProviderCards
+                  onGitHubSelect={() => {
+                    handleProviderSelect('github');
+                    startGitHubAuth(refetchRepos);
+                  }}
+                  onPublicSelect={() => handleProviderSelect('public')}
+                  credentials={allCredentials}
+                  onCredentialSelect={handleCredentialPicked}
+                  onCreateCredential={handleCreateCredential}
+                />
+              </Box>
+            ) : (
+              <Box sx={{ mt: 4 }}>
+                {gitProvider === 'github' && <GitHubAuthArea authStatus={authStatus} isCheckingAuth={isCheckingAuth} isAuthenticated={isAuthenticated} onAuthorize={() => startGitHubAuth(refetchRepos)} onInstall={() => startGitHubAppInstall(refetchRepos)} />}
+                {isCredentialMode && renderCredentialAuthArea()}
+                {renderRepoPickers()}
+              </Box>
+            )}
+          </>
+        )}
+
+        {/* Workspace detected — prompt user to configure integrations */}
+        {isWorkspace && !showWorkspaceConfig && (
+          <Box sx={{ mb: 5, mt: -1 }}>
+            <Typography variant="body2" color="text.secondary">
+              WSO2 Integrator project detected. Do you want to import its integrations?
+            </Typography>
+            <Button
+              variant="text"
+              size="small"
+              sx={{
+                p: 0,
+                minWidth: 0,
+                mt: 0.5,
+                '&:hover': {
+                  backgroundColor: 'transparent',
+                  textDecoration: 'underline',
+                },
+              }}
+              onClick={() => setShowWorkspaceConfig(true)}>
+              Import Project Integrations
+            </Button>
+          </Box>
+        )}
+        {isWorkspace && showWorkspaceConfig && (
+          <>
+            <WorkspaceModuleTable repoName={activeRepo} repoContents={repoContents} modules={workspaceModules} onChange={setWorkspaceModules} quotaRemaining={quotaRemaining} />
+            <Box sx={{ mb: 2 }} />
+          </>
+        )}
+      </BusyFields>
 
       <Stack direction="row" gap={2} sx={{ mt: 3 }}>
         <Button variant="outlined" onClick={() => navigate(orgHomeUrl)} disabled={isCreating}>

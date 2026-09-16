@@ -93,8 +93,9 @@ export default function DeployEnvironmentCardBody({
 
   return (
     <Stack gap={2}>
-      {/* Deployed time — from per-env deployedAt, not image build time. Hidden when suspended (matches Devant). */}
-      {!isSuspended && deployedAt && (
+      {/* Deployed time — from per-env deployedAt, not image build time. Hidden when suspended (matches Devant).
+          An automation has no deployment to date: it runs on its schedule, which the status below reports. */}
+      {!flags.isAutomation && !isSuspended && deployedAt && (
         <Stack direction="row" alignItems="center" gap={0.5}>
           <Clock size={14} style={{ opacity: 0.6 }} />
           <Typography variant="body2">Deployed</Typography>
@@ -104,23 +105,39 @@ export default function DeployEnvironmentCardBody({
         </Stack>
       )}
 
-      {/* Deployment / Scheduled status box */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          p: 1.5,
-          borderRadius: 1,
-          bgcolor: statusBg,
-        }}>
-        <Typography variant="body2" fontWeight={600}>
-          {flags.isAutomation ? 'Scheduled status' : 'Deployment status'}
-        </Typography>
-        <Typography variant="body2" fontWeight={600} sx={{ color: statusColor }}>
-          {getDeploymentStatusLabel(status)}
-        </Typography>
-      </Box>
+      {/* An automation reports its schedule here; every other type reports its workload. */}
+      <Stack gap={0.5}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: 1,
+            bgcolor: statusBg,
+          }}>
+          {flags.isAutomation && isSuspended ? (
+            // Nothing to report a status for, so the empty state reads as a sentence.
+            <Typography variant="body2" fontWeight={600} sx={{ color: statusColor }}>
+              No active schedule
+            </Typography>
+          ) : (
+            <>
+              <Typography variant="body2" fontWeight={600}>
+                {flags.isAutomation ? 'Schedule status' : 'Deployment status'}
+              </Typography>
+              <Typography variant="body2" fontWeight={600} sx={{ color: statusColor }}>
+                {flags.isAutomation ? 'Active' : getDeploymentStatusLabel(status)}
+              </Typography>
+            </>
+          )}
+        </Box>
+        {flags.isAutomation && nextRunLabel && (
+          <Typography variant="caption" color="text.secondary" sx={{ pl: 1.5 }}>
+            {nextRunLabel}
+          </Typography>
+        )}
+      </Stack>
 
       {/* Build / Image section — label + History button inline, then build card */}
       {hasBuildInfo && (
@@ -217,11 +234,6 @@ export default function DeployEnvironmentCardBody({
                 {scheduleDescription}
               </Typography>
             </Stack>
-          )}
-          {nextRunLabel && (
-            <Typography variant="caption" color="text.secondary" sx={{ pl: 2.5 }}>
-              {nextRunLabel}
-            </Typography>
           )}
         </Stack>
       )}

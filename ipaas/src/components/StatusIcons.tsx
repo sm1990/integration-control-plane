@@ -17,8 +17,9 @@
  */
 
 import { Box } from '@wso2/oxygen-ui';
-import { Check, Clock, Loader, TriangleAlert, X } from '@wso2/oxygen-ui-icons-react';
+import { Check, Clock, Loader, Minus, TriangleAlert, X } from '@wso2/oxygen-ui-icons-react';
 import type { BuildStep } from '../types/build';
+import { spinnerSx, statusCircleSx, warningSx } from './StatusIcons.styles';
 
 interface StatusIconProps {
   size?: number;
@@ -26,15 +27,7 @@ interface StatusIconProps {
 
 export function InProgressIcon({ size = 20 }: StatusIconProps) {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        flexShrink: 0,
-        color: 'primary.main',
-        animation: 'spin 3s linear infinite',
-        '@keyframes spin': { from: { transform: 'rotate(0deg)' }, to: { transform: 'rotate(360deg)' } },
-      }}>
+    <Box sx={spinnerSx}>
       <Loader size={size} />
     </Box>
   );
@@ -43,18 +36,7 @@ export function InProgressIcon({ size = 20 }: StatusIconProps) {
 export function SuccessIcon({ size = 20 }: StatusIconProps) {
   const iconSize = Math.round(size * 0.55);
   return (
-    <Box
-      sx={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        bgcolor: 'success.main',
-        color: 'common.white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}>
+    <Box sx={statusCircleSx(size, 'success.main', 'common.white')}>
       <Check size={iconSize} />
     </Box>
   );
@@ -63,19 +45,17 @@ export function SuccessIcon({ size = 20 }: StatusIconProps) {
 export function QueuedIcon({ size = 20 }: StatusIconProps) {
   const iconSize = Math.round(size * 0.55);
   return (
-    <Box
-      sx={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        bgcolor: 'action.disabledBackground',
-        color: 'grey.600',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}>
+    <Box sx={statusCircleSx(size, 'action.disabledBackground', 'grey.600')}>
       <Clock size={iconSize} />
+    </Box>
+  );
+}
+
+export function SkippedIcon({ size = 20 }: StatusIconProps) {
+  const iconSize = Math.round(size * 0.55);
+  return (
+    <Box sx={statusCircleSx(size, 'action.disabledBackground', 'grey.600')}>
+      <Minus size={iconSize} />
     </Box>
   );
 }
@@ -83,18 +63,7 @@ export function QueuedIcon({ size = 20 }: StatusIconProps) {
 export function FailedIcon({ size = 20 }: StatusIconProps) {
   const iconSize = Math.round(size * 0.55);
   return (
-    <Box
-      sx={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        bgcolor: 'error.main',
-        color: 'common.white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}>
+    <Box sx={statusCircleSx(size, 'error.main', 'common.white')}>
       <X size={iconSize} />
     </Box>
   );
@@ -102,14 +71,7 @@ export function FailedIcon({ size = 20 }: StatusIconProps) {
 
 export function WarningIcon({ size = 20 }: StatusIconProps) {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-        color: 'warning.main',
-      }}>
+    <Box sx={warningSx}>
       <TriangleAlert size={size} />
     </Box>
   );

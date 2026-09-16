@@ -84,6 +84,13 @@ export function AgentChatTestRoute(scope: ComponentScope): JSX.Element {
   const { data: comp, isPending } = useComponentByHandler(projectId, scope.component);
   const identity = useIntegrationIdentity(comp ?? undefined);
 
+  useEffect(() => {
+    // Only the confirmed-agent case renders the chat below; a type mismatch redirects to
+    // `/test`, which fires this same event itself — tracking here too would double-count.
+    if (comp && identity?.type === 'ai-agent') trackEvent('component-test');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comp?.id, identity?.type]);
+
   if (projectId && isPending) {
     return (
       <PageContent>

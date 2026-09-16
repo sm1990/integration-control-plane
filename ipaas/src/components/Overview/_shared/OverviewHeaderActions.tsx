@@ -112,7 +112,9 @@ export default function OverviewHeaderActions({ component, apimId, orgHandler, p
                   target="_blank"
                   rel="noopener noreferrer"
                   disabled={!isPublished || !devPortalUrl}
-                  onClick={() => trackEvent('component-manage-dev-portal')}
+                  onClick={() => {
+                    if (isPublished && devPortalUrl) trackEvent('component-manage-dev-portal');
+                  }}
                   sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, color: isPublished && devPortalUrl ? 'text.secondary' : 'text.disabled', pointerEvents: 'auto' }}>
                   <CodeXml size={16} />
                 </IconButton>

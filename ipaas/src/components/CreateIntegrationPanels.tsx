@@ -57,7 +57,7 @@ import { usePrebuiltIntegrations } from '../hooks/usePrebuiltIntegrations';
 import { trackEvent } from '../utils/tracking';
 
 /** Static, so the tab-click handler and the PillTabs `tabs` prop reference the same array. */
-const GET_STARTED_TABS = [{ label: 'Prebuilt Integrations' }, { label: 'Samples' }] as const;
+const GET_STARTED_TABS = [{ label: 'Prebuilt Integrations' }, { label: 'Samples' }];
 
 export interface CreateIntegrationPanelsProps {
   scope: ProjectScope;

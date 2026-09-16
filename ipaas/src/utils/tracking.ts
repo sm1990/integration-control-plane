@@ -282,11 +282,29 @@ export function trackEvent(name: string, properties?: Record<string, unknown>, i
  * GTM/CookiePro until it has its own (Moesif already comes from runtime config either way, so no
  * placeholder is needed for it). ICP loads nothing.
  */
+// GTM carries Clarity (see initTracking's own doc comment) and must be gated on analytics consent
+// the same way syncMoesifConsent gates Moesif — otherwise Clarity starts recording before the user
+// has consented. Injects at most once: onConsentChange's callback re-runs on every later
+// preference-center change too, and GTM has no equivalent of Moesif's stop() to undo an injection.
+function injectGtmOnceConsented(containerId: string): () => void {
+  let injected = false;
+  return () => {
+    if (injected || !isAnalyticsCookiesAllowed()) return;
+    injected = true;
+    injectGtm(containerId);
+  };
+}
+
 export function initTracking(): void {
   if (IS_WIP) {
     const env = window.API_CONFIG?.trackingEnv ?? 'dev';
-    injectGtm(WIP_GTM_CONTAINER_ID[env]);
-    injectCookiePro(WIP_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () => onConsentChange(() => syncMoesifConsent(window.API_CONFIG?.moesifAppApiKey)));
+    const injectGtmIfConsented = injectGtmOnceConsented(WIP_GTM_CONTAINER_ID[env]);
+    injectCookiePro(WIP_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () =>
+      onConsentChange(() => {
+        syncMoesifConsent(window.API_CONFIG?.moesifAppApiKey);
+        injectGtmIfConsented();
+      }),
+    );
     return;
   }
 
@@ -297,8 +315,13 @@ export function initTracking(): void {
 
     // Moesif's app key comes from window.API_CONFIG the same way WIP's does — it's runtime config
     // (Cloud's own deployed config.json per environment), not a value to hardcode in source here.
-    injectGtm(CLOUD_GTM_CONTAINER_ID[env]);
-    injectCookiePro(CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () => onConsentChange(() => syncMoesifConsent(window.API_CONFIG?.moesifAppApiKey)));
+    const injectGtmIfConsented = injectGtmOnceConsented(CLOUD_GTM_CONTAINER_ID[env]);
+    injectCookiePro(CLOUD_COOKIEPRO_DOMAIN_SCRIPT_ID[env], () =>
+      onConsentChange(() => {
+        syncMoesifConsent(window.API_CONFIG?.moesifAppApiKey);
+        injectGtmIfConsented();
+      }),
+    );
   }
 
   // ICP: no tracking.

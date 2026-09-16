@@ -67,6 +67,8 @@ describe('initTracking', () => {
     mockFeatures.IS_WIP = true;
 
     initTracking();
+    setActiveGroups('C0001,C0002');
+    window.OptanonWrapper?.();
 
     const gtmScript = document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]');
     expect(gtmScript?.getAttribute('src')).toContain('GTM-MW3T7S9W');
@@ -79,11 +81,23 @@ describe('initTracking', () => {
     (window as unknown as { API_CONFIG: unknown }).API_CONFIG = { trackingEnv: 'prod' };
 
     initTracking();
+    setActiveGroups('C0001,C0002');
+    window.OptanonWrapper?.();
 
     const gtmScript = document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]');
     expect(gtmScript?.getAttribute('src')).toContain('GTM-58TBJFHN');
     const cookieProScript = document.head.querySelector('script[src*="cookiepro"]');
     expect(cookieProScript?.getAttribute('data-domain-script')).toBe('01956090-3b3e-72fc-8434-dd70c76c43d2');
+  });
+
+  it('does not load GTM before analytics consent is granted', () => {
+    mockFeatures.IS_WIP = true;
+
+    initTracking();
+    setActiveGroups('C0001'); // strictly necessary only — no analytics consent
+    window.OptanonWrapper?.();
+
+    expect(document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]')).toBeNull();
   });
 
   it('does not initialize Moesif before analytics consent is granted', () => {
@@ -134,6 +148,8 @@ describe('initTracking', () => {
     mockFeatures.IS_CLOUD = true;
 
     initTracking();
+    setActiveGroups('C0001,C0002');
+    window.OptanonWrapper?.();
 
     const gtmScript = document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]');
     expect(gtmScript?.getAttribute('src')).toContain('GTM-58K3W2QB');
@@ -146,10 +162,30 @@ describe('initTracking', () => {
     (window as unknown as { API_CONFIG: unknown }).API_CONFIG = { trackingEnv: 'prod' };
 
     initTracking();
+    setActiveGroups('C0001,C0002');
+    window.OptanonWrapper?.();
 
     const gtmScript = document.head.querySelector('script[src*="googletagmanager.com/gtm.js"]');
     expect(gtmScript?.getAttribute('src')).toContain('GTM-5VPGH8GR');
     const cookieProScript = document.head.querySelector('script[src*="cookiepro"]');
     expect(cookieProScript?.getAttribute('data-domain-script')).toBe('486163bc-a8c5-40d8-b185-c707cc718a23');
+  });
+
+  it('injects GTM only once across repeated consent-change events', () => {
+    mockFeatures.IS_WIP = true;
+    let onConsentChanged: (() => void) | undefined;
+    (globalThis as Record<string, unknown>).OneTrust = {
+      OnConsentChanged: (callback: () => void) => {
+        onConsentChanged = callback;
+      },
+    };
+
+    initTracking();
+    setActiveGroups('C0001,C0002');
+    window.OptanonWrapper?.();
+    onConsentChanged?.();
+    onConsentChanged?.();
+
+    expect(document.head.querySelectorAll('script[src*="googletagmanager.com/gtm.js"]')).toHaveLength(1);
   });
 });
